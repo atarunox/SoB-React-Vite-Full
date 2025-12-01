@@ -1,0 +1,2 @@
+# ForbiddenFortress
+Placeholder town data.

@@ -1,0 +1,112 @@
+/* SkillTree.css — Shadows of Brimstone themed styling */
+@font-face {
+  font-family: 'RockwellCondensed';
+  src: url('/fonts/RockwellCondensed-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+body {
+  font-family: 'RockwellCondensed', serif;
+}
+
+.bubble-tile {
+  background-color: #f5f0da;
+  border: 2px solid #d6c7a1;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.skill-node {
+  background: #f9f1df;
+  border: 2px solid #5c3a1e;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  height: 160px;
+  width: 80px;
+  transition: transform 0.2s;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  text-align: center;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  font-size: 0.65rem;
+}
+
+.skill-node:hover {
+  transform: scale(1.03);
+  background-color: #f6e7c1;
+}
+
+.skill-name {
+  font-family: 'RockwellCondensed', serif;
+  font-weight: bold;
+  font-size: 0.75rem;
+}
+
+.skill-selected {
+  background-color: #d2f1c7 !important;
+  border-color: #3a732a !important;
+}
+
+.skill-tree-overlay {
+  background-image: url('/assets/parchment-background.jpg');
+  background-size: cover;
+  background-position: center;
+  backdrop-filter: blur(2px);
+}
+
+.skill-tree-close-btn {
+  font-size: 1.25rem;
+  color: #933;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.skill-tree-close-btn:hover {
+  color: #c00;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0px 0 rgba(34, 0, 94, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(34, 0, 94, 0.7);
+  }
+}
+
+.animate-glow {
+  animation: pulseGlow 5s infinite;
+}
+
+.skill-tree-container {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  justify-items: center;
+  max-width: 100%;
+  padding: 0.5rem;
+}
+
+.character-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.skill-desc {
+  font-size: 0.55rem;
+  line-height: 1.1;
+  color: #3a2b1d;
+  overflow-y: auto;
+  max-height: 4.5rem;
+  padding: 0 0.25rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}

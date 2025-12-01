@@ -1,0 +1,1 @@
+export const townTraitsChart = [{"id": 1, "name": "Boomtown", "effect": "All Gear and Items are 50% more expensive."}, {"id": 2, "name": "Haunted", "effect": "Every location roll of 1 causes a Fear check."}];

@@ -1,0 +1,55 @@
+export default [
+  { id: 'gs_hat_riders', name: "Rider's Hat", cost: 350,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 1,
+    effects: ['+1 Health. Gain the keyword Traveler.'],
+  },
+
+  { id: 'gs_hat_war_veteran', name: 'War Veteran Hat', cost: 525,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 1,
+    effects: ['+2 Sanity.'],
+  },
+
+  { id: 'gs_hat_scout', name: 'Scout Hat', cost: 600,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 1,
+    effects: ['+1 Move. Gain the keyword Scout.'],
+  },
+
+  { id: 'gs_hat_frontier', name: 'Frontier Hat', cost: 650,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 1,
+    effects: ['While in Town, roll 1 extra die on Skill tests. Start with +1 Grit.'],
+  },
+
+  { id: 'gs_hat_cowboy', name: 'Cowboy Hat', cost: 900,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 1,
+    effects: ['+1 Max Grit.'],
+  },
+
+  { id: 'gs_hat_sombrero', name: 'Sombrero', cost: 800,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 1,
+    effects: ['Outlaw Only.', 'Heal 1 Sanity at start of each turn (if not KO’d).'],
+  },
+
+  { id: 'gs_hat_white', name: 'White Hat', cost: 6000,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 2,
+    weight: 1,
+    effects: ['Spend 1 Grit to Heal Wounds/Sanity up to your Hero Level.'],
+  },
+
+  { id: 'gs_hat_black', name: 'Black Hat', cost: 1000,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 1,
+    effects: ['Take 1 Corruption Hit to Heal 3 Wounds.'],
+  },
+
+  { id: 'gs_hat_legendary', name: 'Legendary Hat', cost: 14500,
+    category: 'Hat', slot: 'Hat', upgradeSlots: 1,
+    weight: 2,
+    effects: ['Artifact Hat. At end of Adventure, regain Hat’s Revive Token.'],
+  },
+];

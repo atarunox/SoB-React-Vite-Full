@@ -1,0 +1,1 @@
+export const travelHazardChart = [{"id": 1, "name": "Bandit Ambush", "effect": "Each Hero takes 2 Wounds ignoring Defense."}, {"id": 2, "name": "Lost in the Wastes", "effect": "Lose 1 Travel day and take D3 Corruption Hits."}];

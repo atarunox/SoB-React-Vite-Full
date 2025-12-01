@@ -1,0 +1,2 @@
+# BlastedWastesTown
+Placeholder town data.

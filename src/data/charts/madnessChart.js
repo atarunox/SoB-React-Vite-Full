@@ -1,0 +1,1 @@
+export const madnessChart = [{"id": 1, "name": "Paranoia", "effect": "-1 Spirit permanently."}, {"id": 2, "name": "Delusions", "effect": "At the start of each turn, must roll 4+ or lose 1 Sanity."}];

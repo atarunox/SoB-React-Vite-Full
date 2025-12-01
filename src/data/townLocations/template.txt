@@ -1,0 +1,19 @@
+// TEMPLATE — Location Event Chart
+// Each key = 2–12 roll result (2d6).
+// name:   shown in UI
+// effect: full effect text
+// log:    optional extra notes for verbose mode
+
+export default {
+  2:  { name: "", effect: "", log: [] },
+  3:  { name: "", effect: "", log: [] },
+  4:  { name: "", effect: "", log: [] },
+  5:  { name: "", effect: "", log: [] },
+  6:  { name: "", effect: "", log: [] },
+  7:  { name: "", effect: "", log: [] },   // UA triggers here
+  8:  { name: "", effect: "", log: [] },
+  9:  { name: "", effect: "", log: [] },
+  10: { name: "", effect: "", log: [] },
+  11: { name: "", effect: "", log: [] },
+  12: { name: "", effect: "", log: [] },
+};

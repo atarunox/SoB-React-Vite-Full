@@ -1,0 +1,31 @@
+<div className="character-sheet-grid">
+  <div className="bubble-tile">
+    <h2 className="bubble-label">Utilities</h2>
+    <div className="bubble-buttons">
+    
+      <button className="btn btn-primary" onClick={handleEndFight}>End Fight</button>
+      <button className="btn btn-secondary" onClick={handleClearClaimed}>Clear Loot</button>
+      <button className="btn btn-primary" onClick={() => drawDailyEventForTown(heroes)}>Draw Daily Event</button>
+      <button className="btn btn-secondary" onClick={() => endTownDay()}>New Day</button>
+    </div>
+  </div>
+.hero-grid-overlay {
+  position: relative;
+  min-height: 500px;
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-Size: 20px 20px; /* matches your GRID_Size */
+}
+
+  {heroes.some(h => h.unwantedAttention > 0) && (
+    <div className="bubble-tile text-red-700">
+      <h3 className="bubble-label">Unwanted Attention</h3>
+      {heroes.filter(h => h.unwantedAttention > 0).map(hero => (
+        <div key={hero.id} className="text-sm">
+          ⚠️ <strong>{hero.name}</strong>: {hero.unwantedAttention} marker(s)
+        </div>
+      ))}
+    </div>
+  )}
+</div>

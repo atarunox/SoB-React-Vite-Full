@@ -1,0 +1,484 @@
+// src/utils/locationHandlers/sheriffsOfficeServices.js
+import { loadTownState, saveTownState } from '../../utils/townState';
+import { calculateCurrentStats } from '../../utils/calculateStats';
+
+const D6 = () => Math.floor(Math.random() * 6) + 1;
+const D8 = () => Math.floor(Math.random() * 8) + 1;
+
+/* -------------------------------- totals helpers -------------------------------- */
+function getDerivedTotals(hero, posseApi) {
+  // Prefer a PosseContext-provided totals getter (fast/no recompute)
+  if (posseApi?.getTotalsForHero) {
+    const id = hero?.id || hero?.localId;
+    try {
+      const t = posseApi.getTotalsForHero(id);
+      if (t && typeof t === 'object') return t; // must already be a flat { StatName: value } map
+    } catch {}
+  }
+  // Fallback: compute from hero on the fly
+  try {
+    const t = calculateCurrentStats?.(hero);
+    if (t && typeof t === 'object' && t.stats) return t.stats; // ✅ return .stats (not the wrapper)
+  } catch {}
+  // Last resort: use baked-in totals/stats if present
+  return hero?.totals || hero?.stats || {};
+}
+
+function getStat(hero, statName, totalsLike) {
+  const totals = totalsLike || hero?.totals || hero?.stats || {};
+  // numeric totals (e.g., Initiative 4, Cunning 3)
+  const fromTotals = Number(totals?.[statName]);
+  if (Number.isFinite(fromTotals)) return fromTotals;
+
+  // handle "X+" style strings (Armor "5+", Defense "4+")
+  const raw = totals?.[statName] ?? hero?.[statName] ?? hero?.core?.[statName] ?? hero?.stats?.[statName];
+  if (typeof raw === 'string') {
+    const m = raw.match(/\d+/);
+    if (m) return Number(m[0]);
+  }
+
+  const direct = Number(hero?.[statName]) || Number(hero?.core?.[statName]) || Number(hero?.stats?.[statName]);
+  return Number.isFinite(direct) ? direct : 0;
+}
+
+function pushUpdate(actions, patch) {
+  actions.push({ type: 'update', ...patch });
+}
+
+/* ---------- Defense-per-hit, Armor-per-wound resolver (auto-detect Armor) ---------- */
+function parsePlusTarget(v) {
+  if (v == null) return NaN;
+  if (typeof v === 'string') {
+    const m = v.match(/\d+/);
+    return m ? Number(m[0]) : NaN;
+  }
+  if (typeof v === 'number') return v;
+  return NaN;
+}
+
+/**
+ * Resolve damage when Defense is rolled per Hit (each success ignores 1 hit),
+ * and Armor is rolled per Wound (each success ignores 1 wound).
+ * - Auto-detects Armor target from totals (no "Do you have Armor?" prompt)
+ */
+export async function resolveDefensePerHitThenArmorPerWound({
+  ui, hero, hits, woundsPerHit, getStat,
+}) {
+  let incomingHits = Math.max(0, Math.floor(hits));
+
+  // ----- DEFENSE (per hit) -----
+  if (incomingHits > 0) {
+    const defTargetGuess =
+      parsePlusTarget(getStat(hero, 'Defense')) ||
+      parsePlusTarget(hero?.defense) ||
+      parsePlusTarget(hero?.stats?.Defense) ||
+      NaN;
+
+    const doAutoDef = await ui.promptYesNo?.({
+      message:
+        `Defense (per Hit): ${incomingHits} incoming hit${incomingHits === 1 ? '' : 's'}.\n` +
+        `Auto-roll Defense now${Number.isFinite(defTargetGuess) ? ` (target ${defTargetGuess}+)` : ''}?`,
+    });
+
+    if (doAutoDef) {
+      const target = Number.isFinite(defTargetGuess)
+        ? defTargetGuess
+        : (Number(await ui.promptNumber?.({
+            title: 'Defense Target',
+            message: 'Enter your Defense target number (e.g., 4 for 4+):',
+            min: 2, max: 6, defaultValue: 4,
+          })) || 4);
+
+      const rolls = await ui.roll(incomingHits, 6, `Defense — ${incomingHits}d6 vs ${target}+ (1 success ignores 1 hit)`);
+      const arr = Array.isArray(rolls) ? rolls : [rolls];
+      const blocks = arr.filter(n => n >= target).length;
+      incomingHits = Math.max(0, incomingHits - blocks);
+      await ui.toast?.(`Defense blocked ${blocks} hit(s). Hits getting through: ${incomingHits}.`);
+    } else {
+      // Manual: ask how many Defense FAILED (i.e., hits that still get through)
+      const fails = Number(await ui.promptNumber?.({
+        title: 'Manual Defense',
+        message: `How many Defense rolls FAILED (of ${incomingHits})?`,
+        min: 0, max: incomingHits, defaultValue: incomingHits,
+      })) || incomingHits;
+      incomingHits = Math.max(0, Math.min(incomingHits, fails));
+      await ui.toast?.(`Manual Defense: Hits getting through = ${incomingHits}.`);
+    }
+  }
+
+  // Convert remaining hits into wounds
+  let pendingWounds = incomingHits * Math.max(0, Math.floor(woundsPerHit));
+
+  // ----- ARMOR (per wound) — auto-detect presence/target -----
+  if (pendingWounds > 0) {
+    // Pull Armor from derived totals first (e.g., "5+"); fall back to hero fields.
+    const armorTargetGuess =
+      parsePlusTarget(getStat(hero, 'Armor')) ||
+      parsePlusTarget(hero?.armor) ||
+      parsePlusTarget(hero?.stats?.Armor) ||
+      NaN;
+
+    if (Number.isFinite(armorTargetGuess)) {
+      const doAutoArmor = await ui.promptYesNo?.({
+        message: `Armor detected (${armorTargetGuess}+). Auto-roll Armor for ${pendingWounds} wound(s)?`,
+      });
+
+      if (doAutoArmor) {
+        const rolls = await ui.roll(pendingWounds, 6, `Armor — ${pendingWounds}d6 vs ${armorTargetGuess}+ (each success ignores 1 wound)`);
+        const arr = Array.isArray(rolls) ? rolls : [rolls];
+        const ignores = arr.filter(n => n >= armorTargetGuess).length;
+        pendingWounds = Math.max(0, pendingWounds - ignores);
+        await ui.toast?.(`Armor ignored ${ignores} wound(s). Final Wounds: ${pendingWounds}.`);
+      } else {
+        const armorBlocks = Number(await ui.promptNumber?.({
+          title: 'Manual Armor',
+          message: `How many Armor rolls SUCCEEDED (of ${pendingWounds})?`,
+          min: 0, max: pendingWounds, defaultValue: 0,
+        })) || 0;
+        pendingWounds = Math.max(0, pendingWounds - armorBlocks);
+        await ui.toast?.(`Manual Armor: Final Wounds = ${pendingWounds}.`);
+      }
+    } else {
+      // No Armor detected; continue without asking.
+      await ui.toast?.('No Armor detected on your sheet. Skipping Armor rolls.');
+    }
+  }
+
+  return pendingWounds;
+}
+
+
+/* -------------------------------- main executor -------------------------------- */
+export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) {
+  const meId = hero?.id || hero?.localId;
+  const totals = getDerivedTotals(hero, posseApi); // ✅ now a flat { Stat: value } map
+
+  const actions = [];
+  const log = [];
+  let endsVisit = !!svc?.endsVisit;
+
+  const addGold = (delta, why) => {
+    if (!Number.isFinite(delta) || delta === 0) return;
+    const now = Number(hero?.gold ?? 0);
+    pushUpdate(actions, { gold: Math.max(0, now + delta) });
+    log.push(`${delta >= 0 ? 'Gained' : 'Paid'} $${Math.abs(delta)}${why ? ` — ${why}` : ''}.`);
+  };
+  const addXP = (delta, why) => {
+    if (!Number.isFinite(delta) || delta === 0) return;
+    const now = Number(hero?.xp ?? 0);
+    pushUpdate(actions, { xp: Math.max(0, now + delta) });
+    log.push(`${delta >= 0 ? 'Gained' : 'Spent'} ${Math.abs(delta)} XP${why ? ` — ${why}` : ''}.`);
+  };
+
+  const chooseStat = async (title, a, b) => {
+    const av = getStat(hero, a, totals);
+    const bv = getStat(hero, b, totals);
+    const pick = await ui.promptChoice?.(title, [
+      { label: `${a} (${av})` },
+      { label: `${b} (${bv})` },
+    ]);
+    return pick === 1 ? { name: b, value: bv } : { name: a, value: av };
+  };
+
+  switch (svc?.id) {
+    /* ---------------- Sheriff’s Bounty ---------------- */
+    case 'so_sheriffs_bounty': {
+      // Draw Low Threat enemy if your UI supports it
+      let target = null;
+      if (typeof ui?.drawFromDeck === 'function') {
+        try {
+          const card = await ui.drawFromDeck({ deck: 'Enemy', tier: 'Low' });
+          if (card && card.name) {
+            target = {
+              name: card.name,
+              printedXP: Number(card.printedXP ?? card.xp ?? 0),
+              xpPerWound: Number(card.xpPerWound ?? 0),
+              fixedXpBonus: Number(card.fixedXpBonus ?? 0),
+            };
+          }
+        } catch {}
+      }
+      // Fallback prompt
+      if (!target) {
+        const name = await ui.promptText?.({
+          message: 'Bounty Target (Low Threat) — enter Enemy name:',
+          defaultValue: '',
+        });
+        const printedXP = Number(
+          await ui.promptText?.({ message: 'Printed XP on target?', defaultValue: '10' })
+        );
+        const perWound = Number(
+          await ui.promptText?.({ message: 'XP per wound (if any)? Enter 0 if none.', defaultValue: '0' })
+        );
+        const fixed = Number(
+          await ui.promptText?.({ message: 'Fixed XP bonus at bottom (if any)?', defaultValue: '0' })
+        );
+        target = { name: name || 'Unknown Enemy', printedXP: printedXP || 0, xpPerWound: perWound || 0, fixedXpBonus: fixed || 0 };
+      }
+
+      // Value: printed XP; if variable XP, use base + fixed (ignore per-wound scaling)
+      const valueGold = Number.isFinite(target.xpPerWound) && target.xpPerWound > 0
+        ? Math.max(0, Number(target.printedXP || 0) + Number(target.fixedXpBonus || 0))
+        : Math.max(0, Number(target.printedXP || 0));
+
+      // Add poster to inventory (expires after next Adventure)
+      const poster = {
+        id: `bounty_${Date.now()}`,
+        name: 'Bounty Poster',
+        type: 'Gear',
+        slot: 'Misc',
+        weight: 0,
+        tags: ['Bounty', 'Temporary'],
+        description: `Target: ${target.name}. Worth $${valueGold} when killed (converts from printed XP rule).`,
+        bounty: {
+          target: target.name,
+          goldOnKill: valueGold,
+          rule: target.xpPerWound > 0 ? 'baseXP + fixed bonus; ignore per-wound' : 'printed XP',
+        },
+        expires: 'endOfAdventure',
+      };
+      const inventory = Array.isArray(hero?.inventory) ? hero.inventory.slice() : [];
+      inventory.push(poster);
+      pushUpdate(actions, { inventory });
+
+      // Persist in town stay modifiers for convenience
+      const s = loadTownState() || {};
+      s.stayMods = s.stayMods || {};
+      s.stayMods.sheriffsBounty = {
+        target: poster.bounty.target,
+        goldOnKill: poster.bounty.goldOnKill,
+        posterId: poster.id,
+        expires: 'endOfAdventure',
+      };
+      saveTownState(s);
+
+      log.push(`Bounty set on <b>${target.name}</b> — value $${poster.bounty.goldOnKill}. A Bounty Poster was added to your inventory (expires after the next Adventure).`);
+      return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
+    }
+
+    /* ---------------- Pay Off Your Warrants ---------------- */
+    case 'so_pay_off_warrants': {
+      const level = Math.max(1, Number(hero?.level ?? 1));
+      const isMostWanted =
+        !!hero?.status?.mostWanted ||
+        (Array.isArray(hero?.keywords) && hero.keywords.some(k => String(k).toLowerCase() === 'most wanted'));
+      const cost = (isMostWanted ? 750 : 500) * level;
+
+      const desc = [
+        'Cost: <b>$500 × Hero Level</b>. If <b>Most Wanted</b>, the cost is <b>$750 × Hero Level</b>.',
+        `Computed for you: <b>$${cost}</b> (Level ${level}${isMostWanted ? ', Most Wanted' : ''}).`,
+      ];
+
+      if ((hero?.gold ?? 0) < cost) {
+        log.push(`Insufficient funds. Need $${cost}.`);
+        return { actions, log, ui: { title: svc.name, description: desc, outcome: log.slice() } };
+      }
+
+      addGold(-cost, 'Paid Off Warrants');
+      // Clear wanted flags/keywords
+      const nextKeywords = Array.isArray(hero?.keywords)
+        ? hero.keywords.filter(k => {
+            const low = String(k).toLowerCase();
+            return low !== 'wanted' && low !== 'most wanted';
+          })
+        : hero?.keywords;
+
+      pushUpdate(actions, {
+        status: { ...(hero?.status || {}), wanted: false, mostWanted: false },
+        keywords: nextKeywords,
+      });
+
+      log.push('All warrants cleared. Wanted status removed.');
+      return { actions, log, ui: { title: svc.name, description: desc, outcome: log.slice() } };
+    }
+
+    /* ---------------- Interrogate Prisoner ---------------- */
+    case 'so_interrogate_prisoner': {
+      const pick = await chooseStat('Interrogate — choose stat', 'Strength', 'Cunning');
+      const dice = Math.max(1, Number(pick.value || 0));
+      const rolls = await ui.roll(dice, 6, `Interrogate (${pick.name} ${pick.value}) — roll ${dice}d6`);
+      const arr = Array.isArray(rolls) ? rolls : [rolls];
+      const sixes = arr.filter(n => n === 6).length;
+      const ones = arr.filter(n => n === 1).length;
+
+      if (sixes > 0) {
+        const s = loadTownState() || {};
+        s.stayMods = s.stayMods || {};
+        s.stayMods.interrogateRerolls = (s.stayMods.interrogateRerolls || 0) + sixes;
+        saveTownState(s);
+        log.push(`Insight! You gain ${sixes} re-draw(s) for the next Adventure.`);
+      } else {
+        log.push('No useful intel gained.');
+      }
+
+      if (ones > 0) {
+        const s = loadTownState() || {};
+        s.stayMods = s.stayMods || {};
+        s.stayMods.interrogateDarknessSteps = (s.stayMods.interrogateDarknessSteps || 0) + ones;
+        saveTownState(s);
+        log.push(`The prisoner misleads you. Darkness will advance ${ones} step(s) at the start of the next Adventure.`);
+      }
+
+      return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
+    }
+
+    /* ---------------- Become Deputized ---------------- */
+    case 'so_become_deputized': {
+      if ((hero?.xp ?? 0) < 50) {
+        log.push('Not enough XP (need 50).');
+        return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
+      }
+
+      addXP(-50, 'Deputized fee');
+
+      const kw = Array.isArray(hero?.keywords) ? [...hero.keywords] : [];
+      if (!kw.includes('Law')) kw.push('Law');
+
+      const cond = hero?.conditions || {};
+      const temporary = Array.isArray(cond.temporary) ? [...cond.temporary] : [];
+      temporary.push({
+        id: 'deputized_cunning_plus1',
+        name: 'Deputized',
+        type: 'temporary',
+        effect: '+1 Cunning while deputized',
+        statMods: { Cunning: +1 },
+        active: true,
+        expires: 'endOfAdventureCheck',
+        addedAt: Date.now(),
+      });
+
+      pushUpdate(actions, { keywords: kw, conditions: { ...cond, temporary } });
+      log.push('You are now Deputized: gained the Law keyword and +1 Cunning (temporary).');
+      return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
+    }
+
+    /* ---------------- Join a Manhunt (verbatim + full shootout/defense/armor) ---------------- */
+    case 'so_join_manhunt': {
+      const flavor = [
+        '<i>You ride with the Law through the badlands, tracking sign and asking questions at lonely ranches.</i>',
+        '<i>Rumors lead to a canyon hideout — the posse circles wide as the sun dips low…</i>',
+      ];
+      log.push(...flavor);
+
+      const C = getStat(hero, 'Cunning', totals);
+      const dice = Math.max(1, C);
+      const huntRolls = await ui.roll(dice, 6, `Manhunt — Cunning ${C} (roll ${dice}d6 vs 5+)`);
+      const arr = Array.isArray(huntRolls) ? huntRolls : [huntRolls];
+      const successes = arr.filter((n) => n >= 5).length;
+      const hasSix = arr.some((n) => n === 6);
+
+      if (successes > 0) {
+        const xp = successes * 20;
+        addXP(xp, 'Manhunt reward');
+        log.push(`You ran down ${successes} of the outlaw’s crew: +${xp} XP.`);
+      } else {
+        log.push('You comb the hills to no avail — the trail goes cold.');
+      }
+
+      if (!hasSix) {
+        log.push('No sign of the main outlaw himself this time — you return to town.');
+        endsVisit = true;
+        return { actions, log, ui: { title: svc.name, outcome: log.slice() }, endsVisit };
+      }
+
+      // ---- SHOOTOUT TRIGGERED (rolled at least one 6) ----
+      log.push('<b>The outlaw springs the ambush!</b> A gunfight erupts among the rocks.');
+      const shootoutRolls = await ui.roll(2, 6, 'Manhunt Shootout — 2D6 hits');
+      const total = Array.isArray(shootoutRolls)
+        ? shootoutRolls.reduce((a, b) => a + b, 0)
+        : shootoutRolls;
+
+      const initiative = getStat(hero, 'Initiative', totals);
+      const hits = Math.max(0, total - initiative);
+
+      const level = Number(hero?.level ?? 1);
+      const perHit =
+        level <= 4 ? 4 :
+        level <= 8 ? 8 :
+        12; // optional if you support higher tiers
+
+      log.push(
+        `Shootout: rolled ${Array.isArray(shootoutRolls) ? shootoutRolls.join(' + ') : shootoutRolls} = ${total}. ` +
+        `Subtract Initiative ${initiative} → <b>${hits} hit(s)</b>.`
+      );
+
+      if (hits > 0) {
+        log.push(`Each hit deals ${perHit} Wounds (pre-Defense).`);
+
+        const finalWounds = await resolveDefensePerHitThenArmorPerWound({
+          ui, hero,
+          hits,
+          woundsPerHit: perHit,
+          getStat: (h, s) => getStat(h, s, totals),
+        });
+
+        if (finalWounds > 0) {
+          log.push(`<b>Damage taken:</b> ${finalWounds} Wounds after Defense/Armor.`);
+          // ✅ Apply to currentHealth so it shows up on the sheet
+          const hpNow = Number(hero?.currentHealth ?? 0);
+          pushUpdate(actions, { currentHealth: Math.max(0, hpNow - finalWounds) });
+        } else {
+          log.push('<b>No damage</b> after Defense/Armor — you shrug off the ambush!');
+        }
+      } else {
+        log.push('You duck behind cover — no hits get through!');
+      }
+
+      // A small bonus if you did well
+      if (successes > 0 && hits <= 1) {
+        addXP(25, 'Captured the outlaw');
+        addGold(100, 'Outlaw bounty');
+        log.push('<b>Captured!</b> +25 XP and $100 for bringing the outlaw in alive.');
+      }
+
+      endsVisit = true;
+      return { actions, log, ui: { title: svc.name, outcome: log.slice() }, endsVisit };
+    }
+
+    /* ---------------- Escort Prisoner Transfer ---------------- */
+    case 'so_escort_prisoner': {
+      const L = getStat(hero, 'Lore', totals);
+      const dice = Math.max(1, L);
+      const rolls = await ui.roll(dice, 6, `Escort — Lore ${L} (roll ${dice}d6 vs 5+)`);
+      const arr = Array.isArray(rolls) ? rolls : [rolls];
+      const successes = arr.filter(n => n >= 5).length;
+      const ones = arr.filter(n => n === 1).length;
+
+      if (successes > 0) {
+        let d8 = D8();
+        if (typeof ui.promptText === 'function') {
+          const raw = await ui.promptText({
+            message: `Escort success! Enter your D8 roll for payout (blank for auto = ${d8}).`,
+            defaultValue: '',
+          });
+          const n = Math.floor(Number(raw));
+          if (Number.isFinite(n) && n >= 1 && n <= 8) d8 = n;
+        }
+        const payout = d8 * 25;
+        addGold(payout, `Escort payoff (${d8} × $25)`);
+        addXP(successes * 10, 'Escort experience');
+        log.push('You safely completed the transfer.');
+      } else {
+        log.push('Ambushed on the road — the transfer yields no payout.');
+      }
+
+      if (ones > 0) {
+        for (let i = 0; i < ones; i++) {
+          if (typeof ui.promptYesNo === 'function') {
+            await ui.promptYesNo({ message: 'A die showed <b>1</b>. Roll a <b>Travel Hazard</b> now? (DM resolves)' });
+          }
+          log.push('DM: Roll a Travel Hazard for the escort route (due to a 1).');
+        }
+      }
+
+      endsVisit = true;
+      return { actions, log, ui: { title: svc.name, outcome: log.slice() }, endsVisit };
+    }
+
+    default:
+      log.push('Service not implemented yet.');
+      return { actions, log, ui: { title: svc?.name || 'Service', outcome: log.slice() } };
+  }
+}
+
+export default { performSheriffsOfficeService };
