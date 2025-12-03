@@ -54,6 +54,24 @@ export function normalizeINDIAN_TP_Item(item) {
   return item;
 }
 
+// ---------- Shop state helpers ----------
+function getShopMods() {
+  const s = loadTownState();
+  return s.shopMods?.[shopId] || { priceDelta: 0 };
+}
+
+function patchShopMods(patch) {
+  const s = loadTownState();
+  const cur = getShopMods();
+  const next = { ...cur, ...patch };
+  const updated = { ...s, shopMods: { ...(s.shopMods || {}), [shopId]: next } };
+  saveTownState(updated);
+  // Notify UI to refresh prices
+  try {
+    window.dispatchEvent(new CustomEvent('shopmods:changed', { detail: { shopId, mods: next } }));
+  } catch {}
+}
+
 // ---------- townState helpers ----------
 function patchGlobalRules(patch) {
   const s = loadTownState() || {};
@@ -90,8 +108,8 @@ export function display(roll) {
  * - updateHero(id, patchOrFn)
  * - addToken(id, tokenName)
  * - enqueueChartRoll(id, chartName)
- * - doSkillCheck(id, { stat, target })
- * - promptChoice(title, options[])   // {label}
+ * - doSkillCheck(id, { stat, target }) - PROMPTS USER AUTOMATICALLY
+ * - promptChoice(title, options[])
  * - promptYesNo(message)
  * - toast(msg)
  */
@@ -146,15 +164,13 @@ export async function apply(roll, ctx) {
       );
 
       if (attemptHelp) {
-        // Make Lore 6+ test - need to count individual die results
-        let successes = 0;
-        let ones = 0;
+        // Make Lore 6+ test - doSkillCheck handles prompting and counts successes
+        // We need to do a custom test that counts individual die results
+        ctx.toast?.(`Roll ${lore} dice for Lore 6+ test. Count 6+ for success, 1s for horror hits.`);
 
-        for (let i = 0; i < lore; i++) {
-          const die = d6();
-          if (die >= 6) successes++;
-          if (die === 1) ones++;
-        }
+        // For now, use a simplified approach: prompt for successes and ones
+        const successes = await ctx.promptNumber?.('How many 6+ did you roll?', { min: 0, max: lore, def: 0 }) || 0;
+        const ones = await ctx.promptNumber?.('How many 1s did you roll?', { min: 0, max: lore, def: 0 }) || 0;
 
         if (successes > 0) {
           // Success: Recover 1 Grit and gain 25 XP per 6+
@@ -213,7 +229,9 @@ export async function apply(roll, ctx) {
     );
 
     if (!isTribal) {
-      patchStayMods({ indianTradingPostPriceIncrease: 50 });
+      // Use proper shop price modification system
+      const cur = getShopMods();
+      patchShopMods({ priceDelta: (cur.priceDelta || 0) + 50, nonTribalSurcharge: 50 });
       ctx.toast?.(
         'Unfriendly Welcome: All prices +$50 for non-Tribal heroes (including normally free services).'
       );
@@ -284,14 +302,11 @@ export async function apply(roll, ctx) {
         ctx.toast?.('You are now one with the tribe! Gained Keyword: Tribal.');
       }
     } else {
-      // Already Tribal - make Spirit 4+ test
+      // Already Tribal - make Spirit 4+ test (with prompting)
       const spirit = hero?.stats?.Spirit || hero?.spirit || 0;
-      let successes = 0;
 
-      for (let i = 0; i < spirit; i++) {
-        const die = d6();
-        if (die >= 4) successes++;
-      }
+      ctx.toast?.(`Roll ${spirit} dice for Spirit 4+ test. Count how many rolled 4+.`);
+      const successes = await ctx.promptNumber?.('How many 4+ did you roll?', { min: 0, max: spirit, def: 0 }) || 0;
 
       if (successes > 0) {
         ctx.updateHero?.(id, (h) => {
