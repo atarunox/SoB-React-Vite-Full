@@ -367,11 +367,14 @@ const GenericShop = ({
   posseApi = null,
   uiApi = null,
 }) => {
+  const [, force] = useState(0);
+  const refresh = () => force(n => n + 1);
+
   // Load town state and dynamically generate tabs (for event items)
-  const townState = loadTownState();
   const dynamicTabsByShop = useMemo(() => {
+    const townState = loadTownState();
     return makeTabsByShop({ townState });
-  }, [townState]);
+  }, [force, shopKey]);
 
   const legacyTabs = dynamicTabsByShop?.[shopKey] || tabsByShop?.[shopKey];
   const shopData = shopDataById?.[shopKey];
@@ -443,9 +446,6 @@ const GenericShop = ({
   // apply price mods to GOLD only (Street Market +/- $50, min $25)
   const adjustGold = (gold) =>
     applyShopPriceMods(Number(gold || 0), shopKey, typeof minFloor === 'number' ? { minFloor } : {});
-
-  const [, force] = useState(0);
-  const refresh = () => force(n => n + 1);
 
   // Listen for town state changes to refresh tabs
   useEffect(() => {
