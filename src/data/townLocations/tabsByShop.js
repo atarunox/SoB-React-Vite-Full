@@ -163,11 +163,19 @@ export const makeTabsByShop = (ctx) => ({
     const dayMods = townState?.dayMods || {};
     const eventItems = [];
 
+    // Event #11: New Items in Stock (3 gear cards)
     if (dayMods.generalStoreNewItems?.items) {
       eventItems.push(...dayMods.generalStoreNewItems.items);
     }
-    if (dayMods.generalStoreArtifact?.item) {
-      eventItems.push(dayMods.generalStoreArtifact.item);
+
+    // Event #12: Artifact for Sale (world + artifact)
+    if (dayMods.generalStoreArtifact?.artifact) {
+      const artifactOffer = dayMods.generalStoreArtifact;
+      eventItems.push({
+        ...artifactOffer.artifact,
+        description: `World: ${artifactOffer.world || 'Unknown'}`,
+        lore: artifactOffer.artifact.lore || 'Brought back from a recent expedition.',
+      });
     }
 
     if (eventItems.length > 0) {

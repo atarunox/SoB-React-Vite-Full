@@ -21,6 +21,10 @@ import streetMarket from '../data/townLocations/streetMarket.js';
 // Normalizer so 'gamblingHall' → 'gambling', etc.
 import { resolveShopId } from './locationEventText';
 
+// Import applyLocationActions to actually apply the actions returned by handlers
+import { applyLocationActions } from './applyLocationActions';
+import { loadTownState, saveTownState } from './townState';
+
 // --- Handler imports live under utils/locationHandlers ---
 import { handleCampSiteVisit } from './locationHandlers/campSiteHandler';
 import { handleFrontierOutpostEvent } from './locationHandlers/frontierOutpostHandler';
@@ -464,6 +468,26 @@ export async function resolveEvent(shopKey, context = {}) {
   }
 
   const result = await reg.handler({ ...context, forcedRoll: roll, ...extra });
+
+  // Apply the actions returned by the handler
+  if (result.actions && Array.isArray(result.actions) && result.actions.length > 0) {
+    try {
+      // Apply actions to update heroes and townState
+      await applyLocationActions(result.actions, {
+        posseApi: context.posseApi,
+        townState: result.townState || context.townState || loadTownState(),
+        saveTownState: (state) => {
+          saveTownState(state);
+          // Also update context townState if available
+          if (context.townStateApi && typeof context.townStateApi.set === 'function') {
+            context.townStateApi.set(state);
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Error applying location actions:', error);
+    }
+  }
 
   const out = {
     ...result,

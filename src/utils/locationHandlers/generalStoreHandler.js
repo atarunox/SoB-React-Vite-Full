@@ -1,5 +1,7 @@
 // src/logic/handlers/generalStoreHandler.js
 
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
+
 /**
  * General Store (2d6) event handler
  * -------------------------------------------------------------
@@ -245,33 +247,50 @@ export async function handleGeneralStoreEvent({
 
     // 12: Artifact for Sale – Draw a World + Artifact card. Anyone in the General Store may purchase.
     case 12: {
-      // Store the artifact in townState so all heroes at the store can see it
-      const dayMods = { ...(townState?.dayMods || {}) };
+      // Group artifacts by world
+      const byWorld = otherWorldArtifacts.reduce((acc, art) => {
+        const w = art.world || 'Unknown';
+        if (!acc[w]) acc[w] = [];
+        acc[w].push(art);
+        return acc;
+      }, {});
 
-      // Create placeholder artifact (in a real implementation, this would be drawn from World + Artifact decks)
-      dayMods.generalStoreArtifact = {
-        item: {
-          id: 'event_artifact_1',
-          name: 'Mystery Artifact',
-          description: 'Draw a World Card, then draw an Artifact from that world',
-          cost: 100,
-          slot: 'Artifact',
-          effect: 'This is a placeholder. Draw from World deck, then Artifact deck.',
-          tags: ['Event Item', 'Artifact', 'Rare'],
-          lore: 'Brought back from a recent expedition.',
-        },
-        createdAt: Date.now(),
-      };
+      const worlds = Object.keys(byWorld);
+      if (!worlds.length) {
+        await note('Artifact for Sale — No OtherWorld Artifacts found in data; resolve manually.');
+      } else {
+        // Draw a random world
+        const world = worlds[Math.floor(Math.random() * worlds.length)];
+        const pool = byWorld[world] || [];
+        const artifact = pool[Math.floor(Math.random() * pool.length)] || pool[0];
 
-      townState = { ...(townState || {}), dayMods };
-      actions.push({
-        type: 'SET_DAY_MOD',
-        key: 'generalStoreArtifact',
-        value: dayMods.generalStoreArtifact,
-        reason: 'General Store: Artifact for Sale',
-      });
+        // Store the artifact in townState so all heroes at the store can see it
+        const dayMods = { ...(townState?.dayMods || {}) };
 
-      await note('Artifact for Sale — A rare artifact is available! Any hero in the General Store may purchase it for $100 (or listed price). Check the "Event Items" tab.');
+        dayMods.generalStoreArtifact = {
+          id: 'gs_world_artifact',
+          world,
+          artifact: {
+            ...artifact,
+            id: artifact.id || 'event_artifact_1',
+            name: artifact.name || 'Mystery Artifact',
+            cost: artifact.cost || 100,
+          },
+          // Allow purchase at listed price or $100 if no price
+          price: artifact.cost || 100,
+          createdAt: Date.now(),
+        };
+
+        townState = { ...(townState || {}), dayMods };
+        actions.push({
+          type: 'SET_DAY_MOD',
+          key: 'generalStoreArtifact',
+          value: dayMods.generalStoreArtifact,
+          reason: 'General Store: Artifact for Sale',
+        });
+
+        await note(`Artifact for Sale — World Card drawn: ${world}. Artifact: ${artifact.name}. Any hero in the General Store may purchase it for $${dayMods.generalStoreArtifact.price} (or at listed price). Check the "Event Items" tab.`);
+      }
       break;
     }
 
