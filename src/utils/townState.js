@@ -120,14 +120,18 @@ export function loadTownState() {
 
 export function saveTownState(state) {
   try {
+    console.log('[townState] Saving state to localStorage:', state);
+    console.log('[townState] dayMods being saved:', state?.dayMods);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     // Broadcast a change so UIs can refresh derived views (prices, badges, etc.)
     try {
+      console.log('[townState] Dispatching sobTownStateChanged event');
       window.dispatchEvent(
         new CustomEvent('sobTownStateChanged', { detail: { key: STORAGE_KEY } })
       );
-    } catch {
-      // no-op if CustomEvent unsupported
+      console.log('[townState] Event dispatched successfully');
+    } catch (err) {
+      console.error('[townState] Failed to dispatch event:', err);
     }
   } catch (e) {
     console.warn('[townState] save failed.', e);

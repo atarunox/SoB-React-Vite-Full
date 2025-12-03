@@ -455,9 +455,17 @@ const GenericShop = ({
 
   // Listen for town state changes to refresh tabs
   useEffect(() => {
-    const handleTownStateChange = () => refresh();
+    const handleTownStateChange = (event) => {
+      console.log('[GenericShop] sobTownStateChanged event received!', event);
+      console.log('[GenericShop] Calling refresh() to reload tabs');
+      refresh();
+    };
+    console.log('[GenericShop] Setting up sobTownStateChanged listener');
     window.addEventListener('sobTownStateChanged', handleTownStateChange);
-    return () => window.removeEventListener('sobTownStateChanged', handleTownStateChange);
+    return () => {
+      console.log('[GenericShop] Removing sobTownStateChanged listener');
+      window.removeEventListener('sobTownStateChanged', handleTownStateChange);
+    };
   }, []);
 
   return (
