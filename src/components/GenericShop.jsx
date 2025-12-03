@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { tabsByShop } from '../data/townLocations/tabsByShop.js';
+import { tabsByShop, makeTabsByShop } from '../data/townLocations/tabsByShop.js';
 import { shopDataById } from '../data/shopDataByID';
 
 // Events + shop mods
@@ -367,7 +367,13 @@ const GenericShop = ({
   posseApi = null,
   uiApi = null,
 }) => {
-  const legacyTabs = tabsByShop?.[shopKey];
+  // Load town state and dynamically generate tabs (for event items)
+  const townState = loadTownState();
+  const dynamicTabsByShop = useMemo(() => {
+    return makeTabsByShop({ townState });
+  }, [townState]);
+
+  const legacyTabs = dynamicTabsByShop?.[shopKey] || tabsByShop?.[shopKey];
   const shopData = shopDataById?.[shopKey];
   const shopRequires = shopData?.requires || null;
   const bannedKeywords = shopData?.visitRestrictions?.bannedKeywords || [];
@@ -440,6 +446,13 @@ const GenericShop = ({
 
   const [, force] = useState(0);
   const refresh = () => force(n => n + 1);
+
+  // Listen for town state changes to refresh tabs
+  useEffect(() => {
+    const handleTownStateChange = () => refresh();
+    window.addEventListener('sobTownStateChanged', handleTownStateChange);
+    return () => window.removeEventListener('sobTownStateChanged', handleTownStateChange);
+  }, []);
 
   return (
     <div className="space-y-3">

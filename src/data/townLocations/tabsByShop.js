@@ -155,13 +155,36 @@ export const makeTabsByShop = (ctx) => ({
     );
   })(),
 
-  generalStore: catList(
-    cat('tokens', 'Side Bag Tokens', generalStoreTokens, ctx),
-    cat('ammo', 'Specialty Ammo', generalStoreAmmo, ctx),
-    cat('guns', 'Guns', generalStoreGuns, ctx),
-    cat('clothing', 'Clothing & Equipment', generalStoreClothing, ctx),
-    cat('hats', 'Hats', generalStoreHats, ctx),
-  ),
+  generalStore: (() => {
+    const tabs = [];
+
+    // Dynamic Event Items tab (for events #11 and #12)
+    const townState = ctx?.townState || (typeof ctx?.getTownState === 'function' ? ctx.getTownState() : null);
+    const dayMods = townState?.dayMods || {};
+    const eventItems = [];
+
+    if (dayMods.generalStoreNewItems?.items) {
+      eventItems.push(...dayMods.generalStoreNewItems.items);
+    }
+    if (dayMods.generalStoreArtifact?.item) {
+      eventItems.push(dayMods.generalStoreArtifact.item);
+    }
+
+    if (eventItems.length > 0) {
+      tabs.push(cat('event_items', 'Event Items ⭐', eventItems, ctx));
+    }
+
+    // Regular tabs
+    tabs.push(
+      cat('tokens', 'Side Bag Tokens', generalStoreTokens, ctx),
+      cat('ammo', 'Specialty Ammo', generalStoreAmmo, ctx),
+      cat('guns', 'Guns', generalStoreGuns, ctx),
+      cat('clothing', 'Clothing & Equipment', generalStoreClothing, ctx),
+      cat('hats', 'Hats', generalStoreHats, ctx)
+    );
+
+    return catList(...tabs);
+  })(),
 
   streetMarket: catList(
     cat('tokens', 'Potions & Spices', streetMarketTokens, ctx),

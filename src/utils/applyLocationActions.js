@@ -124,6 +124,15 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
         break;
       }
 
+      case 'SET_DAY_MOD': {
+        // Set a day modifier (used by General Store events #11, #12)
+        writeTown((s) => {
+          s.dayMods = s.dayMods || {};
+          s.dayMods[a.key] = a.value;
+        });
+        break;
+      }
+
       default:
         // no-op; add handlers here as needed
         break;

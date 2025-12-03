@@ -40,11 +40,17 @@ export async function handleGeneralStoreEvent({
   townState,
   io = {},
   forcedRoll = null,
+  posseApi = {},
+  uiApi = {},
 }) {
   const log = [];
   const actions = [];
   const hId = hero?.id || hero?.localId;
   const locationId = 'generalStore';
+
+  // Get all heroes at the general store
+  const getHeroesAtShop = posseApi?.getHeroesAtShop || io?.posseApi?.getHeroesAtShop || (() => []);
+  const heroesAtStore = getHeroesAtShop('general_store');
 
   const safeRoll = async (n, sides, label) => {
     if (typeof io.roll === 'function') {
@@ -113,38 +119,50 @@ export async function handleGeneralStoreEvent({
       break;
     }
 
-    // 3: Robbery – Pay D6×$10 OR Agility 5+ to stop robbery for $100. Fail = Injury Chart.
+    // 3: Robbery – Every Hero in the General Store must either pay D6×$10 OR Agility 5+ to stop robbery for $100. Fail = Injury Chart.
     case 3: {
-      if (!hId) break;
-      const decision = await choose({
-        title: 'Robbery!',
-        message: 'Pay D6×$10 to safely stop it and claim $100, or attempt Agility 5+ (on fail, Injury chart)?',
-        choices: [
-          { key: 'pay', label: 'Pay D6×$10 and claim $100' },
-          { key: 'test', label: 'Attempt Agility 5+' },
-        ],
-      });
+      if (!heroesAtStore || heroesAtStore.length === 0) break;
 
-      if (decision === 'pay') {
-        const die = (await safeRoll(1, 6, 'Robbery fee'))[0];
-        const fee = die * 10;
-        actions.push({ type: 'MODIFY_GOLD', heroId: hId, delta: -fee, reason: 'Robbery (fee)' });
-        actions.push({ type: 'MODIFY_GOLD', heroId: hId, delta: +100, reason: 'Robbery reward' });
-        await note(`Robbery — you pay $${fee} and receive a $100 reward (net +$${100 - fee}).`);
-      } else {
-        const ok = await doTest({ hero, key: 'Agility', target: 5, label: 'Robbery' });
-        if (ok) {
-          actions.push({ type: 'MODIFY_GOLD', heroId: hId, delta: +100, reason: 'Robbery reward' });
-          await note('Robbery — Agility 5+ success! You gain $100.');
+      await note(`Robbery! Masked gunmen burst into the shop. Every hero in the General Store must respond.`);
+
+      // Process each hero at the store
+      for (const heroId of heroesAtStore) {
+        const currentHero = posseApi?.getHero?.(heroId) || posseApi?.getHeroById?.(heroId) || null;
+        if (!currentHero) continue;
+
+        await note(`\n--- ${currentHero.name} ---`);
+
+        const decision = await choose({
+          title: `Robbery! (${currentHero.name})`,
+          message: `${currentHero.name} must either hand over D6×$10 (or as much as they have), or make an Agility 5+ test. Pass: turn them off and the shop owner rewards you with $100. Fail: you are shot; roll once on the Injury Chart.`,
+          choices: [
+            { key: 'pay', label: 'Pay D6×$10' },
+            { key: 'test', label: 'Attempt Agility 5+' },
+          ],
+        });
+
+        if (decision === 'pay') {
+          const die = (await safeRoll(1, 6, `${currentHero.name} Robbery fee`))[0];
+          const fee = die * 10;
+          const heroGold = currentHero.gold || 0;
+          const actualFee = Math.min(fee, heroGold);
+          actions.push({ type: 'MODIFY_GOLD', heroId, delta: -actualFee, reason: 'Robbery (fee)' });
+          await note(`${currentHero.name} pays $${actualFee} (rolled ${die}, would be $${fee}).`);
         } else {
-          actions.push({
-            type: 'ROLL_ON_CHART',
-            heroId: hId,
-            chart: 'injury',
-            die: 1,
-            reason: 'General Store: Robbery (failed)',
-          });
-          await note('Robbery — you fail the Agility test. Roll 1D6 on the Injury chart.');
+          const ok = await doTest({ hero: currentHero, key: 'Agility', target: 5, label: `${currentHero.name} Robbery` });
+          if (ok) {
+            actions.push({ type: 'MODIFY_GOLD', heroId, delta: +100, reason: 'Robbery reward' });
+            await note(`${currentHero.name} — Agility 5+ success! They turn off the robbers and gain $100 reward.`);
+          } else {
+            actions.push({
+              type: 'ROLL_ON_CHART',
+              heroId,
+              chart: 'injury',
+              die: 1,
+              reason: 'General Store: Robbery (failed)',
+            });
+            await note(`${currentHero.name} — Agility test failed. They are shot! Roll 1D6 on the Injury chart.`);
+          }
         }
       }
       break;
@@ -174,30 +192,86 @@ export async function handleGeneralStoreEvent({
       break;
     }
 
-    // 11: New Items in Stock – Draw 3 Gear cards. Buy one at price or $25.
+    // 11: New Items in Stock – Draw 3 Gear cards. Anyone in the General Store may purchase.
     case 11: {
-      if (!hId) break;
+      // Store the gear cards in townState so all heroes at the store can see them
+      const dayMods = { ...(townState?.dayMods || {}) };
+
+      // Create placeholder gear cards (in a real implementation, these would be drawn from a deck)
+      dayMods.generalStoreNewItems = {
+        items: [
+          {
+            id: 'event_gear_1',
+            name: 'Mystery Gear Item 1',
+            description: 'Draw a Gear card',
+            cost: 25,
+            slot: 'Gear',
+            effect: 'This is a placeholder. Draw from Gear deck.',
+            tags: ['Event Item', 'New Stock'],
+          },
+          {
+            id: 'event_gear_2',
+            name: 'Mystery Gear Item 2',
+            description: 'Draw a Gear card',
+            cost: 25,
+            slot: 'Gear',
+            effect: 'This is a placeholder. Draw from Gear deck.',
+            tags: ['Event Item', 'New Stock'],
+          },
+          {
+            id: 'event_gear_3',
+            name: 'Mystery Gear Item 3',
+            description: 'Draw a Gear card',
+            cost: 25,
+            slot: 'Gear',
+            effect: 'This is a placeholder. Draw from Gear deck.',
+            tags: ['Event Item', 'New Stock'],
+          },
+        ],
+        createdAt: Date.now(),
+      };
+
+      townState = { ...(townState || {}), dayMods };
       actions.push({
-        type: 'DRAW_GEAR_CHOICES',
-        heroId: hId,
-        count: 3,
-        offer: { priceOverride: 25 }, // UI: allow purchasing one of the three for $25 (or at listed price)
+        type: 'SET_DAY_MOD',
+        key: 'generalStoreNewItems',
+        value: dayMods.generalStoreNewItems,
         reason: 'General Store: New Items in Stock',
       });
-      await note('New Items in Stock — Draw 3 Gear cards; you may buy one for $25 (or at listed price).');
+
+      await note('New Items in Stock — 3 new Gear cards are available! Any hero in the General Store may purchase them for $25 each (or listed price). Check the "Event Items" tab.');
       break;
     }
 
-    // 12: Artifact for Sale – Draw a World + Artifact card. Buy at price or $100.
+    // 12: Artifact for Sale – Draw a World + Artifact card. Anyone in the General Store may purchase.
     case 12: {
-      if (!hId) break;
+      // Store the artifact in townState so all heroes at the store can see it
+      const dayMods = { ...(townState?.dayMods || {}) };
+
+      // Create placeholder artifact (in a real implementation, this would be drawn from World + Artifact decks)
+      dayMods.generalStoreArtifact = {
+        item: {
+          id: 'event_artifact_1',
+          name: 'Mystery Artifact',
+          description: 'Draw a World Card, then draw an Artifact from that world',
+          cost: 100,
+          slot: 'Artifact',
+          effect: 'This is a placeholder. Draw from World deck, then Artifact deck.',
+          tags: ['Event Item', 'Artifact', 'Rare'],
+          lore: 'Brought back from a recent expedition.',
+        },
+        createdAt: Date.now(),
+      };
+
+      townState = { ...(townState || {}), dayMods };
       actions.push({
-        type: 'DRAW_WORLD_ARTIFACT_OFFER',
-        heroId: hId,
-        price: 100, // special offer
+        type: 'SET_DAY_MOD',
+        key: 'generalStoreArtifact',
+        value: dayMods.generalStoreArtifact,
         reason: 'General Store: Artifact for Sale',
       });
-      await note('Artifact for Sale — Draw a World + Artifact; you may buy it for $100 (or at listed price).');
+
+      await note('Artifact for Sale — A rare artifact is available! Any hero in the General Store may purchase it for $100 (or listed price). Check the "Event Items" tab.');
       break;
     }
 
