@@ -143,8 +143,8 @@ export async function apply(roll, ctx) {
       const pool = byWorld[world] || [];
       const artifact = pool[Math.floor(Math.random() * pool.length)] || pool[0];
 
-      // Price: $100 fixed (card says "list price or $100 if none listed")
-      const price = 100;
+      // Price: Use artifact's listed value, or $100 if none listed
+      const price = artifact.value || artifact.cost?.gold || 100;
 
       // Store in stayMods for UI to display/purchase
       patchStayMods({
