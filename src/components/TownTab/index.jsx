@@ -9,7 +9,7 @@ import { usePosse } from '../../context/PosseContext';
 import { calculateCurrentStats } from '../../utils/calculateStats';
 import { shopDataById } from '../../data/shopDataByID';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
-import { tabsByShop } from '../../data/townLocations/tabsByShop.js';
+import { tabsByShop, makeTabsByShop } from '../../data/townLocations/tabsByShop.js';
 import { makeLocEventCtx } from '../../utils/locationEventContext';
 // 🔧 FIXED PATH: now points into FrontierTown/Church
 import { applyChurchRitual } from '../../data/townLocations/FrontierTown/Church/churchRituals.js';
@@ -2478,9 +2478,13 @@ const foWorldArtifactOffer =
       ? shop
       : { ...shop, id: openLocationId }
     : null;
+
+  // Use dynamic tabs that include event items from townState
+  const dynamicTabs = useMemo(() => makeTabsByShop({ townState: state }), [state]);
+
   const categories = buildCategoriesForShop(
     shopForCategories,
-    tabsByShop
+    dynamicTabs
   );
   const activeCat =
     categories.find((c) => c.id === openSubcatId) ||
