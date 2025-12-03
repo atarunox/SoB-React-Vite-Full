@@ -163,23 +163,36 @@ export const makeTabsByShop = (ctx) => ({
     const dayMods = townState?.dayMods || {};
     const eventItems = [];
 
+    // Debug logging
+    console.log('[General Store Tabs] townState:', townState);
+    console.log('[General Store Tabs] dayMods:', dayMods);
+    console.log('[General Store Tabs] generalStoreNewItems:', dayMods.generalStoreNewItems);
+    console.log('[General Store Tabs] generalStoreArtifact:', dayMods.generalStoreArtifact);
+
     // Event #11: New Items in Stock (3 gear cards)
     if (dayMods.generalStoreNewItems?.items) {
       eventItems.push(...dayMods.generalStoreNewItems.items);
+      console.log('[General Store Tabs] Added New Items:', dayMods.generalStoreNewItems.items);
     }
 
     // Event #12: Artifact for Sale (world + artifact)
     if (dayMods.generalStoreArtifact?.artifact) {
       const artifactOffer = dayMods.generalStoreArtifact;
-      eventItems.push({
+      const artifactItem = {
         ...artifactOffer.artifact,
         description: `World: ${artifactOffer.world || 'Unknown'}`,
         lore: artifactOffer.artifact.lore || 'Brought back from a recent expedition.',
-      });
+      };
+      eventItems.push(artifactItem);
+      console.log('[General Store Tabs] Added Artifact:', artifactItem);
     }
 
+    console.log('[General Store Tabs] Total eventItems:', eventItems);
+
     if (eventItems.length > 0) {
-      tabs.push(cat('event_items', 'Event Items ⭐', eventItems, ctx));
+      const eventTab = cat('event_items', 'Event Items ⭐', eventItems, ctx);
+      console.log('[General Store Tabs] Created Event Items tab:', eventTab);
+      tabs.push(eventTab);
     }
 
     // Regular tabs
