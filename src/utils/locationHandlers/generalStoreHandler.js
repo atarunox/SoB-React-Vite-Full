@@ -274,10 +274,17 @@ export async function handleGeneralStoreEvent({
             ...artifact,
             id: artifact.id || 'event_artifact_1',
             name: artifact.name || 'Mystery Artifact',
-            cost: artifact.cost || 100,
+            cost: artifact.cost || artifact.value || 100,
+            slot: 'Artifact',
+            weight: artifact.weight,
+            upgradeSlots: artifact.upgradeSlots,
+            darkStone: artifact.darkStone,
+            tags: artifact.tags || ['Artifact', 'Other World'],
+            effects: artifact.effects,
+            lore: artifact.lore || 'Brought back from a recent expedition.',
           },
           // Allow purchase at listed price or $100 if no price
-          price: artifact.cost || 100,
+          price: artifact.cost || artifact.value || 100,
           createdAt: Date.now(),
         };
 

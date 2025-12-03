@@ -178,10 +178,22 @@ export const makeTabsByShop = (ctx) => ({
     // Event #12: Artifact for Sale (world + artifact)
     if (dayMods.generalStoreArtifact?.artifact) {
       const artifactOffer = dayMods.generalStoreArtifact;
+      const art = artifactOffer.artifact;
+
+      // Convert effects object to readable text array
+      const effectsText = [];
+      if (art.effects && typeof art.effects === 'object') {
+        Object.entries(art.effects).forEach(([stat, value]) => {
+          if (value > 0) effectsText.push(`+${value} ${stat}`);
+          else if (value < 0) effectsText.push(`${value} ${stat}`);
+        });
+      }
+
       const artifactItem = {
-        ...artifactOffer.artifact,
-        description: `World: ${artifactOffer.world || 'Unknown'}`,
-        lore: artifactOffer.artifact.lore || 'Brought back from a recent expedition.',
+        ...art,
+        description: `From ${artifactOffer.world || 'Unknown World'}`,
+        effects: effectsText.length > 0 ? effectsText : art.effects,
+        lore: art.lore || 'Brought back from a recent expedition.',
       };
       eventItems.push(artifactItem);
       console.log('[General Store Tabs] Added Artifact:', artifactItem);
