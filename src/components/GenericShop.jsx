@@ -373,10 +373,16 @@ const GenericShop = ({
   // Load town state and dynamically generate tabs (for event items)
   const dynamicTabsByShop = useMemo(() => {
     const townState = loadTownState();
-    return makeTabsByShop({ townState });
+    console.log('[GenericShop] Loading townState for tabs:', townState);
+    console.log('[GenericShop] dayMods:', townState?.dayMods);
+    const tabs = makeTabsByShop({ townState });
+    console.log('[GenericShop] makeTabsByShop returned:', tabs);
+    console.log('[GenericShop] generalStore tabs:', tabs?.generalStore);
+    return tabs;
   }, [force, shopKey]);
 
   const legacyTabs = dynamicTabsByShop?.[shopKey] || tabsByShop?.[shopKey];
+  console.log('[GenericShop] Using tabs for', shopKey, ':', legacyTabs);
   const shopData = shopDataById?.[shopKey];
   const shopRequires = shopData?.requires || null;
   const bannedKeywords = shopData?.visitRestrictions?.bannedKeywords || [];
