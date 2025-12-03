@@ -18,6 +18,8 @@
  *  - { type: 'DRAW_WORLD_ARTIFACT_OFFER', heroId, price, reason }   // price is special offer ($100)
  */
 
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
+
 const D6 = () => Math.floor(Math.random() * 6) + 1;
 const rollND = (n, s) => Array.from({ length: n }, () => Math.floor(Math.random() * s) + 1);
 const sum = (arr) => arr.reduce((a, b) => a + b, 0);
@@ -191,13 +193,53 @@ export async function handleGeneralStoreEvent({
     // 12: Artifact for Sale – Draw a World + Artifact card. Buy at price or $100.
     case 12: {
       if (!hId) break;
-      actions.push({
-        type: 'DRAW_WORLD_ARTIFACT_OFFER',
-        heroId: hId,
-        price: 100, // special offer
-        reason: 'General Store: Artifact for Sale',
-      });
-      await note('Artifact for Sale — Draw a World + Artifact; you may buy it for $100 (or at listed price).');
+
+      // Group artifacts by world (same as Frontier Outpost #7)
+      const byWorld = otherWorldArtifacts.reduce((acc, art) => {
+        const w = art.world || 'Unknown';
+        if (!acc[w]) acc[w] = [];
+        acc[w].push(art);
+        return acc;
+      }, {});
+
+      const worlds = Object.keys(byWorld);
+      if (!worlds.length) {
+        await note('General Store (#12): Artifact for Sale – No Artifacts found in data; resolve manually.');
+      } else {
+        // Randomly select world and artifact
+        const world = worlds[Math.floor(Math.random() * worlds.length)];
+        const pool = byWorld[world] || [];
+        const artifact = pool[Math.floor(Math.random() * pool.length)] || pool[0];
+
+        // Price: $100 fixed (card says "list price or $100 if none listed")
+        const price = 100;
+
+        // Store in stayMods for UI to display/purchase
+        const mods = { ...(townState?.stayMods || {}) };
+        mods.gsWorldArtifactOffer = {
+          id: 'gs_world_artifact',
+          world,
+          artifactId: artifact.id,
+          artifactName: artifact.name,
+          artifact: artifact, // full artifact object
+          price,
+          purchasedBy: mods.gsWorldArtifactOffer?.purchasedBy || null,
+          locationId: 'generalStore',
+        };
+        townState = { ...(townState || {}), stayMods: mods };
+
+        actions.push({
+          type: 'FLAG_STAY_MOD',
+          key: 'gsWorldArtifactOffer',
+          value: mods.gsWorldArtifactOffer,
+          reason: 'General Store: Artifact for Sale'
+        });
+
+        await note(
+          `General Store (#12): Artifact for Sale – World: ${world}. Artifact: ${artifact.name}. ` +
+          `Available for purchase at $${price}.`
+        );
+      }
       break;
     }
 
