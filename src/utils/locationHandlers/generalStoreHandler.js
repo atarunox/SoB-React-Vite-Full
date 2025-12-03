@@ -180,7 +180,7 @@ export async function handleGeneralStoreEvent({
     case 6:
     case 7:
     case 8: {
-      await note('Flies are a’ Buzzing — No Event.');
+      await note("Flies are a' Buzzing — No Event.");
       break;
     }
 
