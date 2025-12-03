@@ -112,6 +112,10 @@ import mutantQuarterItems from './FrontierTown/MutantQuarter/mutantQuarterItems.
 import mutantQuarterCommunity from './FrontierTown/MutantQuarter/mutantQuarterCommunity.js';
 import mutantQuarterServices from './FrontierTown/MutantQuarter/mutantQuarterServices.js';
 
+// ---------------- Indian Trading Post ----------------
+import { indianTradingPostItems } from './FrontierTown/IndianTradingPost/indianTradingPostItems.js';
+import { medicineManServices } from '../../utils/locationHandlers/indianTradingPostServices.js';
+
 // ============================================================================
 // MAKE TABS BY SHOP (ctx aware)
 // ============================================================================
@@ -203,6 +207,24 @@ export const makeTabsByShop = (ctx) => ({
     cat('items', 'Mutant Gear', mutantQuarterItems, ctx),
     cat('services', 'Services', mutantQuarterServices, ctx),
   ),
+
+  indianTradingPost: (() => {
+    // Split items by location: Tribal Tent items vs general Trading Post items
+    const allItems = asEntries(indianTradingPostItems, ctx);
+    const tribalTentItems = allItems.filter((item) =>
+      item.keywords?.includes('TribalTent') ||
+      item.keywords?.includes('restricted:TribalOrScout')
+    );
+    const tradingPostItems = allItems.filter(
+      (item) => !tribalTentItems.includes(item)
+    );
+
+    return catList(
+      cat('trading_post', 'Trading Post', tradingPostItems, ctx),
+      cat('tribal_tent', 'Tribal Tent (Tribal/Scout Only)', tribalTentItems, ctx),
+      cat('medicine_man', 'Medicine Man', medicineManServices, ctx),
+    );
+  })(),
 });
 
 // Canonical default export
