@@ -182,12 +182,23 @@ export async function apply(roll, ctx) {
     return;
   }
 
-  // 8: A Tall Tale – Lore 5+: +10 XP
+  // 8: A Tall Tale – Lore 5+: +10 XP per 5+ rolled
   if (roll === 8) {
-    const okLore = await ctx.doSkillCheck(id, { stat: 'Lore', target: 5 });
-    if (okLore) {
-      ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + 10 }));
-      ctx.toast?.('Tall Tale: +10 XP.');
+    const hero = ctx.getHero?.(id);
+    const lore = hero?.stats?.Lore || hero?.lore || 0;
+
+    if (lore === 0) {
+      ctx.toast?.('Your story falls flat (no Lore).');
+      return;
+    }
+
+    ctx.toast?.(`Roll ${lore} dice for Lore 5+ test. Count how many rolled 5+.`);
+    const successes = await ctx.promptNumber?.('How many 5+ did you roll?', { min: 0, max: lore, def: 0 }) || 0;
+
+    if (successes > 0) {
+      const xpGain = successes * 10;
+      ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + xpGain }));
+      ctx.toast?.(`Tall Tale: ${successes} successes! Gain ${xpGain} XP.`);
     } else {
       ctx.toast?.('Your story falls flat.');
     }
