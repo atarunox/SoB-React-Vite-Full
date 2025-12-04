@@ -235,6 +235,12 @@ export function applyShopPriceMods(basePrice, shopId, options = {}) {
     }
   }
 
+  // Indian Trading Post specific price mods (Event #4-5: Unfriendly Welcome)
+  if (shopId === 'indianTradingPost' || shopId === 'indian_trading_post') {
+    const priceDelta = stayMods.indianTradingPostPriceDelta || 0;
+    price += priceDelta;
+  }
+
   // Apply global minFloor if provided (Street Market uses this)
   if (typeof options.minFloor === 'number') {
     price = Math.max(price, options.minFloor);

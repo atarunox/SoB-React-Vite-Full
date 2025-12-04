@@ -2336,6 +2336,16 @@ const foWorldArtifactOffer =
       };
     }
 
+    // Indian Trading Post — Apply price modifications from events (#4-5: Unfriendly Welcome)
+    if (openLocationId === 'indianTradingPost' || openLocationId === 'indian_trading_post') {
+      const goldBase = Number(costObj?.gold || 0);
+      const modifiedGold = applyShopPriceMods(goldBase, 'indianTradingPost');
+      costObj = {
+        ...(costObj || {}),
+        gold: modifiedGold,
+      };
+    }
+
     if (!canAfford(costObj)) {
       alert('Cannot afford.');
       return;
@@ -2973,6 +2983,13 @@ const foWorldArtifactOffer =
                 costRaw = applyShopPriceMods(costRaw, 'generalStore');
               } else if ((openLocationId === 'generalStore' || openLocationId === 'general_store') && costRaw && typeof costRaw === 'object' && typeof costRaw.gold === 'number') {
                 costRaw = { ...costRaw, gold: applyShopPriceMods(costRaw.gold, 'generalStore') };
+              }
+
+              // Indian Trading Post — Apply price modifications from events (#4-5: Unfriendly Welcome) for display
+              if ((openLocationId === 'indianTradingPost' || openLocationId === 'indian_trading_post') && typeof costRaw === 'number') {
+                costRaw = applyShopPriceMods(costRaw, 'indianTradingPost');
+              } else if ((openLocationId === 'indianTradingPost' || openLocationId === 'indian_trading_post') && costRaw && typeof costRaw === 'object' && typeof costRaw.gold === 'number') {
+                costRaw = { ...costRaw, gold: applyShopPriceMods(costRaw.gold, 'indianTradingPost') };
               }
 
               const costObj =

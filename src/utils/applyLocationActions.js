@@ -133,6 +133,102 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
         break;
       }
 
+      case 'FLAG_STAY_MOD': {
+        // Set a stay modifier (lasts entire town stay)
+        writeTown((s) => {
+          s.stayMods = s.stayMods || {};
+          s.stayMods[a.key] = a.value;
+        });
+        break;
+      }
+
+      case 'CLOSE_LOCATION': {
+        // Close a location (used by General Store event #2)
+        writeTown((s) => {
+          s.stayMods = s.stayMods || {};
+          s.stayMods[`${a.locationId}Closed`] = true;
+        });
+        break;
+      }
+
+      case 'ADVANCE_DARKNESS': {
+        // Advance the Darkness marker (used by Indian Trading Post event #2)
+        // This would need integration with your darkness tracking system
+        // For now, we'll log it as a pending action
+        writeTown((s) => {
+          s.pendingActions = s.pendingActions || [];
+          s.pendingActions.push({
+            type: 'ADVANCE_DARKNESS',
+            steps: a.steps,
+            reason: a.reason,
+            timestamp: Date.now(),
+          });
+        });
+        break;
+      }
+
+      case 'TAKE_HITS': {
+        const h = getHero(a.heroId);
+        if (!h) break;
+
+        // Apply hits based on hit type
+        const hits = a.hits || 0;
+        if (a.hitType === 'horror' || a.hitType === 'madness') {
+          // Horror/Madness hits affect Sanity
+          const sanity = Math.max(0, (h.sanity ?? h.maxSanity ?? 0) - hits);
+          updateHero?.(a.heroId, { sanity });
+        } else {
+          // Default: physical hits affect Health
+          const health = Math.max(0, (h.health ?? h.maxHealth ?? 0) - hits);
+          updateHero?.(a.heroId, { health });
+        }
+        break;
+      }
+
+      case 'ADD_XP': {
+        const h = getHero(a.heroId);
+        if (!h) break;
+        const xp = Math.max(0, (h.xp ?? 0) + (a.amount ?? 0));
+        updateHero?.(a.heroId, { xp });
+        break;
+      }
+
+      case 'MODIFY_SANITY': {
+        const h = getHero(a.heroId);
+        if (!h) break;
+        const maxSanity = h.maxSanity ?? 6;
+        const sanity = Math.max(0, Math.min(maxSanity, (h.sanity ?? maxSanity) + (a.delta ?? 0)));
+        updateHero?.(a.heroId, { sanity });
+        break;
+      }
+
+      case 'GRANT_TEMP_CONDITION': {
+        // Add a temporary condition to a hero
+        const h = getHero(a.heroId);
+        if (!h) break;
+        const conditions = h.conditions || {};
+        const temp = Array.isArray(conditions.temporary) ? conditions.temporary.slice() : [];
+        temp.push(a.condition);
+        updateHero?.(a.heroId, { conditions: { ...conditions, temporary: temp } });
+        break;
+      }
+
+      case 'ROLL_ON_CHART': {
+        // Roll on an injury/madness chart
+        // Store as a pending action for the UI to handle
+        writeTown((s) => {
+          s.pendingChartRolls = s.pendingChartRolls || [];
+          s.pendingChartRolls.push({
+            heroId: a.heroId,
+            chart: a.chart, // 'injury' or 'madness'
+            die: a.die || 1,
+            reason: a.reason,
+            timestamp: Date.now(),
+          });
+        });
+        break;
+      }
+
       default:
         // no-op; add handlers here as needed
         break;
