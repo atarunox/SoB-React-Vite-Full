@@ -158,8 +158,21 @@ export async function handleIndianTradingPostEvent({
 
         // Check if hero has Defense stat - prompt for defense roll
         const totals = posseApi?.getTotalsForHero?.(heroId);
-        const defenseValue = totals?.Defense || heroData.stats?.Defense || heroData.defense || 0;
-        console.log('[Event #2] Hero defense value:', defenseValue);
+
+        // Try multiple ways to get Defense value and parse it
+        let defenseValue = 0;
+        const defenseRaw = totals?.Defense || totals?.defense || heroData.stats?.Defense || heroData.stats?.defense || heroData.defense || 0;
+
+        // Parse defense value (could be number, string like "4+", or string number)
+        if (typeof defenseRaw === 'number') {
+          defenseValue = defenseRaw;
+        } else if (typeof defenseRaw === 'string') {
+          // Parse "4+" or "4" to number
+          const parsed = parseInt(defenseRaw, 10);
+          defenseValue = isNaN(parsed) ? 0 : parsed;
+        }
+
+        console.log('[Event #2] Hero defense raw:', defenseRaw, '-> parsed:', defenseValue);
 
         if (defenseValue > 0) {
           console.log('[Event #2] Prompting for defense roll...');
