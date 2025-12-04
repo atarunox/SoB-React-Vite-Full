@@ -2597,25 +2597,39 @@ const foWorldArtifactOffer =
           const isSmugglers = sid === 'smugglersDen';
           const lawWarning = isSmugglers && hasKeyword(hero, 'Law');
 
+          // Check if General Store is closed (Event #2)
+          const isGeneralStore = sid === 'generalStore' || sid === 'general_store';
+          const isClosed = isGeneralStore && state?.stayMods?.generalStoreClosed;
+
           return (
             <button
               key={sid}
               className={`btn justify-between ${
-                isVisited
+                isClosed
+                  ? 'btn-disabled bg-gray-300 text-gray-500'
+                  : isVisited
                   ? 'btn-success'
                   : lawWarning
                   ? 'btn-outline border-red-400 text-red-700'
                   : 'btn-outline'
               }`}
-              onClick={() => handleOpenLocation(sid)}
+              onClick={() => !isClosed && handleOpenLocation(sid)}
+              disabled={isClosed}
               title={
-                lawWarning
+                isClosed
+                  ? 'Closed until after the next Adventure'
+                  : lawWarning
                   ? 'Law heroes are not welcome here. You may look around, but cannot buy anything or use services.'
                   : ''
               }
             >
               <span>{s.name}</span>
-              {isVisited && (
+              {isClosed && (
+                <span className="ml-2 text-xs">
+                  (CLOSED)
+                </span>
+              )}
+              {isVisited && !isClosed && (
                 <span className="ml-2 text-xs">
                   (Visited)
                 </span>
