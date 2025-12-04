@@ -7,10 +7,12 @@ import { tabsByShop } from '../../data/townLocations/tabsByShop.js';
 
 import {
   canUseTribalTent,
+  normalizeINDIAN_TP_Item,
+} from '../../utils/locationHandlers/indianTradingPostUtils';
+import {
   performSpiritCleansing,
   performVisionQuest,
-  normalizeINDIAN_TP_Item,
-} from '../../utils/locationHandlers/indianTradingPostHandler';
+} from '../../utils/locationHandlers/indianTradingPostServices';
 
 // Reuse your TownTab helper icons/formatters for consistent UI
 import {

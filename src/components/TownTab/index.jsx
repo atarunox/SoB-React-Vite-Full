@@ -26,7 +26,7 @@ import { performSheriffsOfficeService } from '../../utils/locationHandlers/sheri
 import {
   canUseTribalTent,
   normalizeINDIAN_TP_Item,
-} from '../../utils/locationHandlers/indianTradingPostHandler';
+} from '../../utils/locationHandlers/indianTradingPostUtils';
 import {
   performSpiritCleansing,
   performVisionQuest,
