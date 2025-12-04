@@ -124,17 +124,26 @@ export async function handleGeneralStoreEvent({
 
     // 3: Robbery – Every Hero in the General Store must either pay D6×$10 OR Agility 5+ to stop robbery for $100. Fail = Injury Chart.
     case 3: {
-      if (!heroesAtStore || heroesAtStore.length === 0) break;
+      console.log('[Event #3 Robbery] heroesAtStore:', heroesAtStore);
+      if (!heroesAtStore || heroesAtStore.length === 0) {
+        await note('Robbery! But no heroes are currently in the General Store to respond.');
+        break;
+      }
 
       await note(`Robbery! Masked gunmen burst into the shop. Every hero in the General Store must respond.`);
 
       // Process each hero at the store
       for (const heroId of heroesAtStore) {
         const currentHero = posseApi?.getHero?.(heroId) || posseApi?.getHeroById?.(heroId) || null;
-        if (!currentHero) continue;
+        console.log('[Event #3 Robbery] Processing hero:', heroId, currentHero);
+        if (!currentHero) {
+          console.warn('[Event #3 Robbery] Could not find hero:', heroId);
+          continue;
+        }
 
         await note(`\n--- ${currentHero.name} ---`);
 
+        console.log('[Event #3 Robbery] Showing choice prompt for', currentHero.name);
         const decision = await choose({
           title: `Robbery! (${currentHero.name})`,
           message: `${currentHero.name} must either hand over D6×$10 (or as much as they have), or make an Agility 5+ test. Pass: turn them off and the shop owner rewards you with $100. Fail: you are shot; roll once on the Injury Chart.`,
@@ -143,6 +152,7 @@ export async function handleGeneralStoreEvent({
             { key: 'test', label: 'Attempt Agility 5+' },
           ],
         });
+        console.log('[Event #3 Robbery] Decision for', currentHero.name, ':', decision);
 
         if (decision === 'pay') {
           const die = (await safeRoll(1, 6, `${currentHero.name} Robbery fee`))[0];
