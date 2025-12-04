@@ -53,13 +53,25 @@ export async function handleIndianTradingPostEvent({
   };
 
   const doTest = async ({ hero, key, target, label }) => {
-    if (typeof io.test === 'function') return !!(await io.test({ hero, key, target, label }));
+    console.log('[IndianTradingPost] doTest called:', { hero: hero?.name, key, target, label, hasTest: typeof io.test });
+    if (typeof io.test === 'function') {
+      const result = await io.test({ hero, key, target, label });
+      console.log('[IndianTradingPost] test returned:', result);
+      return !!result;
+    }
+    console.log('[IndianTradingPost] test not available, using RNG fallback');
     const die = D6(); // RNG fallback
     return die >= target;
   };
 
   const choose = async ({ title, message, choices }) => {
-    if (typeof io.selectChoice === 'function') return io.selectChoice({ title, message, choices });
+    console.log('[IndianTradingPost] choose called:', { title, message, choices, hasSelectChoice: typeof io.selectChoice });
+    if (typeof io.selectChoice === 'function') {
+      const result = await io.selectChoice({ title, message, choices });
+      console.log('[IndianTradingPost] selectChoice returned:', result);
+      return result;
+    }
+    console.log('[IndianTradingPost] selectChoice not available, using default');
     return choices?.[0]?.key; // default to first
   };
 
