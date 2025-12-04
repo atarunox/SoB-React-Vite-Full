@@ -96,16 +96,18 @@ export async function handleIndianTradingPostEvent({
   switch (roll) {
     // 2: Spirits Running Amok – Move Darkness D3 forward, all heroes in town take 2D6 Hits
     case 2: {
-      const d3 = (await safeRoll(1, 6, 'Darkness advance (D3)'))[0];
-      const darknessMove = Math.ceil(d3 / 2); // D3 = (D6+1)/2
+      // Auto-roll D3 for darkness (no prompt needed)
+      const d3Roll = Math.floor(Math.random() * 3) + 1;
 
       actions.push({
         type: 'ADVANCE_DARKNESS',
-        steps: darknessMove,
+        steps: d3Roll,
         reason: 'Indian Trading Post: Spirits Running Amok',
       });
 
-      await note(`Spirits Running Amok — The Darkness marker advances ${darknessMove} steps forward.`);
+      await note(`\n=== SPIRITS RUNNING AMOK ===`);
+      await note(`The Darkness marker advances ${d3Roll} steps forward (rolled D3: ${d3Roll}).`);
+      await note('');
 
       // All heroes in town take 2D6 hits
       const allHeroesInTown = posseApi?.getAllHeroes?.() || [];
@@ -113,16 +115,41 @@ export async function handleIndianTradingPostEvent({
         const heroId = heroData?.id || heroData?.localId;
         if (!heroId) continue;
 
-        const hits = (await safeRoll(2, 6, `${heroData.name} Spirit Hits`)).reduce((a, b) => a + b, 0);
+        // Auto-roll damage dice (each hero gets different roll)
+        const damageRolls = [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1];
+        const totalDamage = damageRolls[0] + damageRolls[1];
+
+        await note(`--- ${heroData.name} ---`);
+        await note(`Rolled 2D6 for Spirit damage: [${damageRolls[0]}, ${damageRolls[1]}] = ${totalDamage} Hits`);
+
+        // Check if hero has Defense stat - prompt for defense roll
+        const totals = posseApi?.getTotalsForHero?.(heroId);
+        const defenseValue = totals?.Defense || heroData.stats?.Defense || heroData.defense || 0;
+
+        if (defenseValue > 0) {
+          const defenseRollNeeded = await doTest({
+            hero: heroData,
+            key: 'Defense',
+            target: 6,
+            label: `Defense Roll (Spirit Armor)`
+          });
+
+          if (defenseRollNeeded) {
+            await note(`${heroData.name} blocked some damage with Defense!`);
+            // Note: Defense mechanic details would be handled by TAKE_HITS action
+          }
+        }
+
         actions.push({
           type: 'TAKE_HITS',
           heroId,
-          hits,
+          hits: totalDamage,
           hitType: 'spirit',
+          defenseRolled: defenseValue > 0,
           reason: 'Spirits Running Amok',
         });
-        await note(`${heroData.name} takes ${hits} Hits from raging spirits!`);
       }
+      await note('');
       break;
     }
 

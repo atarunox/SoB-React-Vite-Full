@@ -986,26 +986,31 @@ const foWorldArtifactOffer =
       }
 
       const msg =
-        `${label || `${key} Test`}\n\n` +
-        `${heroName}'s ${key}: ${statValue} (roll ${diceCount}d6)\n` +
-        `Target: ${target}+\n` +
-        `Need at least one die to roll ${target} or higher.\n\n` +
-        `Choose:\n` +
-        `1. I rolled and PASSED\n` +
-        `2. I rolled and FAILED\n` +
-        `3. Auto-roll ${diceCount}d6 now\n\n` +
-        `Enter 1, 2, or 3:`;
+        `═══════════════════════════════════\n` +
+        `${label || `${key} Test`}\n` +
+        `═══════════════════════════════════\n\n` +
+        `Hero: ${heroName}\n` +
+        `Stat: ${key} = ${statValue}\n` +
+        `Roll: ${diceCount}d6\n` +
+        `Target: Need at least ONE die to show ${target}+\n\n` +
+        `───────────────────────────────────\n` +
+        `OPTIONS:\n` +
+        `───────────────────────────────────\n` +
+        `[1] I rolled physically - PASSED\n` +
+        `[2] I rolled physically - FAILED\n` +
+        `[3] Auto-roll ${diceCount}d6 now (computer rolls)\n\n` +
+        `Enter your choice (1, 2, or 3):`;
 
       const choice = window.prompt(msg, '3');
       const num = Number(choice);
 
       if (num === 1) {
         // Player says they passed
-        uiApi.toast(`${heroName} passed the ${key} ${target}+ test (player-rolled).`);
+        uiApi.toast(`✓ ${heroName} PASSED the ${key} ${target}+ test (player-rolled)`);
         return true;
       } else if (num === 2) {
         // Player says they failed
-        uiApi.toast(`${heroName} failed the ${key} ${target}+ test (player-rolled).`);
+        uiApi.toast(`✗ ${heroName} FAILED the ${key} ${target}+ test (player-rolled)`);
         return false;
       } else {
         // Auto-roll
@@ -1014,7 +1019,7 @@ const foWorldArtifactOffer =
           rolls.push(Math.floor(Math.random() * 6) + 1);
         }
         const passed = rolls.some(r => r >= target);
-        const resultMsg = `${heroName} rolls ${key}: [${rolls.join(', ')}] → ${passed ? 'PASS' : 'FAIL'}`;
+        const resultMsg = `${heroName} rolls ${key}: [${rolls.join(', ')}] → ${passed ? '✓ PASS' : '✗ FAIL'}`;
         uiApi.toast(resultMsg);
         return passed;
       }
