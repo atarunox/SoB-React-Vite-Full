@@ -965,6 +965,60 @@ const foWorldArtifactOffer =
       const r = await promptRoll(1, 6, 'Peril die');
       return Array.isArray(r) ? r[0] : r;
     },
+    test: async ({ hero: testHero, key, target = 4, label }) => {
+      // Get hero's current stat value
+      const heroData = testHero || hero || posse.find(h => (h.id || h.localId) === resolvedHeroId);
+      let statValue = 0;
+
+      if (heroData) {
+        // Try to get from calculated stats first
+        const totals = posseApi?.getTotalsForHero?.(heroData.id || heroData.localId);
+        statValue = totals?.[key] || heroData.stats?.[key] || heroData[key.toLowerCase()] || 0;
+      }
+
+      const diceCount = Math.max(0, statValue);
+      const heroName = heroData?.name || 'Hero';
+
+      if (diceCount === 0) {
+        // Auto-fail if stat is 0
+        uiApi.toast(`${heroName} has ${key} 0 and automatically fails the ${key} ${target}+ test.`);
+        return false;
+      }
+
+      const msg =
+        `${label || `${key} Test`}\n\n` +
+        `${heroName}'s ${key}: ${statValue} (roll ${diceCount}d6)\n` +
+        `Target: ${target}+\n` +
+        `Need at least one die to roll ${target} or higher.\n\n` +
+        `Choose:\n` +
+        `1. I rolled and PASSED\n` +
+        `2. I rolled and FAILED\n` +
+        `3. Auto-roll ${diceCount}d6 now\n\n` +
+        `Enter 1, 2, or 3:`;
+
+      const choice = window.prompt(msg, '3');
+      const num = Number(choice);
+
+      if (num === 1) {
+        // Player says they passed
+        uiApi.toast(`${heroName} passed the ${key} ${target}+ test (player-rolled).`);
+        return true;
+      } else if (num === 2) {
+        // Player says they failed
+        uiApi.toast(`${heroName} failed the ${key} ${target}+ test (player-rolled).`);
+        return false;
+      } else {
+        // Auto-roll
+        const rolls = [];
+        for (let i = 0; i < diceCount; i++) {
+          rolls.push(Math.floor(Math.random() * 6) + 1);
+        }
+        const passed = rolls.some(r => r >= target);
+        const resultMsg = `${heroName} rolls ${key}: [${rolls.join(', ')}] → ${passed ? 'PASS' : 'FAIL'}`;
+        uiApi.toast(resultMsg);
+        return passed;
+      }
+    },
     promptChoice: async (title, options) => {
       const msg =
         `${title}\n\n${options
