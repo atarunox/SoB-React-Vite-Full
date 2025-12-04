@@ -1,6 +1,7 @@
 // src/logic/handlers/generalStoreHandler.js
 
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
+import { gearCards } from '../../data/items/gearCards.js';
 
 /**
  * General Store (2d6) event handler
@@ -196,40 +197,39 @@ export async function handleGeneralStoreEvent({
 
     // 11: New Items in Stock – Draw 3 Gear cards. Anyone in the General Store may purchase.
     case 11: {
+      if (!gearCards || gearCards.length === 0) {
+        await note('New Items in Stock — No Gear cards found in data; resolve manually.');
+        break;
+      }
+
+      // Draw 3 random gear cards from the deck
+      const drawnCards = [];
+      const availableCards = [...gearCards]; // Copy so we can draw without replacement
+
+      for (let i = 0; i < 3 && availableCards.length > 0; i++) {
+        const randomIndex = Math.floor(Math.random() * availableCards.length);
+        const card = availableCards.splice(randomIndex, 1)[0];
+
+        // Format the gear card with all its properties
+        drawnCards.push({
+          ...card,
+          id: card.id || `event_gear_${i + 1}`,
+          name: card.name || `Gear Item ${i + 1}`,
+          cost: card.value || 25, // Use value as cost, or $25 if no value
+          slot: card.slot || 'Gear',
+          effects: card.effects || [], // Array of effect strings
+          twoHanded: card.twoHanded || false,
+          darkStone: card.darkStone || false,
+          upgradeSlots: card.upgradeSlots || 0,
+          restrictions: card.restrictions || [],
+          tags: [...(card.tags || []), 'Event Item', 'New Stock'],
+        });
+      }
+
       // Store the gear cards in townState so all heroes at the store can see them
       const dayMods = { ...(townState?.dayMods || {}) };
-
-      // Create placeholder gear cards (in a real implementation, these would be drawn from a deck)
       dayMods.generalStoreNewItems = {
-        items: [
-          {
-            id: 'event_gear_1',
-            name: 'Mystery Gear Item 1',
-            description: 'Draw a Gear card',
-            cost: 25,
-            slot: 'Gear',
-            effect: 'This is a placeholder. Draw from Gear deck.',
-            tags: ['Event Item', 'New Stock'],
-          },
-          {
-            id: 'event_gear_2',
-            name: 'Mystery Gear Item 2',
-            description: 'Draw a Gear card',
-            cost: 25,
-            slot: 'Gear',
-            effect: 'This is a placeholder. Draw from Gear deck.',
-            tags: ['Event Item', 'New Stock'],
-          },
-          {
-            id: 'event_gear_3',
-            name: 'Mystery Gear Item 3',
-            description: 'Draw a Gear card',
-            cost: 25,
-            slot: 'Gear',
-            effect: 'This is a placeholder. Draw from Gear deck.',
-            tags: ['Event Item', 'New Stock'],
-          },
-        ],
+        items: drawnCards,
         createdAt: Date.now(),
       };
 
@@ -241,7 +241,8 @@ export async function handleGeneralStoreEvent({
         reason: 'General Store: New Items in Stock',
       });
 
-      await note('New Items in Stock — 3 new Gear cards are available! Any hero in the General Store may purchase them for $25 each (or listed price). Check the "Event Items" tab.');
+      const itemNames = drawnCards.map(c => c.name).join(', ');
+      await note(`New Items in Stock — 3 new Gear cards drawn: ${itemNames}. Any hero in the General Store may purchase them for $25 each (or at listed price). Check the "Event Items" tab.`);
       break;
     }
 
