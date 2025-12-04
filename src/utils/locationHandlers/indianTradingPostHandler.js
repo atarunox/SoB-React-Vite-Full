@@ -110,12 +110,35 @@ export async function handleIndianTradingPostEvent({
       await note('');
 
       // All heroes in town take 2D6 hits
-      const allHeroesInTown = posseApi?.getAllHeroes?.() || [];
+      // Try multiple ways to get heroes
+      let allHeroesInTown = posseApi?.getAllHeroes?.() || [];
       console.log('[Event #2] getAllHeroes returned:', allHeroesInTown);
       console.log('[Event #2] getAllHeroes count:', allHeroesInTown.length);
 
+      // Fallback 1: Try listAllTownHeroes
+      if (allHeroesInTown.length === 0 && typeof posseApi?.listAllTownHeroes === 'function') {
+        allHeroesInTown = posseApi.listAllTownHeroes() || [];
+        console.log('[Event #2] listAllTownHeroes returned:', allHeroesInTown.length, 'heroes');
+      }
+
+      // Fallback 2: Try getting from io context
+      if (allHeroesInTown.length === 0 && io?.posseApi?.getAllHeroes) {
+        allHeroesInTown = io.posseApi.getAllHeroes() || [];
+        console.log('[Event #2] io.posseApi.getAllHeroes returned:', allHeroesInTown.length, 'heroes');
+      }
+
+      // Fallback 3: Get heroes directly from the hero IDs we found at the location
+      if (allHeroesInTown.length === 0 && heroesAtLocation && heroesAtLocation.length > 0) {
+        console.log('[Event #2] Using heroes at location as fallback:', heroesAtLocation);
+        allHeroesInTown = heroesAtLocation
+          .map(id => posseApi?.getHero?.(id) || posseApi?.getHeroById?.(id))
+          .filter(Boolean);
+        console.log('[Event #2] Resolved heroes from location:', allHeroesInTown.length, 'heroes');
+      }
+
       if (allHeroesInTown.length === 0) {
         await note('No heroes found in town to take damage.');
+        console.warn('[Event #2] Could not find any heroes through any method!');
       }
 
       for (const heroData of allHeroesInTown) {
