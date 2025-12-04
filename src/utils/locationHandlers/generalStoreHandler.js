@@ -55,7 +55,7 @@ export async function handleGeneralStoreEvent({
 
   // Get all heroes at the general store
   const getHeroesAtShop = posseApi?.getHeroesAtShop || io?.posseApi?.getHeroesAtShop || (() => []);
-  const heroesAtStore = getHeroesAtShop('general_store');
+  const heroesAtStore = getHeroesAtShop('generalStore'); // Use camelCase to match shopDataByID
 
   console.log('[GeneralStore Handler] getHeroesAtShop function:', getHeroesAtShop);
   console.log('[GeneralStore Handler] heroesAtStore:', heroesAtStore);
