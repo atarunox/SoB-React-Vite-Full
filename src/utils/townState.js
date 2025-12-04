@@ -211,6 +211,38 @@ export function getShopMods(state, shopId) {
   return s.shopMods?.[shopId] || { priceDelta: 0, destroyed: false, saleActive: false };
 }
 
+/**
+ * Apply price modifications for a shop (used by General Store events #4-5, #9-10)
+ * @param {number} basePrice - The base price in gold
+ * @param {string} shopId - Shop identifier (e.g., 'generalStore')
+ * @param {object} options - Optional { minFloor: number }
+ * @returns {number} - Modified price
+ */
+export function applyShopPriceMods(basePrice, shopId, options = {}) {
+  const state = loadTownState();
+  const stayMods = state?.stayMods || {};
+
+  let price = Number(basePrice) || 0;
+
+  // General Store specific price mods
+  if (shopId === 'generalStore' || shopId === 'general_store') {
+    const priceDelta = stayMods.generalStorePriceDelta || 0;
+    price += priceDelta;
+
+    // Apply minimum price if specified (Fire Sale: min $25)
+    if (typeof stayMods.generalStoreMinPrice === 'number') {
+      price = Math.max(price, stayMods.generalStoreMinPrice);
+    }
+  }
+
+  // Apply global minFloor if provided (Street Market uses this)
+  if (typeof options.minFloor === 'number') {
+    price = Math.max(price, options.minFloor);
+  }
+
+  return Math.max(0, price); // Never negative
+}
+
 // ---- Visits ---------------------------------------------------------------
 
 export function getVisitForToday(state, heroId) {

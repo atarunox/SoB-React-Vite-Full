@@ -4,6 +4,7 @@ import {
   loadTownState,
   resetTownState,
   saveTownState,
+  applyShopPriceMods,
 } from '../../utils/townState';
 import { usePosse } from '../../context/PosseContext';
 import { calculateCurrentStats } from '../../utils/calculateStats';
@@ -2271,6 +2272,16 @@ const foWorldArtifactOffer =
       }
     }
 
+    // General Store — Apply price modifications from events (#4-5, #9-10)
+    if (openLocationId === 'generalStore' || openLocationId === 'general_store') {
+      const goldBase = Number(costObj?.gold || 0);
+      const modifiedGold = applyShopPriceMods(goldBase, 'generalStore');
+      costObj = {
+        ...(costObj || {}),
+        gold: modifiedGold,
+      };
+    }
+
     if (!canAfford(costObj)) {
       alert('Cannot afford.');
       return;
@@ -2901,7 +2912,15 @@ const foWorldArtifactOffer =
                 outlawTagged &&
                 !heroIsOutlaw;
 
-              const costRaw = getCost(item);
+              let costRaw = getCost(item);
+
+              // General Store — Apply price modifications from events (#4-5, #9-10) for display
+              if ((openLocationId === 'generalStore' || openLocationId === 'general_store') && typeof costRaw === 'number') {
+                costRaw = applyShopPriceMods(costRaw, 'generalStore');
+              } else if ((openLocationId === 'generalStore' || openLocationId === 'general_store') && costRaw && typeof costRaw === 'object' && typeof costRaw.gold === 'number') {
+                costRaw = { ...costRaw, gold: applyShopPriceMods(costRaw.gold, 'generalStore') };
+              }
+
               const costObj =
                 typeof costRaw ===
                   'number' ||
