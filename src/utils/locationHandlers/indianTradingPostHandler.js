@@ -154,62 +154,60 @@ export async function handleIndianTradingPostEvent({
         const totalDamage = damageRolls[0] + damageRolls[1];
 
         await note(`--- ${heroData.name || 'Unknown Hero'} ---`);
-        await note(`Rolled 2D6 for Spirit damage: [${damageRolls[0]}, ${damageRolls[1]}] = ${totalDamage} Hits`);
+        await note(`Rolled 2D6 for damage: [${damageRolls[0]}, ${damageRolls[1]}] = ${totalDamage} Hits`);
 
-        // Spirit damage uses Willpower to defend (not Defense!)
+        // Physical Hits use Defense to defend
         const totals = posseApi?.getTotalsForHero?.(heroId);
 
-        // Try multiple ways to get Willpower value and parse it
-        let willpowerValue = 0;
-        const willpowerRaw = totals?.Willpower || totals?.willpower || heroData.stats?.Willpower || heroData.stats?.willpower || heroData.willpower || 0;
+        // Try multiple ways to get Defense value and parse it
+        let defenseValue = 0;
+        const defenseRaw = totals?.Defense || totals?.defense || heroData.stats?.Defense || heroData.stats?.defense || heroData.defense || 0;
 
-        // Parse willpower value (could be number, string like "6+", or string number)
-        if (typeof willpowerRaw === 'number') {
-          willpowerValue = willpowerRaw;
-        } else if (typeof willpowerRaw === 'string') {
-          // Parse "6+" or "6" to number
-          const parsed = parseInt(willpowerRaw, 10);
-          willpowerValue = isNaN(parsed) ? 0 : parsed;
+        // Parse defense value (could be number, string like "4+", or string number)
+        if (typeof defenseRaw === 'number') {
+          defenseValue = defenseRaw;
+        } else if (typeof defenseRaw === 'string') {
+          // Parse "4+" or "4" to number
+          const parsed = parseInt(defenseRaw, 10);
+          defenseValue = isNaN(parsed) ? 0 : parsed;
         }
 
-        console.log('[Event #2] Hero willpower raw:', willpowerRaw, '-> parsed:', willpowerValue);
+        console.log('[Event #2] Hero defense raw:', defenseRaw, '-> parsed:', defenseValue);
 
-        if (willpowerValue > 0) {
-          console.log('[Event #2] Prompting for Willpower roll...');
-          const willpowerSuccess = await doTest({
+        if (defenseValue > 0) {
+          console.log('[Event #2] Prompting for Defense roll...');
+          await doTest({
             hero: heroData,
-            key: 'Willpower',
+            key: 'Defense',
             target: 6,
-            label: `Willpower Roll vs Spirit Damage`
+            label: `Defense Roll`
           });
-          console.log('[Event #2] Willpower roll result:', willpowerSuccess);
 
           // Note: The test prompt will handle the roll details
           // In a full implementation, we'd count successes and reduce hits
         }
 
-        // Check for Spirit Armor (second defense layer)
-        let spiritArmorValue = 0;
-        const spiritArmorRaw = totals?.['Spirit Armor'] || heroData.stats?.['Spirit Armor'] || heroData.spiritArmor || 0;
+        // Check for Armor (second defense layer)
+        let armorValue = 0;
+        const armorRaw = totals?.Armor || heroData.stats?.Armor || heroData.armor || 0;
 
-        if (typeof spiritArmorRaw === 'number') {
-          spiritArmorValue = spiritArmorRaw;
-        } else if (typeof spiritArmorRaw === 'string' && spiritArmorRaw !== '—') {
-          const parsed = parseInt(spiritArmorRaw, 10);
-          spiritArmorValue = isNaN(parsed) ? 0 : parsed;
+        if (typeof armorRaw === 'number') {
+          armorValue = armorRaw;
+        } else if (typeof armorRaw === 'string' && armorRaw !== '—') {
+          const parsed = parseInt(armorRaw, 10);
+          armorValue = isNaN(parsed) ? 0 : parsed;
         }
 
-        if (spiritArmorValue > 0) {
-          console.log('[Event #2] Hero has Spirit Armor:', spiritArmorValue);
-          await note(`${heroData.name} may roll Spirit Armor ${spiritArmorValue}+ for each hit that got through Willpower.`);
-          // In full implementation, prompt for Spirit Armor rolls
+        if (armorValue > 0) {
+          console.log('[Event #2] Hero has Armor:', armorValue);
+          await note(`${heroData.name} may roll Armor ${armorValue}+ for each hit that got through Defense.`);
         }
 
         actions.push({
           type: 'TAKE_HITS',
           heroId,
           hits: totalDamage,
-          hitType: 'horror', // Spirit damage = Horror hits (sanity)
+          hitType: 'physical', // Physical Hits damage Health
           reason: 'Spirits Running Amok',
         });
       }
