@@ -46,6 +46,8 @@ export async function handleGeneralStoreEvent({
   posseApi = {},
   uiApi = {},
 }) {
+  console.log('[GeneralStore Handler] CALLED with:', { hero, townState, io, forcedRoll, posseApi, uiApi });
+
   const log = [];
   const actions = [];
   const hId = hero?.id || hero?.localId;
@@ -54,6 +56,9 @@ export async function handleGeneralStoreEvent({
   // Get all heroes at the general store
   const getHeroesAtShop = posseApi?.getHeroesAtShop || io?.posseApi?.getHeroesAtShop || (() => []);
   const heroesAtStore = getHeroesAtShop('general_store');
+
+  console.log('[GeneralStore Handler] getHeroesAtShop function:', getHeroesAtShop);
+  console.log('[GeneralStore Handler] heroesAtStore:', heroesAtStore);
 
   const safeRoll = async (n, sides, label) => {
     if (typeof io.roll === 'function') {
