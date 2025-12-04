@@ -111,33 +111,49 @@ export async function handleIndianTradingPostEvent({
 
       // All heroes in town take 2D6 hits
       const allHeroesInTown = posseApi?.getAllHeroes?.() || [];
+      console.log('[Event #2] getAllHeroes returned:', allHeroesInTown);
+      console.log('[Event #2] getAllHeroes count:', allHeroesInTown.length);
+
+      if (allHeroesInTown.length === 0) {
+        await note('No heroes found in town to take damage.');
+      }
+
       for (const heroData of allHeroesInTown) {
         const heroId = heroData?.id || heroData?.localId;
-        if (!heroId) continue;
+        console.log('[Event #2] Processing hero:', heroId, heroData?.name);
+        if (!heroId) {
+          console.log('[Event #2] Skipping hero - no ID found');
+          continue;
+        }
 
         // Auto-roll damage dice (each hero gets different roll)
         const damageRolls = [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1];
         const totalDamage = damageRolls[0] + damageRolls[1];
 
-        await note(`--- ${heroData.name} ---`);
+        await note(`--- ${heroData.name || 'Unknown Hero'} ---`);
         await note(`Rolled 2D6 for Spirit damage: [${damageRolls[0]}, ${damageRolls[1]}] = ${totalDamage} Hits`);
 
         // Check if hero has Defense stat - prompt for defense roll
         const totals = posseApi?.getTotalsForHero?.(heroId);
         const defenseValue = totals?.Defense || heroData.stats?.Defense || heroData.defense || 0;
+        console.log('[Event #2] Hero defense value:', defenseValue);
 
         if (defenseValue > 0) {
-          const defenseRollNeeded = await doTest({
+          console.log('[Event #2] Prompting for defense roll...');
+          const defenseSuccess = await doTest({
             hero: heroData,
             key: 'Defense',
             target: 6,
             label: `Defense Roll (Spirit Armor)`
           });
+          console.log('[Event #2] Defense roll result:', defenseSuccess);
 
-          if (defenseRollNeeded) {
+          if (defenseSuccess) {
             await note(`${heroData.name} blocked some damage with Defense!`);
             // Note: Defense mechanic details would be handled by TAKE_HITS action
           }
+        } else {
+          await note(`${heroData.name} has no Defense - takes full damage!`);
         }
 
         actions.push({
