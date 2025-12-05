@@ -22,8 +22,9 @@
  * - { type: 'ROLL_ON_CHART', heroId, chart: 'mutation', die: 1, reason } // repeated for D3 results
  * - { type: 'CLOSE_LOCATION', locationId, reason }
  * - { type: 'REQUEST_TOWN_BUILDING_ROLLS', payload }                    // UI flow to roll for other buildings (2,4)
- * - { type: 'TEMP_STAT_MOD', heroId, key: 'Spirit', delta: +1, scope: 'nextAdventure', reason } // (11)
- * - { type: 'INCREMENT_MUTATION_EXTRA_USES', heroId, mutationName, amount, reason }            // (12)
+ * - { type: 'GRANT_SPIRIT_ARMOR', heroId, target: 5, scope: 'nextAdventure', reason }          // (11)
+ * - { type: 'GRANT_CORRUPTION_IMMUNITY', heroId, scope: 'nextAdventure', reason }              // (11)
+ * - { type: 'GRANT_EXTRA_HAND_ABILITY', heroId, condition, reason }                            // (12)
  * - { type: 'FLAG_STAY_MOD', key, value, reason }                       // per-stay flags (e.g., 9 bonus once/hero)
  */
 
@@ -294,51 +295,68 @@ export async function handleMutantQuarterEvent({
       break;
     }
 
-    // 10: Street Vendor – Heal D6 Health & D6 Sanity; +25XP; also get 1 token per Mutation you have.
+    // 10: Street Vendor – +25XP; also get 1 free Bandages/Whiskey/Dynamite token per Mutation you have.
     case 10: {
       if (!hId) break;
-      const h = (await safeRoll(1, 6, 'Vendor heal Health'))[0];
-      const s = (await safeRoll(1, 6, 'Vendor heal Sanity'))[0];
-      actions.push({ type: 'HEAL_HEALTH', heroId: hId, amount: h, reason: 'Street Vendor' });
-      actions.push({ type: 'HEAL_SANITY', heroId: hId, amount: s, reason: 'Street Vendor' });
       actions.push({ type: 'ADD_XP', heroId: hId, amount: 25, reason: 'Street Vendor' });
 
       const mCount = await getMutationCount(hero);
       if (mCount > 0) {
-        // Let the UI decide which tokens; we just request selection count
+        // Let the UI decide which tokens (Bandages, Whiskey, or Dynamite); we just request selection count
         actions.push({ type: 'REQUEST_TOKEN_SELECTION', heroId: hId, count: mCount, reason: 'Street Vendor (per Mutation)' });
-        await note(`Street Vendor — healed ${h}/${s}, +25XP, and request ${mCount} token(s) (per Mutation).`);
+        await note(`Street Vendor — +25XP and request ${mCount} token(s) (per Mutation: Bandages, Whiskey, or Dynamite).`);
       } else {
-        await note(`Street Vendor — healed ${h}/${s} and +25XP.`);
+        await note('Street Vendor — +25XP.');
       }
       break;
     }
 
-    // 11: Preaching the Faith – +1 Spirit (next Adventure) and remove 2 Corruption Hits.
+    // 11: Preaching the Faith – Gain Spirit Armor 5+ and are Immune to Corruption Hits/Corruption Points until end of next Adventure.
     case 11: {
       if (!hId) break;
-      actions.push({ type: 'TEMP_STAT_MOD', heroId: hId, key: 'Spirit', delta: +1, scope: 'nextAdventure', reason: 'Preaching the Faith' });
-      actions.push({ type: 'MODIFY_CORRUPTION_HITS', heroId: hId, delta: -2, reason: 'Preaching the Faith' });
-      await note('Preaching the Faith — +1 Spirit (next Adventure) and remove 2 Corruption Hits.');
+      actions.push({
+        type: 'GRANT_SPIRIT_ARMOR',
+        heroId: hId,
+        target: 5,
+        scope: 'nextAdventure',
+        reason: 'Preaching the Faith'
+      });
+      actions.push({
+        type: 'GRANT_CORRUPTION_IMMUNITY',
+        heroId: hId,
+        scope: 'nextAdventure',
+        reason: 'Preaching the Faith'
+      });
+      await note('Preaching the Faith — Gain Spirit Armor 5+ and Immunity to Corruption Hits/Points until end of next Adventure.');
       break;
     }
 
-    // 12: A Few New Tricks – Gain D6×25XP. If you have Tentacle or Tail mutation, +1 Extra Use on it.
+    // 12: A Few New Tricks – Gain D6×25XP. While you have Tentacle or Tail mutation, count as having 1 extra hand icon each turn.
     case 12: {
       if (!hId) break;
       const die = (await safeRoll(1, 6, 'New Tricks XP'))[0];
       const xp = die * 25;
       actions.push({ type: 'ADD_XP', heroId: hId, amount: xp, reason: 'A Few New Tricks' });
 
-      const hasTentacle = await hasMutation(hero, 'Tentacle');
-      const hasTail = await hasMutation(hero, 'Tail');
-      if (hasTentacle) {
-        actions.push({ type: 'INCREMENT_MUTATION_EXTRA_USES', heroId: hId, mutationName: 'Tentacle', amount: 1, reason: 'A Few New Tricks' });
+      // Check if hero has any mutation with 'Tentacle' or 'Tail' in the title
+      const mutations = Array.isArray(hero?.mutations) ? hero.mutations : [];
+      const hasTentacleOrTail = mutations.some(m => {
+        const name = (m?.name || m?.title || '').toLowerCase();
+        return name.includes('tentacle') || name.includes('tail');
+      });
+
+      if (hasTentacleOrTail) {
+        // Grant permanent ability: +1 hand icon when Tentacle/Tail mutation is present
+        actions.push({
+          type: 'GRANT_EXTRA_HAND_ABILITY',
+          heroId: hId,
+          condition: 'hasTentacleOrTailMutation',
+          reason: 'A Few New Tricks'
+        });
+        await note(`A Few New Tricks — +${xp} XP. You now have +1 extra hand icon each turn while you have Tentacle/Tail mutation (permanent ability).`);
+      } else {
+        await note(`A Few New Tricks — +${xp} XP.`);
       }
-      if (hasTail) {
-        actions.push({ type: 'INCREMENT_MUTATION_EXTRA_USES', heroId: hId, mutationName: 'Tail', amount: 1, reason: 'A Few New Tricks' });
-      }
-      await note(`A Few New Tricks — +${xp} XP${hasTentacle || hasTail ? ' and +1 extra use for Tentacle/Tail.' : '.'}`);
       break;
     }
 
