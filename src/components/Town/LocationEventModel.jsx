@@ -7,6 +7,7 @@ import {
 } from '../../utils/locationEventsEngine';
 import { makeLocEventCtx } from '../../utils/locationEventContext';
 import { getEventDisplay } from '../../utils/locationEventText';
+import { CustomPromptDialog } from '../CustomPromptDialog';
 
 export default function LocationEventModal({
   shopId,
@@ -17,6 +18,16 @@ export default function LocationEventModal({
 }) {
   const [rolled, setRolled] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
+  const [promptDialog, setPromptDialog] = React.useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    defaultValue: '',
+    min: undefined,
+    max: undefined,
+    mode: 'number',
+    resolve: null,
+  });
 
   // --- UI shims ------------------------------------------------------------
   // unify optional notify → toast
@@ -74,15 +85,32 @@ export default function LocationEventModal({
 
   const onManualPrompt = () => {
     const current = rolled?.roll ?? 7;
-    const val = window.prompt('Enter total (2–12):', String(current));
-    if (val == null) return;
-    const n = Number(val);
-    if (!Number.isFinite(n) || n < 2 || n > 12) {
-      toast('Enter a number between 2 and 12.');
-      return;
-    }
-    const next = setEventRoll(shopId, n); // returns object (roll/title/effect/…)
-    setRolled(next);
+
+    setPromptDialog({
+      isOpen: true,
+      mode: 'number',
+      title: 'Set Event Roll',
+      message: 'Enter total (2–12):',
+      defaultValue: String(current),
+      min: 2,
+      max: 12,
+      resolve: (value) => {
+        setPromptDialog(prev => ({ ...prev, isOpen: false }));
+
+        if (value === null || value === 'AUTO_ROLL') {
+          return; // Cancelled or auto-roll not applicable here
+        }
+
+        const n = Number(value);
+        if (!Number.isFinite(n) || n < 2 || n > 12) {
+          toast('Enter a number between 2 and 12.');
+          return;
+        }
+
+        const next = setEventRoll(shopId, n); // returns object (roll/title/effect/…)
+        setRolled(next);
+      },
+    });
   };
 
   if (!isOpen || !rolled) return null;
@@ -147,6 +175,20 @@ export default function LocationEventModal({
           </button>
         </div>
       </div>
+
+      {/* Custom Prompt Dialog for setting event roll */}
+      <CustomPromptDialog
+        isOpen={promptDialog.isOpen}
+        mode={promptDialog.mode}
+        title={promptDialog.title}
+        message={promptDialog.message}
+        defaultValue={promptDialog.defaultValue}
+        min={promptDialog.min}
+        max={promptDialog.max}
+        onAutoRoll={() => promptDialog.resolve?.('AUTO_ROLL')}
+        onSubmit={(value) => promptDialog.resolve?.(value)}
+        onCancel={() => promptDialog.resolve?.(null)}
+      />
     </div>
   );
 }
