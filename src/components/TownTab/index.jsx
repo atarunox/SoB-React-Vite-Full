@@ -17,6 +17,7 @@ import { applyChurchRitual } from '../../data/townLocations/FrontierTown/Church/
 
 import BlackMarketPanel from './BlackMarketPanel';
 import { hasKeyword } from '../../utils/keywords';
+import { CustomPromptDialog } from '../CustomPromptDialog';
 
 // --- Service Executors ---
 import { performSaloonService } from '../../utils/locationHandlers/saloonServices.js';
@@ -614,6 +615,17 @@ const foWorldArtifactOffer =
   // UI state
   const [openLocationId, setOpenLocationId] = useState(null);
   const [openSubshopId, setOpenSubshopId] = useState(null);
+
+  // Custom prompt dialog state
+  const [promptDialog, setPromptDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    defaultValue: '',
+    min: undefined,
+    max: undefined,
+    resolve: null,
+  });
   const [openSubcatId, setOpenSubcatId] = useState(null);
   const [visitPurchases, setVisitPurchases] = useState({});
   const [eventNonce, setEventNonce] = useState(0);
@@ -835,13 +847,33 @@ const foWorldArtifactOffer =
   // prompt helpers
   const promptNumber = async (
     label,
-    { min = 0, max = 9999, step = 1, initial = 0 } = {}
+    { min = 0, max = 9999, step = 1, initial = 0, title = '' } = {}
   ) => {
-    const raw = window.prompt(label, String(initial));
-    if (raw == null) return 0;
-    const v = Number(raw);
-    if (Number.isNaN(v)) return 0;
-    return Math.max(min, Math.min(max, Math.round(v / step) * step));
+    return new Promise((resolve) => {
+      setPromptDialog({
+        isOpen: true,
+        title: title || 'Enter Number',
+        message: label,
+        defaultValue: String(initial),
+        min,
+        max,
+        resolve: (value) => {
+          setPromptDialog(prev => ({ ...prev, isOpen: false }));
+          if (value === null) {
+            resolve(0); // Cancelled
+          } else if (value === 'AUTO_ROLL') {
+            resolve(-1); // Auto-roll signal
+          } else {
+            const v = Number(value);
+            if (Number.isNaN(v)) {
+              resolve(0);
+            } else {
+              resolve(Math.max(min, Math.min(max, Math.round(v / step) * step)));
+            }
+          }
+        },
+      });
+    });
   };
 
   const promptRoll = async (n, sides, label) => {
@@ -1009,6 +1041,7 @@ const foWorldArtifactOffer =
         min,
         max,
         initial: defaultValue,
+        title: title || 'Enter Number',
       });
     },
     promptYesNo: async ({ message }) =>
@@ -3542,6 +3575,19 @@ const foWorldArtifactOffer =
 
         </div>
       )}
+
+      {/* Custom Prompt Dialog for Defense/Armor rolls */}
+      <CustomPromptDialog
+        isOpen={promptDialog.isOpen}
+        title={promptDialog.title}
+        message={promptDialog.message}
+        defaultValue={promptDialog.defaultValue}
+        min={promptDialog.min}
+        max={promptDialog.max}
+        onAutoRoll={() => promptDialog.resolve?.('AUTO_ROLL')}
+        onSubmit={(value) => promptDialog.resolve?.(value)}
+        onCancel={() => promptDialog.resolve?.(null)}
+      />
     </div>
   );
 

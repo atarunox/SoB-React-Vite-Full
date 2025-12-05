@@ -37,8 +37,8 @@ export async function resolveDefensePerHitThenArmorPerWound({ ui, hero, hits, wo
     // Build clear prompt message
     const heroName = hero?.name || 'Hero';
     const defenseMsg = Number.isFinite(defTargetGuess)
-      ? `DEFENSE ROLL\n\n${incomingHits} Hits incoming!\n${heroName} has Defense ${target}+\n\nRoll ${incomingHits}d6 for Defense.\nHow many dice showed ${target}+ (PASSED)?\n\n[Enter -1 to auto-roll]`
-      : `DEFENSE ROLL\n\n${incomingHits} Hits incoming!\n\nRoll ${incomingHits}d6 for Defense (target ${target}+).\nHow many dice showed ${target}+ (PASSED)?\n\n[Enter -1 to auto-roll]`;
+      ? `DEFENSE ROLL\n\n${incomingHits} Hits incoming!\n${heroName} has Defense ${target}+\n\nRoll ${incomingHits}d6 for Defense.\nHow many dice showed ${target}+ (PASSED)?`
+      : `DEFENSE ROLL\n\n${incomingHits} Hits incoming!\n\nRoll ${incomingHits}d6 for Defense (target ${target}+).\nHow many dice showed ${target}+ (PASSED)?`;
 
     const passedCount = Number(await ui.promptNumber?.({
       title: 'Defense Roll',
@@ -75,7 +75,7 @@ export async function resolveDefensePerHitThenArmorPerWound({ ui, hero, hits, wo
 
     if (Number.isFinite(armorTargetGuess)) {
       const heroName = hero?.name || 'Hero';
-      const armorMsg = `ARMOR ROLL\n\n${pendingWounds} Wound${pendingWounds !== 1 ? 's' : ''} incoming!\n${heroName} has Armor ${armorTargetGuess}+\n\nRoll ${pendingWounds}d6 for Armor.\nHow many dice showed ${armorTargetGuess}+ (PASSED)?\n\n[Enter -1 to auto-roll]`;
+      const armorMsg = `ARMOR ROLL\n\n${pendingWounds} Wound${pendingWounds !== 1 ? 's' : ''} incoming!\n${heroName} has Armor ${armorTargetGuess}+\n\nRoll ${pendingWounds}d6 for Armor.\nHow many dice showed ${armorTargetGuess}+ (PASSED)?`;
 
       const passedCount = Number(await ui.promptNumber?.({
         title: 'Armor Roll',
@@ -130,8 +130,8 @@ export async function resolveWillpowerPerHitThenSpiritArmorPerWound({ ui, hero, 
     // Build clear prompt message
     const heroName = hero?.name || 'Hero';
     const willpowerMsg = Number.isFinite(wpTargetGuess)
-      ? `WILLPOWER ROLL\n\n${incomingHits} Horror Hit${incomingHits !== 1 ? 's' : ''} incoming!\n${heroName} has Willpower ${target}+\n\nRoll ${incomingHits}d6 for Willpower.\nHow many dice showed ${target}+ (PASSED)?\n\n[Enter -1 to auto-roll]`
-      : `WILLPOWER ROLL\n\n${incomingHits} Horror Hit${incomingHits !== 1 ? 's' : ''} incoming!\n\nRoll ${incomingHits}d6 for Willpower (target ${target}+).\nHow many dice showed ${target}+ (PASSED)?\n\n[Enter -1 to auto-roll]`;
+      ? `WILLPOWER ROLL\n\n${incomingHits} Horror Hit${incomingHits !== 1 ? 's' : ''} incoming!\n${heroName} has Willpower ${target}+\n\nRoll ${incomingHits}d6 for Willpower.\nHow many dice showed ${target}+ (PASSED)?`
+      : `WILLPOWER ROLL\n\n${incomingHits} Horror Hit${incomingHits !== 1 ? 's' : ''} incoming!\n\nRoll ${incomingHits}d6 for Willpower (target ${target}+).\nHow many dice showed ${target}+ (PASSED)?`;
 
     const passedCount = Number(await ui.promptNumber?.({
       title: 'Willpower Roll',
@@ -168,7 +168,7 @@ export async function resolveWillpowerPerHitThenSpiritArmorPerWound({ ui, hero, 
 
     if (Number.isFinite(saTargetGuess)) {
       const heroName = hero?.name || 'Hero';
-      const spiritArmorMsg = `SPIRIT ARMOR ROLL\n\n${pendingWounds} Sanity Wound${pendingWounds !== 1 ? 's' : ''} incoming!\n${heroName} has Spirit Armor ${saTargetGuess}+\n\nRoll ${pendingWounds}d6 for Spirit Armor.\nHow many dice showed ${saTargetGuess}+ (PASSED)?\n\n[Enter -1 to auto-roll]`;
+      const spiritArmorMsg = `SPIRIT ARMOR ROLL\n\n${pendingWounds} Sanity Wound${pendingWounds !== 1 ? 's' : ''} incoming!\n${heroName} has Spirit Armor ${saTargetGuess}+\n\nRoll ${pendingWounds}d6 for Spirit Armor.\nHow many dice showed ${saTargetGuess}+ (PASSED)?`;
 
       const passedCount = Number(await ui.promptNumber?.({
         title: 'Spirit Armor Roll',
