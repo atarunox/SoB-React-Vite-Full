@@ -2794,6 +2794,7 @@ const foWorldArtifactOffer =
                    <TownEventCard
             key={`${openLocationId}-${eventNonce}`}
             shopId={openLocationId}
+            promptApi={uiApi}
             onSetRoll={(n) => {
               setLocEventRoll(openLocationId, n);
               setState(loadTownState());

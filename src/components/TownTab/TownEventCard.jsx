@@ -11,7 +11,7 @@ const readEvent = (shopId) => {
   return _getLocEventState(shopId) || ensureEventRolled(shopId);
 };
 
-export default function TownEventCard({ shopId, onSetRoll, onResolve, extraContent }) {
+export default function TownEventCard({ shopId, onSetRoll, onResolve, extraContent, promptApi }) {
   const [resolving, setResolving] = React.useState(false);
   const [tick, setTick] = React.useState(0); // bump when engine announces changes
 
@@ -30,11 +30,25 @@ export default function TownEventCard({ shopId, onSetRoll, onResolve, extraConte
   const effect = ev?.effect || '';
   const resolved = !!ev?.resolved;
 
-  const handleSetRoll = () => {
+  const handleSetRoll = async () => {
     const current = ev?.roll ?? 7;
-    const val = window.prompt('Enter total (2–12):', String(current));
-    if (val == null) return;
-    const n = Number(val);
+
+    // Use promptApi if available, otherwise fallback to window.prompt
+    let n;
+    if (promptApi?.promptNumber) {
+      n = await promptApi.promptNumber({
+        title: 'Set Event Roll',
+        message: 'Enter total (2–12):',
+        min: 2,
+        max: 12,
+        defaultValue: current,
+      });
+    } else {
+      const val = window.prompt('Enter total (2–12):', String(current));
+      if (val == null) return;
+      n = Number(val);
+    }
+
     if (!Number.isFinite(n) || n < 2 || n > 12) {
       alert('Enter a number between 2 and 12.');
       return;
