@@ -9,6 +9,8 @@
  *  - log[]      : human-readable steps
  */
 
+import { resolveDefensePerHitThenArmorPerWound } from '../combatResolution.js';
+
 // Helper: roll ND6
 const rollND = (n, sides = 6) =>
   Array.from({ length: n }, () => Math.floor(Math.random() * sides) + 1);
@@ -141,6 +143,13 @@ export async function handleIndianTradingPostEvent({
         console.warn('[Event #2] Could not find any heroes through any method!');
       }
 
+      // Helper function to get stat values
+      const getStat = (hero, statKey) => {
+        const heroId = hero?.id || hero?.localId;
+        const totals = posseApi?.getTotalsForHero?.(heroId);
+        return totals?.[statKey] || hero?.stats?.[statKey] || hero?.[statKey.toLowerCase()] || 0;
+      };
+
       for (const heroData of allHeroesInTown) {
         const heroId = heroData?.id || heroData?.localId;
         console.log('[Event #2] Processing hero:', heroId, heroData?.name);
@@ -149,67 +158,37 @@ export async function handleIndianTradingPostEvent({
           continue;
         }
 
-        // Auto-roll damage dice (each hero gets different roll)
+        // Auto-roll 2D6 for incoming hits (each hero gets different roll)
         const damageRolls = [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1];
-        const totalDamage = damageRolls[0] + damageRolls[1];
+        const totalHits = damageRolls[0] + damageRolls[1];
 
-        await note(`--- ${heroData.name || 'Unknown Hero'} ---`);
-        await note(`Rolled 2D6 for damage: [${damageRolls[0]}, ${damageRolls[1]}] = ${totalDamage} Hits`);
+        await note(`\n--- ${heroData.name || 'Unknown Hero'} ---`);
+        await note(`Rolled 2D6 for damage: [${damageRolls[0]}, ${damageRolls[1]}] = ${totalHits} Hits incoming`);
 
-        // Physical Hits use Defense to defend
-        const totals = posseApi?.getTotalsForHero?.(heroId);
-
-        // Try multiple ways to get Defense value and parse it
-        let defenseValue = 0;
-        const defenseRaw = totals?.Defense || totals?.defense || heroData.stats?.Defense || heroData.stats?.defense || heroData.defense || 0;
-
-        // Parse defense value (could be number, string like "4+", or string number)
-        if (typeof defenseRaw === 'number') {
-          defenseValue = defenseRaw;
-        } else if (typeof defenseRaw === 'string') {
-          // Parse "4+" or "4" to number
-          const parsed = parseInt(defenseRaw, 10);
-          defenseValue = isNaN(parsed) ? 0 : parsed;
-        }
-
-        console.log('[Event #2] Hero defense raw:', defenseRaw, '-> parsed:', defenseValue);
-
-        if (defenseValue > 0) {
-          console.log('[Event #2] Prompting for Defense roll...');
-          await doTest({
-            hero: heroData,
-            key: 'Defense',
-            target: 6,
-            label: `Defense Roll`
-          });
-
-          // Note: The test prompt will handle the roll details
-          // In a full implementation, we'd count successes and reduce hits
-        }
-
-        // Check for Armor (second defense layer)
-        let armorValue = 0;
-        const armorRaw = totals?.Armor || heroData.stats?.Armor || heroData.armor || 0;
-
-        if (typeof armorRaw === 'number') {
-          armorValue = armorRaw;
-        } else if (typeof armorRaw === 'string' && armorRaw !== '—') {
-          const parsed = parseInt(armorRaw, 10);
-          armorValue = isNaN(parsed) ? 0 : parsed;
-        }
-
-        if (armorValue > 0) {
-          console.log('[Event #2] Hero has Armor:', armorValue);
-          await note(`${heroData.name} may roll Armor ${armorValue}+ for each hit that got through Defense.`);
-        }
-
-        actions.push({
-          type: 'TAKE_HITS',
-          heroId,
-          hits: totalDamage,
-          hitType: 'physical', // Physical Hits damage Health
-          reason: 'Spirits Running Amok',
+        // Use the combat resolution system for Defense and Armor
+        // This will prompt the player to either manually enter results or auto-roll
+        const finalWounds = await resolveDefensePerHitThenArmorPerWound({
+          ui: uiApi,
+          hero: heroData,
+          hits: totalHits,
+          woundsPerHit: 1, // Each hit that gets through Defense becomes 1 wound
+          getStat,
         });
+
+        console.log('[Event #2]', heroData.name, 'takes', finalWounds, 'wounds after defense/armor');
+
+        if (finalWounds > 0) {
+          actions.push({
+            type: 'TAKE_WOUNDS',
+            heroId,
+            wounds: finalWounds,
+            damageType: 'physical', // Physical damage to Health
+            reason: 'Spirits Running Amok',
+          });
+          await note(`${heroData.name} takes ${finalWounds} wound(s) to Health!`);
+        } else {
+          await note(`${heroData.name} blocked all damage!`);
+        }
       }
       await note('');
       break;
