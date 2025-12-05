@@ -624,6 +624,7 @@ const foWorldArtifactOffer =
     defaultValue: '',
     min: undefined,
     max: undefined,
+    mode: 'number',
     resolve: null,
   });
   const [openSubcatId, setOpenSubcatId] = useState(null);
@@ -852,6 +853,7 @@ const foWorldArtifactOffer =
     return new Promise((resolve) => {
       setPromptDialog({
         isOpen: true,
+        mode: 'number',
         title: title || 'Enter Number',
         message: label,
         defaultValue: String(initial),
@@ -986,43 +988,44 @@ const foWorldArtifactOffer =
       }
 
       const msg =
-        `═══════════════════════════════════\n` +
-        `${label || `${key} Test`}\n` +
-        `═══════════════════════════════════\n\n` +
+        `${label || `${key} Test`.toUpperCase()}\n\n` +
         `Hero: ${heroName}\n` +
         `Stat: ${key} = ${statValue}\n` +
         `Roll: ${diceCount}d6\n` +
-        `Target: Need at least ONE die to show ${target}+\n\n` +
-        `───────────────────────────────────\n` +
-        `OPTIONS:\n` +
-        `───────────────────────────────────\n` +
-        `[1] I rolled physically - PASSED\n` +
-        `[2] I rolled physically - FAILED\n` +
-        `[3] Auto-roll ${diceCount}d6 now (computer rolls)\n\n` +
-        `Enter your choice (1, 2, or 3):`;
+        `Target: Need at least ONE die to show ${target}+`;
 
-      const choice = window.prompt(msg, '3');
-      const num = Number(choice);
+      return new Promise((resolve) => {
+        setPromptDialog({
+          isOpen: true,
+          mode: 'test',
+          title: label || `${key} Test`,
+          message: msg,
+          resolve: (result) => {
+            setPromptDialog(prev => ({ ...prev, isOpen: false }));
 
-      if (num === 1) {
-        // Player says they passed
-        uiApi.toast(`✓ ${heroName} PASSED the ${key} ${target}+ test (player-rolled)`);
-        return true;
-      } else if (num === 2) {
-        // Player says they failed
-        uiApi.toast(`✗ ${heroName} FAILED the ${key} ${target}+ test (player-rolled)`);
-        return false;
-      } else {
-        // Auto-roll
-        const rolls = [];
-        for (let i = 0; i < diceCount; i++) {
-          rolls.push(Math.floor(Math.random() * 6) + 1);
-        }
-        const passed = rolls.some(r => r >= target);
-        const resultMsg = `${heroName} rolls ${key}: [${rolls.join(', ')}] → ${passed ? '✓ PASS' : '✗ FAIL'}`;
-        uiApi.toast(resultMsg);
-        return passed;
-      }
+            if (result === 'PASS') {
+              uiApi.toast(`✓ ${heroName} PASSED the ${key} ${target}+ test (player-rolled)`);
+              resolve(true);
+            } else if (result === 'FAIL') {
+              uiApi.toast(`✗ ${heroName} FAILED the ${key} ${target}+ test (player-rolled)`);
+              resolve(false);
+            } else if (result === 'AUTO_ROLL') {
+              // Auto-roll
+              const rolls = [];
+              for (let i = 0; i < diceCount; i++) {
+                rolls.push(Math.floor(Math.random() * 6) + 1);
+              }
+              const passed = rolls.some(r => r >= target);
+              const resultMsg = `${heroName} rolls ${key}: [${rolls.join(', ')}] → ${passed ? '✓ PASS' : '✗ FAIL'}`;
+              uiApi.toast(resultMsg);
+              resolve(passed);
+            } else {
+              // Cancelled
+              resolve(false);
+            }
+          },
+        });
+      });
     },
     promptChoice: async (title, options) => {
       const msg =
@@ -3576,9 +3579,10 @@ const foWorldArtifactOffer =
         </div>
       )}
 
-      {/* Custom Prompt Dialog for Defense/Armor rolls */}
+      {/* Custom Prompt Dialog for Defense/Armor rolls and Tests */}
       <CustomPromptDialog
         isOpen={promptDialog.isOpen}
+        mode={promptDialog.mode}
         title={promptDialog.title}
         message={promptDialog.message}
         defaultValue={promptDialog.defaultValue}
@@ -3587,6 +3591,8 @@ const foWorldArtifactOffer =
         onAutoRoll={() => promptDialog.resolve?.('AUTO_ROLL')}
         onSubmit={(value) => promptDialog.resolve?.(value)}
         onCancel={() => promptDialog.resolve?.(null)}
+        onPass={() => promptDialog.resolve?.('PASS')}
+        onFail={() => promptDialog.resolve?.('FAIL')}
       />
     </div>
   );

@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 /**
  * Custom prompt dialog with Auto-Roll button
  * Used for Defense/Armor rolls in combat
+ *
+ * mode: 'number' (default) = input + auto-roll button
+ *       'test' = Pass/Fail/Auto-Roll buttons for stat tests
  */
 export function CustomPromptDialog({
   isOpen,
@@ -12,9 +15,12 @@ export function CustomPromptDialog({
   defaultValue = '',
   min,
   max,
+  mode = 'number',
   onAutoRoll,
   onSubmit,
-  onCancel
+  onCancel,
+  onPass,
+  onFail,
 }) {
   const [value, setValue] = useState(defaultValue);
 
@@ -74,38 +80,60 @@ export function CustomPromptDialog({
           {message}
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="number"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            min={min}
-            max={max}
-            autoFocus
-            style={{
-              width: '100%',
-              padding: '10px',
-              fontSize: '16px',
-              backgroundColor: '#1a1a1a',
-              color: '#fff',
-              border: '1px solid #555',
-              borderRadius: '4px',
-              marginBottom: '15px',
-              boxSizing: 'border-box',
-            }}
-          />
-
+        {mode === 'test' ? (
+          // Test mode: Pass/Fail/Auto-Roll buttons
           <div style={{
             display: 'flex',
+            flexDirection: 'column',
             gap: '10px',
-            justifyContent: 'flex-end',
           }}>
+            <button
+              type="button"
+              onClick={onPass}
+              autoFocus
+              style={{
+                padding: '15px 20px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+            >
+              ✓ I Rolled - PASSED
+            </button>
+
+            <button
+              type="button"
+              onClick={onFail}
+              style={{
+                padding: '15px 20px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: '#dc3545',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#c82333'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#dc3545'}
+            >
+              ✗ I Rolled - FAILED
+            </button>
+
             <button
               type="button"
               onClick={onAutoRoll}
               style={{
-                padding: '10px 20px',
-                fontSize: '14px',
+                padding: '15px 20px',
+                fontSize: '16px',
                 fontWeight: 'bold',
                 backgroundColor: '#4a9eff',
                 color: '#fff',
@@ -138,27 +166,95 @@ export function CustomPromptDialog({
             >
               Cancel
             </button>
-
-            <button
-              type="submit"
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                backgroundColor: '#28a745',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
-            >
-              OK
-            </button>
           </div>
-        </form>
+        ) : (
+          // Number mode: Input + Auto-Roll/Cancel/OK buttons
+          <form onSubmit={handleSubmit}>
+            <input
+              type="number"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              min={min}
+              max={max}
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '10px',
+                fontSize: '16px',
+                backgroundColor: '#1a1a1a',
+                color: '#fff',
+                border: '1px solid #555',
+                borderRadius: '4px',
+                marginBottom: '15px',
+                boxSizing: 'border-box',
+              }}
+            />
+
+            <div style={{
+              display: 'flex',
+              gap: '10px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                type="button"
+                onClick={onAutoRoll}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  backgroundColor: '#4a9eff',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#3a8eef'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#4a9eff'}
+              >
+                🎲 Auto-Roll
+              </button>
+
+              <button
+                type="button"
+                onClick={onCancel}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  backgroundColor: '#555',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#666'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#555'}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  backgroundColor: '#28a745',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+              >
+                OK
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
