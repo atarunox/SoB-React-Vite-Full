@@ -625,6 +625,7 @@ const foWorldArtifactOffer =
     min: undefined,
     max: undefined,
     mode: 'number',
+    choices: [],
     resolve: null,
   });
   const [openSubcatId, setOpenSubcatId] = useState(null);
@@ -1028,15 +1029,23 @@ const foWorldArtifactOffer =
       });
     },
     promptChoice: async (title, options) => {
-      const msg =
-        `${title}\n\n${options
-          .map((o, i) => `${i + 1}. ${o.label || o}`)
-          .join('\n')}\n\nEnter a number:`;
-      const pick = window.prompt(msg, '1');
-      const idx = Number.parseInt(pick, 10) - 1;
-      if (!Number.isFinite(idx) || idx < 0 || idx >= options.length)
-        return -1;
-      return idx;
+      return new Promise((resolve) => {
+        setPromptDialog({
+          isOpen: true,
+          mode: 'choice',
+          title: title || 'Choose an option',
+          message: '',
+          choices: options,
+          resolve: (choiceIdx) => {
+            setPromptDialog(prev => ({ ...prev, isOpen: false }));
+            if (choiceIdx === null || choiceIdx === undefined) {
+              resolve(-1); // Cancelled
+            } else {
+              resolve(choiceIdx);
+            }
+          },
+        });
+      });
     },
     promptNumber: ({ title, message, min, max, defaultValue }) => {
       const fullMessage = message || title || 'Enter a number';
@@ -3580,7 +3589,7 @@ const foWorldArtifactOffer =
         </div>
       )}
 
-      {/* Custom Prompt Dialog for Defense/Armor rolls and Tests */}
+      {/* Custom Prompt Dialog for Defense/Armor rolls, Tests, and Choices */}
       <CustomPromptDialog
         isOpen={promptDialog.isOpen}
         mode={promptDialog.mode}
@@ -3589,11 +3598,13 @@ const foWorldArtifactOffer =
         defaultValue={promptDialog.defaultValue}
         min={promptDialog.min}
         max={promptDialog.max}
+        choices={promptDialog.choices}
         onAutoRoll={() => promptDialog.resolve?.('AUTO_ROLL')}
         onSubmit={(value) => promptDialog.resolve?.(value)}
         onCancel={() => promptDialog.resolve?.(null)}
         onPass={() => promptDialog.resolve?.('PASS')}
         onFail={() => promptDialog.resolve?.('FAIL')}
+        onChoice={(idx) => promptDialog.resolve?.(idx)}
       />
     </div>
   );

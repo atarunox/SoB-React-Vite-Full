@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
  *
  * mode: 'number' (default) = input + auto-roll button
  *       'test' = Pass/Fail/Auto-Roll buttons for stat tests
+ *       'choice' = Multiple choice buttons
  */
 export function CustomPromptDialog({
   isOpen,
@@ -16,11 +17,13 @@ export function CustomPromptDialog({
   min,
   max,
   mode = 'number',
+  choices = [],
   onAutoRoll,
   onSubmit,
   onCancel,
   onPass,
   onFail,
+  onChoice,
 }) {
   const [value, setValue] = useState(defaultValue);
 
@@ -80,7 +83,58 @@ export function CustomPromptDialog({
           {message}
         </div>
 
-        {mode === 'test' ? (
+        {mode === 'choice' ? (
+          // Choice mode: Multiple choice buttons
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}>
+            {choices.map((choice, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => onChoice?.(idx)}
+                autoFocus={idx === 0}
+                style={{
+                  padding: '15px 20px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  backgroundColor: '#4a9eff',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  textAlign: 'left',
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#3a8eef'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#4a9eff'}
+              >
+                {idx + 1}. {choice.label || choice.key || choice}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                padding: '10px 20px',
+                fontSize: '14px',
+                backgroundColor: '#555',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#666'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#555'}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : mode === 'test' ? (
           // Test mode: Pass/Fail/Auto-Roll buttons
           <div style={{
             display: 'flex',
