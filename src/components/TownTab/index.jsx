@@ -845,45 +845,13 @@ const foWorldArtifactOffer =
   };
 
   const promptRoll = async (n, sides, label) => {
-    const choice = window.prompt(
-      `${label || 'Roll'}:\n` +
-        `- Enter ${n} value(s) 1–${sides} (comma-separated)\n` +
-        `- Accepts "3+" → 3, "1d6" / "d6" → auto\n` +
-        `- Leave blank for auto-roll`,
-      ''
-    );
-
+    // Auto-roll immediately (no prompt)
     const auto = () =>
       Array.from(
         { length: n },
         () => Math.floor(Math.random() * sides) + 1
       );
-    if (!choice) return auto();
-
-    const rawParts = choice
-      .split(',')
-      .map((s) => String(s).trim())
-      .filter(Boolean);
-
-    const parsed = rawParts.map((tok) => {
-      const lower = tok.toLowerCase();
-      if (/^\d*d\d+$/.test(lower)) return NaN;
-      const m = tok.match(/(\d+)/);
-      if (!m) return NaN;
-      const v = Number(m[1]);
-      return Number.isFinite(v) ? v : NaN;
-    });
-
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      const v = parsed[i];
-      if (Number.isFinite(v) && v >= 1 && v <= sides) {
-        out.push(Math.floor(v));
-      } else {
-        out.push(Math.floor(Math.random() * sides) + 1);
-      }
-    }
-    return out;
+    return auto();
   };
 
   const promptPay = async (_h, amount, label = 'Pay') =>
