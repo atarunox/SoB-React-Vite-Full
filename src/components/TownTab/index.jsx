@@ -1426,7 +1426,7 @@ const foWorldArtifactOffer =
     if (shopId === 'mutantQuarter') {
       const mqUi = {
         ...uiApi,
-        promptInjuryOrMutation: (h) => {
+        promptInjuryOrMutation: async (h) => {
           const rawInj =
             getInjuryList(h) ??
             h?.injuries ??
