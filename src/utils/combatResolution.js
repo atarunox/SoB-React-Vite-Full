@@ -26,34 +26,40 @@ export async function resolveDefensePerHitThenArmorPerWound({ ui, hero, hits, wo
       parsePlusTarget(hero?.defense) ||
       NaN;
 
-    const doAutoDef = await ui.promptYesNo?.({
-      message:
-        `Defense (per Hit): ${incomingHits} incoming hit(s).\n` +
-        `Auto-roll Defense now${Number.isFinite(defTargetGuess) ? ` (target ${defTargetGuess}+)` : ''}?`,
-    });
+    const target = Number.isFinite(defTargetGuess)
+      ? defTargetGuess
+      : (Number(await ui.promptNumber?.({
+          title: 'Defense Target',
+          message: 'Enter Defense target (e.g., 4 for 4+):',
+          min: 2, max: 6, defaultValue: 4,
+        })) || 4);
 
-    if (doAutoDef) {
-      const target = Number.isFinite(defTargetGuess)
-        ? defTargetGuess
-        : (Number(await ui.promptNumber?.({
-            title: 'Defense Target',
-            message: 'Enter Defense target (e.g., 4 for 4+):',
-            min: 2, max: 6, defaultValue: 4,
-          })) || 4);
+    // Build clear prompt message
+    const heroName = hero?.name || 'Hero';
+    const defenseMsg = Number.isFinite(defTargetGuess)
+      ? `${incomingHits} Hits incoming. ${heroName} has Defense ${target}+.\n\nRoll ${incomingHits}d6. How many PASSED (${target}+ on each die)?\n\n[Enter -1 to auto-roll]`
+      : `${incomingHits} Hits incoming.\n\nRoll ${incomingHits}d6 Defense (target ${target}+). How many PASSED?\n\n[Enter -1 to auto-roll]`;
 
-      const rolls = await ui.roll(incomingHits, 6, `Defense — ${incomingHits}d6 vs ${target}+ (1 success ignores 1 hit)`);
+    const passedCount = Number(await ui.promptNumber?.({
+      title: 'Defense Roll',
+      message: defenseMsg,
+      min: -1,
+      max: incomingHits,
+      defaultValue: -1,
+    }));
+
+    if (passedCount === -1 || !Number.isFinite(passedCount)) {
+      // Auto-roll
+      const rolls = await ui.roll(incomingHits, 6, `Defense — ${incomingHits}d6 vs ${target}+ (1 success blocks 1 hit)`);
       const arr = Array.isArray(rolls) ? rolls : [rolls];
       const blocks = arr.filter(n => n >= target).length;
       incomingHits = Math.max(0, incomingHits - blocks);
-      await ui.toast?.(`Defense blocked ${blocks} hit(s). Hits getting through: ${incomingHits}.`);
+      await ui.toast?.(`Defense: ${blocks} passed, ${incomingHits} hit(s) getting through.`);
     } else {
-      const fails = Number(await ui.promptNumber?.({
-        title: 'Manual Defense',
-        message: `How many Defense rolls FAILED (of ${incomingHits})?`,
-        min: 0, max: incomingHits, defaultValue: incomingHits,
-      })) || incomingHits;
-      incomingHits = Math.max(0, Math.min(incomingHits, fails));
-      await ui.toast?.(`Manual Defense: Hits getting through = ${incomingHits}.`);
+      // Manual entry
+      const blocks = Math.max(0, Math.min(incomingHits, Math.floor(passedCount)));
+      incomingHits = Math.max(0, incomingHits - blocks);
+      await ui.toast?.(`Defense: ${blocks} passed, ${incomingHits} hit(s) getting through.`);
     }
   }
 
@@ -68,24 +74,29 @@ export async function resolveDefensePerHitThenArmorPerWound({ ui, hero, hits, wo
       NaN;
 
     if (Number.isFinite(armorTargetGuess)) {
-      const doAutoArmor = await ui.promptYesNo?.({
-        message: `Auto-roll Armor now (target ${armorTargetGuess}+)?`,
-      });
+      const heroName = hero?.name || 'Hero';
+      const armorMsg = `${pendingWounds} Wound(s) incoming. ${heroName} has Armor ${armorTargetGuess}+.\n\nRoll ${pendingWounds}d6. How many PASSED (${armorTargetGuess}+ on each die)?\n\n[Enter -1 to auto-roll]`;
 
-      if (doAutoArmor) {
-        const rolls = await ui.roll(pendingWounds, 6, `Armor — ${pendingWounds}d6 vs ${armorTargetGuess}+`);
+      const passedCount = Number(await ui.promptNumber?.({
+        title: 'Armor Roll',
+        message: armorMsg,
+        min: -1,
+        max: pendingWounds,
+        defaultValue: -1,
+      }));
+
+      if (passedCount === -1 || !Number.isFinite(passedCount)) {
+        // Auto-roll
+        const rolls = await ui.roll(pendingWounds, 6, `Armor — ${pendingWounds}d6 vs ${armorTargetGuess}+ (1 success blocks 1 wound)`);
         const arr = Array.isArray(rolls) ? rolls : [rolls];
         const ignores = arr.filter(n => n >= armorTargetGuess).length;
         pendingWounds = Math.max(0, pendingWounds - ignores);
-        await ui.toast?.(`Armor ignored ${ignores} wound(s). Final Wounds: ${pendingWounds}.`);
+        await ui.toast?.(`Armor: ${ignores} passed. Final Wounds: ${pendingWounds}.`);
       } else {
-        const armorBlocks = Number(await ui.promptNumber?.({
-          title: 'Manual Armor',
-          message: `How many Armor rolls SUCCEEDED (of ${pendingWounds})?`,
-          min: 0, max: pendingWounds, defaultValue: 0,
-        })) || 0;
-        pendingWounds = Math.max(0, pendingWounds - armorBlocks);
-        await ui.toast?.(`Manual Armor: Final Wounds = ${pendingWounds}.`);
+        // Manual entry
+        const ignores = Math.max(0, Math.min(pendingWounds, Math.floor(passedCount)));
+        pendingWounds = Math.max(0, pendingWounds - ignores);
+        await ui.toast?.(`Armor: ${ignores} passed. Final Wounds: ${pendingWounds}.`);
       }
     }
   }
@@ -108,34 +119,40 @@ export async function resolveWillpowerPerHitThenSpiritArmorPerWound({ ui, hero, 
       parsePlusTarget(hero?.willpower) ||
       NaN;
 
-    const doAutoWP = await ui.promptYesNo?.({
-      message:
-        `Willpower (per Hit): ${incomingHits} incoming sanity hit(s).\n` +
-        `Auto-roll Willpower now${Number.isFinite(wpTargetGuess) ? ` (target ${wpTargetGuess}+)` : ''}?`,
-    });
+    const target = Number.isFinite(wpTargetGuess)
+      ? wpTargetGuess
+      : (Number(await ui.promptNumber?.({
+          title: 'Willpower Target',
+          message: 'Enter Willpower target (e.g., 5 for 5+):',
+          min: 2, max: 6, defaultValue: 5,
+        })) || 5);
 
-    if (doAutoWP) {
-      const target = Number.isFinite(wpTargetGuess)
-        ? wpTargetGuess
-        : (Number(await ui.promptNumber?.({
-            title: 'Willpower Target',
-            message: 'Enter Willpower target (e.g., 5 for 5+):',
-            min: 2, max: 6, defaultValue: 5,
-          })) || 5);
+    // Build clear prompt message
+    const heroName = hero?.name || 'Hero';
+    const willpowerMsg = Number.isFinite(wpTargetGuess)
+      ? `${incomingHits} Horror Hits incoming. ${heroName} has Willpower ${target}+.\n\nRoll ${incomingHits}d6. How many PASSED (${target}+ on each die)?\n\n[Enter -1 to auto-roll]`
+      : `${incomingHits} Horror Hits incoming.\n\nRoll ${incomingHits}d6 Willpower (target ${target}+). How many PASSED?\n\n[Enter -1 to auto-roll]`;
 
-      const rolls = await ui.roll(incomingHits, 6, `Willpower — ${incomingHits}d6 vs ${target}+ (1 success ignores 1 hit)`);
+    const passedCount = Number(await ui.promptNumber?.({
+      title: 'Willpower Roll',
+      message: willpowerMsg,
+      min: -1,
+      max: incomingHits,
+      defaultValue: -1,
+    }));
+
+    if (passedCount === -1 || !Number.isFinite(passedCount)) {
+      // Auto-roll
+      const rolls = await ui.roll(incomingHits, 6, `Willpower — ${incomingHits}d6 vs ${target}+ (1 success blocks 1 hit)`);
       const arr = Array.isArray(rolls) ? rolls : [rolls];
       const blocks = arr.filter(n => n >= target).length;
       incomingHits = Math.max(0, incomingHits - blocks);
-      await ui.toast?.(`Willpower blocked ${blocks} hit(s). Hits getting through: ${incomingHits}.`);
+      await ui.toast?.(`Willpower: ${blocks} passed, ${incomingHits} hit(s) getting through.`);
     } else {
-      const fails = Number(await ui.promptNumber?.({
-        title: 'Manual Willpower',
-        message: `How many Willpower rolls FAILED (of ${incomingHits})?`,
-        min: 0, max: incomingHits, defaultValue: incomingHits,
-      })) || incomingHits;
-      incomingHits = Math.max(0, Math.min(incomingHits, fails));
-      await ui.toast?.(`Manual Willpower: Hits getting through = ${incomingHits}.`);
+      // Manual entry
+      const blocks = Math.max(0, Math.min(incomingHits, Math.floor(passedCount)));
+      incomingHits = Math.max(0, incomingHits - blocks);
+      await ui.toast?.(`Willpower: ${blocks} passed, ${incomingHits} hit(s) getting through.`);
     }
   }
 
@@ -150,24 +167,29 @@ export async function resolveWillpowerPerHitThenSpiritArmorPerWound({ ui, hero, 
       NaN;
 
     if (Number.isFinite(saTargetGuess)) {
-      const doAutoSA = await ui.promptYesNo?.({
-        message: `Auto-roll Spirit Armor now (target ${saTargetGuess}+)?`,
-      });
+      const heroName = hero?.name || 'Hero';
+      const spiritArmorMsg = `${pendingWounds} Sanity Wound(s) incoming. ${heroName} has Spirit Armor ${saTargetGuess}+.\n\nRoll ${pendingWounds}d6. How many PASSED (${saTargetGuess}+ on each die)?\n\n[Enter -1 to auto-roll]`;
 
-      if (doAutoSA) {
-        const rolls = await ui.roll(pendingWounds, 6, `Spirit Armor — ${pendingWounds}d6 vs ${saTargetGuess}+`);
+      const passedCount = Number(await ui.promptNumber?.({
+        title: 'Spirit Armor Roll',
+        message: spiritArmorMsg,
+        min: -1,
+        max: pendingWounds,
+        defaultValue: -1,
+      }));
+
+      if (passedCount === -1 || !Number.isFinite(passedCount)) {
+        // Auto-roll
+        const rolls = await ui.roll(pendingWounds, 6, `Spirit Armor — ${pendingWounds}d6 vs ${saTargetGuess}+ (1 success blocks 1 wound)`);
         const arr = Array.isArray(rolls) ? rolls : [rolls];
         const ignores = arr.filter(n => n >= saTargetGuess).length;
         pendingWounds = Math.max(0, pendingWounds - ignores);
-        await ui.toast?.(`Spirit Armor ignored ${ignores} wound(s). Final Sanity Wounds: ${pendingWounds}.`);
+        await ui.toast?.(`Spirit Armor: ${ignores} passed. Final Sanity Wounds: ${pendingWounds}.`);
       } else {
-        const saBlocks = Number(await ui.promptNumber?.({
-          title: 'Manual Spirit Armor',
-          message: `How many Spirit Armor rolls SUCCEEDED (of ${pendingWounds})?`,
-          min: 0, max: pendingWounds, defaultValue: 0,
-        })) || 0;
-        pendingWounds = Math.max(0, pendingWounds - saBlocks);
-        await ui.toast?.(`Manual Spirit Armor: Final Sanity Wounds = ${pendingWounds}.`);
+        // Manual entry
+        const ignores = Math.max(0, Math.min(pendingWounds, Math.floor(passedCount)));
+        pendingWounds = Math.max(0, pendingWounds - ignores);
+        await ui.toast?.(`Spirit Armor: ${ignores} passed. Final Sanity Wounds: ${pendingWounds}.`);
       }
     }
   }
