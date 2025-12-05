@@ -1003,12 +1003,14 @@ const foWorldArtifactOffer =
         return -1;
       return idx;
     },
-    promptNumber: ({ title, message, min, max, defaultValue }) =>
-      promptNumber(title || message || 'Enter a number', {
+    promptNumber: ({ title, message, min, max, defaultValue }) => {
+      const fullMessage = message || title || 'Enter a number';
+      return promptNumber(fullMessage, {
         min,
         max,
         initial: defaultValue,
-      }),
+      });
+    },
     promptYesNo: async ({ message }) =>
       !!window.confirm(message || 'Are you sure?'),
     promptText: async ({ message, defaultValue }) => {
