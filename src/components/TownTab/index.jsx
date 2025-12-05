@@ -889,8 +889,20 @@ const foWorldArtifactOffer =
     return auto();
   };
 
-  const promptPay = async (_h, amount, label = 'Pay') =>
-    !!window.confirm(`${label}\nHero pays $${amount}. Continue?`);
+  const promptPay = async (_h, amount, label = 'Pay') => {
+    return new Promise((resolve) => {
+      setPromptDialog({
+        isOpen: true,
+        mode: 'yesno',
+        title: label,
+        message: `Hero pays $${amount}. Continue?`,
+        resolve: (result) => {
+          setPromptDialog(prev => ({ ...prev, isOpen: false }));
+          resolve(result === true);
+        },
+      });
+    });
+  };
 
   // Posse & UI APIs for handlers
   const posseApi = {
@@ -1056,25 +1068,63 @@ const foWorldArtifactOffer =
         title: title || 'Enter Number',
       });
     },
-    promptYesNo: async ({ message }) =>
-      !!window.confirm(message || 'Are you sure?'),
+    promptYesNo: async ({ message }) => {
+      return new Promise((resolve) => {
+        setPromptDialog({
+          isOpen: true,
+          mode: 'yesno',
+          title: 'Confirm',
+          message: message || 'Are you sure?',
+          resolve: (result) => {
+            setPromptDialog(prev => ({ ...prev, isOpen: false }));
+            resolve(result === true);
+          },
+        });
+      });
+    },
     promptText: async ({ message, defaultValue }) => {
-      const v = window.prompt(
-        message || 'Enter text',
-        defaultValue ?? ''
-      );
-      return v == null ? '' : String(v);
+      return new Promise((resolve) => {
+        setPromptDialog({
+          isOpen: true,
+          mode: 'text',
+          title: 'Enter Text',
+          message: message || 'Enter text',
+          defaultValue: defaultValue ?? '',
+          resolve: (value) => {
+            setPromptDialog(prev => ({ ...prev, isOpen: false }));
+            resolve(value == null ? '' : String(value));
+          },
+        });
+      });
     },
     chooseRerollFlex: ({ result, dieSides, target, allowed }) => {
-      const msg =
-        `You may nudge the rerolled die by ±1\n\n` +
-        `Result: ${result}/${dieSides}${
-          target ? `  (target: ${target})` : ''
-        }\n` +
-        `Allowed: ${allowed.join(', ')}\n\nEnter -1, 0, or 1:`;
-      const raw = window.prompt(msg, '0');
-      const n = Number(raw);
-      return allowed.includes(n) ? n : 0;
+      return new Promise((resolve) => {
+        const msg =
+          `Result: ${result}/${dieSides}${
+            target ? `  (target: ${target})` : ''
+          }\n\nChoose adjustment:`;
+
+        const choices = allowed.map(n => ({
+          label: n === 0 ? 'No change (0)' : n > 0 ? `+${n}` : `${n}`,
+          value: n,
+        }));
+
+        setPromptDialog({
+          isOpen: true,
+          mode: 'choice',
+          title: 'Nudge Rerolled Die',
+          message: msg,
+          choices,
+          resolve: (choiceIdx) => {
+            setPromptDialog(prev => ({ ...prev, isOpen: false }));
+            if (choiceIdx === null || choiceIdx === undefined || choiceIdx === -1) {
+              resolve(0);
+            } else {
+              resolve(choices[choiceIdx]?.value ?? 0);
+            }
+          },
+        });
+      });
     },
     toast: (msg) => {
       try {
@@ -1431,21 +1481,25 @@ const foWorldArtifactOffer =
 
           if (options.length === 1) return options[0];
 
-          const promptMsg =
-            'Choose a condition to operate on (enter a number):\n\n' +
-            options
-              .map((o, i) => `${i + 1}. ${o.label}`)
-              .join('\n');
-          const raw = window.prompt(promptMsg, '1');
-          if (raw == null) return null;
-          const idxPick = Number.parseInt(raw, 10) - 1;
-          if (
-            !Number.isFinite(idxPick) ||
-            idxPick < 0 ||
-            idxPick >= options.length
-          )
+          const choiceIdx = await new Promise((resolve) => {
+            setPromptDialog({
+              isOpen: true,
+              mode: 'choice',
+              title: 'Choose Condition',
+              message: 'Choose a condition to operate on:',
+              choices: options.map(o => ({ label: o.label })),
+              resolve: (idx) => {
+                setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                resolve(idx);
+              },
+            });
+          });
+
+          if (choiceIdx === null || choiceIdx === undefined || choiceIdx === -1)
             return null;
-          return options[idxPick];
+          if (choiceIdx < 0 || choiceIdx >= options.length)
+            return null;
+          return options[choiceIdx];
         },
       };
 
@@ -1598,21 +1652,25 @@ const foWorldArtifactOffer =
 
           if (options.length === 1) return options[0];
 
-          const promptMsg =
-            'Choose a condition to operate on (enter a number):\n\n' +
-            options
-              .map((o, i) => `${i + 1}. ${o.label}`)
-              .join('\n');
-          const raw = window.prompt(promptMsg, '1');
-          if (raw == null) return null;
-          const idxPick = Number.parseInt(raw, 10) - 1;
-          if (
-            !Number.isFinite(idxPick) ||
-            idxPick < 0 ||
-            idxPick >= options.length
-          )
+          const choiceIdx = await new Promise((resolve) => {
+            setPromptDialog({
+              isOpen: true,
+              mode: 'choice',
+              title: 'Choose Condition',
+              message: 'Choose a condition to operate on:',
+              choices: options.map(o => ({ label: o.label })),
+              resolve: (idx) => {
+                setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                resolve(idx);
+              },
+            });
+          });
+
+          if (choiceIdx === null || choiceIdx === undefined || choiceIdx === -1)
             return null;
-          return options[idxPick];
+          if (choiceIdx < 0 || choiceIdx >= options.length)
+            return null;
+          return options[choiceIdx];
         },
         notify: (msg) => console.log('[Doc]', msg),
       };
@@ -1659,15 +1717,28 @@ const foWorldArtifactOffer =
               { defaultValue = Math.min(1, max) } = {}
             ) => {
               const msg =
-                `Treat Corruption\n\n` +
                 `How many Corruption to remove? (0–${max})\n` +
                 `Cost: $100 each (you can afford up to ${maxByGold})\n` +
                 `Current: ${maxByCor}`;
-              const raw = window.prompt(
-                msg,
-                String(defaultValue)
-              );
-              const n = Math.floor(Number(raw));
+
+              const value = await new Promise((resolve) => {
+                setPromptDialog({
+                  isOpen: true,
+                  mode: 'number',
+                  title: 'Treat Corruption',
+                  message: msg,
+                  defaultValue: String(defaultValue),
+                  min: 0,
+                  max: max,
+                  resolve: (val) => {
+                    setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                    resolve(val);
+                  },
+                });
+              });
+
+              if (value === null || value === 'AUTO_ROLL') return 0;
+              const n = Math.floor(Number(value));
               return Number.isFinite(n)
                 ? Math.max(0, Math.min(max, n))
                 : 0;
@@ -1910,21 +1981,25 @@ const foWorldArtifactOffer =
 
           if (options.length === 1) return options[0];
 
-          const promptMsg =
-            'Choose a condition to operate on (enter a number):\n\n' +
-            options
-              .map((o, i) => `${i + 1}. ${o.label}`)
-              .join('\n');
-          const raw = window.prompt(promptMsg, '1');
-          if (raw == null) return null;
-          const idxPick = Number.parseInt(raw, 10) - 1;
-          if (
-            !Number.isFinite(idxPick) ||
-            idxPick < 0 ||
-            idxPick >= options.length
-          )
+          const choiceIdx = await new Promise((resolve) => {
+            setPromptDialog({
+              isOpen: true,
+              mode: 'choice',
+              title: 'Choose Condition',
+              message: 'Choose a condition to operate on:',
+              choices: options.map(o => ({ label: o.label })),
+              resolve: (idx) => {
+                setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                resolve(idx);
+              },
+            });
+          });
+
+          if (choiceIdx === null || choiceIdx === undefined || choiceIdx === -1)
             return null;
-          return options[idxPick];
+          if (choiceIdx < 0 || choiceIdx >= options.length)
+            return null;
+          return options[choiceIdx];
         },
         notify: (msg) => console.log('[Smugglers]', msg),
       };
@@ -2065,18 +2140,40 @@ const foWorldArtifactOffer =
 
         // simple numeric prompt helper, matches ctx.promptNumber(msg, key?)
         promptNumber: async (message /*, key */) => {
-          const raw = window.prompt(message, '');
-          if (raw == null) return null;
-          const n = Number(raw);
-          return Number.isFinite(n) ? n : null;
+          return new Promise((resolve) => {
+            setPromptDialog({
+              isOpen: true,
+              mode: 'number',
+              title: 'Enter Number',
+              message: message || 'Enter a number',
+              defaultValue: '',
+              resolve: (value) => {
+                setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                if (value === null || value === 'AUTO_ROLL') {
+                  resolve(null);
+                } else {
+                  const n = Number(value);
+                  resolve(Number.isFinite(n) ? n : null);
+                }
+              },
+            });
+          });
         },
 
         // yes/no prompt (used for "Did you win" / jackpot questions)
         promptYesNo: async ({ message, defaultValue }) => {
-          const res = window.confirm(
-            message || (defaultValue ? 'OK?' : 'Are you sure?')
-          );
-          return res;
+          return new Promise((resolve) => {
+            setPromptDialog({
+              isOpen: true,
+              mode: 'yesno',
+              title: 'Confirm',
+              message: message || (defaultValue ? 'OK?' : 'Are you sure?'),
+              resolve: (result) => {
+                setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                resolve(result === true);
+              },
+            });
+          });
         },
 
         // very simple generic skill check (1d6 ≥ target)
@@ -2327,12 +2424,27 @@ const foWorldArtifactOffer =
           /black\s*market/i.test(String(t))
         );
       if (isBlackMarket) {
-        const raw = window.prompt(
-          'Black Market price die (D6)? Enter 1–6 or blank for auto-roll:',
-          ''
-        );
+        const value = await new Promise((resolve) => {
+          setPromptDialog({
+            isOpen: true,
+            mode: 'number',
+            title: 'Black Market Price',
+            message: 'Black Market price die (D6)?\nEnter 1–6:',
+            defaultValue: '',
+            min: 1,
+            max: 6,
+            resolve: (val) => {
+              setPromptDialog(prev => ({ ...prev, isOpen: false }));
+              resolve(val);
+            },
+          });
+        });
+
         const die = (() => {
-          const n = Math.floor(Number(raw));
+          if (value === null || value === 'AUTO_ROLL') {
+            return Math.floor(Math.random() * 6) + 1;
+          }
+          const n = Math.floor(Number(value));
           if (!Number.isFinite(n) || n < 1 || n > 6)
             return Math.floor(Math.random() * 6) + 1;
           return n;
@@ -3605,6 +3717,8 @@ const foWorldArtifactOffer =
         onPass={() => promptDialog.resolve?.('PASS')}
         onFail={() => promptDialog.resolve?.('FAIL')}
         onChoice={(idx) => promptDialog.resolve?.(idx)}
+        onYes={() => promptDialog.resolve?.(true)}
+        onNo={() => promptDialog.resolve?.(false)}
       />
     </div>
   );

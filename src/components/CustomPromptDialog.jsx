@@ -8,6 +8,8 @@ import React, { useState, useEffect } from 'react';
  * mode: 'number' (default) = input + auto-roll button
  *       'test' = Pass/Fail/Auto-Roll buttons for stat tests
  *       'choice' = Multiple choice buttons
+ *       'yesno' = Yes/No buttons
+ *       'text' = Text input with OK/Cancel buttons
  */
 export function CustomPromptDialog({
   isOpen,
@@ -24,6 +26,8 @@ export function CustomPromptDialog({
   onPass,
   onFail,
   onChoice,
+  onYes,
+  onNo,
 }) {
   const [value, setValue] = useState(defaultValue);
 
@@ -35,9 +39,15 @@ export function CustomPromptDialog({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const numValue = Number(value);
-    if (Number.isFinite(numValue)) {
-      onSubmit(numValue);
+    if (mode === 'text') {
+      // For text mode, submit the string value
+      onSubmit(value);
+    } else {
+      // For number mode, convert to number
+      const numValue = Number(value);
+      if (Number.isFinite(numValue)) {
+        onSubmit(numValue);
+      }
     }
   };
 
@@ -83,7 +93,120 @@ export function CustomPromptDialog({
           {message}
         </div>
 
-        {mode === 'choice' ? (
+        {mode === 'yesno' ? (
+          // Yes/No mode: Yes/No buttons
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}>
+            <button
+              type="button"
+              onClick={onYes}
+              autoFocus
+              style={{
+                padding: '15px 20px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+            >
+              ✓ Yes
+            </button>
+
+            <button
+              type="button"
+              onClick={onNo}
+              style={{
+                padding: '15px 20px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: '#dc3545',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#c82333'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#dc3545'}
+            >
+              ✗ No
+            </button>
+          </div>
+        ) : mode === 'text' ? (
+          // Text mode: Text input + OK/Cancel buttons
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '10px',
+                fontSize: '16px',
+                backgroundColor: '#1a1a1a',
+                color: '#fff',
+                border: '1px solid #555',
+                borderRadius: '4px',
+                marginBottom: '15px',
+                boxSizing: 'border-box',
+              }}
+            />
+
+            <div style={{
+              display: 'flex',
+              gap: '10px',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                type="button"
+                onClick={onCancel}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  backgroundColor: '#555',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#666'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#555'}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  backgroundColor: '#28a745',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+              >
+                OK
+              </button>
+            </div>
+          </form>
+        ) : mode === 'choice' ? (
           // Choice mode: Multiple choice buttons
           <div style={{
             display: 'flex',
