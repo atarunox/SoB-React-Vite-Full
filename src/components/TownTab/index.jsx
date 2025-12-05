@@ -1597,7 +1597,7 @@ const foWorldArtifactOffer =
         pay: (amount, label) => promptPay(hero, amount, label),
         promptNumber: (label, opts) =>
           promptNumber(label, opts),
-        promptInjuryOrMutation: (h) => {
+        promptInjuryOrMutation: async (h) => {
           const rawInj =
             getInjuryList(h) ??
             h?.injuries ??
@@ -1926,7 +1926,7 @@ const foWorldArtifactOffer =
         pay: (amount, label) => promptPay(hero, amount, label),
         promptNumber: (label, opts) =>
           promptNumber(label, opts),
-        promptInjuryOrMutation: (h) => {
+        promptInjuryOrMutation: async (h) => {
           const rawInj =
             getInjuryList(h) ??
             h?.injuries ??
