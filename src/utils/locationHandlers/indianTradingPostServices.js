@@ -153,17 +153,15 @@ export async function performSpiritCleansing({
 
 /**
  * Vision Quest — must pass Spirit 5+ first.
- * If hero lacks Spirit Guide, grant one (roll d6) by default.
- * Then roll d6 for reward.
+ * First time: Gain permanent Spirit Guide (D6 roll), 25 XP, and 1 use of guide bonus
+ * Future times: Gain 25 XP and 1 use of existing guide bonus
  */
 export async function performVisionQuest({
   posseApi,
   hero: heroInput,
   heroId,
   spiritTestPassed,
-  needsSpiritGuideRoll = true,
-  guideRoll,
-  rewardRoll,
+  guideRoll, // Optional: for first-time guide determination
 } = {}) {
   const hero0 = heroInput ?? (heroId ? posseApi?.getHero?.(heroId) : null);
   if (!hero0) return { ok: false, log: 'Hero not found' };
@@ -172,47 +170,106 @@ export async function performVisionQuest({
   let hero = { ...hero0 };
   const logs = ['[Vision Quest] Spirit 5+ passed.'];
 
-  if (needsSpiritGuideRoll && !heroHasSpiritGuide(hero)) {
-    const r = guideRoll || DICE.d6();
-    hero = grantSpiritGuide(hero, r);
-    logs.push(`Granted Spirit Guide (roll=${r}).`);
+  // Determine Spirit Guide
+  let guideValue;
+  const existingGuide = hero?.spiritGuide;
+
+  if (!existingGuide) {
+    // First time: Roll for permanent Spirit Guide
+    guideValue = guideRoll || DICE.d6();
+    hero.spiritGuide = {
+      animal: getSpiritGuideName(guideValue),
+      roll: guideValue,
+      gainedAt: Date.now(),
+      source: 'Indian Trading Post - Vision Quest'
+    };
+    logs.push(`You are chosen by the ${getSpiritGuideName(guideValue)}! This is your permanent Spirit Guide.`);
+  } else {
+    // Already has guide
+    guideValue = existingGuide.roll;
+    logs.push(`Your Spirit Guide (${existingGuide.animal}) grants you its blessing.`);
   }
 
-  const r = rewardRoll || DICE.d6();
-  let reward = null;
-  switch (r) {
-    case 1:
-    case 2:
-      reward = { id: 'vq_initiative', text: '+1 Initiative until end of next Adventure' };
-      hero = addTempBuff(hero, { initiativeDelta: +1 }, 'Vision Quest (Initiative)');
-      break;
-    case 3:
-      reward = { id: 'vq_spirit', text: '+1 Spirit until end of next Adventure' };
-      hero = addTempBuff(hero, { spiritDelta: +1 }, 'Vision Quest (Spirit)');
-      break;
-    case 4:
-      reward = { id: 'vq_xp', text: '+25 XP' };
-      hero = addXp(hero, 25);
-      break;
-    case 5:
-      reward = { id: 'vq_grit', text: 'Gain 1 Grit' };
-      hero = addGrit(hero, 1);
-      break;
-    case 6:
-      reward = { id: 'vq_refresh_opa', text: 'Recover one Once-per-Adventure ability' };
-      hero = refreshOncePerAdventure(hero);
-      break;
-    default:
-      reward = { id: 'vq_none', text: 'No reward' };
-  }
+  // ALWAYS gain 25 XP on success
+  hero = addXp(hero, 25);
+  logs.push('Gained 25 XP.');
 
-  logs.push(`Reward roll=${r}: ${reward.text}`);
+  // Grant 1 use of Spirit Guide bonus for next adventure
+  const guideBuff = createSpiritGuideBuff(guideValue);
+  hero = addCondition(hero, guideBuff);
+  logs.push(`Granted: ${guideBuff.name} (1 use during next Adventure)`);
 
   if (posseApi?.updateHero) {
     const id = heroId || hero0.id || hero0.localId;
     posseApi.updateHero(id, hero);
   }
-  return { ok: true, log: logs.join(' '), reward, hero };
+  return { ok: true, log: logs.join(' '), spiritGuide: guideValue, hero };
+}
+
+// Helper: Get Spirit Guide name from D6 roll
+function getSpiritGuideName(roll) {
+  switch (roll) {
+    case 1: return 'Beaver';
+    case 2: return 'Wolf';
+    case 3: return 'Eagle';
+    case 4: return 'Mouse';
+    case 5: return 'Crow';
+    case 6: return 'Snake';
+    default: return 'Unknown';
+  }
+}
+
+// Helper: Create Spirit Guide buff for next adventure
+function createSpiritGuideBuff(guideRoll) {
+  const buffs = {
+    1: {
+      name: 'Spirit Guide: Beaver',
+      effectText: 'Do not discard a Side Bag token just used (1 use).',
+      effects: { sideBagProtection: true },
+    },
+    2: {
+      name: 'Spirit Guide: Wolf',
+      effectText: 'Roll 5 extra dice for a Scavenge test (1 use).',
+      effects: { scavengeBonusDice: 5 },
+    },
+    3: {
+      name: 'Spirit Guide: Eagle',
+      effectText: 'Discard and re-draw a Threat or Darkness card (1 use).',
+      effects: { cardRedraw: true },
+    },
+    4: {
+      name: 'Spirit Guide: Mouse',
+      effectText: 'Reveal 2 extra Exploration Tokens and choose which to use (1 use).',
+      effects: { explorationTokenBonus: 2 },
+    },
+    5: {
+      name: 'Spirit Guide: Crow',
+      effectText: 'All Heroes are +3 Initiative in the first turn of an Ambush (1 use).',
+      effects: { ambushInitiative: 3 },
+    },
+    6: {
+      name: 'Spirit Guide: Snake',
+      effectText: 'Gain one additional Starting Upgrade for your Hero Class for one turn (1 use).',
+      effects: { bonusStartingUpgrade: true },
+    },
+  };
+
+  const buff = buffs[guideRoll] || buffs[1];
+
+  return {
+    id: `spirit_guide_${guideRoll}_${Date.now()}`,
+    type: 'buff',
+    name: buff.name,
+    effectText: buff.effectText,
+    active: true,
+    removable: true,
+    effects: buff.effects,
+    duration: 'nextAdventure',
+    expires: 'nextAdventure',
+    usesRemaining: 1,
+    source: 'Indian Trading Post - Vision Quest',
+    createdAt: Date.now(),
+  };
 }
 
 // ==========================================================
