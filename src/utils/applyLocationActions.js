@@ -213,6 +213,45 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
         break;
       }
 
+      case 'GRANT_PERMANENT_CONDITION': {
+        // Add a permanent condition to a hero
+        const h = getHero(a.heroId);
+        if (!h) break;
+        const conditions = h.conditions || {};
+        const perm = Array.isArray(conditions.permanent) ? conditions.permanent.slice() : [];
+        perm.push(a.condition);
+        updateHero?.(a.heroId, { conditions: { ...conditions, permanent: perm } });
+        break;
+      }
+
+      case 'TAKE_WOUNDS': {
+        // Apply wounds (damage after defense/armor)
+        const h = getHero(a.heroId);
+        if (!h) break;
+        const health = Math.max(0, (h.health ?? h.maxHealth ?? 0) - (a.wounds ?? 0));
+        updateHero?.(a.heroId, { health });
+        break;
+      }
+
+      case 'TAKE_HORROR_HITS': {
+        // Apply horror hits to sanity (after willpower/spirit armor)
+        const h = getHero(a.heroId);
+        if (!h) break;
+        const sanity = Math.max(0, (h.sanity ?? h.maxSanity ?? 0) - (a.hits ?? 0));
+        updateHero?.(a.heroId, { sanity });
+        break;
+      }
+
+      case 'HEAL_SANITY': {
+        // Heal sanity (up to max)
+        const h = getHero(a.heroId);
+        if (!h) break;
+        const maxSanity = h.maxSanity ?? 6;
+        const sanity = Math.min(maxSanity, (h.sanity ?? 0) + (a.amount ?? 0));
+        updateHero?.(a.heroId, { sanity });
+        break;
+      }
+
       case 'ROLL_ON_CHART': {
         // Roll on an injury/madness chart
         // Store as a pending action for the UI to handle
