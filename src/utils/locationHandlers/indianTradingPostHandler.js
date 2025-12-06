@@ -425,24 +425,14 @@ export async function handleIndianTradingPostEvent({
               reason: 'One With the Spirits',
             });
 
-            // Add permanent +1 Max Sanity condition
+            // Add permanent +1 Max Sanity
             actions.push({
-              type: 'GRANT_PERMANENT_CONDITION',
+              type: 'CHANGE_MAX_STAT',
               heroId,
-              condition: {
-                id: `tribal_blessing_${heroId}_${Date.now()}`,
-                name: 'Tribal Blessing',
-                type: 'permanent',
-                effectText: '+1 Max Sanity',
-                permanent: true,
-                active: true,
-                addedAt: Date.now(),
-                // Structured effects for stats calculation (use proper stat name)
-                effects: {
-                  Sanity: 1, // This adds +1 to Max Sanity
-                },
-              },
-              reason: 'One With the Spirits - Tribal Blessing',
+              stat: 'Max Sanity',
+              delta: 1,
+              source: 'Indian Trading Post Event 12',
+              reason: 'One With the Spirits — Tribal Blessing',
             });
 
             await note(`${currentHero.name} accepts and gains the Keyword: Tribal and +1 Max Sanity (permanent)!`);

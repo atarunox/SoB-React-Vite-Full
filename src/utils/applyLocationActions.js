@@ -268,6 +268,56 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
         break;
       }
 
+      case 'CHANGE_MAX_STAT': {
+        // Change a max stat (Health, Sanity, etc.) and create a note
+        const h = getHero(a.heroId);
+        if (!h) break;
+
+        const stat = a.stat || 'Max Sanity'; // 'Max Sanity', 'Max Health', etc.
+        const delta = a.delta || 0;
+
+        const updates = {};
+        let prevMax, newMax;
+
+        if (stat === 'Max Sanity') {
+          prevMax = h.maxSanity ?? h.sanity ?? 0;
+          newMax = Math.max(0, prevMax + delta);
+          updates.maxSanity = newMax;
+          // Optionally cap current sanity to new max
+          if (h.sanity > newMax) updates.sanity = newMax;
+        } else if (stat === 'Max Health') {
+          prevMax = h.maxHealth ?? h.health ?? 0;
+          newMax = Math.max(0, prevMax + delta);
+          updates.maxHealth = newMax;
+          // Optionally cap current health to new max
+          if (h.health > newMax) updates.health = newMax;
+        } else if (stat === 'Max Grit') {
+          prevMax = h.maxGrit ?? 0;
+          newMax = Math.max(0, prevMax + delta);
+          updates.maxGrit = newMax;
+          // Optionally cap current grit to new max
+          if (h.grit > newMax) updates.grit = newMax;
+        }
+
+        // Create a note for the Conditions tab
+        const note = {
+          id: `maxchg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          kind: 'MaxChange',
+          stat,
+          delta,
+          newMax,
+          source: a.source || 'Event',
+          reason: a.reason || '',
+          ts: Date.now(),
+        };
+
+        const conditionNotes = Array.isArray(h.conditionNotes) ? h.conditionNotes : [];
+        updates.conditionNotes = [...conditionNotes, note];
+
+        updateHero?.(a.heroId, updates);
+        break;
+      }
+
       default:
         // no-op; add handlers here as needed
         break;
