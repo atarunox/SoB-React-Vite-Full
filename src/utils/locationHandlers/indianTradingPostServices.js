@@ -152,9 +152,12 @@ export async function performSpiritCleansing({
 }
 
 /**
- * Vision Quest — must pass Spirit 5+ first.
- * First time: Gain permanent Spirit Guide (D6 roll), 25 XP, and 1 use of guide bonus
- * Future times: Gain 25 XP and 1 use of existing guide bonus
+ * Vision Quest — Determine Spirit Guide (first time), then pass Spirit 5+ to gain rewards
+ * Flow:
+ * 1. If first time: Roll D6 for permanent Spirit Guide animal (stored even if test fails)
+ * 2. Roll Spirit 5+ test
+ * 3. If pass: Gain 25 XP and 1 use of guide bonus for next adventure
+ * 4. If fail: No rewards (but guide is still stored if first time)
  */
 export async function performVisionQuest({
   posseApi,
@@ -165,17 +168,16 @@ export async function performVisionQuest({
 } = {}) {
   const hero0 = heroInput ?? (heroId ? posseApi?.getHero?.(heroId) : null);
   if (!hero0) return { ok: false, log: 'Hero not found' };
-  if (!spiritTestPassed) return { ok: false, log: '[Vision Quest] Spirit 5+ test failed.', hero: hero0 };
 
   let hero = { ...hero0 };
-  const logs = ['[Vision Quest] Spirit 5+ passed.'];
+  const logs = [];
 
-  // Determine Spirit Guide
+  // Determine Spirit Guide FIRST (before Spirit test)
   let guideValue;
   const existingGuide = hero?.spiritGuide;
 
   if (!existingGuide) {
-    // First time: Roll for permanent Spirit Guide
+    // First time: Roll for permanent Spirit Guide (stored even if test fails)
     guideValue = guideRoll || DICE.d6();
     hero.spiritGuide = {
       animal: getSpiritGuideName(guideValue),
@@ -183,12 +185,25 @@ export async function performVisionQuest({
       gainedAt: Date.now(),
       source: 'Indian Trading Post - Vision Quest'
     };
-    logs.push(`You are chosen by the ${getSpiritGuideName(guideValue)}! This is your permanent Spirit Guide.`);
+    logs.push(`The ${getSpiritGuideName(guideValue)} has chosen you! This is your permanent Spirit Guide.`);
   } else {
     // Already has guide
     guideValue = existingGuide.roll;
-    logs.push(`Your Spirit Guide (${existingGuide.animal}) grants you its blessing.`);
+    logs.push(`Your Spirit Guide: ${existingGuide.animal}`);
   }
+
+  // NOW check Spirit test
+  if (!spiritTestPassed) {
+    logs.push('[Vision Quest] Spirit 5+ test failed. No rewards this time, but your Spirit Guide awaits.');
+    if (posseApi?.updateHero) {
+      const id = heroId || hero0.id || hero0.localId;
+      posseApi.updateHero(id, hero);
+    }
+    return { ok: false, log: logs.join(' '), hero };
+  }
+
+  // Spirit test PASSED - grant rewards
+  logs.push('[Vision Quest] Spirit 5+ passed!');
 
   // ALWAYS gain 25 XP on success
   hero = addXp(hero, 25);

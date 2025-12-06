@@ -157,17 +157,23 @@ export default function IndianTradingPostShop({ hero: heroProp, posseApi: posseA
     }
 
     if (svc?.id === 'vision_quest') {
+      // Check if hero already has a Spirit Guide
+      const hasGuide = !!hero?.spiritGuide;
+
+      let guideRoll = null;
+
+      // FIRST: Determine Spirit Guide animal (first time only)
+      if (!hasGuide) {
+        const [roll] = await promptRoll(1, 6, 'Spirit Guide — Roll D6 to determine your Spirit Guide animal (1=Beaver, 2=Wolf, 3=Eagle, 4=Mouse, 5=Crow, 6=Snake) (or blank to auto-roll)');
+        guideRoll = roll;
+      }
+
+      // THEN: Do Spirit 5+ test
       const [spiritTestRoll] = await promptRoll(1, 6, 'Vision Quest Spirit Test — Roll 1D6 for Spirit 5+ test (or blank to auto-roll)');
       const passed = spiritTestRoll >= 5;
 
-      if (!passed) {
-        uiApi.toast('[Vision Quest] Spirit 5+ test failed. You rolled ' + spiritTestRoll + '. No reward.');
-        return;
-      }
-
-      const [guideRoll] = await promptRoll(1, 6, 'Spirit Guide — Roll D6 to determine your Spirit Guide animal (1=Beaver, 2=Wolf, 3=Eagle, 4=Mouse, 5=Crow, 6=Snake) (or blank to auto-roll)');
       const out = await performVisionQuest({
-        posseApi, heroId: meId, spiritTestPassed: true, guideRoll,
+        posseApi, heroId: meId, spiritTestPassed: passed, guideRoll,
       });
       uiApi.toast(out.log);
       return;
