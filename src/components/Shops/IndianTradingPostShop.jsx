@@ -141,27 +141,33 @@ export default function IndianTradingPostShop({ hero: heroProp, posseApi: posseA
     const meId = hero.id || hero.localId;
 
     // Indian Trading Post services
-    if (svc?.id === 'spiritCleansing') {
+    if (svc?.id === 'spirit_cleansing') {
       const idx = await uiApi.promptChoice('Spirit Cleansing — choose one ailment', [
         { label: 'Madness' }, { label: 'Curse' }, { label: 'Mutation' },
       ]);
       if (idx < 0) return;
       const targets = ['Madness', 'Curse', 'Mutation'];
-      const [costRoll]   = await promptRoll(1, 6, 'Pay D6 Dark Stone — enter 1 die (or blank to auto)');
-      const [resultRoll] = await promptRoll(1, 6, 'Outcome — enter 1 die (or blank to auto)');
-      const out = performSpiritCleansing({
+      const [costRoll]   = await promptRoll(1, 6, 'Spirit Cleansing Cost — Roll D6 for Dark Stone cost (or blank to auto-roll)');
+      const [resultRoll] = await promptRoll(1, 6, 'Spirit Cleansing Outcome — Roll D6 for result (1=gain mutations, 4-5=healed, 6=healed+bonus) (or blank to auto-roll)');
+      const out = await performSpiritCleansing({
         posseApi, heroId: meId, target: targets[idx], payRoll: costRoll, resultRoll,
       });
       uiApi.toast(out.log);
       return;
     }
 
-    if (svc?.id === 'visionQuest') {
-      const passed = window.confirm('Vision Quest: Did you pass Spirit 5+? OK=Yes / Cancel=No');
-      if (!passed) { uiApi.toast('[Vision Quest] Spirit 5+ failed.'); return; }
-      const [rewardRoll] = await promptRoll(1, 6, 'Reward — enter 1 die (or blank to auto)');
-      const out = performVisionQuest({
-        posseApi, heroId: meId, spiritTestPassed: true, needsSpiritGuideRoll: true, rewardRoll,
+    if (svc?.id === 'vision_quest') {
+      const [spiritTestRoll] = await promptRoll(1, 6, 'Vision Quest Spirit Test — Roll 1D6 for Spirit 5+ test (or blank to auto-roll)');
+      const passed = spiritTestRoll >= 5;
+
+      if (!passed) {
+        uiApi.toast('[Vision Quest] Spirit 5+ test failed. You rolled ' + spiritTestRoll + '. No reward.');
+        return;
+      }
+
+      const [guideRoll] = await promptRoll(1, 6, 'Spirit Guide — Roll D6 to determine your Spirit Guide animal (1=Beaver, 2=Wolf, 3=Eagle, 4=Mouse, 5=Crow, 6=Snake) (or blank to auto-roll)');
+      const out = await performVisionQuest({
+        posseApi, heroId: meId, spiritTestPassed: true, guideRoll,
       });
       uiApi.toast(out.log);
       return;
