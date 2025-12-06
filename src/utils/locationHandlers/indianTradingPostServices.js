@@ -212,7 +212,7 @@ function getSpiritGuideName(roll) {
     case 1: return 'Beaver';
     case 2: return 'Wolf';
     case 3: return 'Eagle';
-    case 4: return 'Moose';
+    case 4: return 'Mouse';
     case 5: return 'Crow';
     case 6: return 'Snake';
     default: return 'Unknown';
@@ -224,7 +224,7 @@ function createSpiritGuideBuff(guideRoll) {
   const buffs = {
     1: {
       name: 'Spirit Guide: Beaver',
-      effectText: 'Do not discard a Side Bag token just used (1 use).',
+      effectText: 'Do not Discard a Side Bag token just used (1 use).',
       effects: { sideBagProtection: true },
     },
     2: {
@@ -238,18 +238,18 @@ function createSpiritGuideBuff(guideRoll) {
       effects: { cardRedraw: true },
     },
     4: {
-      name: 'Spirit Guide: Moose',
+      name: 'Spirit Guide: Mouse',
       effectText: 'Reveal 2 extra Exploration Tokens and choose which to use (1 use).',
       effects: { explorationTokenBonus: 2 },
     },
     5: {
       name: 'Spirit Guide: Crow',
-      effectText: 'All Heroes are +1 Initiative in the first turn of an Ambush (1 use).',
-      effects: { ambushInitiative: 1 },
+      effectText: 'All Heroes gain +3 Initiative in the first turn of an Ambush (1 use).',
+      effects: { ambushInitiative: 3 },
     },
     6: {
       name: 'Spirit Guide: Snake',
-      effectText: 'Gain one additional Starting Upgrade for your Hero Class for one turn (1 use).',
+      effectText: 'Gain one additional Starting Upgrade for your Hero Class for one turn (do not gain/change Starting Gear from it) (1 use).',
       effects: { bonusStartingUpgrade: true },
     },
   };
