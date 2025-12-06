@@ -366,21 +366,21 @@ export async function handleIndianTradingPostEvent({
           type: 'GRANT_TEMP_CONDITION',
           heroId,
           condition: {
-            id: 'animal_messenger_blessing',
+            id: `animal_messenger_blessing_${heroId}_${Date.now()}`,
             name: 'Animal Messenger Blessing',
             type: 'temporary',
-            effect: 'Spirit Armor 5+. First time KO\'d, do not roll Injury/Madness.',
             effectText: 'Spirit Armor 5+. First time KO\'d, do not roll Injury/Madness.',
             expires: 'nextAdventure',
             duration: 'nextAdventure',
             addedAt: Date.now(),
             active: true,
             temporary: true,
-            // Structured effects for stats calculation
+            // Structured effects for stats calculation (use canonical stat names)
             effects: {
-              spiritArmor: 5, // Spirit Armor 5+
-              koProtection: true, // First KO doesn't trigger Injury/Madness
+              'Spirit Armor': 5, // This will give Spirit Armor 5+ in stats
             },
+            // Store KO protection as a separate field, not in effects
+            koProtection: true,
           },
           reason: 'Animal Messenger',
         });
@@ -433,14 +433,13 @@ export async function handleIndianTradingPostEvent({
                 id: `tribal_blessing_${heroId}_${Date.now()}`,
                 name: 'Tribal Blessing',
                 type: 'permanent',
-                effect: '+1 Max Sanity',
                 effectText: '+1 Max Sanity',
                 permanent: true,
                 active: true,
                 addedAt: Date.now(),
-                // Structured effects for stats calculation
+                // Structured effects for stats calculation (use proper stat name)
                 effects: {
-                  maxSanity: 1,
+                  Sanity: 1, // This adds +1 to Max Sanity
                 },
               },
               reason: 'One With the Spirits - Tribal Blessing',
