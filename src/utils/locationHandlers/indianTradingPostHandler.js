@@ -406,7 +406,7 @@ export async function handleIndianTradingPostEvent({
         const hasTribal = currentHero.keywords?.some(k => String(k).toLowerCase() === 'tribal');
 
         if (!hasTribal) {
-          // Offer Tribal keyword
+          // Offer Tribal keyword only (no max sanity bonus)
           const decision = await choose({
             title: `One With the Spirits (${currentHero.name})`,
             message: `${currentHero.name}, you are offered the Keyword Tribal! Do you accept?`,
@@ -425,23 +425,13 @@ export async function handleIndianTradingPostEvent({
               reason: 'One With the Spirits',
             });
 
-            // Add permanent +1 Max Sanity
-            actions.push({
-              type: 'CHANGE_MAX_STAT',
-              heroId,
-              stat: 'Max Sanity',
-              delta: 1,
-              source: 'Indian Trading Post Event 12',
-              reason: 'One With the Spirits — Tribal Blessing',
-            });
-
-            await note(`${currentHero.name} accepts and gains the Keyword: Tribal and +1 Max Sanity (permanent)!`);
+            await note(`${currentHero.name} accepts and gains the Keyword: Tribal!`);
           } else {
             await note(`${currentHero.name} respectfully declines.`);
           }
         } else {
-          // Already Tribal: make Spirit 4+ test
-          await note(`${currentHero.name} is already Tribal. You may make a Spirit 4+ test to deepen your connection.`);
+          // Already Tribal: make Spirit 4+ test for +1 Max Sanity per 4+ rolled
+          await note(`${currentHero.name} is already Tribal. Make a Spirit 4+ test to gain +1 Max Sanity per 4+!`);
 
           const totals = posseApi?.getTotalsForHero?.(heroId);
           const spirit = totals?.Spirit || currentHero.stats?.Spirit || currentHero.spirit || 0;
@@ -464,14 +454,16 @@ export async function handleIndianTradingPostEvent({
             }
 
             if (successes > 0) {
-              // Gain +1 Sanity per 4+ rolled (healing, not max increase)
+              // Gain +1 MAX Sanity per 4+ rolled
               actions.push({
-                type: 'HEAL_SANITY',
+                type: 'CHANGE_MAX_STAT',
                 heroId,
-                amount: successes,
-                reason: 'One With the Spirits - Spirit Connection',
+                stat: 'Max Sanity',
+                delta: successes,
+                source: 'Indian Trading Post Event 12',
+                reason: `One With the Spirits — Spirit Connection (${successes} successes)`,
               });
-              await note(`${currentHero.name} rolled ${successes} successes (4+) and heals ${successes} Sanity!`);
+              await note(`${currentHero.name} rolled ${successes} successes (4+) and gains +${successes} Max Sanity!`);
             } else {
               await note(`${currentHero.name} did not roll any 4+s.`);
             }
