@@ -304,6 +304,11 @@ export default function StatsTab({
     [activeHero]
   );
 
+  const spiritGuide = React.useMemo(
+    () => activeHero?.spiritGuide,
+    [activeHero?.spiritGuide]
+  );
+
   const dragAreaRef = useRef();
   const [localPositions, setLocalPositions] = useState(activeHero?.statPositions || {});
   const [draggingLabel, setDraggingLabel] = useState(null);
@@ -737,7 +742,7 @@ export default function StatsTab({
       )}
 
       {/* Keywords / Traits panel (collapsible, under the detailed stat box) */}
-      {heroKeywords.length > 0 && (
+      {(heroKeywords.length > 0 || spiritGuide) && (
         <div className="rounded-xl border border-[#8b6b46] bg-[#1e1a14] text-amber-100 p-3 mb-3 shadow-lg">
           <button
             type="button"
@@ -751,15 +756,35 @@ export default function StatsTab({
           </button>
 
           {showKeywordsBox && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {heroKeywords.map((kw) => (
-                <span
-                  key={kw}
-                  className="px-2 py-1 rounded-full border border-[#8b6b46]/60 bg-[#2a2218] text-amber-100 text-xs"
-                >
-                  {kw}
-                </span>
-              ))}
+            <div className="mt-2 space-y-3">
+              {/* Keywords section */}
+              {heroKeywords.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-amber-300/80 mb-1.5">Keywords:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {heroKeywords.map((kw) => (
+                      <span
+                        key={kw}
+                        className="px-2 py-1 rounded-full border border-[#8b6b46]/60 bg-[#2a2218] text-amber-100 text-xs"
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Spirit Guide section */}
+              {spiritGuide && (
+                <div>
+                  <div className="text-xs font-semibold text-emerald-300/80 mb-1.5">Spirit Guide:</div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-2 py-1 rounded-full border border-emerald-600/60 bg-emerald-950/40 text-emerald-100 text-xs">
+                      {spiritGuide.animal || 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
