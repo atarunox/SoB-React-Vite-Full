@@ -217,7 +217,7 @@ export async function handleIndianTradingPostEvent({
 
             const decision = await choose({
               title: `Possessed Shaman (${currentHero.name})`,
-              message: `${currentHero.name} has Lore ${lore}. Do you want to attempt to help banish the demon? Make a Lore 6+ test. Pass: Recover Grit and gain 25XP per 6+ rolled. Fail: Take D6 Horror Hits per 1 rolled.`,
+              message: `${currentHero.name} has Lore ${lore}. Do you want to attempt to help banish the demon?\n\nMake a Lore 6+ test.\n• For each 6+ rolled: Gain 25XP\n• For each 1 rolled: Take D6 Horror Hits\n\nAfter all 1s are resolved, if you rolled at least one 6+, Recover 1 Grit.`,
               choices: [
                 { key: 'help', label: 'Attempt to help (Lore 6+ test)' },
                 { key: 'skip', label: 'Do not help' },
@@ -225,28 +225,84 @@ export async function handleIndianTradingPostEvent({
             });
 
             if (decision === 'help') {
-              const passed = await doTest({ hero: currentHero, key: 'Lore', target: 6, label: 'Banish Demon' });
+              const testResult = await doTest({ hero: currentHero, key: 'Lore', target: 6, label: 'Banish Demon' });
 
-              if (passed) {
-                // Recover Grit
-                actions.push({ type: 'ADD_GRIT', heroId, amount: 1, reason: 'Banished Demon' });
-                await note(`${currentHero.name} passed! Recover 1 Grit.`);
+              // After the test, ask for the count of 1s and 6s if it was a manual roll
+              // The test function returns true/false, but we need the actual dice counts
+              // So we'll prompt for them
+              let ones = 0;
+              let sixes = 0;
 
-                // For each 6+ rolled, gain 25XP (we need the actual rolls)
-                // Since doTest doesn't return rolls, we'll give base 25XP
-                actions.push({ type: 'ADD_XP', heroId, amount: 25, reason: 'Banished Demon' });
-                await note(`${currentHero.name} gains 25 XP for helping banish the demon!`);
-              } else {
-                // Take D6 Horror Hits per 1 rolled (approximate: 1D6 Horror Hits)
-                const horrorHits = (await safeRoll(1, 6, `${currentHero.name} Horror Hits`))[0];
-                actions.push({
-                  type: 'TAKE_HITS',
-                  heroId,
-                  hits: horrorHits,
-                  hitType: 'horror',
-                  reason: 'Failed to banish demon',
+              if (typeof uiApi?.promptNumber === 'function') {
+                // Ask for counts
+                ones = await uiApi.promptNumber(`How many 1s did ${currentHero.name} roll on the Lore test?`, {
+                  min: 0,
+                  max: lore,
+                  initial: 0,
+                  title: 'Count Natural 1s',
                 });
-                await note(`${currentHero.name} failed! Takes ${horrorHits} Horror Hits.`);
+                ones = ones === -1 ? 0 : ones; // -1 means auto-roll was chosen, treat as 0
+
+                sixes = await uiApi.promptNumber(`How many 6s did ${currentHero.name} roll on the Lore test?`, {
+                  min: 0,
+                  max: lore,
+                  initial: testResult ? 1 : 0,
+                  title: 'Count Natural 6s',
+                });
+                sixes = sixes === -1 ? (testResult ? 1 : 0) : sixes; // Default based on pass/fail
+              } else {
+                // Fallback: estimate based on pass/fail
+                sixes = testResult ? 1 : 0;
+                ones = testResult ? 0 : 1;
+              }
+
+              await note(`${currentHero.name} rolled ${ones} natural 1s and ${sixes} natural 6s.`);
+
+              // Handle each natural 1 - take D6 Horror Hits with Willpower/Spirit Armor resolution
+              for (let i = 0; i < ones; i++) {
+                const horrorRoll = Math.floor(Math.random() * 6) + 1;
+                await note(`Natural 1 #${i + 1}: Rolling D6 for Horror Hits... rolled ${horrorRoll}`);
+
+                // Use combat resolution for Horror Hits (Willpower, then Spirit Armor)
+                const getStat = (hero, statKey) => {
+                  const heroId = hero?.id || hero?.localId;
+                  const totals = posseApi?.getTotalsForHero?.(heroId);
+                  return totals?.[statKey] || hero?.stats?.[statKey] || hero?.[statKey.toLowerCase()] || 0;
+                };
+
+                const finalHorrorHits = await resolveDefensePerHitThenArmorPerWound({
+                  ui: uiApi,
+                  hero: currentHero,
+                  hits: horrorRoll,
+                  woundsPerHit: 1,
+                  getStat,
+                  damageType: 'horror', // This will make it use Willpower and Spirit Armor
+                });
+
+                if (finalHorrorHits > 0) {
+                  actions.push({
+                    type: 'TAKE_HORROR_HITS',
+                    heroId,
+                    hits: finalHorrorHits,
+                    reason: 'Possessed Shaman - Failed banishment',
+                  });
+                  await note(`${currentHero.name} takes ${finalHorrorHits} Horror Hit(s) to Sanity!`);
+                } else {
+                  await note(`${currentHero.name} blocked all Horror damage!`);
+                }
+              }
+
+              // Handle each natural 6 - gain 25XP
+              if (sixes > 0) {
+                const totalXP = sixes * 25;
+                actions.push({ type: 'ADD_XP', heroId, amount: totalXP, reason: 'Banished Demon' });
+                await note(`${currentHero.name} gains ${totalXP} XP (${sixes} × 25 XP)!`);
+
+                // If at least one 6 was rolled, also recover Grit
+                actions.push({ type: 'ADD_GRIT', heroId, amount: 1, reason: 'Banished Demon' });
+                await note(`${currentHero.name} successfully helped banish the demon and recovers 1 Grit!`);
+              } else {
+                await note(`${currentHero.name} did not roll any 6s - no Grit recovery.`);
               }
             }
           }
@@ -258,9 +314,10 @@ export async function handleIndianTradingPostEvent({
     // 4-5: Unfriendly Welcome – Prices +$50 for non-Tribal heroes (for entire stay)
     case 4:
     case 5: {
-      // Set stay-wide price increase
+      // Set stay-wide price increase (only affects non-Tribal heroes)
       putStayMod('indianTradingPostPriceDelta', 50, 'Unfriendly Welcome');
-      await note('Unfriendly Welcome — All prices at the Indian Trading Post are +$50 for any Hero that is not Keyword Tribal (including normally Free items) for the rest of your town stay.');
+      putStayMod('indianTradingPostTribalExempt', true, 'Unfriendly Welcome - Tribal heroes exempt');
+      await note('Unfriendly Welcome — All prices at the Indian Trading Post are +$50 for any Hero that does NOT have the Keyword: Tribal (including normally Free items) for the rest of your town stay. Heroes with Keyword: Tribal are not affected.');
       break;
     }
 
@@ -275,8 +332,19 @@ export async function handleIndianTradingPostEvent({
     // 9-10: Trade Opportunities – Sell Gear/Artifacts for D6×$25, Dark Stone for $100/shard
     case 9:
     case 10: {
-      putDayMod('indianTradingPostTrade', true, 'Trade Opportunities');
-      await note('Trade Opportunities — The local tribe is gearing up for a major hunt! Heroes at the Indian Trading Post may sell Gear and Artifact cards for D6×$25 each, and may sell Dark Stone for $100 per shard today.');
+      putDayMod('indianTradingPostTradeActive', true, 'Trade Opportunities');
+      putDayMod('indianTradingPostGearSellPrice', 'D6x25', 'Trade - Gear/Artifacts sell for D6×$25');
+      putDayMod('indianTradingPostDarkStoneSellPrice', 100, 'Trade - Dark Stone sells for $100/shard');
+
+      await note('=== TRADE OPPORTUNITIES ===');
+      await note('The local tribe is gearing up for a major hunt!');
+      await note('');
+      await note('Today only, heroes at the Indian Trading Post may:');
+      await note('• Sell Gear cards for D6 × $25 each');
+      await note('• Sell Artifact cards for D6 × $25 each');
+      await note('• Sell Dark Stone for $100 per shard');
+      await note('');
+      await note('(Check the shop UI for selling options)');
       break;
     }
 
@@ -302,8 +370,17 @@ export async function handleIndianTradingPostEvent({
             name: 'Animal Messenger Blessing',
             type: 'temporary',
             effect: 'Spirit Armor 5+. First time KO\'d, do not roll Injury/Madness.',
+            effectText: 'Spirit Armor 5+. First time KO\'d, do not roll Injury/Madness.',
             expires: 'nextAdventure',
+            duration: 'nextAdventure',
             addedAt: Date.now(),
+            active: true,
+            temporary: true,
+            // Structured effects for stats calculation
+            effects: {
+              spiritArmor: 5, // Spirit Armor 5+
+              koProtection: true, // First KO doesn't trigger Injury/Madness
+            },
           },
           reason: 'Animal Messenger',
         });
@@ -340,13 +417,36 @@ export async function handleIndianTradingPostEvent({
           });
 
           if (decision === 'accept') {
+            // Add Tribal keyword
             actions.push({
               type: 'ADD_KEYWORD',
               heroId,
               keyword: 'Tribal',
               reason: 'One With the Spirits',
             });
-            await note(`${currentHero.name} accepts and gains the Keyword: Tribal!`);
+
+            // Add permanent +1 Max Sanity condition
+            actions.push({
+              type: 'GRANT_PERMANENT_CONDITION',
+              heroId,
+              condition: {
+                id: `tribal_blessing_${heroId}_${Date.now()}`,
+                name: 'Tribal Blessing',
+                type: 'permanent',
+                effect: '+1 Max Sanity',
+                effectText: '+1 Max Sanity',
+                permanent: true,
+                active: true,
+                addedAt: Date.now(),
+                // Structured effects for stats calculation
+                effects: {
+                  maxSanity: 1,
+                },
+              },
+              reason: 'One With the Spirits - Tribal Blessing',
+            });
+
+            await note(`${currentHero.name} accepts and gains the Keyword: Tribal and +1 Max Sanity (permanent)!`);
           } else {
             await note(`${currentHero.name} respectfully declines.`);
           }
@@ -359,18 +459,32 @@ export async function handleIndianTradingPostEvent({
 
           if (spirit > 0) {
             const passed = await doTest({ hero: currentHero, key: 'Spirit', target: 4, label: 'Spirit Connection' });
-            if (passed) {
-              // In actual implementation, count how many 4+ were rolled
-              // For now, assume 1 success = +1 Sanity
-              actions.push({
-                type: 'MODIFY_SANITY',
-                heroId,
-                delta: 1,
-                reason: 'One With the Spirits',
+
+            // Ask how many 4+s were rolled
+            let successes = 0;
+            if (typeof uiApi?.promptNumber === 'function') {
+              successes = await uiApi.promptNumber(`How many 4+s did ${currentHero.name} roll on the Spirit test?`, {
+                min: 0,
+                max: spirit,
+                initial: passed ? 1 : 0,
+                title: 'Count Successes (4+)',
               });
-              await note(`${currentHero.name} passed the Spirit test! Gain +1 Sanity.`);
+              successes = successes === -1 ? (passed ? 1 : 0) : successes;
             } else {
-              await note(`${currentHero.name} failed the Spirit test.`);
+              successes = passed ? 1 : 0;
+            }
+
+            if (successes > 0) {
+              // Gain +1 Sanity per 4+ rolled (healing, not max increase)
+              actions.push({
+                type: 'HEAL_SANITY',
+                heroId,
+                amount: successes,
+                reason: 'One With the Spirits - Spirit Connection',
+              });
+              await note(`${currentHero.name} rolled ${successes} successes (4+) and heals ${successes} Sanity!`);
+            } else {
+              await note(`${currentHero.name} did not roll any 4+s.`);
             }
           } else {
             await note(`${currentHero.name} has Spirit 0 and cannot attempt the test.`);
