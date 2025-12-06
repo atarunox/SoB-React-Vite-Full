@@ -211,8 +211,8 @@ function getSpiritGuideName(roll) {
   switch (roll) {
     case 1: return 'Beaver';
     case 2: return 'Wolf';
-    case 3: return 'Eagle';
-    case 4: return 'Mouse';
+    case 3: return 'Eagle'; // TODO: Verify from card
+    case 4: return 'Moose';
     case 5: return 'Crow';
     case 6: return 'Snake';
     default: return 'Unknown';
@@ -233,19 +233,19 @@ function createSpiritGuideBuff(guideRoll) {
       effects: { scavengeBonusDice: 5 },
     },
     3: {
-      name: 'Spirit Guide: Eagle',
+      name: 'Spirit Guide: Eagle', // TODO: Verify animal name from card
       effectText: 'Discard and re-draw a Threat or Darkness card (1 use).',
       effects: { cardRedraw: true },
     },
     4: {
-      name: 'Spirit Guide: Mouse',
+      name: 'Spirit Guide: Moose',
       effectText: 'Reveal 2 extra Exploration Tokens and choose which to use (1 use).',
       effects: { explorationTokenBonus: 2 },
     },
     5: {
       name: 'Spirit Guide: Crow',
-      effectText: 'All Heroes are +3 Initiative in the first turn of an Ambush (1 use).',
-      effects: { ambushInitiative: 3 },
+      effectText: 'All Heroes are +1 Initiative in the first turn of an Ambush (1 use).',
+      effects: { ambushInitiative: 1 },
     },
     6: {
       name: 'Spirit Guide: Snake',
