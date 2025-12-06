@@ -1059,7 +1059,28 @@ const foWorldArtifactOffer =
         });
       });
     },
-    promptNumber: ({ title, message, min, max, defaultValue }) => {
+    promptNumber: (messageOrOptions, optionsIfString) => {
+      // Handle both calling patterns:
+      // 1. promptNumber(message, {min, max, initial, title}) - legacy
+      // 2. promptNumber({title, message, min, max, defaultValue}) - new
+      let title, message, min, max, defaultValue;
+
+      if (typeof messageOrOptions === 'string') {
+        // Legacy pattern: first param is message string
+        message = messageOrOptions;
+        title = optionsIfString?.title || 'Enter Number';
+        min = optionsIfString?.min;
+        max = optionsIfString?.max;
+        defaultValue = optionsIfString?.initial ?? optionsIfString?.defaultValue;
+      } else {
+        // New pattern: first param is options object
+        title = messageOrOptions?.title;
+        message = messageOrOptions?.message;
+        min = messageOrOptions?.min;
+        max = messageOrOptions?.max;
+        defaultValue = messageOrOptions?.defaultValue;
+      }
+
       const fullMessage = message || title || 'Enter a number';
       return promptNumber(fullMessage, {
         min,
