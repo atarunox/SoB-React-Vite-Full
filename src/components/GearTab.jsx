@@ -878,6 +878,37 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
       alert(`${tokenName} used!\n\nApply the effect manually during your adventure:\n${desc}`);
     }
 
+    // Check for Beaver Spirit Guide before discarding token
+    const conditions = viewHero?.conditions || [];
+    const flatConditions = Array.isArray(conditions)
+      ? conditions
+      : [
+          ...(conditions.temporary || []),
+          ...(conditions.permanent || []),
+        ];
+
+    const beaverGuide = flatConditions.find(c =>
+      c &&
+      c.type === 'buff' &&
+      c.active !== false &&
+      !c.removed &&
+      c.effects?.sideBagProtection === true &&
+      (c.usesRemaining ?? 0) > 0
+    );
+
+    if (beaverGuide) {
+      const useBeaverGuide = confirm(
+        `Spirit Guide: Beaver\n\nYou have an active Beaver Spirit Guide!\n\nWould you like to use it to keep this ${tokenName} token?\n\n(Beaver Guide will be marked as used for this adventure)`
+      );
+
+      if (useBeaverGuide) {
+        // Mark Beaver guide as used, but keep the token
+        markConditionBuffAsUsed(beaverGuide.id);
+        alert(`Spirit Guide: Beaver activated!\n\n${tokenName} was not discarded.`);
+        return; // Don't decrement token quantity
+      }
+    }
+
     // Decrement quantity or remove token
     changeSidebagQty(id, -1);
   };
