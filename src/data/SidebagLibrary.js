@@ -13,7 +13,9 @@ export const LIBRARY_ENTRIES = [
       { item: "Exotic Herbs", description: "Discard to remove D3 Corruption Points.", source: "Street Market, Tea House, Trade Cart, Western Trading Post" },
       { item: "Fine Cigar", description: "Discard to gain Armor 3+ until the end of the turn.", source: "Gambling Hall" },
       { item: "Fire Sake", description: "Discard to gain D3 Fury Tokens. (Samurai only)", source: "Blacksmith, Gambling Parlor, Samurai Lord, Street Market, Tavern" },
-      { item: "Flash", description: "Discard to make all Enemies -2 Initiative until end of turn.", source: "Blacksmith, Command Post, Dwarf Cave, Guard House, Mining Operation, Spanish Armory, Swordsmith, Western Trading Post" }
+      { item: "Flash", description: "Discard to make all Enemies -2 Initiative until end of turn.", source: "Blacksmith, Command Post, Dwarf Cave, Guard House, Mining Operation, Spanish Armory, Swordsmith, Western Trading Post" },
+      { item: "Hatchet", description: "Discard to throw as a Ranged Attack. Range: Strength +2. Do D3 Wounds, ignoring Defense.", source: "Indian Trading Post" },
+      { item: "Whiskey", description: "Discard to Re-roll one die.", source: "General Store, Mutant Quarter, Saloon" }
     ]
   },
   {
