@@ -779,6 +779,77 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
     persistSidebags({ ...sidebags, items });
   };
 
+  const useSidebagToken = (id) => {
+    const token = sidebags.items.find(i => i.id === id);
+    if (!token) return;
+
+    const tokenName = (token.name || '').trim();
+    const desc = token.description || '';
+
+    if (!confirm(`Use ${tokenName}?\n\n${desc}`)) return;
+
+    // Helper to roll dice
+    const d6 = () => Math.floor(Math.random() * 6) + 1;
+    const d3 = () => Math.floor(Math.random() * 3) + 1;
+
+    // Automatable effects
+    const nameLower = tokenName.toLowerCase();
+
+    if (nameLower === 'bandages') {
+      // Heal D6 Wounds
+      const roll = d6();
+      const currentHealth = viewHero.health ?? 0;
+      const maxHealth = viewHero.maxHealth ?? 0;
+      const newHealth = Math.min(maxHealth, currentHealth + roll);
+      const actualHealed = newHealth - currentHealth;
+
+      saveHero({ ...viewHero, health: newHealth, updatedAt: Date.now() });
+      try { setViewHero && setViewHero({ ...viewHero, health: newHealth }); } catch {}
+      alert(`${tokenName} used!\n\nRolled ${roll} on D6.\nHealed ${actualHealed} Health (now ${newHealth}/${maxHealth}).`);
+    }
+    else if (nameLower === 'ale') {
+      // Heal D6 Sanity
+      const roll = d6();
+      const currentSanity = viewHero.sanity ?? 0;
+      const maxSanity = viewHero.maxSanity ?? 0;
+      const newSanity = Math.min(maxSanity, currentSanity + roll);
+      const actualHealed = newSanity - currentSanity;
+
+      saveHero({ ...viewHero, sanity: newSanity, updatedAt: Date.now() });
+      try { setViewHero && setViewHero({ ...viewHero, sanity: newSanity }); } catch {}
+      alert(`${tokenName} used!\n\nRolled ${roll} on D6.\nHealed ${actualHealed} Sanity (now ${newSanity}/${maxSanity}).`);
+    }
+    else if (nameLower === 'anti-rad') {
+      // Remove D6 Corruption Points
+      const roll = d6();
+      const currentCorruption = viewHero.currentCorruption ?? 0;
+      const newCorruption = Math.max(0, currentCorruption - roll);
+      const actualRemoved = currentCorruption - newCorruption;
+
+      saveHero({ ...viewHero, currentCorruption: newCorruption, updatedAt: Date.now() });
+      try { setViewHero && setViewHero({ ...viewHero, currentCorruption: newCorruption }); } catch {}
+      alert(`${tokenName} used!\n\nRolled ${roll} on D6.\nRemoved ${actualRemoved} Corruption (now ${newCorruption}).`);
+    }
+    else if (nameLower === 'exotic herbs') {
+      // Remove D3 Corruption Points
+      const roll = d3();
+      const currentCorruption = viewHero.currentCorruption ?? 0;
+      const newCorruption = Math.max(0, currentCorruption - roll);
+      const actualRemoved = currentCorruption - newCorruption;
+
+      saveHero({ ...viewHero, currentCorruption: newCorruption, updatedAt: Date.now() });
+      try { setViewHero && setViewHero({ ...viewHero, currentCorruption: newCorruption }); } catch {}
+      alert(`${tokenName} used!\n\nRolled ${roll} on D3.\nRemoved ${actualRemoved} Corruption (now ${newCorruption}).`);
+    }
+    else {
+      // Non-automatable token - just show message
+      alert(`${tokenName} used!\n\nApply the effect manually during your adventure:\n${desc}`);
+    }
+
+    // Decrement quantity or remove token
+    changeSidebagQty(id, -1);
+  };
+
   const setSidebagCapacity = (cap) => {
     const capacity = Math.max(0, Number(cap) || 0);
     persistSidebags({ ...sidebags, capacity });
@@ -1191,9 +1262,12 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                   )}
                   <div className="text-xs text-gray-600 mt-1">Qty: {it.qty ?? 1}</div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button className="btn btn-xs" onClick={() => changeSidebagQty(it.id, -1)}>-</button>
-                  <button className="btn btn-xs" onClick={() => changeSidebagQty(it.id, +1)} disabled={sbFree <= 0}>+</button>
+                <div className="flex flex-col items-stretch gap-1">
+                  <div className="flex items-center gap-1">
+                    <button className="btn btn-xs" onClick={() => changeSidebagQty(it.id, -1)}>-</button>
+                    <button className="btn btn-xs" onClick={() => changeSidebagQty(it.id, +1)} disabled={sbFree <= 0}>+</button>
+                  </div>
+                  <button className="btn btn-xs bg-green-600 text-white" onClick={() => useSidebagToken(it.id)}>Use</button>
                   <button className="btn btn-xs bg-red-600 text-white" onClick={() => removeSidebagToken(it.id)}>Remove</button>
                 </div>
               </div>
