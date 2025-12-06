@@ -25,7 +25,7 @@ export const LIBRARY_ENTRIES = [
       { item: "Tea", description: "Discard to Heal 1D6 Health/Sanity or Recover 1 Ability token. (Limit 1 per turn)", source: "Tea House, Feudal Village" },
       { item: "Tonic", description: "Discard to Recover D3 Grit.", source: "Doc's Office, General Store, Field Hospital, Forbidden Fortress" },
       { item: "Void Sake", description: "Discard to Take 1 Corruption Hit to remove D3 Status Effect markers.", source: "Forbidden Fortress" },
-      { item: "Whiskey", description: "Discard to Re-roll one of the dice for a Hold Back the Darkness roll.", source: "General Store, Mutant Quarter, Saloon" },
+      { item: "Whiskey", description: "Discard to Heal D6 Sanity Damage from yourself or an adjacent Hero.", source: "General Store, Mutant Quarter, Saloon" },
       { item: "Wine", description: "Discard to Heal Peril die Sanity.", source: "Various" }
     ]
   },
