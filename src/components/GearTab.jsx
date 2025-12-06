@@ -816,7 +816,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
       try { setViewHero && setViewHero({ ...viewHero, health: newHealth }); } catch {}
       alert(`${tokenName} used!\n\nRolled ${roll} on D6.\nHealed ${actualHealed} Health (now ${newHealth}/${maxHealth}).`);
     }
-    else if (nameLower === 'ale') {
+    else if (nameLower === 'ale' || nameLower === 'whiskey' || nameLower === 'salve') {
       // Heal D6 Sanity
       const roll = d6();
       const currentSanity = viewHero.sanity ?? 0;
@@ -849,6 +849,29 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
       saveHero({ ...viewHero, currentCorruption: newCorruption, updatedAt: Date.now() });
       try { setViewHero && setViewHero({ ...viewHero, currentCorruption: newCorruption }); } catch {}
       alert(`${tokenName} used!\n\nRolled ${roll} on D3.\nRemoved ${actualRemoved} Corruption (now ${newCorruption}).`);
+    }
+    else if (nameLower === 'tonic') {
+      // Recover D3 Grit
+      const roll = d3();
+      const currentGrit = viewHero.grit ?? 0;
+      const maxGrit = viewHero.maxGrit ?? 0;
+      const newGrit = Math.min(maxGrit, currentGrit + roll);
+      const actualRecovered = newGrit - currentGrit;
+
+      saveHero({ ...viewHero, grit: newGrit, updatedAt: Date.now() });
+      try { setViewHero && setViewHero({ ...viewHero, grit: newGrit }); } catch {}
+      alert(`${tokenName} used!\n\nRolled ${roll} on D3.\nRecovered ${actualRecovered} Grit (now ${newGrit}/${maxGrit}).`);
+    }
+    else if (nameLower === 'grit') {
+      // Recover 1 Grit
+      const currentGrit = viewHero.grit ?? 0;
+      const maxGrit = viewHero.maxGrit ?? 0;
+      const newGrit = Math.min(maxGrit, currentGrit + 1);
+      const actualRecovered = newGrit - currentGrit;
+
+      saveHero({ ...viewHero, grit: newGrit, updatedAt: Date.now() });
+      try { setViewHero && setViewHero({ ...viewHero, grit: newGrit }); } catch {}
+      alert(`${tokenName} used!\n\nRecovered ${actualRecovered} Grit (now ${newGrit}/${maxGrit}).`);
     }
     else {
       // Non-automatable token - just show message
