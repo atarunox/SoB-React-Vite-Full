@@ -368,8 +368,17 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
           const id = i?.id || uid();
           const name = i?.name || 'Token';
           const qty = Math.max(1, Number(i?.qty) || 1);
-          const preset = PRESETS.find(p => p.name.toLowerCase() === String(name).toLowerCase());
-          const description = i?.description || preset?.description || '';
+
+          // Look up description from library
+          let description = i?.description || '';
+          if (!description) {
+            const library = flattenTokens();
+            const libraryEntry = library.find(t =>
+              String(t.name || '').trim().toLowerCase() === name.trim().toLowerCase()
+            );
+            description = libraryEntry?.description || '';
+          }
+
           return { id, name, qty, description };
         })
       : [];

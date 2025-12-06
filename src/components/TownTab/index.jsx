@@ -2539,7 +2539,14 @@ const foWorldArtifactOffer =
     }
 
     // Token purchases
+    console.log('[TownTab:handleBuy] Checking if token purchase:', {
+      itemName: item.name,
+      category: item.category,
+      grantsToken: item.grantsToken,
+      isToken: isTokenPurchase(item),
+    });
     if (isTokenPurchase(item)) {
+      console.log('[TownTab:handleBuy] YES, this is a token purchase!');
       const perVisitLimit =
         item.purchaseLimitPerVisit ||
         item?.rules?.purchaseLimitPerVisit ||
