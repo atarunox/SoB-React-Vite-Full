@@ -461,9 +461,42 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
   }, [equipGear, _gearSig, _invSig, JSON.stringify(condRules)]);
 
   // Buffs (once-per-adventure) ---------------------------------------------
-  const buffs = Array.isArray(viewHero.oncePerAdventure)
-    ? viewHero.oncePerAdventure.map(b => ({ id: b.id || uid(), name: b.name || 'Buff', used: !!b.used, notes: b.notes || '' }))
+  // Merge oncePerAdventure buffs AND condition-based buffs (e.g., Spirit Guides)
+  const legacyBuffs = Array.isArray(viewHero.oncePerAdventure)
+    ? viewHero.oncePerAdventure.map(b => ({
+        id: b.id || uid(),
+        name: b.name || 'Buff',
+        used: !!b.used,
+        notes: b.notes || '',
+        source: 'legacy',
+      }))
     : [];
+
+  // Extract buff-type conditions (e.g., Spirit Guide bonuses)
+  const conditionBuffs = useMemo(() => {
+    const conditions = viewHero?.conditions || [];
+    const flatConditions = Array.isArray(conditions)
+      ? conditions
+      : [
+          ...(conditions.temporary || []),
+          ...(conditions.permanent || []),
+        ];
+
+    return flatConditions
+      .filter(c => c && c.type === 'buff' && c.active !== false && !c.removed)
+      .map(c => ({
+        id: c.id || uid(),
+        name: c.name || 'Buff',
+        effectText: c.effectText || '',
+        used: c.usesRemaining === 0 || c.used === true,
+        usesRemaining: c.usesRemaining ?? 1,
+        effects: c.effects || {},
+        source: 'condition',
+        conditionData: c,
+      }));
+  }, [viewHero?.conditions]);
+
+  const allBuffs = [...legacyBuffs, ...conditionBuffs];
 
   const persistBuffs = (next) => {
     const nextHero = { ...viewHero, oncePerAdventure: next, updatedAt: Date.now() };
@@ -480,18 +513,108 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
   };
 
   const toggleBuff = (id) => {
-    const next = buffs.map(b => b.id === id ? { ...b, used: !b.used } : b);
-    persistBuffs(next);
+    const buff = allBuffs.find(b => b.id === id);
+    if (!buff) return;
+
+    if (buff.source === 'legacy') {
+      const next = legacyBuffs.map(b => b.id === id ? { ...b, used: !b.used } : b);
+      persistBuffs(next);
+    } else if (buff.source === 'condition') {
+      // Mark condition buff as used by setting usesRemaining to 0
+      markConditionBuffAsUsed(id);
+    }
+  };
+
+  const markConditionBuffAsUsed = (buffId) => {
+    const conditions = viewHero?.conditions || [];
+    const isArray = Array.isArray(conditions);
+
+    if (isArray) {
+      const updated = conditions.map(c =>
+        c.id === buffId ? { ...c, usesRemaining: 0, used: true } : c
+      );
+      const nextHero = { ...viewHero, conditions: updated, updatedAt: Date.now() };
+      saveHero(nextHero);
+      try { setViewHero && setViewHero(nextHero); } catch {}
+    } else {
+      // Handle bucketed conditions
+      const temp = (conditions.temporary || []).map(c =>
+        c.id === buffId ? { ...c, usesRemaining: 0, used: true } : c
+      );
+      const perm = (conditions.permanent || []).map(c =>
+        c.id === buffId ? { ...c, usesRemaining: 0, used: true } : c
+      );
+      const nextHero = {
+        ...viewHero,
+        conditions: { ...conditions, temporary: temp, permanent: perm },
+        updatedAt: Date.now(),
+      };
+      saveHero(nextHero);
+      try { setViewHero && setViewHero(nextHero); } catch {}
+    }
   };
 
   const removeBuff = (id) => {
+    const buff = allBuffs.find(b => b.id === id);
+    if (!buff) return;
     if (!confirm('Remove this buff?')) return;
-    persistBuffs(buffs.filter(b => b.id !== id));
+
+    if (buff.source === 'legacy') {
+      persistBuffs(legacyBuffs.filter(b => b.id !== id));
+    } else if (buff.source === 'condition') {
+      // Remove from conditions
+      const conditions = viewHero?.conditions || [];
+      const isArray = Array.isArray(conditions);
+
+      if (isArray) {
+        const updated = conditions.filter(c => c.id !== id);
+        const nextHero = { ...viewHero, conditions: updated, updatedAt: Date.now() };
+        saveHero(nextHero);
+        try { setViewHero && setViewHero(nextHero); } catch {}
+      } else {
+        const temp = (conditions.temporary || []).filter(c => c.id !== id);
+        const perm = (conditions.permanent || []).filter(c => c.id !== id);
+        const nextHero = {
+          ...viewHero,
+          conditions: { ...conditions, temporary: temp, permanent: perm },
+          updatedAt: Date.now(),
+        };
+        saveHero(nextHero);
+        try { setViewHero && setViewHero(nextHero); } catch {}
+      }
+    }
   };
 
   const resetBuffs = () => {
     if (!confirm('Reset all buffs to unused?')) return;
-    persistBuffs(buffs.map(b => ({ ...b, used: false })));
+    persistBuffs(legacyBuffs.map(b => ({ ...b, used: false })));
+
+    // Also reset condition buffs
+    const conditions = viewHero?.conditions || [];
+    const isArray = Array.isArray(conditions);
+
+    if (isArray) {
+      const updated = conditions.map(c =>
+        c.type === 'buff' ? { ...c, usesRemaining: 1, used: false } : c
+      );
+      const nextHero = { ...viewHero, conditions: updated, updatedAt: Date.now() };
+      saveHero(nextHero);
+      try { setViewHero && setViewHero(nextHero); } catch {}
+    } else {
+      const temp = (conditions.temporary || []).map(c =>
+        c.type === 'buff' ? { ...c, usesRemaining: 1, used: false } : c
+      );
+      const perm = (conditions.permanent || []).map(c =>
+        c.type === 'buff' ? { ...c, usesRemaining: 1, used: false } : c
+      );
+      const nextHero = {
+        ...viewHero,
+        conditions: { ...conditions, temporary: temp, permanent: perm },
+        updatedAt: Date.now(),
+      };
+      saveHero(nextHero);
+      try { setViewHero && setViewHero(nextHero); } catch {}
+    }
   };
 
   // Actions (inventory / gear)
@@ -1008,23 +1131,28 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-lg">Once-per-adventure buffs</h3>
             <button className="btn btn-sm" onClick={addBuff}>+ Add Buff</button>
-            {buffs.length > 0 && (
+            {allBuffs.length > 0 && (
               <button className="btn btn-sm btn-ghost" onClick={resetBuffs}>Reset All</button>
             )}
           </div>
 
-          {buffs.length === 0 && (
+          {allBuffs.length === 0 && (
             <div className="text-gray-500 italic">
-              No buffs yet. Add entries like “Prophetic Blessing (heal D6 Health/Sanity once)” or item one-shots.
+              No buffs yet. Spirit Guide bonuses will appear here after completing Vision Quest.
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {buffs.map((b) => (
-              <div key={b.id} className={`rounded-xl border p-3 ${b.used ? 'bg-gray-100 opacity-80' : 'bg-white'}`}>
+            {allBuffs.map((b) => (
+              <div key={b.id} className={`rounded-xl border p-3 ${b.used ? 'bg-gray-100 opacity-80' : 'bg-emerald-50'}`}>
                 <div className="flex items-center justify-between">
                   <div className="font-semibold">{b.name}</div>
                   <div className="flex items-center gap-2">
+                    {b.source === 'condition' && (
+                      <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                        Spirit Guide
+                      </span>
+                    )}
                     <label className="text-xs flex items-center gap-1">
                       <input
                         type="checkbox"
@@ -1036,13 +1164,19 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                     <button className="btn btn-xs btn-ghost" onClick={() => removeBuff(b.id)}>Remove</button>
                   </div>
                 </div>
+                {/* Show effect text for Spirit Guides OR notes for legacy buffs */}
+                {b.effectText && <div className="mt-1 text-xs text-gray-700">{b.effectText}</div>}
                 {b.notes && <div className="mt-1 text-xs text-gray-700">{b.notes}</div>}
+                {/* Show uses remaining for Spirit Guides */}
+                {b.source === 'condition' && b.usesRemaining > 0 && (
+                  <div className="mt-1 text-xs text-emerald-700">Uses remaining: {b.usesRemaining}</div>
+                )}
               </div>
             ))}
           </div>
 
           <p className="text-xs text-gray-500">
-            Tip: Buffs reset when you start a new adventure (use “Reset All”).
+            Tip: Buffs reset when you start a new adventure (use "Reset All"). Spirit Guide bonuses from Vision Quest automatically appear here.
           </p>
         </section>
       )}
