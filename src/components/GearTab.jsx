@@ -617,6 +617,87 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
     }
   };
 
+  // Spirit Guide usage mechanics
+  const useSpiritGuide = async (buffId, effects) => {
+    const buff = allBuffs.find(b => b.id === buffId);
+    if (!buff || buff.used) return;
+
+    // Crow: +3 Initiative to all heroes in posse
+    if (effects.ambushInitiative) {
+      if (!confirm(`Use Spirit Guide: Crow?\n\nGrant all heroes in your posse +${effects.ambushInitiative} Initiative for the first turn of an Ambush.`)) return;
+
+      // Apply +3 Initiative to all heroes
+      const allHeroes = posse || [];
+      for (const hero of allHeroes) {
+        const tgtHeroId = hero.id || hero.localId;
+        if (!tgtHeroId) continue;
+
+        // Add temporary condition for +3 Initiative
+        const initiativeBuff = {
+          id: `crow_initiative_${tgtHeroId}_${Date.now()}`,
+          type: 'buff',
+          name: `Crow Spirit Guide: +${effects.ambushInitiative} Initiative`,
+          effectText: `+${effects.ambushInitiative} Initiative for first turn of Ambush`,
+          active: true,
+          removable: true,
+          effects: { Initiative: effects.ambushInitiative },
+          duration: 'firstTurnAmbush',
+          expires: 'firstTurnAmbush',
+          source: 'Spirit Guide: Crow',
+          createdAt: Date.now(),
+        };
+
+        // Add to hero's conditions
+        const targetHero = posseCtx?.getHero?.(tgtHeroId) || hero;
+        if (targetHero) {
+          const conditions = targetHero?.conditions || [];
+          const isArray = Array.isArray(conditions);
+
+          if (isArray) {
+            posseCtx?.updateHero?.(tgtHeroId, {
+              conditions: [...conditions, initiativeBuff],
+              updatedAt: Date.now(),
+            });
+          } else {
+            const temp = [...(conditions.temporary || []), initiativeBuff];
+            posseCtx?.updateHero?.(tgtHeroId, {
+              conditions: { ...conditions, temporary: temp },
+              updatedAt: Date.now(),
+            });
+          }
+        }
+      }
+
+      // Mark Crow buff as used
+      markConditionBuffAsUsed(buffId);
+      alert(`All heroes in your posse gain +${effects.ambushInitiative} Initiative for the first turn of an Ambush!`);
+      return;
+    }
+
+    // Snake: Choose starting upgrade
+    if (effects.bonusStartingUpgrade) {
+      // TODO: Implement starting upgrade selection
+      alert('Spirit Guide: Snake\n\nThis feature requires selecting from your hero class starting upgrades. This will be implemented in a future update.\n\nFor now, manually apply a starting upgrade bonus for one turn.');
+      markConditionBuffAsUsed(buffId);
+      return;
+    }
+
+    // Simple buffs (Beaver, Wolf, Mouse, Eagle) - just mark as used
+    const names = {
+      sideBagProtection: 'Beaver',
+      scavengeBonusDice: 'Wolf',
+      explorationTokenBonus: 'Mouse',
+      cardRedraw: 'Eagle',
+    };
+
+    const guideName = Object.keys(effects).map(k => names[k]).filter(Boolean)[0] || 'Unknown';
+
+    if (!confirm(`Use Spirit Guide: ${guideName}?\n\n${buff.effectText}`)) return;
+
+    markConditionBuffAsUsed(buffId);
+    alert(`Spirit Guide: ${guideName} activated!\n\nRemember to apply the effect during your adventure.`);
+  };
+
   // Actions (inventory / gear)
   const dropItem = (id) => {
     if (!window.confirm('Drop this item?')) return;
@@ -1170,6 +1251,17 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                 {/* Show uses remaining for Spirit Guides */}
                 {b.source === 'condition' && b.usesRemaining > 0 && (
                   <div className="mt-1 text-xs text-emerald-700">Uses remaining: {b.usesRemaining}</div>
+                )}
+                {/* Use button for Spirit Guides */}
+                {b.source === 'condition' && !b.used && b.effects && (
+                  <div className="mt-2">
+                    <button
+                      className="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+                      onClick={() => useSpiritGuide(b.id, b.effects)}
+                    >
+                      Use Spirit Guide
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
