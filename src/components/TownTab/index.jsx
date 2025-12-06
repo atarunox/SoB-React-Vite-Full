@@ -75,6 +75,7 @@ import {
 // UI pieces
 import TownEventCard from './TownEventCard';
 import RareFindPanel from './RareFindPanel';
+import { flattenTokens } from '../../data/SidebagLibrary';
 
 // icons / helpers
 import {
@@ -2558,7 +2559,7 @@ const foWorldArtifactOffer =
           type: item.name,
           amount: 1,
         };
-      const amount = Number(grant.amount || 1);
+      const amount = Number(grant.qty ?? grant.amount ?? 1);
       const type = String(
         grant.type || item.name || 'Token'
       );
@@ -2573,14 +2574,47 @@ const foWorldArtifactOffer =
       const tech =
         (hero.tech ?? 0) - (costObj.tech ?? 0);
 
-      const sideBag = nextSideBag(hero, type, amount);
+      // Use new sidebags format: { capacity, items: [{id, name, qty, description}] }
+      const currentSidebags = hero.sidebags || { capacity: 6, items: [] };
+      const capacity = Number.isFinite(currentSidebags.capacity) ? currentSidebags.capacity : 6;
+      const items = Array.isArray(currentSidebags.items) ? [...currentSidebags.items] : [];
+
+      // Find token in library for description
+      const library = flattenTokens();
+      const libraryEntry = library.find(t =>
+        String(t.item || '').trim().toLowerCase() === type.trim().toLowerCase()
+      );
+      const description = libraryEntry?.description || '';
+
+      // Find existing token or create new one
+      const existingIdx = items.findIndex(it =>
+        String(it.name || '').trim().toLowerCase() === type.trim().toLowerCase()
+      );
+
+      if (existingIdx >= 0) {
+        // Increment existing token quantity
+        items[existingIdx] = {
+          ...items[existingIdx],
+          qty: (items[existingIdx].qty || 1) + amount,
+        };
+      } else {
+        // Add new token
+        items.push({
+          id: `token_${type.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
+          name: type,
+          qty: amount,
+          description,
+        });
+      }
+
+      const sidebags = { capacity, items };
       updateHero({
         id: hero.id || hero.localId,
         gold,
         darkStone,
         scrap,
         tech,
-        sideBag,
+        sidebags,
       });
 
       incVisitCount(itemId);
