@@ -271,15 +271,10 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
       case 'CHANGE_MAX_STAT': {
         // Change a max stat (Health, Sanity, etc.) and create a note
         const h = getHero(a.heroId);
-        if (!h) {
-          console.warn('[CHANGE_MAX_STAT] Hero not found:', a.heroId);
-          break;
-        }
+        if (!h) break;
 
         const stat = a.stat || 'Max Sanity'; // 'Max Sanity', 'Max Health', etc.
         const delta = a.delta || 0;
-
-        console.log('[CHANGE_MAX_STAT] Processing:', { stat, delta, heroId: a.heroId, currentMaxSanity: h.maxSanity });
 
         const updates = {};
         let prevMax, newMax;
@@ -288,7 +283,6 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
           prevMax = h.maxSanity ?? h.sanity ?? 0;
           newMax = Math.max(0, prevMax + delta);
           updates.maxSanity = newMax;
-          console.log('[CHANGE_MAX_STAT] Sanity:', { prevMax, newMax, willUpdate: true });
           // Optionally cap current sanity to new max
           if (h.sanity > newMax) updates.sanity = newMax;
         } else if (stat === 'Max Health') {
@@ -303,8 +297,6 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
           updates.maxGrit = newMax;
           // Optionally cap current grit to new max
           if (h.grit > newMax) updates.grit = newMax;
-        } else {
-          console.warn('[CHANGE_MAX_STAT] Unknown stat:', stat);
         }
 
         // Create a note for the Conditions tab
@@ -321,9 +313,6 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
 
         const conditionNotes = Array.isArray(h.conditionNotes) ? h.conditionNotes : [];
         updates.conditionNotes = [...conditionNotes, note];
-
-        console.log('[CHANGE_MAX_STAT] Updates to apply:', updates);
-        console.log('[CHANGE_MAX_STAT] Note created:', note);
 
         updateHero?.(a.heroId, updates);
         break;
