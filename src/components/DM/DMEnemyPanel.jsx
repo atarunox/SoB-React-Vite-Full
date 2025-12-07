@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 // RIGHT:
 import { useCombatState } from "../../hooks/useCombatState";
+import { usePosse } from '../../context/PosseContext';
 
 import { ENEMY_CARDS } from '../../data/enemyCards';
 import { THREAT_DECKS, getThreatDeck } from '../../data/enemies/threatDecks';
@@ -14,8 +15,30 @@ import EnemyGroupCard from './EnemyGroupCard';
 export default function DMEnemyPanel() {
   const { world } = useWorld();
   const { combatGroups, setCombatGroups } = useCombatState();
+  const { posse, updateHero } = usePosse();
   const [drawnCard, setDrawnCard] = useState(null);
   const [globalModifiers, setGlobalModifiers] = useState([]);
+
+  // Find hero with active Eagle Spirit Guide buff
+  const eagleBuffHero = useMemo(() => {
+    if (!posse?.heroes) return null;
+
+    for (const hero of posse.heroes) {
+      const conditions = Array.isArray(hero?.conditions) ? hero.conditions : [];
+      const eagleBuff = conditions.find(c =>
+        c?.type === 'buff' &&
+        c?.active !== false &&
+        !c?.removed &&
+        c?.effects?.redrawCard === true &&
+        (c?.usesRemaining ?? 0) > 0
+      );
+
+      if (eagleBuff) {
+        return { hero, buff: eagleBuff };
+      }
+    }
+    return null;
+  }, [posse?.heroes]);
 
   // Draw threat card and generate groups
   const drawThreatCard = () => {
@@ -52,7 +75,39 @@ export default function DMEnemyPanel() {
   setCombatGroups(groups);
 };
 
+  // Redraw threat card with Eagle Spirit Guide
+  const redrawThreatWithEagle = () => {
+    if (!eagleBuffHero) return;
 
+    const { hero, buff } = eagleBuffHero;
+
+    // Consume one use of the Eagle Spirit Guide buff
+    const updatedConditions = hero.conditions.map(c => {
+      if (c?.id === buff.id) {
+        const newUses = Math.max(0, (c.usesRemaining ?? 0) - 1);
+        return {
+          ...c,
+          usesRemaining: newUses,
+          active: newUses > 0,
+        };
+      }
+      return c;
+    });
+
+    // Update hero in posse
+    updateHero({
+      ...hero,
+      conditions: updatedConditions,
+      updatedAt: Date.now(),
+    });
+
+    // Clear current card and draw a new one
+    setDrawnCard(null);
+    setCombatGroups([]);
+    drawThreatCard();
+
+    alert(`🦅 Eagle Spirit Guide: Threat card redrawn! (${eagleBuffHero.buff.usesRemaining - 1} uses remaining)`);
+  };
 
   // Global modifiers
   function addGlobalModifier(type) {
@@ -84,6 +139,16 @@ export default function DMEnemyPanel() {
 
   return (
     <div>
+      {/* Eagle Spirit Guide indicator */}
+      {eagleBuffHero && (
+        <div className="bg-green-50 border-2 border-green-500 rounded p-2 text-sm mb-3">
+          <strong className="text-green-800">🦅 Eagle Spirit Guide Active!</strong>
+          <p className="text-gray-700">
+            {eagleBuffHero.hero.name} can redraw a Threat or Darkness card ({eagleBuffHero.buff.usesRemaining} use{eagleBuffHero.buff.usesRemaining !== 1 ? 's' : ''} remaining)
+          </p>
+        </div>
+      )}
+
       {/* GLOBAL MODIFIERS */}
       <div className="mb-2">
         <b>Global Modifiers:</b>
@@ -108,6 +173,14 @@ export default function DMEnemyPanel() {
         <button className="btn btn-primary" onClick={drawThreatCard}>
           Draw Threat Card ({world})
         </button>
+        {drawnCard && eagleBuffHero && (
+          <button
+            className="btn bg-green-600 hover:bg-green-700 text-white border-green-700"
+            onClick={redrawThreatWithEagle}
+          >
+            🦅 Redraw with Eagle Spirit Guide
+          </button>
+        )}
         {drawnCard && (
           <div className="mt-2 sm:mt-0">
             <div className="font-bold">{drawnCard.name}</div>
