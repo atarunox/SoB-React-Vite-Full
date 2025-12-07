@@ -1,6 +1,14 @@
 // src/utils/locationHandlers/indianTradingPostServices.js
 import { calculateCurrentStats } from '../calculateStats';
 
+// TODO: Hook up Spirit Guide active mechanics during adventures:
+// - Beaver: Prevent sidebag token discard (already implemented in GearTab)
+// - Wolf: +5 dice on Scavenge test
+// - Eagle: Redraw Threat/Darkness card
+// - Mouse: +2 Exploration tokens with choice
+// - Crow: +3 Initiative all heroes first turn of Ambush (already implemented in Buffs tab)
+// - Snake: Temporarily gain Starting Upgrade (needs UI picker)
+
 // ---------- tiny dice helpers ----------
 const DICE = {
   d3: () => 1 + Math.floor(Math.random() * 3),
@@ -23,24 +31,39 @@ function spendDarkStone(hero, amount) {
   }
   return { ...hero, resources: { ...(hero.resources || {}), darkStone: next } };
 }
-function removeOneAilment(hero, target /* 'Madness'|'Curse'|'Mutation' */) {
+function removeSpecificAilment(hero, target /* 'Madness'|'Curse'|'Mutation' */, ailmentId) {
   const t = String(target || '').toLowerCase();
   const h = { ...hero };
 
   if (t === 'madness') {
     const arr = Array.isArray(h.madnesses) ? h.madnesses.slice() : [];
-    if (arr.length) arr.shift();
+    const idx = arr.findIndex(a => a.id === ailmentId || a === ailmentId);
+    if (idx >= 0) arr.splice(idx, 1);
     h.madnesses = arr;
   } else if (t === 'curse') {
     const arr = Array.isArray(h.curses) ? h.curses.slice() : [];
-    if (arr.length) arr.shift();
+    const idx = arr.findIndex(a => a.id === ailmentId || a === ailmentId);
+    if (idx >= 0) arr.splice(idx, 1);
     h.curses = arr;
   } else if (t === 'mutation') {
     const arr = Array.isArray(h.mutations) ? h.mutations.slice() : [];
-    if (arr.length) arr.shift();
+    const idx = arr.findIndex(a => a.id === ailmentId || a === ailmentId);
+    if (idx >= 0) arr.splice(idx, 1);
     h.mutations = arr;
   }
   return h;
+}
+
+function getAilmentList(hero, target /* 'Madness'|'Curse'|'Mutation' */) {
+  const t = String(target || '').toLowerCase();
+  if (t === 'madness') {
+    return Array.isArray(hero.madnesses) ? hero.madnesses : [];
+  } else if (t === 'curse') {
+    return Array.isArray(hero.curses) ? hero.curses : [];
+  } else if (t === 'mutation') {
+    return Array.isArray(hero.mutations) ? hero.mutations : [];
+  }
+  return [];
 }
 function addRandomMutations(hero, count) {
   const c = Math.max(0, asNumber(count, 0));
@@ -139,25 +162,49 @@ export async function performSpiritCleansing({
   const hero0 = heroInput ?? (heroId ? posseApi?.getHero?.(heroId) : null);
   if (!hero0) return { ok: false, log: 'Hero not found' };
 
-  // Prompt for target ailment
+  // STEP 1: Choose ailment type
   const targetIdx = await io?.promptChoice?.(
-    'Spirit Cleansing — Choose one ailment to attempt to heal:',
+    'Spirit Cleansing — Choose one ailment type to attempt to heal:',
     [{ label: 'Madness' }, { label: 'Curse' }, { label: 'Mutation' }]
   );
   if (targetIdx < 0) return { ok: false, log: 'Cancelled' };
   const targets = ['Madness', 'Curse', 'Mutation'];
   const target = targets[targetIdx];
 
-  // Roll for Dark Stone cost
+  // STEP 2: Get list of active ailments of that type
+  const ailmentList = getAilmentList(hero0, target);
+  if (ailmentList.length === 0) {
+    const msg = `No active ${target} to heal.`;
+    if (io?.notify) io.notify(msg);
+    return { ok: false, log: msg };
+  }
+
+  // STEP 3: Choose specific ailment to target
+  const ailmentOptions = ailmentList.map((a, i) => ({
+    label: typeof a === 'string' ? a : (a.name || a.title || `${target} ${i + 1}`)
+  }));
+
+  const ailmentIdx = await io?.promptChoice?.(
+    `Spirit Cleansing — Choose which ${target} to attempt to heal:`,
+    ailmentOptions
+  );
+  if (ailmentIdx < 0) return { ok: false, log: 'Cancelled' };
+
+  const selectedAilment = ailmentList[ailmentIdx];
+  const ailmentName = typeof selectedAilment === 'string'
+    ? selectedAilment
+    : (selectedAilment.name || selectedAilment.title || `${target} ${ailmentIdx + 1}`);
+
+  // STEP 4: Roll for Dark Stone cost
   const costRolls = await io?.roll?.(1, 6, 'Spirit Cleansing Cost — Roll D6 for Dark Stone cost (or blank to auto-roll)');
   const cost = costRolls?.[0] || DICE.d6();
   let hero = spendDarkStone(hero0, cost);
 
-  // Roll for outcome
+  // STEP 5: Roll for outcome
   const outcomeRolls = await io?.roll?.(1, 6, 'Spirit Cleansing Outcome — Roll D6 for result (1=gain mutations, 2-3=not healed, 4-5=healed, 6=healed+bonus) (or blank to auto-roll)');
   const r = outcomeRolls?.[0] || DICE.d6();
 
-  const log = [`[Spirit Cleansing] Paid ${cost} Dark Stone. Target: ${target}. Outcome roll=${r}.`];
+  const log = [`[Spirit Cleansing] Targeting: ${ailmentName}. Paid ${cost} Dark Stone. Outcome roll=${r}.`];
 
   if (r === 1) {
     const m = DICE.d3();
@@ -166,12 +213,14 @@ export async function performSpiritCleansing({
   } else if (r === 2 || r === 3) {
     log.push('Not healed.');
   } else if (r === 4 || r === 5) {
-    hero = removeOneAilment(hero, target);
-    log.push('Healed.');
+    const ailmentId = typeof selectedAilment === 'string' ? selectedAilment : selectedAilment.id;
+    hero = removeSpecificAilment(hero, target, ailmentId);
+    log.push(`Healed: ${ailmentName} removed.`);
   } else if (r === 6) {
-    hero = removeOneAilment(hero, target);
+    const ailmentId = typeof selectedAilment === 'string' ? selectedAilment : selectedAilment.id;
+    hero = removeSpecificAilment(hero, target, ailmentId);
     hero = addMaxSanityBuff(hero, +1, 'Spirit Cleansing (Blessing)');
-    log.push('Healed; +1 Max Sanity (shown on Conditions tab).');
+    log.push(`Healed: ${ailmentName} removed. +1 Max Sanity (shown on Conditions tab).`);
   }
 
   if (posseApi?.updateHero) {
