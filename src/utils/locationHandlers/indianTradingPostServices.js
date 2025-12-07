@@ -280,8 +280,24 @@ function createSpiritGuideBuff(guideRoll) {
 // ==========================================================
 
 /**
- * Spirit Cleansing — pay D6 Dark Stone and roll 1d6 for the outcome
- * Uses io object for prompts
+ * Spirit Cleansing - Medicine Man service to heal ailments
+ *
+ * Flow:
+ * 1. Choose ailment type (Madness/Curse/Mutation)
+ * 2. Select specific ailment from active list
+ * 3. Roll D6 for Dark Stone cost
+ * 4. Confirm payment
+ * 5. Roll D6 for healing outcome
+ *
+ * @param {Object} params
+ * @param {Object} params.posseApi - Posse API with getHero and updateHero methods
+ * @param {Object} [params.hero] - Hero object (alternative to heroId)
+ * @param {string} [params.heroId] - Hero ID to look up
+ * @param {Object} params.io - UI interaction object
+ * @param {Function} params.io.roll - Dice roll prompt: (n, sides, label) => Promise<number[]>
+ * @param {Function} params.io.promptChoice - Choice prompt: (title, options) => Promise<number>
+ * @param {Function} params.io.notify - Notification: (message) => void
+ * @returns {Promise<{ok: boolean, log: string, hero: Object}>}
  */
 export async function performSpiritCleansing({
   posseApi,
@@ -394,10 +410,31 @@ export async function performSpiritCleansing({
 }
 
 /**
- * Vision Quest — proper flow with Spirit Guide system
- * 1. Determine Spirit Guide animal (first time only, stored permanently)
- * 2. Do Spirit 5+ test (roll dice equal to Spirit stat)
- * 3. If pass: grant 25 XP + Spirit Guide buff (1 use)
+ * Vision Quest - Medicine Man service to gain Spirit Guide
+ *
+ * Flow:
+ * 1. Determine Spirit Guide animal (first time only, stored permanently in hero.spiritGuide)
+ * 2. Roll Spirit 5+ test (rolls dice equal to hero's Spirit stat value)
+ * 3. On success: Grant 25 XP + Spirit Guide buff (1 use for next adventure)
+ * 4. On failure: Spirit Guide still saved, but no rewards
+ *
+ * Spirit Guides:
+ * - 1: Beaver (Don't discard sidebag token)
+ * - 2: Wolf (+5 dice on Scavenge test)
+ * - 3: Eagle (Redraw Threat/Darkness card)
+ * - 4: Mouse (+2 Exploration tokens with choice)
+ * - 5: Crow (+3 Initiative all heroes first turn of Ambush)
+ * - 6: Snake (Gain Starting Upgrade for one turn)
+ *
+ * @param {Object} params
+ * @param {Object} params.posseApi - Posse API with getHero and updateHero methods
+ * @param {Object} [params.hero] - Hero object (alternative to heroId)
+ * @param {string} [params.heroId] - Hero ID to look up
+ * @param {Object} params.io - UI interaction object
+ * @param {Function} params.io.roll - Dice roll prompt: (n, sides, label) => Promise<number[]>
+ * @param {Function} params.io.promptChoice - Choice prompt: (title, options) => Promise<number>
+ * @param {Function} params.io.notify - Notification: (message) => void
+ * @returns {Promise<{ok: boolean, log: string, spiritGuide: number, hero: Object}>}
  */
 export async function performVisionQuest({
   posseApi,
