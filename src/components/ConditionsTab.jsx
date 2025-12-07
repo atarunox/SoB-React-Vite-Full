@@ -127,7 +127,7 @@ function buildTemporaryWithSources(hero) {
   return out;
 }
 
-/* NEW: Permanent bucket so “Down a Dark Road” shows */
+/* NEW: Permanent bucket so "Down a Dark Road" shows */
 function buildPermanentWithSources(hero) {
   const out = [];
   if (Array.isArray(hero?.conditions?.permanent)) {
@@ -139,6 +139,23 @@ function buildPermanentWithSources(hero) {
     hero.conditions.forEach((c, i) => {
       const t = String(c?.type || '').toLowerCase();
       if (t === 'permanent') _pushActive(out, c, { kind: 'flat', path: 'conditions', idx: i });
+    });
+  }
+  return out;
+}
+
+/* Buffs collection (active bonuses, Spirit Guides, etc.) */
+function buildBuffsWithSources(hero) {
+  const out = [];
+  if (Array.isArray(hero?.conditions?.buff)) {
+    hero.conditions.buff.forEach((c, i) =>
+      _pushActive(out, c, { kind: 'nested', path: 'conditions.buff', idx: i })
+    );
+  }
+  if (Array.isArray(hero?.conditions)) {
+    hero.conditions.forEach((c, i) => {
+      const t = String(c?.type || '').toLowerCase();
+      if (t === 'buff') _pushActive(out, c, { kind: 'flat', path: 'conditions', idx: i });
     });
   }
   return out;
@@ -291,6 +308,7 @@ export default function ConditionsTab({ hero }) {
   const mutationsWithSrc  = buildMutationWithSources(hero).map(materializeForDisplay);
   const permanentWithSrc  = buildPermanentWithSources(hero).map(materializeForDisplay);
   const temporaryWithSrc  = buildTemporaryWithSources(hero).map(materializeForDisplay);
+  const buffsWithSrc      = buildBuffsWithSources(hero).map(materializeForDisplay);
 
   const notes = Array.isArray(hero?.conditionNotes) ? hero.conditionNotes : [];
 
@@ -402,6 +420,95 @@ export default function ConditionsTab({ hero }) {
     </div>
   );
 
+  const renderBuffs = () => (
+    <div className="mb-4">
+      <h3 className="font-bold text-lg text-green-700">🌟 Active Buffs & Bonuses</h3>
+      {buffsWithSrc.length === 0 ? (
+        <p className="italic text-gray-600">None</p>
+      ) : (
+        <ul className="space-y-1">
+          {buffsWithSrc.map((entry) => {
+            const c = entry.cond || {};
+            const key = c?.id || `buff-${entry?.src?.kind}-${entry?.src?.path}-${entry?.src?.idx}`;
+            const effectText = c?.effectText || c?.effect || '';
+            const uses = typeof c?.usesRemaining === 'number' ? c.usesRemaining : null;
+            const maxUses = typeof c?.maxUses === 'number' ? c.maxUses : null;
+
+            // Check if this is a Spirit Guide buff
+            const isSpiritGuide = c?.name?.toLowerCase().includes('spirit guide');
+            const effects = c?.effects || {};
+
+            // Determine which Spirit Guide this is
+            const hasEagle = effects.redrawCard === true;
+            const hasSnake = effects.extraStartingUpgrade === true;
+
+            return (
+              <li key={key} className="border-2 border-green-500 p-2 rounded bg-green-50">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-green-800 flex items-center flex-wrap gap-2">
+                      <span className="truncate">{c?.name || 'Buff'}</span>
+                      {uses !== null && maxUses !== null && (
+                        <span className="text-xs bg-green-200 px-2 py-0.5 rounded-full">
+                          {uses}/{maxUses} uses
+                        </span>
+                      )}
+                    </div>
+
+                    {effectText && <p className="text-sm text-gray-700">{effectText}</p>}
+                    {c?.effects && typeof c.effects === 'object' && <EffectsInline effects={c.effects} />}
+                    <ExtraFlagsInline cond={c} />
+
+                    {isSpiritGuide && (
+                      <div className="mt-2 text-xs text-gray-600 italic">
+                        {effects.scavengeDiceBonus && '🐺 Apply +5 dice when making Scavenge tests'}
+                        {effects.redrawCard && '🦅 Use the button to redraw a Threat or Darkness card'}
+                        {effects.explorationTokensBonus && '🐭 Reveal +2 Exploration tokens and choose'}
+                        {effects.sideBagProtection && '🦫 Don\'t discard a Sidebag token just used'}
+                        {effects.ambushInitiativeBonus && '🐦 All heroes get +3 Initiative first turn of Ambush'}
+                        {effects.extraStartingUpgrade && '🐍 Use the button to gain a Starting Upgrade temporarily'}
+                      </div>
+                    )}
+
+                    {/* Action buttons for interactive Spirit Guides */}
+                    {hasEagle && uses > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-amber-700 mb-1">
+                          This buff will be consumed in the DM tab when you draw/redraw cards. Remember to use it!
+                        </p>
+                      </div>
+                    )}
+
+                    {hasSnake && uses > 0 && (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1 rounded"
+                          onClick={() => alert('Snake Spirit Guide: Choose a Starting Upgrade from your Class Card. This feature requires UI implementation - for now, manually add the upgrade to your stats/effects.')}
+                        >
+                          🐍 Choose Starting Upgrade
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded shrink-0"
+                    onClick={() => removeCondition(entry)}
+                    title="Remove / consume buff"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+
   const renderNotes = () => (
     <div className="mb-4">
       <h3 className="font-bold text-lg">Permanent Modifiers / Notes</h3>
@@ -459,6 +566,7 @@ export default function ConditionsTab({ hero }) {
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Conditions</h2>
 
+      {renderBuffs()} {/* Spirit Guides and active bonuses */}
       {renderList('Permanent Effects', permanentWithSrc)} {/* shows Dark Road */}
       {renderList('Temporary Conditions', temporaryWithSrc)}
       {renderList('Injuries', injuriesWithSrc)}
