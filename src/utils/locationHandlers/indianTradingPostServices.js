@@ -1,13 +1,42 @@
 // src/utils/locationHandlers/indianTradingPostServices.js
 import { calculateCurrentStats } from '../calculateStats';
 
-// TODO: Hook up Spirit Guide active mechanics during adventures:
-// - Beaver: Prevent sidebag token discard (already implemented in GearTab)
-// - Wolf: +5 dice on Scavenge test
-// - Eagle: Redraw Threat/Darkness card
-// - Mouse: +2 Exploration tokens with choice
-// - Crow: +3 Initiative all heroes first turn of Ambush (already implemented in Buffs tab)
-// - Snake: Temporarily gain Starting Upgrade (needs UI picker)
+// ============================================================================
+// INDIAN TRADING POST - IMPLEMENTATION STATUS
+// ============================================================================
+//
+// COMPLETED:
+// ✓ Spirit Cleansing service with proper flow:
+//   - Choose ailment type (Madness/Curse/Mutation)
+//   - Select specific ailment from active list
+//   - Roll D6 for Dark Stone cost with confirmation
+//   - Roll D6 for healing outcome (1=mutations, 2-3=fail, 4-5=heal, 6=heal+bonus)
+//   - Finds ailments in all storage locations (conditions.madness, madness, etc.)
+//   - Removes specific targeted ailment on success
+//
+// ✓ Vision Quest service with proper flow:
+//   - Roll D6 for permanent Spirit Guide animal (first time only)
+//   - Spirit 5+ test using proper skill mechanics (roll Spirit-value D6, pass if any 5+)
+//   - Store permanent Spirit Guide in hero.spiritGuide
+//   - Grant 25 XP + Spirit Guide buff (1 use) on success
+//
+// ✓ Spirit Guide system:
+//   - Permanent storage: hero.spiritGuide = {animal, roll, gainedAt, source}
+//   - Temporary buffs: Added to hero.conditions with usesRemaining
+//   - Beaver: Sidebag token protection (implemented in GearTab.jsx)
+//   - Crow: +3 Initiative first turn of Ambush (implemented in Buffs tab)
+//
+// ✓ Sidebag token library with 28 tokens and descriptions
+// ✓ Token automation (Bandages, Whiskey, Tonic, Grit, etc.)
+// ✓ Dice roll prompts for all services (TownTab promptRoll)
+//
+// TODO - Spirit Guide adventure mechanics (need implementation):
+// [ ] Wolf: +5 dice on Scavenge test (needs Scavenge UI hook)
+// [ ] Eagle: Redraw Threat/Darkness card (needs card draw UI hook)
+// [ ] Mouse: +2 Exploration tokens with choice (needs Exploration UI hook)
+// [ ] Snake: Temporarily gain Starting Upgrade (needs upgrade picker UI)
+//
+// ============================================================================
 
 // ---------- tiny dice helpers ----------
 const DICE = {
