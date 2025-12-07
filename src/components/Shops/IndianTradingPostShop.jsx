@@ -13,6 +13,7 @@ import {
   performSpiritCleansing,
   performVisionQuest,
 } from '../../utils/locationHandlers/indianTradingPostServices';
+import { calculateCurrentStats } from '../../utils/calculateStats';
 
 // Reuse your TownTab helper icons/formatters for consistent UI
 import {
@@ -168,9 +169,11 @@ export default function IndianTradingPostShop({ hero: heroProp, posseApi: posseA
         guideRoll = roll;
       }
 
-      // THEN: Do Spirit 5+ test
-      const [spiritTestRoll] = await promptRoll(1, 6, 'Vision Quest Spirit Test — Roll 1D6 for Spirit 5+ test (or blank to auto-roll)');
-      const passed = spiritTestRoll >= 5;
+      // THEN: Do Spirit 5+ test (roll dice equal to Spirit stat value)
+      const currentStats = calculateCurrentStats(hero);
+      const spiritValue = currentStats.Spirit || 2;
+      const spiritRolls = await promptRoll(spiritValue, 6, `Vision Quest Spirit Test — Roll ${spiritValue}D6 for Spirit 5+ test (need at least one 5+) (or blank to auto-roll)`);
+      const passed = spiritRolls.some(roll => roll >= 5);
 
       const out = await performVisionQuest({
         posseApi, heroId: meId, spiritTestPassed: passed, guideRoll,
