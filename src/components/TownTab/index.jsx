@@ -881,13 +881,44 @@ const foWorldArtifactOffer =
   };
 
   const promptRoll = async (n, sides, label) => {
-    // Auto-roll immediately (no prompt)
-    const auto = () =>
-      Array.from(
-        { length: n },
-        () => Math.floor(Math.random() * sides) + 1
-      );
-    return auto();
+    return new Promise((resolve) => {
+      const auto = () =>
+        Array.from(
+          { length: n },
+          () => Math.floor(Math.random() * sides) + 1
+        );
+
+      setPromptDialog({
+        isOpen: true,
+        mode: 'text',
+        title: label || `Roll ${n}D${sides}`,
+        message: `Enter ${n}D${sides} results (comma-separated) or leave blank to auto-roll`,
+        initialValue: '',
+        resolve: (input) => {
+          setPromptDialog(prev => ({ ...prev, isOpen: false }));
+
+          // If blank or cancelled, auto-roll
+          if (!input || input.trim() === '') {
+            resolve(auto());
+            return;
+          }
+
+          // Parse comma-separated rolls
+          const parts = input
+            .split(',')
+            .map((s) => Number(s.trim()))
+            .filter((x) => Number.isFinite(x) && x >= 1 && x <= sides);
+
+          // If we got the right number of valid rolls, use them
+          if (parts.length === n) {
+            resolve(parts);
+          } else {
+            // Otherwise auto-roll
+            resolve(auto());
+          }
+        },
+      });
+    });
   };
 
   const promptPay = async (_h, amount, label = 'Pay') => {
