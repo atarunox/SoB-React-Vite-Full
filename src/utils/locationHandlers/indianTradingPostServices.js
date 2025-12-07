@@ -1,5 +1,5 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=1 brackets=0. Review this file. */
 // src/utils/locationHandlers/indianTradingPostServices.js
+import { calculateCurrentStats } from '../calculateStats';
 
 // ---------- tiny dice helpers ----------
 const DICE = {
@@ -64,43 +64,62 @@ function addMaxSanityBuff(hero, delta, name = 'Spirit Cleansing (Blessing)') {
   };
   return addCondition(hero, cond);
 }
-function addTempBuff(hero, changes, label) {
-  const cond = {
-    id: `indianTP_temp_${Date.now()}`,
-    type: 'buff',
-    name: label,
-    active: true,
-    removable: true,
-    effects: changes, // e.g. { initiativeDelta: +1 } or { spiritDelta: +1 }
-    duration: { type: 'adventure', until: 'end' },
-    source: 'indianTradingPost',
-  };
-  return addCondition(hero, cond);
-}
 function addXp(hero, amt) {
   const xp0 = asNumber(hero?.xp, 0);
   return { ...hero, xp: xp0 + Math.max(0, asNumber(amt, 0)) };
 }
-function addGrit(hero, amt) {
-  const g0 = asNumber(hero?.grit, 0);
-  const maxG = asNumber(hero?.maxGrit, 2);
-  return { ...hero, grit: Math.min(maxG, g0 + Math.max(0, asNumber(amt, 0))) };
+
+// Spirit Guide name lookup
+function getSpiritGuideName(roll) {
+  const map = {
+    1: 'Beaver',
+    2: 'Wolf',
+    3: 'Eagle',
+    4: 'Mouse',
+    5: 'Crow',
+    6: 'Snake',
+  };
+  return map[roll] || 'Unknown';
 }
-function refreshOncePerAdventure(hero) {
-  const opa = Array.isArray(hero?.oncePerAdventure)
-    ? hero.oncePerAdventure.map((x) => ({ ...x, used: false }))
-    : [];
-  return { ...hero, oncePerAdventure: opa };
-}
-function heroHasSpiritGuide(hero) {
-  if (Array.isArray(hero?.gear) && hero.gear.some(g => String(g?.slot).toLowerCase() === 'spirit guide')) {
-    return true;
+
+// Create Spirit Guide buff (for 1 use during next adventure)
+function createSpiritGuideBuff(guideRoll) {
+  const animal = getSpiritGuideName(guideRoll);
+  const effects = {};
+
+  // Each guide has specific buff effects
+  if (guideRoll === 1) {
+    // Beaver: Do not Discard a Sidebag Token just used
+    effects.sideBagProtection = true;
+  } else if (guideRoll === 2) {
+    // Wolf: Roll 5 Extra Dice for a Scavenge Test
+    effects.scavengeDiceBonus = 5;
+  } else if (guideRoll === 3) {
+    // Eagle: Discard and Re-draw a Threat or Darkness card
+    effects.redrawCard = true;
+  } else if (guideRoll === 4) {
+    // Mouse: Reveal 2 extra Exploration Tokens and choose which to use
+    effects.explorationTokensBonus = 2;
+  } else if (guideRoll === 5) {
+    // Crow: All Heroes are +3 Initiative in the first turn of an Ambush
+    effects.ambushInitiativeBonus = 3;
+  } else if (guideRoll === 6) {
+    // Snake: Gain one additional Starting Upgrade for your Hero Class for one turn
+    effects.extraStartingUpgrade = true;
   }
-  return !!(hero?.flags && hero.flags.spiritGuide);
-}
-function grantSpiritGuide(hero, rolled = DICE.d6()) {
-  const flags = { ...(hero.flags || {}), spiritGuide: { value: rolled, grantedAt: Date.now() } };
-  return { ...hero, flags };
+
+  return {
+    id: `spiritGuide_${animal.toLowerCase()}_${Date.now()}`,
+    type: 'buff',
+    name: `Spirit Guide: ${animal}`,
+    active: true,
+    removable: false,
+    effects,
+    usesRemaining: 1,
+    maxUses: 1,
+    source: 'Indian Trading Post - Vision Quest',
+    createdAt: Date.now(),
+  };
 }
 
 // ==========================================================
@@ -109,24 +128,35 @@ function grantSpiritGuide(hero, rolled = DICE.d6()) {
 
 /**
  * Spirit Cleansing — pay D6 Dark Stone and roll 1d6 for the outcome
- * target: 'Madness' | 'Curse' | 'Mutation'
+ * Uses io object for prompts
  */
 export async function performSpiritCleansing({
   posseApi,
-  hero: heroInput,   // optional: if not supplied, use heroId
+  hero: heroInput,
   heroId,
-  target,
-  payRoll,           // optional 1–6
-  resultRoll,        // optional 1–6
+  io, // {roll, promptChoice, notify}
 } = {}) {
   const hero0 = heroInput ?? (heroId ? posseApi?.getHero?.(heroId) : null);
   if (!hero0) return { ok: false, log: 'Hero not found' };
-  if (!target) return { ok: false, log: 'Choose target: Madness / Curse / Mutation' };
 
-  const cost = payRoll || DICE.d6();
+  // Prompt for target ailment
+  const targetIdx = await io?.promptChoice?.(
+    'Spirit Cleansing — Choose one ailment to attempt to heal:',
+    [{ label: 'Madness' }, { label: 'Curse' }, { label: 'Mutation' }]
+  );
+  if (targetIdx < 0) return { ok: false, log: 'Cancelled' };
+  const targets = ['Madness', 'Curse', 'Mutation'];
+  const target = targets[targetIdx];
+
+  // Roll for Dark Stone cost
+  const costRolls = await io?.roll?.(1, 6, 'Spirit Cleansing Cost — Roll D6 for Dark Stone cost (or blank to auto-roll)');
+  const cost = costRolls?.[0] || DICE.d6();
   let hero = spendDarkStone(hero0, cost);
 
-  const r = resultRoll || DICE.d6();
+  // Roll for outcome
+  const outcomeRolls = await io?.roll?.(1, 6, 'Spirit Cleansing Outcome — Roll D6 for result (1=gain mutations, 2-3=not healed, 4-5=healed, 6=healed+bonus) (or blank to auto-roll)');
+  const r = outcomeRolls?.[0] || DICE.d6();
+
   const log = [`[Spirit Cleansing] Paid ${cost} Dark Stone. Target: ${target}. Outcome roll=${r}.`];
 
   if (r === 1) {
@@ -148,23 +178,26 @@ export async function performSpiritCleansing({
     const id = heroId || hero0.id || hero0.localId;
     posseApi.updateHero(id, hero);
   }
+
+  // Notify user
+  if (io?.notify) {
+    io.notify(log.join(' '));
+  }
+
   return { ok: true, log: log.join(' '), hero };
 }
 
 /**
- * Vision Quest — Determine Spirit Guide (first time), then pass Spirit 5+ to gain rewards
- * Flow:
- * 1. If first time: Roll D6 for permanent Spirit Guide animal (stored even if test fails)
- * 2. Roll Spirit 5+ test
- * 3. If pass: Gain 25 XP and 1 use of guide bonus for next adventure
- * 4. If fail: No rewards (but guide is still stored if first time)
+ * Vision Quest — proper flow with Spirit Guide system
+ * 1. Determine Spirit Guide animal (first time only, stored permanently)
+ * 2. Do Spirit 5+ test (roll dice equal to Spirit stat)
+ * 3. If pass: grant 25 XP + Spirit Guide buff (1 use)
  */
 export async function performVisionQuest({
   posseApi,
   hero: heroInput,
   heroId,
-  spiritTestPassed,
-  guideRoll, // Optional: for first-time guide determination
+  io, // {roll, promptChoice, notify}
 } = {}) {
   const hero0 = heroInput ?? (heroId ? posseApi?.getHero?.(heroId) : null);
   if (!hero0) return { ok: false, log: 'Hero not found' };
@@ -172,13 +205,15 @@ export async function performVisionQuest({
   let hero = { ...hero0 };
   const logs = [];
 
-  // Determine Spirit Guide FIRST (before Spirit test)
+  // STEP 1: Determine Spirit Guide FIRST (before Spirit test)
   let guideValue;
   const existingGuide = hero?.spiritGuide;
 
   if (!existingGuide) {
     // First time: Roll for permanent Spirit Guide (stored even if test fails)
-    guideValue = guideRoll || DICE.d6();
+    const guideRolls = await io?.roll?.(1, 6, 'Spirit Guide — Roll D6 to determine your Spirit Guide animal (1=Beaver, 2=Wolf, 3=Eagle, 4=Mouse, 5=Crow, 6=Snake) (or blank to auto-roll)');
+    guideValue = guideRolls?.[0] || DICE.d6();
+
     hero.spiritGuide = {
       animal: getSpiritGuideName(guideValue),
       roll: guideValue,
@@ -192,20 +227,29 @@ export async function performVisionQuest({
     logs.push(`Your Spirit Guide: ${existingGuide.animal}`);
   }
 
-  // NOW check Spirit test
-  if (!spiritTestPassed) {
+  // STEP 2: Do Spirit 5+ test (roll dice equal to Spirit stat value)
+  const currentStats = calculateCurrentStats(hero);
+  const spiritValue = currentStats.Spirit || 2;
+
+  const spiritRolls = await io?.roll?.(spiritValue, 6, `Vision Quest Spirit Test — Roll ${spiritValue}D6 for Spirit 5+ test (need at least one 5+) (or blank to auto-roll)`);
+  const passed = spiritRolls?.some(roll => roll >= 5);
+
+  if (!passed) {
     logs.push('[Vision Quest] Spirit 5+ test failed. No rewards this time, but your Spirit Guide awaits.');
     if (posseApi?.updateHero) {
       const id = heroId || hero0.id || hero0.localId;
       posseApi.updateHero(id, hero);
     }
+
+    if (io?.notify) {
+      io.notify(logs.join(' '));
+    }
+
     return { ok: false, log: logs.join(' '), hero };
   }
 
-  // Spirit test PASSED - grant rewards
+  // STEP 3: Spirit test PASSED - grant rewards
   logs.push('[Vision Quest] Spirit 5+ passed!');
-
-  // ALWAYS gain 25 XP on success
   hero = addXp(hero, 25);
   logs.push('Gained 25 XP.');
 
@@ -218,73 +262,12 @@ export async function performVisionQuest({
     const id = heroId || hero0.id || hero0.localId;
     posseApi.updateHero(id, hero);
   }
-  return { ok: true, log: logs.join(' '), spiritGuide: guideValue, hero };
-}
 
-// Helper: Get Spirit Guide name from D6 roll
-function getSpiritGuideName(roll) {
-  switch (roll) {
-    case 1: return 'Beaver';
-    case 2: return 'Wolf';
-    case 3: return 'Eagle';
-    case 4: return 'Mouse';
-    case 5: return 'Crow';
-    case 6: return 'Snake';
-    default: return 'Unknown';
+  if (io?.notify) {
+    io.notify(logs.join(' '));
   }
-}
 
-// Helper: Create Spirit Guide buff for next adventure
-function createSpiritGuideBuff(guideRoll) {
-  const buffs = {
-    1: {
-      name: 'Spirit Guide: Beaver',
-      effectText: 'Do not Discard a Side Bag token just used (1 use).',
-      effects: { sideBagProtection: true },
-    },
-    2: {
-      name: 'Spirit Guide: Wolf',
-      effectText: 'Roll 5 extra dice for a Scavenge test (1 use).',
-      effects: { scavengeBonusDice: 5 },
-    },
-    3: {
-      name: 'Spirit Guide: Eagle',
-      effectText: 'Discard and re-draw a Threat or Darkness card (1 use).',
-      effects: { cardRedraw: true },
-    },
-    4: {
-      name: 'Spirit Guide: Mouse',
-      effectText: 'Reveal 2 extra Exploration Tokens and choose which to use (1 use).',
-      effects: { explorationTokenBonus: 2 },
-    },
-    5: {
-      name: 'Spirit Guide: Crow',
-      effectText: 'All Heroes gain +3 Initiative in the first turn of an Ambush (1 use).',
-      effects: { ambushInitiative: 3 },
-    },
-    6: {
-      name: 'Spirit Guide: Snake',
-      effectText: 'Gain one additional Starting Upgrade for your Hero Class for one turn (do not gain/change Starting Gear from it) (1 use).',
-      effects: { bonusStartingUpgrade: true },
-    },
-  };
-
-  const buff = buffs[guideRoll] || buffs[1];
-
-  return {
-    id: `spirit_guide_${guideRoll}_${Date.now()}`,
-    type: 'buff',
-    name: buff.name,
-    effectText: buff.effectText,
-    active: true,
-    removable: true,
-    effects: buff.effects,
-    duration: 'nextAdventure',
-    expires: 'nextAdventure',
-    usesRemaining: 1,
-    source: 'Indian Trading Post - Vision Quest',
-    createdAt: Date.now(),
-  };
+  return { ok: true, log: logs.join(' '), spiritGuide: guideValue, hero };
 }
 
 // ==========================================================
@@ -301,7 +284,7 @@ export const medicineManServices = [
     description: 'Choose Madness, Curse, or Mutation. Pay D6 Dark Stone, roll 1d6 for the outcome.',
     requirement: 'Available to any visitor.',
     resultTable: {
-      1: 'Not healed; gain D3 Mutations as you are possessed bya corrupted Spirit.',
+      1: 'Not healed; gain D3 Mutations as you are possessed by a corrupted Spirit.',
       2: 'Not healed.',
       3: 'Not healed.',
       4: 'Healed.',
@@ -314,18 +297,18 @@ export const medicineManServices = [
     name: 'Vision Quest',
     type: 'service',
     cost: { gold: 0 },
-    description: 'Spirit 5+ test. If you lack a Spirit Guide, roll to gain one. On success of the Spirit Test, to obtain the listed Bonus to use Once during the next Adventure.',
+    description: 'Spirit 5+ test. If you lack a Spirit Guide, roll to gain one. On success of the Spirit Test, obtain the listed Bonus to use Once during the next Adventure.',
     requirement: 'Pass Spirit 5+.',
     resultTable: {
       1: 'Beaver: Do not Discard a Sidebag Token just used.',
-	  2: 'Wolf: Roll 5 Extra Dice for a Scavenge Test.', 
+      2: 'Wolf: Roll 5 Extra Dice for a Scavenge Test.',
       3: 'Eagle: Discard and Re-draw a Threat or Darkness card.',
-      4: 'Mouse: Reveal 2 extra Exploration Toeksn and choose which to use.',
+      4: 'Mouse: Reveal 2 extra Exploration Tokens and choose which to use.',
       5: 'Crow: All Heroes are +3 Initiative in the first turn of an Ambush',
-      6: 'Snake: Gain one additional Starting Upgrade for your Hero Class for one turn. (do not gain/change Starting Gear from it.',
+      6: 'Snake: Gain one additional Starting Upgrade for your Hero Class for one turn. (do not gain/change Starting Gear from it)',
     },
   },
 ];
 
-/** Optional aura list (leave empty if you don’t have them yet) */
+/** Optional aura list (leave empty if you don't have them yet) */
 export const medManAuras = [];
