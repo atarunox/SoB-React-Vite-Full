@@ -313,10 +313,25 @@ export async function performSpiritCleansing({
   // STEP 4: Roll for Dark Stone cost
   const costRolls = await io?.roll?.(1, 6, 'Spirit Cleansing Cost — Roll D6 for Dark Stone cost (or blank to auto-roll)');
   const cost = costRolls?.[0] || DICE.d6();
+
+  // STEP 5: Confirm payment
+  const currentDarkStone = asNumber(hero0?.darkStone ?? hero0?.resources?.darkStone, 0);
+  if (currentDarkStone < cost) {
+    const msg = `Not enough Dark Stone. Need ${cost}, have ${currentDarkStone}.`;
+    if (io?.notify) io.notify(msg);
+    return { ok: false, log: msg };
+  }
+
+  const confirmIdx = await io?.promptChoice?.(
+    `Spirit Cleansing will cost ${cost} Dark Stone (you have ${currentDarkStone}). Proceed?`,
+    [{ label: 'Yes, proceed' }, { label: 'Cancel' }]
+  );
+  if (confirmIdx !== 0) return { ok: false, log: 'Cancelled' };
+
   let hero = spendDarkStone(hero0, cost);
 
-  // STEP 5: Roll for outcome
-  const outcomeRolls = await io?.roll?.(1, 6, 'Spirit Cleansing Outcome — Roll D6 for result (1=gain mutations, 2-3=not healed, 4-5=healed, 6=healed+bonus) (or blank to auto-roll)');
+  // STEP 6: Roll for healing outcome
+  const outcomeRolls = await io?.roll?.(1, 6, `Spirit Cleansing Healing Roll — Roll D6 for healing outcome on ${ailmentName} (1=gain D3 mutations, 2-3=not healed, 4-5=healed, 6=healed+Max Sanity bonus) (or blank to auto-roll)`);
   const r = outcomeRolls?.[0] || DICE.d6();
 
   const log = [`[Spirit Cleansing] Targeting: ${ailmentName}. Paid ${cost} Dark Stone. Outcome roll=${r}.`];
