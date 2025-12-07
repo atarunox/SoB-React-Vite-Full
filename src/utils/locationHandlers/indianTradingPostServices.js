@@ -33,37 +33,138 @@ function spendDarkStone(hero, amount) {
 }
 function removeSpecificAilment(hero, target /* 'Madness'|'Curse'|'Mutation' */, ailmentId) {
   const t = String(target || '').toLowerCase();
-  const h = { ...hero };
+  let h = { ...hero };
+
+  // Helper to remove from an array by ID
+  const removeFromArray = (arr) => {
+    if (!Array.isArray(arr)) return arr;
+    const newArr = arr.slice();
+    const idx = newArr.findIndex(a => {
+      if (typeof a === 'string') return a === ailmentId;
+      if (typeof a === 'object' && a) return a.id === ailmentId || a === ailmentId;
+      return false;
+    });
+    if (idx >= 0) newArr.splice(idx, 1);
+    return newArr;
+  };
 
   if (t === 'madness') {
-    const arr = Array.isArray(h.madnesses) ? h.madnesses.slice() : [];
-    const idx = arr.findIndex(a => a.id === ailmentId || a === ailmentId);
-    if (idx >= 0) arr.splice(idx, 1);
-    h.madnesses = arr;
+    // Check nested conditions.madness
+    if (h.conditions?.madness) {
+      h.conditions = { ...h.conditions, madness: removeFromArray(h.conditions.madness) };
+    }
+    // Check legacy hero.madness
+    if (h.madness) {
+      h.madness = removeFromArray(h.madness);
+    }
+    // Check flat conditions array
+    if (Array.isArray(h.conditions)) {
+      h.conditions = h.conditions.filter(c => !(c?.type?.toLowerCase() === 'madness' && (c.id === ailmentId || c === ailmentId)));
+    }
   } else if (t === 'curse') {
-    const arr = Array.isArray(h.curses) ? h.curses.slice() : [];
-    const idx = arr.findIndex(a => a.id === ailmentId || a === ailmentId);
-    if (idx >= 0) arr.splice(idx, 1);
-    h.curses = arr;
+    // Check nested conditions.curse
+    if (h.conditions?.curse) {
+      h.conditions = { ...h.conditions, curse: removeFromArray(h.conditions.curse) };
+    }
+    // Check legacy hero.curses
+    if (h.curses) {
+      h.curses = removeFromArray(h.curses);
+    }
+    // Check flat conditions array
+    if (Array.isArray(h.conditions)) {
+      h.conditions = h.conditions.filter(c => !(c?.type?.toLowerCase() === 'curse' && (c.id === ailmentId || c === ailmentId)));
+    }
   } else if (t === 'mutation') {
-    const arr = Array.isArray(h.mutations) ? h.mutations.slice() : [];
-    const idx = arr.findIndex(a => a.id === ailmentId || a === ailmentId);
-    if (idx >= 0) arr.splice(idx, 1);
-    h.mutations = arr;
+    // Check nested conditions.mutation
+    if (h.conditions?.mutation) {
+      h.conditions = { ...h.conditions, mutation: removeFromArray(h.conditions.mutation) };
+    }
+    // Check legacy hero.mutation
+    if (h.mutation) {
+      h.mutation = removeFromArray(h.mutation);
+    }
+    // Check legacy hero.mutations
+    if (h.mutations) {
+      h.mutations = removeFromArray(h.mutations);
+    }
+    // Check flat conditions array
+    if (Array.isArray(h.conditions)) {
+      h.conditions = h.conditions.filter(c => !(c?.type?.toLowerCase() === 'mutation' && (c.id === ailmentId || c === ailmentId)));
+    }
   }
   return h;
 }
 
 function getAilmentList(hero, target /* 'Madness'|'Curse'|'Mutation' */) {
   const t = String(target || '').toLowerCase();
+  const out = [];
+
+  // Helper to push active ailments
+  const pushActive = (item) => {
+    if (!item) return;
+    // Convert strings/numbers to objects
+    if (typeof item === 'string' || typeof item === 'number') {
+      out.push(item);
+    } else if (item && typeof item === 'object') {
+      // Only include if not removed/inactive
+      if (item.removed !== true && item.active !== false) {
+        out.push(item);
+      }
+    }
+  };
+
   if (t === 'madness') {
-    return Array.isArray(hero.madnesses) ? hero.madnesses : [];
+    // Check nested conditions.madness
+    if (Array.isArray(hero?.conditions?.madness)) {
+      hero.conditions.madness.forEach(pushActive);
+    }
+    // Check legacy hero.madness
+    if (Array.isArray(hero?.madness)) {
+      hero.madness.forEach(pushActive);
+    }
+    // Check flat conditions array
+    if (Array.isArray(hero?.conditions)) {
+      hero.conditions.forEach(c => {
+        if (c?.type?.toLowerCase() === 'madness') pushActive(c);
+      });
+    }
   } else if (t === 'curse') {
-    return Array.isArray(hero.curses) ? hero.curses : [];
+    // Check nested conditions.curse
+    if (Array.isArray(hero?.conditions?.curse)) {
+      hero.conditions.curse.forEach(pushActive);
+    }
+    // Check legacy hero.curses
+    if (Array.isArray(hero?.curses)) {
+      hero.curses.forEach(pushActive);
+    }
+    // Check flat conditions array
+    if (Array.isArray(hero?.conditions)) {
+      hero.conditions.forEach(c => {
+        if (c?.type?.toLowerCase() === 'curse') pushActive(c);
+      });
+    }
   } else if (t === 'mutation') {
-    return Array.isArray(hero.mutations) ? hero.mutations : [];
+    // Check nested conditions.mutation
+    if (Array.isArray(hero?.conditions?.mutation)) {
+      hero.conditions.mutation.forEach(pushActive);
+    }
+    // Check legacy hero.mutation
+    if (Array.isArray(hero?.mutation)) {
+      hero.mutation.forEach(pushActive);
+    }
+    // Check legacy hero.mutations
+    if (Array.isArray(hero?.mutations)) {
+      hero.mutations.forEach(pushActive);
+    }
+    // Check flat conditions array
+    if (Array.isArray(hero?.conditions)) {
+      hero.conditions.forEach(c => {
+        if (c?.type?.toLowerCase() === 'mutation') pushActive(c);
+      });
+    }
   }
-  return [];
+
+  return out;
 }
 function addRandomMutations(hero, count) {
   const c = Math.max(0, asNumber(count, 0));
@@ -180,9 +281,11 @@ export async function performSpiritCleansing({
   }
 
   // STEP 3: Choose specific ailment to target
-  const ailmentOptions = ailmentList.map((a, i) => ({
-    label: typeof a === 'string' ? a : (a.name || a.title || `${target} ${i + 1}`)
-  }));
+  const ailmentOptions = ailmentList.map((a, i) => {
+    if (typeof a === 'string') return { label: a };
+    if (typeof a === 'number') return { label: `${target} (roll: ${a})` };
+    return { label: a.name || a.title || `${target} ${i + 1}` };
+  });
 
   const ailmentIdx = await io?.promptChoice?.(
     `Spirit Cleansing — Choose which ${target} to attempt to heal:`,
@@ -191,9 +294,21 @@ export async function performSpiritCleansing({
   if (ailmentIdx < 0) return { ok: false, log: 'Cancelled' };
 
   const selectedAilment = ailmentList[ailmentIdx];
-  const ailmentName = typeof selectedAilment === 'string'
-    ? selectedAilment
-    : (selectedAilment.name || selectedAilment.title || `${target} ${ailmentIdx + 1}`);
+
+  // Get ailment name and ID for removal
+  let ailmentName;
+  let ailmentId;
+
+  if (typeof selectedAilment === 'string') {
+    ailmentName = selectedAilment;
+    ailmentId = selectedAilment;
+  } else if (typeof selectedAilment === 'number') {
+    ailmentName = `${target} (roll: ${selectedAilment})`;
+    ailmentId = selectedAilment;
+  } else {
+    ailmentName = selectedAilment.name || selectedAilment.title || `${target} ${ailmentIdx + 1}`;
+    ailmentId = selectedAilment.id || selectedAilment;
+  }
 
   // STEP 4: Roll for Dark Stone cost
   const costRolls = await io?.roll?.(1, 6, 'Spirit Cleansing Cost — Roll D6 for Dark Stone cost (or blank to auto-roll)');
@@ -213,11 +328,9 @@ export async function performSpiritCleansing({
   } else if (r === 2 || r === 3) {
     log.push('Not healed.');
   } else if (r === 4 || r === 5) {
-    const ailmentId = typeof selectedAilment === 'string' ? selectedAilment : selectedAilment.id;
     hero = removeSpecificAilment(hero, target, ailmentId);
     log.push(`Healed: ${ailmentName} removed.`);
   } else if (r === 6) {
-    const ailmentId = typeof selectedAilment === 'string' ? selectedAilment : selectedAilment.id;
     hero = removeSpecificAilment(hero, target, ailmentId);
     hero = addMaxSanityBuff(hero, +1, 'Spirit Cleansing (Blessing)');
     log.push(`Healed: ${ailmentName} removed. +1 Max Sanity (shown on Conditions tab).`);
