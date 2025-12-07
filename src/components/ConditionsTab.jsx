@@ -4,6 +4,7 @@ import { usePosse } from '../context/PosseContext';
 import { useHero } from '../context/HeroContext';
 // Pull lookups to enrich roll-only entries:
 import { lookupInjury } from './DM/charts/injuryChart'; // safe to import here
+import { HERO_CLASS_CARDS } from '../data/heroClassCards';
 
 /* ---------------- small helpers ---------------- */
 const isActive = (c) => c && c.active !== false && !c.removed;
@@ -303,6 +304,10 @@ export default function ConditionsTab({ hero }) {
 
   const heroId = hero?.id || hero?.localId;
 
+  // Snake Spirit Guide dialog state
+  const [snakeDialogOpen, setSnakeDialogOpen] = React.useState(false);
+  const [snakeBuffToConsume, setSnakeBuffToConsume] = React.useState(null);
+
   const injuriesWithSrc   = buildInjuryWithSources(hero).map(materializeForDisplay);
   const madnessWithSrc    = buildMadnessWithSources(hero).map(materializeForDisplay);
   const mutationsWithSrc  = buildMutationWithSources(hero).map(materializeForDisplay);
@@ -345,6 +350,70 @@ export default function ConditionsTab({ hero }) {
   const removeNote = (noteId) => {
     const next = notes.filter((n) => (n?.id || '') !== noteId);
     savePatch({ conditionNotes: next });
+  };
+
+  // Snake Spirit Guide: Get available class cards
+  const getAvailableClassCards = () => {
+    const heroClass = hero?.heroClass;
+    if (!heroClass) return [];
+
+    // Normalize class name for lookup
+    const normalizeKey = (str) => String(str).replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
+    const classKey = Object.keys(HERO_CLASS_CARDS).find(
+      key => normalizeKey(key).toLowerCase() === normalizeKey(heroClass).toLowerCase()
+    );
+
+    if (!classKey || !HERO_CLASS_CARDS[classKey]) return [];
+
+    const allCards = HERO_CLASS_CARDS[classKey].classCards || [];
+    const currentCardId = hero?.selectedClassCard?.id;
+
+    // Return all cards except the one they already have
+    return allCards.filter(card => card.id !== currentCardId);
+  };
+
+  const openSnakeDialog = (buff) => {
+    setSnakeBuffToConsume(buff);
+    setSnakeDialogOpen(true);
+  };
+
+  const applySnakeUpgrade = (classCard) => {
+    if (!snakeBuffToConsume) return;
+
+    // Consume the Snake buff
+    const updatedConditions = hero.conditions.map(c => {
+      if (c?.id === snakeBuffToConsume.id) {
+        const newUses = Math.max(0, (c.usesRemaining ?? 0) - 1);
+        return {
+          ...c,
+          usesRemaining: newUses,
+          active: newUses > 0,
+        };
+      }
+      return c;
+    });
+
+    // Add the temporary Starting Upgrade buff
+    const tempUpgradeBuff = {
+      id: `snakeUpgrade_${classCard.id}_${Date.now()}`,
+      type: 'buff',
+      name: `Snake Spirit Guide: ${classCard.name}`,
+      active: true,
+      removable: true,
+      effects: classCard.effects || {},
+      duration: 'nextAdventure',
+      temporary: true,
+      source: 'Snake Spirit Guide - Starting Upgrade',
+      createdAt: Date.now(),
+    };
+
+    const newConditions = [...updatedConditions, tempUpgradeBuff];
+
+    savePatch({ conditions: newConditions });
+    setSnakeDialogOpen(false);
+    setSnakeBuffToConsume(null);
+
+    alert(`🐍 Snake Spirit Guide: Gained temporary Starting Upgrade "${classCard.name}"! This will last until the end of the next adventure.`);
   };
 
   const LockedBadge = () => (
@@ -484,7 +553,7 @@ export default function ConditionsTab({ hero }) {
                         <button
                           type="button"
                           className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1 rounded"
-                          onClick={() => alert('Snake Spirit Guide: Choose a Starting Upgrade from your Class Card. This feature requires UI implementation - for now, manually add the upgrade to your stats/effects.')}
+                          onClick={() => openSnakeDialog(c)}
                         >
                           🐍 Choose Starting Upgrade
                         </button>
@@ -574,6 +643,61 @@ export default function ConditionsTab({ hero }) {
       {renderList('Mutations', mutationsWithSrc)}
 
       {renderNotes()}
+
+      {/* Snake Spirit Guide: Starting Upgrade Picker Dialog */}
+      {snakeDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4 text-purple-800">🐍 Snake Spirit Guide: Choose Starting Upgrade</h3>
+            <p className="text-sm text-gray-700 mb-4">
+              Select a Starting Upgrade from your Hero Class. You will gain its effects temporarily until the end of the next adventure.
+            </p>
+
+            {(() => {
+              const availableCards = getAvailableClassCards();
+
+              if (availableCards.length === 0) {
+                return (
+                  <p className="text-red-600 italic mb-4">
+                    No available Starting Upgrades found for your Hero Class. Make sure your hero has a heroClass property set.
+                  </p>
+                );
+              }
+
+              return (
+                <div className="space-y-3 mb-4">
+                  {availableCards.map(card => (
+                    <button
+                      key={card.id}
+                      onClick={() => applySnakeUpgrade(card)}
+                      className="w-full text-left border-2 border-purple-300 rounded p-3 hover:bg-purple-50 hover:border-purple-500 transition-colors"
+                    >
+                      <div className="font-bold text-purple-800">{card.name}</div>
+                      <div className="text-sm text-gray-700 mt-1">{card.description}</div>
+                      {card.effects && Object.keys(card.effects).length > 0 && (
+                        <div className="text-xs text-purple-600 mt-1 italic">
+                          Effects: {JSON.stringify(card.effects)}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
+            <button
+              type="button"
+              className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
+              onClick={() => {
+                setSnakeDialogOpen(false);
+                setSnakeBuffToConsume(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
