@@ -1,0 +1,408 @@
+/* ============================================================================
+   SHADOWS OF BRIMSTONE - THEME STYLESHEET
+   Old West meets Dark Horror aesthetic
+   ============================================================================ */
+
+:root {
+  /* Color Palette - Dark Western Horror */
+  --sob-bg-primary: #1a0f0a;           /* Deep dark brown */
+  --sob-bg-secondary: #2d1810;         /* Weathered wood */
+  --sob-bg-tertiary: #3d2415;          /* Lighter wood tone */
+  --sob-bg-overlay: rgba(26, 15, 10, 0.95);
+
+  /* Accent Colors */
+  --sob-gold: #d4af37;                 /* Dusty gold */
+  --sob-gold-dim: #9a7d1a;             /* Darker gold */
+  --sob-red: #8b1a1a;                  /* Dark blood red */
+  --sob-red-bright: #c92a2a;           /* Brighter red for danger */
+  --sob-green: #2d5016;                /* Dark moss green */
+  --sob-green-bright: #4a7c2e;         /* Brighter green for success */
+
+  /* Text Colors */
+  --sob-text-main: #e8dcc8;            /* Parchment/aged paper */
+  --sob-text-dim: #9a8670;             /* Faded text */
+  --sob-text-dark: #4a3020;            /* Dark brown text */
+
+  /* UI Elements */
+  --sob-border: #4a3020;               /* Rustic brown border */
+  --sob-border-light: #6b4e3d;         /* Lighter border */
+  --sob-shadow: rgba(0, 0, 0, 0.5);
+  --sob-shadow-heavy: rgba(0, 0, 0, 0.8);
+
+  /* Game-specific colors */
+  --sob-corruption: #4a1a4a;           /* Purple for corruption */
+  --sob-sanity: #1a4a5a;               /* Blue for sanity */
+  --sob-darkstone: #1a1a2a;            /* Dark blue-black for Dark Stone */
+}
+
+/* ============================================================================
+   WEATHERED CARD STYLING
+   ============================================================================ */
+
+.sob-card {
+  background: linear-gradient(135deg, var(--sob-bg-secondary) 0%, var(--sob-bg-tertiary) 100%);
+  border: 2px solid var(--sob-border);
+  border-radius: 4px;
+  box-shadow:
+    0 4px 8px var(--sob-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: var(--sob-text-main);
+  padding: 1rem;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.sob-card::before {
+  /* Subtle noise texture overlay */
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+.sob-card:hover {
+  border-color: var(--sob-gold-dim);
+  box-shadow:
+    0 6px 12px var(--sob-shadow),
+    0 0 8px rgba(212, 175, 55, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.sob-card-header {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--sob-gold);
+  text-shadow: 1px 1px 2px var(--sob-shadow);
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--sob-border);
+  padding-bottom: 0.5rem;
+}
+
+/* ============================================================================
+   BUTTON STYLES
+   ============================================================================ */
+
+.sob-btn {
+  background: linear-gradient(180deg, var(--sob-bg-tertiary) 0%, var(--sob-bg-secondary) 100%);
+  border: 2px solid var(--sob-border);
+  border-radius: 4px;
+  color: var(--sob-text-main);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  text-shadow: 1px 1px 2px var(--sob-shadow);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.sob-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.sob-btn:hover {
+  border-color: var(--sob-gold);
+  box-shadow:
+    0 0 10px rgba(212, 175, 55, 0.4),
+    inset 0 0 10px rgba(212, 175, 55, 0.1);
+  transform: translateY(-1px);
+}
+
+.sob-btn:hover::before {
+  left: 100%;
+}
+
+.sob-btn:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px var(--sob-shadow);
+}
+
+.sob-btn-primary {
+  background: linear-gradient(180deg, var(--sob-gold) 0%, var(--sob-gold-dim) 100%);
+  border-color: var(--sob-gold-dim);
+  color: var(--sob-bg-primary);
+  text-shadow: none;
+}
+
+.sob-btn-danger {
+  background: linear-gradient(180deg, var(--sob-red-bright) 0%, var(--sob-red) 100%);
+  border-color: var(--sob-red);
+  color: var(--sob-text-main);
+}
+
+.sob-btn-success {
+  background: linear-gradient(180deg, var(--sob-green-bright) 0%, var(--sob-green) 100%);
+  border-color: var(--sob-green);
+  color: var(--sob-text-main);
+}
+
+/* ============================================================================
+   DIALOG / MODAL STYLES
+   ============================================================================ */
+
+.sob-dialog {
+  background: var(--sob-bg-primary);
+  border: 3px solid var(--sob-gold-dim);
+  border-radius: 8px;
+  box-shadow:
+    0 10px 40px var(--sob-shadow-heavy),
+    0 0 20px rgba(212, 175, 55, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1);
+  color: var(--sob-text-main);
+  padding: 1.5rem;
+  position: relative;
+}
+
+/* Ornate corners */
+.sob-dialog::before,
+.sob-dialog::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--sob-gold);
+}
+
+.sob-dialog::before {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.sob-dialog::after {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+
+.sob-dialog-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--sob-gold);
+  text-align: center;
+  text-shadow: 2px 2px 4px var(--sob-shadow);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--sob-border-light);
+}
+
+.sob-dialog-content {
+  margin: 1rem 0;
+  line-height: 1.6;
+  color: var(--sob-text-dim);
+}
+
+.sob-dialog-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+/* ============================================================================
+   DICE ROLL SPECIFIC STYLES
+   ============================================================================ */
+
+.sob-dice-prompt {
+  background: var(--sob-bg-primary);
+  border: 3px solid var(--sob-gold-dim);
+  border-radius: 8px;
+  box-shadow:
+    0 10px 40px var(--sob-shadow-heavy),
+    0 0 30px rgba(212, 175, 55, 0.4);
+  padding: 2rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.sob-dice-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--sob-gold);
+  text-align: center;
+  text-shadow: 2px 2px 4px var(--sob-shadow);
+  margin-bottom: 1rem;
+  letter-spacing: 1px;
+}
+
+.sob-dice-label {
+  color: var(--sob-text-dim);
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.sob-dice-input {
+  background: var(--sob-bg-secondary);
+  border: 2px solid var(--sob-border);
+  border-radius: 4px;
+  color: var(--sob-text-main);
+  font-size: 1.1rem;
+  padding: 0.75rem;
+  text-align: center;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.sob-dice-input:focus {
+  outline: none;
+  border-color: var(--sob-gold);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.sob-dice-input::placeholder {
+  color: var(--sob-text-dim);
+  opacity: 0.6;
+}
+
+.sob-dice-result {
+  background: var(--sob-bg-secondary);
+  border: 2px solid var(--sob-gold-dim);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.sob-dice-result-number {
+  font-size: 3rem;
+  font-weight: bold;
+  color: var(--sob-gold);
+  text-shadow:
+    2px 2px 4px var(--sob-shadow),
+    0 0 10px rgba(212, 175, 55, 0.5);
+  line-height: 1;
+}
+
+/* ============================================================================
+   RESOURCE DISPLAYS
+   ============================================================================ */
+
+.sob-resource {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--sob-bg-secondary);
+  border: 1px solid var(--sob-border);
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.sob-resource-gold {
+  color: var(--sob-gold);
+}
+
+.sob-resource-darkstone {
+  color: #9aa5ff;
+}
+
+.sob-resource-health {
+  color: #ff6b6b;
+}
+
+.sob-resource-sanity {
+  color: #74c0fc;
+}
+
+.sob-resource-corruption {
+  color: #da77f2;
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes sob-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sob-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes sob-glow {
+  0%, 100% { box-shadow: 0 0 5px var(--sob-gold); }
+  50% { box-shadow: 0 0 20px var(--sob-gold); }
+}
+
+.sob-animate-fadein {
+  animation: sob-fadeIn 0.3s ease-out;
+}
+
+.sob-animate-shake {
+  animation: sob-shake 0.3s ease-out;
+}
+
+.sob-animate-glow {
+  animation: sob-glow 1.5s ease-in-out infinite;
+}
+
+/* ============================================================================
+   SCROLLBAR THEMING
+   ============================================================================ */
+
+.sob-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.sob-scrollbar::-webkit-scrollbar-track {
+  background: var(--sob-bg-primary);
+  border: 1px solid var(--sob-border);
+}
+
+.sob-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--sob-bg-tertiary);
+  border: 1px solid var(--sob-border-light);
+  border-radius: 6px;
+}
+
+.sob-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--sob-gold-dim);
+  border-color: var(--sob-gold);
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+.sob-text-gold { color: var(--sob-gold); }
+.sob-text-red { color: var(--sob-red-bright); }
+.sob-text-green { color: var(--sob-green-bright); }
+.sob-text-dim { color: var(--sob-text-dim); }
+
+.sob-bg-dark { background-color: var(--sob-bg-primary); }
+.sob-bg-wood { background-color: var(--sob-bg-secondary); }
+
+.sob-border-gold { border-color: var(--sob-gold); }
+.sob-border-red { border-color: var(--sob-red); }
+.sob-border-default { border-color: var(--sob-border); }
+
+.sob-shadow { box-shadow: 0 4px 8px var(--sob-shadow); }
+.sob-shadow-heavy { box-shadow: 0 8px 16px var(--sob-shadow-heavy); }

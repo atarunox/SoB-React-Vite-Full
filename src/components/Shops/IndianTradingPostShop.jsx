@@ -1,4 +1,13 @@
 // src/components/Shops/IndianTradingPostShop.jsx
+//
+// ⚠️ DEPRECATION NOTICE ⚠️
+// This component is currently NOT USED in the application.
+// The Indian Trading Post is handled directly by TownTab (src/components/TownTab/index.jsx)
+// which calls the service handlers from indianTradingPostServices.js.
+//
+// This file is kept for reference but is not actively maintained.
+// If you need to modify Indian Trading Post behavior, edit TownTab and indianTradingPostServices.js instead.
+//
 import React, { useMemo, useState } from 'react';
 import { usePosse } from '../../context/PosseContext';
 

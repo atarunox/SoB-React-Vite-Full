@@ -1,15 +1,16 @@
 // src/components/CustomPromptDialog.jsx
 import React, { useState, useEffect } from 'react';
+import '../styles/shadows-theme.css';
 
 /**
- * Custom prompt dialog with Auto-Roll button
- * Used for Defense/Armor rolls in combat
+ * Custom prompt dialog with Auto-Roll button - Shadows of Brimstone themed
+ * Used for Defense/Armor rolls in combat and dice prompts
  *
  * mode: 'number' (default) = input + auto-roll button
  *       'test' = Pass/Fail/Auto-Roll buttons for stat tests
  *       'choice' = Multiple choice buttons
  *       'yesno' = Yes/No buttons
- *       'text' = Text input with OK/Cancel buttons
+ *       'text' = Text input with OK/Cancel buttons (dice rolls)
  */
 export function CustomPromptDialog({
   isOpen,
@@ -51,72 +52,49 @@ export function CustomPromptDialog({
     }
   };
 
+  // Check if this is a dice roll prompt (mode text with roll-related title)
+  const isDiceRoll = mode === 'text' && title &&
+    (title.toLowerCase().includes('roll') ||
+     title.toLowerCase().includes('d6') ||
+     title.toLowerCase().includes('d3'));
+
   return (
-    <div style={{
+    <div className="sob-animate-fadein" style={{
       position: 'fixed',
       top: 0,
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 10000,
+      backdropFilter: 'blur(2px)',
     }}>
-      <div style={{
-        backgroundColor: '#2a2a2a',
-        border: '2px solid #444',
-        borderRadius: '8px',
-        padding: '20px',
-        minWidth: '400px',
-        maxWidth: '500px',
-        color: '#fff',
-      }}>
+      <div className={isDiceRoll ? 'sob-dice-prompt sob-animate-fadein' : 'sob-dialog sob-animate-fadein'}>
         {title && (
-          <h3 style={{
-            margin: '0 0 15px 0',
-            color: '#4a9eff',
-            fontSize: '18px',
-            fontWeight: 'bold'
-          }}>
+          <div className={isDiceRoll ? 'sob-dice-title' : 'sob-dialog-title'}>
+            {isDiceRoll && '🎲 '}
             {title}
-          </h3>
+            {isDiceRoll && ' 🎲'}
+          </div>
         )}
 
-        <div style={{
-          whiteSpace: 'pre-wrap',
-          marginBottom: '20px',
-          fontSize: '14px',
-          lineHeight: '1.5',
-        }}>
-          {message}
-        </div>
+        {message && (
+          <div className={isDiceRoll ? 'sob-dice-label' : 'sob-dialog-content'}>
+            {message}
+          </div>
+        )}
 
         {mode === 'yesno' ? (
           // Yes/No mode: Yes/No buttons
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}>
+          <div className="sob-dialog-actions" style={{ flexDirection: 'column' }}>
             <button
               type="button"
               onClick={onYes}
               autoFocus
-              style={{
-                padding: '15px 20px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: '#28a745',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+              className="sob-btn sob-btn-success"
             >
               ✓ Yes
             </button>
@@ -124,163 +102,88 @@ export function CustomPromptDialog({
             <button
               type="button"
               onClick={onNo}
-              style={{
-                padding: '15px 20px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: '#dc3545',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#c82333'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#dc3545'}
+              className="sob-btn sob-btn-danger"
             >
               ✗ No
             </button>
           </div>
         ) : mode === 'text' ? (
-          // Text mode: Text input + OK/Cancel buttons
+          // Text mode: Text input + OK/Cancel buttons (used for dice rolls)
           <form onSubmit={handleSubmit}>
             <input
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value)}
+              placeholder={isDiceRoll ? "Enter roll or leave blank to auto-roll" : ""}
               autoFocus
-              style={{
+              className={isDiceRoll ? 'sob-dice-input' : ''}
+              style={!isDiceRoll ? {
                 width: '100%',
                 padding: '10px',
                 fontSize: '16px',
-                backgroundColor: '#1a1a1a',
-                color: '#fff',
-                border: '1px solid #555',
+                backgroundColor: 'var(--sob-bg-secondary)',
+                color: 'var(--sob-text-main)',
+                border: '2px solid var(--sob-border)',
                 borderRadius: '4px',
                 marginBottom: '15px',
                 boxSizing: 'border-box',
-              }}
+              } : {}}
             />
 
-            <div style={{
-              display: 'flex',
-              gap: '10px',
-              justifyContent: 'flex-end',
-            }}>
-              <button
-                type="button"
-                onClick={onCancel}
-                style={{
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  backgroundColor: '#555',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#666'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#555'}
-              >
-                Cancel
-              </button>
+            <div className="sob-dialog-actions">
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="sob-btn"
+                >
+                  Cancel
+                </button>
+              )}
 
               <button
                 type="submit"
-                style={{
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  backgroundColor: '#28a745',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+                className="sob-btn sob-btn-primary"
               >
-                OK
+                {isDiceRoll ? '🎲 Roll' : 'OK'}
               </button>
             </div>
           </form>
         ) : mode === 'choice' ? (
           // Choice mode: Multiple choice buttons
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {choices.map((choice, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => onChoice?.(idx)}
                 autoFocus={idx === 0}
-                style={{
-                  padding: '15px 20px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  backgroundColor: '#4a9eff',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  textAlign: 'left',
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#3a8eef'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#4a9eff'}
+                className="sob-btn sob-btn-primary"
+                style={{ textAlign: 'left', justifyContent: 'flex-start' }}
               >
                 {idx + 1}. {choice.label || choice.key || choice}
               </button>
             ))}
 
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                backgroundColor: '#555',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#666'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#555'}
-            >
-              Cancel
-            </button>
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="sob-btn"
+                style={{ marginTop: '10px' }}
+              >
+                Cancel
+              </button>
+            )}
           </div>
         ) : mode === 'test' ? (
           // Test mode: Pass/Fail/Auto-Roll buttons
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <button
               type="button"
               onClick={onPass}
               autoFocus
-              style={{
-                padding: '15px 20px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: '#28a745',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+              className="sob-btn sob-btn-success"
             >
               ✓ I Rolled - PASSED
             </button>
@@ -288,19 +191,7 @@ export function CustomPromptDialog({
             <button
               type="button"
               onClick={onFail}
-              style={{
-                padding: '15px 20px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: '#dc3545',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#c82333'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#dc3545'}
+              className="sob-btn sob-btn-danger"
             >
               ✗ I Rolled - FAILED
             </button>
@@ -308,41 +199,21 @@ export function CustomPromptDialog({
             <button
               type="button"
               onClick={onAutoRoll}
-              style={{
-                padding: '15px 20px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: '#4a9eff',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#3a8eef'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#4a9eff'}
+              className="sob-btn sob-btn-primary"
             >
               🎲 Auto-Roll
             </button>
 
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                backgroundColor: '#555',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#666'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#555'}
-            >
-              Cancel
-            </button>
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="sob-btn"
+                style={{ marginTop: '10px' }}
+              >
+                Cancel
+              </button>
+            )}
           </div>
         ) : (
           // Number mode: Input + Auto-Roll/Cancel/OK buttons
@@ -358,74 +229,39 @@ export function CustomPromptDialog({
                 width: '100%',
                 padding: '10px',
                 fontSize: '16px',
-                backgroundColor: '#1a1a1a',
-                color: '#fff',
-                border: '1px solid #555',
+                backgroundColor: 'var(--sob-bg-secondary)',
+                color: 'var(--sob-text-main)',
+                border: '2px solid var(--sob-border)',
                 borderRadius: '4px',
                 marginBottom: '15px',
                 boxSizing: 'border-box',
               }}
             />
 
-            <div style={{
-              display: 'flex',
-              gap: '10px',
-              justifyContent: 'flex-end',
-            }}>
-              <button
-                type="button"
-                onClick={onAutoRoll}
-                style={{
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  backgroundColor: '#4a9eff',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#3a8eef'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#4a9eff'}
-              >
-                🎲 Auto-Roll
-              </button>
+            <div className="sob-dialog-actions">
+              {onAutoRoll && (
+                <button
+                  type="button"
+                  onClick={onAutoRoll}
+                  className="sob-btn sob-btn-primary"
+                >
+                  🎲 Auto-Roll
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={onCancel}
-                style={{
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  backgroundColor: '#555',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#666'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#555'}
-              >
-                Cancel
-              </button>
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="sob-btn"
+                >
+                  Cancel
+                </button>
+              )}
 
               <button
                 type="submit"
-                style={{
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  backgroundColor: '#28a745',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#218838'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#28a745'}
+                className="sob-btn sob-btn-success"
               >
                 OK
               </button>
