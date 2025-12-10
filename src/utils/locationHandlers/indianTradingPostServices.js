@@ -23,18 +23,23 @@ import { calculateCurrentStats } from '../calculateStats';
 // ✓ Spirit Guide system:
 //   - Permanent storage: hero.spiritGuide = {animal, roll, gainedAt, source}
 //   - Temporary buffs: Added to hero.conditions with usesRemaining
+//   - Buffs display: ConditionsTab shows all Spirit Guide buffs with usage info
 //   - Beaver: Sidebag token protection (implemented in GearTab.jsx)
 //   - Crow: +3 Initiative first turn of Ambush (implemented in Buffs tab)
+//   - Eagle: Redraw Threat/Darkness cards (implemented in DMDarknessDrawer & DMEnemyPanel)
+//   - Snake: Starting Upgrade picker (implemented in ConditionsTab with modal dialog)
 //
 // ✓ Sidebag token library with 28 tokens and descriptions
 // ✓ Token automation (Bandages, Whiskey, Tonic, Grit, etc.)
 // ✓ Dice roll prompts for all services (TownTab promptRoll)
 //
-// TODO - Spirit Guide adventure mechanics (need implementation):
-// [ ] Wolf: +5 dice on Scavenge test (needs Scavenge UI hook)
-// [ ] Eagle: Redraw Threat/Darkness card (needs card draw UI hook)
-// [ ] Mouse: +2 Exploration tokens with choice (needs Exploration UI hook)
-// [ ] Snake: Temporarily gain Starting Upgrade (needs upgrade picker UI)
+// PENDING - Spirit Guide adventure mechanics (need UI systems that don't exist):
+// [ ] Wolf: +5 dice on Scavenge test (needs Scavenge test UI system)
+// [ ] Mouse: +2 Exploration tokens with choice (needs Exploration token UI system)
+//
+// Note: Wolf and Mouse require game systems (Scavenge tests, Exploration tokens) that
+// aren't implemented yet. The buffs are correctly stored and displayed - integration
+// points will need to be added when those systems are built.
 //
 // ============================================================================
 
