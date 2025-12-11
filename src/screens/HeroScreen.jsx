@@ -72,8 +72,8 @@ export default function HeroScreen({
 
   if (!activeHero) {
     return (
-      <div className="p-4 text-center">
-        <p className="text-red-600 font-bold mb-4">
+      <div className="p-8 text-center">
+        <p className="text-blood font-bold mb-6 text-xl text-shadow-lg">
           No hero loaded. Please create or select a hero.
         </p>
         <HeroSelector placeholder="Choose a hero…" />
@@ -82,24 +82,37 @@ export default function HeroScreen({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[url('/assets/Parchment.jpg')] bg-cover bg-fixed bg-center text-black">
-      <div className="text-center font-bold text-xl pt-2">
+    <div className="flex flex-col min-h-screen">
+      {/* Hero Name Header */}
+      <div className="text-center font-bold text-2xl pt-3 pb-4 bg-gradient-to-b from-leather-dark to-leather text-parchment-light text-shadow-lg border-b-2 border-brass">
         {activeHero.name || 'Unnamed Hero'}
       </div>
 
-      <div className="flex justify-around border-t border-[#5C3A21] bg-[#fdf6e3]/70 py-2">
+      {/* Tab Navigation */}
+      <div className="flex justify-around items-center gap-1 border-y-2 border-leather bg-gradient-to-b from-parchment-dark to-parchment py-3 px-2 shadow-inner-dark">
         {TABS.map(tab => (
           <button
             key={tab}
-            className={`px-2 py-1 rounded ${selectedTab === tab ? 'bg-[#5C3A21] text-white' : 'bg-white text-black'}`}
+            className={`
+              relative px-3 py-2 font-semibold text-sm rounded-md
+              transition-all duration-200 transform
+              ${selectedTab === tab
+                ? 'bg-leather text-parchment-light shadow-horror border-2 border-brass scale-105 text-shadow'
+                : 'bg-parchment-dark text-leather-dark hover:bg-leather-light hover:text-parchment hover:scale-105 border-2 border-leather-light shadow-sm'
+              }
+            `}
             onClick={() => setSelectedTab(tab)}
           >
-            {tab}
+            {selectedTab === tab && (
+              <div className="absolute inset-0 bg-brass/20 rounded-md animate-pulse" />
+            )}
+            <span className="relative z-10">{tab}</span>
           </button>
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto p-2">
+      {/* Tab Content */}
+      <div className="flex-1 overflow-auto p-3">
         {selectedTab === 'Stats' && (
           <StatsTab
             heroId={resolvedHeroId}

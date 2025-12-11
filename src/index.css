@@ -9,6 +9,7 @@
   background-position: center;
 }
 
+/* Enhanced Button Styles */
 .btn {
   font-family: 'RockwellCondensed', serif;
   padding: 0.5rem 1rem;
@@ -17,11 +18,13 @@
   border: 2px solid #5c3a1e;
   background-color: #f5f0da;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .btn:hover {
   background-color: #f6e7c1;
   transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
 }
 
 /* Button size via html[data-btn-size] */
@@ -37,8 +40,13 @@ html[data-btn-size="lg"] .btn {
 }
 
 .btn-primary {
-  background-color: #5c3a1e;
-  color: white;
+  background: linear-gradient(135deg, #5c3a1e 0%, #3D2817 100%);
+  color: #FDF6E3;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #7B4B2A 0%, #5c3a1e 100%);
 }
 
 .btn-outline {
@@ -51,15 +59,111 @@ html[data-btn-size="lg"] .btn {
   color: #3a2e1f;
 }
 
-/* Hide the horizontal scrollbar */
+/* Scrollbar Styling */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Slide-up animation */
+/* Custom Scrollbar for themed elements */
+.themed-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.themed-scrollbar::-webkit-scrollbar-track {
+  background: #E8DCC4;
+  border-radius: 4px;
+}
+.themed-scrollbar::-webkit-scrollbar-thumb {
+  background: #5C3A21;
+  border-radius: 4px;
+}
+.themed-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #7B4B2A;
+}
+
+/* Animations */
 @keyframes slideup {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
 .animate-slideup {
   animation: slideup 0.32s cubic-bezier(0.4,0.25,0.25,1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(184, 134, 11, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(184, 134, 11, 0.6); }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes blood-drip {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+.animate-blood-drip {
+  animation: blood-drip 3s ease-in-out infinite;
+}
+
+/* Radial gradient utility */
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}
+
+/* Western Horror Panel Styles */
+.panel-horror {
+  @apply border-2 border-leather rounded-lg shadow-horror bg-gradient-to-br from-parchment-light to-parchment-dark p-4;
+  position: relative;
+}
+
+.panel-horror::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0.5rem;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+/* Brass accent corners */
+.brass-corners {
+  position: relative;
+}
+
+.brass-corners::before,
+.brass-corners::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: #B8860B;
+}
+
+.brass-corners::before {
+  top: 0;
+  left: 0;
+  border-radius: 0.25rem 0 0 0;
+}
+
+.brass-corners::after {
+  top: 0;
+  right: 0;
+  border-radius: 0 0.25rem 0 0;
+}
+
+/* Distressed text effect */
+.text-distressed {
+  filter: contrast(1.2) brightness(0.95);
+  letter-spacing: 0.02em;
 }

@@ -6,7 +6,7 @@ const Tabs = ({ children }) => {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 border-b border-gray-300 mb-4" role="tablist">
+      <div className="flex flex-wrap gap-2 border-b-2 border-leather mb-4 pb-2 bg-gradient-to-b from-parchment to-parchment-dark" role="tablist">
         {tabs.map((tab, index) => (
           <button
             key={index}
@@ -16,18 +16,23 @@ const Tabs = ({ children }) => {
             aria-controls={`tabpanel-${index}`}
             id={`tab-${index}`}
             tabIndex={activeIndex === index ? 0 : -1}
-            className={`px-3 py-1 rounded-t ${
-              activeIndex === index
-                ? 'bg-yellow-300 text-black font-bold'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`
+              px-4 py-2 rounded-t-lg font-semibold
+              transition-all duration-200 transform
+              border-2 border-b-0
+              ${
+                activeIndex === index
+                  ? 'bg-leather text-parchment-light border-brass shadow-horror translate-y-1 text-shadow'
+                  : 'bg-parchment-dark text-leather-dark border-leather-light hover:bg-leather-light hover:text-parchment shadow-sm hover:translate-y-0.5'
+              }
+            `}
           >
             {tab.props.title}
           </button>
         ))}
       </div>
       <div
-        className="space-y-2"
+        className="space-y-3"
         role="tabpanel"
         id={`tabpanel-${activeIndex}`}
         aria-labelledby={`tab-${activeIndex}`}
