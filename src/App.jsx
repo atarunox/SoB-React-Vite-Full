@@ -36,9 +36,18 @@ export default function App() {
         <WorldProvider>
           <CombatProvider>
             <PosseProvider>
-              <HeroProvider> {/* ⬅️ make sure this provider is in the tree */}
+              <HeroProvider>
                 <div className="min-h-screen bg-[url('/assets/Parchment.jpg')] bg-cover bg-fixed bg-center text-black">
-                  <div className="bg-[#fdf6e3]/40 min-h-screen px-2 py-4 border-[3px] border-[#5C3A21] shadow-lg rounded-lg w-full max-w-4xl mx-auto">
+                  {/* Dark vignette overlay for atmosphere */}
+                  <div className="fixed inset-0 pointer-events-none bg-gradient-radial from-transparent via-transparent to-black/30" />
+
+                  <div className="relative bg-parchment/50 backdrop-blur-sm min-h-screen px-4 py-6 border-4 border-leather shadow-horror-lg rounded-lg w-full max-w-4xl mx-auto">
+                    {/* Decorative corner accents */}
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-brass rounded-tl-lg" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-brass rounded-tr-lg" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-brass rounded-bl-lg" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-brass rounded-br-lg" />
+
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/dm" element={<DMTab />} />

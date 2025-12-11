@@ -59,10 +59,10 @@ export default function HeroSelector({
   }, [heroes.map((h) => h.id).join("|")]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
         <select
-          className="select select-bordered"
+          className="flex-1 px-4 py-3 bg-parchment-dark border-2 border-leather rounded-lg shadow-horror text-leather-dark font-semibold focus:outline-none focus:ring-2 focus:ring-brass focus:border-brass transition-all"
           value={currentId || ""}
           onChange={(e) => notifyChange(e.target.value)}
         >
@@ -75,16 +75,16 @@ export default function HeroSelector({
         </select>
 
         <button
-          className="btn btn-secondary"
+          className="px-4 py-3 bg-leather text-parchment-light font-bold rounded-lg hover:bg-leather-light transition-all shadow-horror border-2 border-brass hover:shadow-horror-lg transform hover:scale-105"
           type="button"
           onClick={() => setShowCreate((v) => !v)}
         >
-          {showCreate ? "Close" : "New Hero"}
+          {showCreate ? "✕ Close" : "⊕ New Hero"}
         </button>
       </div>
 
       {showCreate && (
-        <div className="border rounded p-3 bg-white">
+        <div className="border-2 border-leather rounded-lg p-4 bg-gradient-to-br from-parchment-light to-parchment-dark shadow-horror animate-slideup">
           <CreateHero
             onCreate={async (hero) => {
               // 1) Add to posse (and Firestore via PosseContext)
