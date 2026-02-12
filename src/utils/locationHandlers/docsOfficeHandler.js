@@ -242,9 +242,9 @@ async function resolveMedicalMiracleForTargets(api, targets) {
 
   switch (r) {
     case 2: {
-      putStayMod(ctx, 'docsOfficeClosed', true, "Doc's Office closed");
-      toast?.("The 'Good' Doctor — Doc's Office is closed for the rest of this Town Stay.");
-      return { ui: { index: 10, title: "The 'Good' Doctor", effect: 'Closed for the rest of the stay.' } };
+      putStayMod(ctx, 'docsOfficeMedicalDisabled', true, "Medical Attention unavailable");
+      toast?.("The 'Good' Doctor — Medical Attention is unavailable to any Hero until the next town stay.");
+      return { ui: { index: 0, title: "The 'Good' Doctor", effect: 'Medical Attention is unavailable to any Hero until after the next Adventure.' } };
     }
 
     case 3: {

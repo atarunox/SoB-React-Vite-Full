@@ -1463,6 +1463,17 @@ const foWorldArtifactOffer =
 
     // ---------- Doc's Office ----------
     if (shopId === 'docsOffice') {
+      // "The 'Good' Doctor" event — Medical Attention disabled for this town stay
+      if (
+        state.stayMods?.docsOfficeMedicalDisabled &&
+        (svc?.id === 'doc_surgery' || svc?.id === 'doc_treat_corruption')
+      ) {
+        alert(
+          "Medical Attention is unavailable this town stay.\n\n\"The 'Good' Doctor\" event was triggered — the Doc has fled and Medical Attention services are closed until the next town stay."
+        );
+        return;
+      }
+
       const io = {
         roll: promptRoll,
         pay: (amount, label) => promptPay(hero, amount, label),
@@ -2838,6 +2849,18 @@ const foWorldArtifactOffer =
             })}
           </div>
 
+          {/* Medical Attention disabled banner */}
+          {openLocationId === 'docsOffice' &&
+            activeCat?.id === 'medical' &&
+            state.stayMods?.docsOfficeMedicalDisabled && (
+              <div className="mt-3 p-3 rounded border border-red-300 bg-red-50 text-red-800 text-sm">
+                <strong>Medical Attention Unavailable</strong>
+                <p className="mt-1 text-xs">
+                  "The 'Good' Doctor" event was triggered — the Doc has fled. Medical Attention services are unavailable to all Heroes until the next town stay.
+                </p>
+              </div>
+            )}
+
           {/* Entries grid */}
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
             {entries.length === 0 && (
@@ -2900,6 +2923,10 @@ const foWorldArtifactOffer =
                 item?.id === 'doc_surgery' ||
                 item?.id ===
                   'doc_treat_corruption';
+
+              const isDocMedicalDisabled =
+                isDocMedical &&
+                !!state.stayMods?.docsOfficeMedicalDisabled;
 
               let looksService =
                 String(item?.type || '')
@@ -3385,11 +3412,14 @@ const foWorldArtifactOffer =
                             hero.chosenLocation !==
                               openLocationId ||
                             gatedByLaw ||
-                            gatedOutlaw
+                            gatedOutlaw ||
+                            isDocMedicalDisabled
                           }
                           title={
-                            gatedByLaw
-                              ? 'Law heroes may not use the Smuggler’s Den.'
+                            isDocMedicalDisabled
+                              ? "Medical Attention is unavailable — \"The 'Good' Doctor\" event was triggered this town stay."
+                              : gatedByLaw
+                              ? 'Law heroes may not use the Smuggler's Den.'
                               : gatedOutlaw
                               ? 'Outlaw only.'
                               : ''
