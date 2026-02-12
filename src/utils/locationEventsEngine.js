@@ -423,15 +423,6 @@ export async function resolveEvent(shopKey, context = {}) {
   const rolled = ensureEventRolled(key);
   const roll = Number(rolled.roll || 7);
 
-  // Run Doc’s Office #3 effect early so state/UI agree
-  if (roll === 3 && key === docsOffice.id) {
-    try {
-      await resolveRollThree_LuckTest(key, context);
-    } catch (e) {
-      try { console.warn(e); } catch {}
-    }
-  }
-
   // Apply Frontier Outpost side-effects (roll 2/3) when resolving
   if (key === frontierOutpost.id) {
     try {

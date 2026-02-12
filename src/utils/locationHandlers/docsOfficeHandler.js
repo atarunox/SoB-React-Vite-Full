@@ -165,7 +165,8 @@ export async function handleDocsOfficeEvent(ctx = {}) {
       r = d6() + d6();
     }
   }
-// Prompt per-condition with manual/autoroll options (and "auto all" shortcut)
+// Prompt per-condition: Auto-roll / Enter roll result / Auto-roll ALL
+// On 4+: removed. On 1: kept + corruption. On 2–3: kept.
 async function resolveMedicalMiracleForTargets(api, targets) {
   const results = [];
   let autoAll = false;
@@ -173,68 +174,44 @@ async function resolveMedicalMiracleForTargets(api, targets) {
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i];
 
-    // If user chose "auto all", just roll silently for the rest
+    // Auto-all path: roll silently
     if (autoAll) {
       const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      results.push({ ...t, roll: Number(die) || 1, removed: (Number(die) || 1) >= 3, auto: true });
+      const rollVal = Number(die) || 1;
+      results.push({ ...t, roll: rollVal, removed: rollVal >= 4, corruption: rollVal === 1, auto: true });
       continue;
     }
 
-    // Show the per-condition choice
-    const choice = await (async () => {
-      if (typeof api.promptChoice === 'function') {
-        return api.promptChoice(
-          `Medical Miracle — ${t.name}`,
-          [
-            { label: 'Auto-roll (1d6)',            value: 'auto' },
-            { label: 'Mark Removed (manual 3+)',   value: 'manual_removed' },
-            { label: 'Mark Kept (manual 1–2)',     value: 'manual_kept' },
-            { label: 'Auto-roll ALL remaining',    value: 'auto_all' },
-          ]
-        );
-      }
-      if (typeof api.prompt === 'function') {
-        return api.prompt({
-          type: 'select',
-          title: `Medical Miracle — ${t.name}`,
-          options: [
-            { label: 'Auto-roll (1d6)',            value: 'auto' },
-            { label: 'Mark Removed (manual 3+)',   value: 'manual_removed' },
-            { label: 'Mark Kept (manual 1–2)',     value: 'manual_kept' },
-            { label: 'Auto-roll ALL remaining',    value: 'auto_all' },
-          ]
-        });
-      }
-      // very simple fallback (window.prompt)
-      const raw = window?.prompt?.(
-        `Medical Miracle — ${t.name}\n1) Auto-roll (1d6)\n2) Mark Removed (manual 3+)\n3) Mark Kept (manual 1–2)\n4) Auto-roll ALL remaining`,
-        '1'
-      );
-      const idx = Math.max(1, Math.min(4, Number(raw) || 1));
-      return { value: ['auto','manual_removed','manual_kept','auto_all'][idx - 1] };
-    })();
+    // Per-condition choice
+    const choice = await uiChoice(api,
+      `Medical Miracle — ${t.name} (4+ removes, 1 = Corruption hit)`,
+      [
+        { label: 'Auto-roll (1d6)',        value: 'auto' },
+        { label: 'Enter roll result',      value: 'manual' },
+        { label: 'Auto-roll ALL remaining', value: 'auto_all' },
+      ]
+    );
 
-    const v = choice?.value;
-    if (v === 'auto_all') {
+    if (choice === 'auto_all') {
       autoAll = true;
       const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      results.push({ ...t, roll: Number(die) || 1, removed: (Number(die) || 1) >= 3, auto: true });
+      const rollVal = Number(die) || 1;
+      results.push({ ...t, roll: rollVal, removed: rollVal >= 4, corruption: rollVal === 1, auto: true });
       continue;
     }
 
-    if (v === 'auto') {
-      const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      results.push({ ...t, roll: Number(die) || 1, removed: (Number(die) || 1) >= 3, auto: true });
+    if (choice === 'manual') {
+      // Single prompt: enter the roll result (1–6)
+      const raw = window?.prompt?.(`Medical Miracle — ${t.name}\nEnter your roll result (1–6):`, '');
+      const rollVal = Math.max(1, Math.min(6, Math.floor(Number(raw) || 0)));
+      results.push({ ...t, roll: rollVal, removed: rollVal >= 4, corruption: rollVal === 1, auto: false });
       continue;
     }
 
-    if (v === 'manual_removed') {
-      results.push({ ...t, roll: null, removed: true, auto: false });
-      continue;
-    }
-
-    // default: kept
-    results.push({ ...t, roll: null, removed: false, auto: false });
+    // Auto-roll
+    const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
+    const rollVal = Number(die) || 1;
+    results.push({ ...t, roll: rollVal, removed: rollVal >= 4, corruption: rollVal === 1, auto: true });
   }
 
   return results;
@@ -254,16 +231,16 @@ async function resolveMedicalMiracleForTargets(api, targets) {
         return { ui: { index: 1, title: 'Plague Tent', effect: 'No hero present.' } };
       }
 
-      // Default dice = current Luck (merged)
+      // Single Luck test prompt — use merged Luck from Stats tab
       const merged = getMergedStats?.(hero) || {};
       const luckDice = Number(merged.stats?.Luck ?? hero.Luck ?? 0) || 0;
 
       const choice = await uiChoice(api,
-        `Plague Tent — Luck test for ${hero.name || 'Hero'} (5+ on any die).`,
+        `Plague Tent — ${hero.name || 'Hero'}: Luck test (5+ on any die). Luck = ${luckDice}d6.`,
         [
-          { label: 'Passed (manual)', value: 'pass' },
-          { label: 'Failed (manual)', value: 'fail' },
-          { label: `Auto-roll (${luckDice || 0} dice)`, value: 'auto' },
+          { label: 'Passed', value: 'pass' },
+          { label: 'Failed', value: 'fail' },
+          { label: `Auto-roll (${luckDice}d6)`, value: 'auto' },
         ]
       );
 
@@ -273,54 +250,40 @@ async function resolveMedicalMiracleForTargets(api, targets) {
       } else if (choice === 'fail') {
         success = false;
       } else {
-        // Auto-roll path (allow override)
-        const diceCount = await uiAskNumber(api, {
-          title: 'Plague Tent — Auto-roll Luck Test (5+)',
-          message: `Enter number of dice to roll (Default = current Luck: ${luckDice})`,
-          min: 0,
-          max: 12,
-          def: luckDice
-        });
-
-        let rolls = [];
-        if (diceCount > 0) {
-          if (typeof api.roll === 'function') {
-            rolls = await api.roll(diceCount, 6, 'Luck Test (5+)');
-          } else {
-            rolls = Array.from({ length: diceCount }, () => d6());
-          }
-        }
-        success = (rolls || []).some(x => Number(x) >= 5);
-        toast?.(
-          `[Doc's #3] ${hero.name || 'Hero'} Luck rolls: [${(rolls||[]).join(', ')}] → ${success ? 'Success' : 'Fail'}`
-        );
+        const d = Math.max(0, luckDice);
+        const rolls = d > 0
+          ? (typeof api.roll === 'function'
+              ? await api.roll(d, 6, 'Plague Tent — Luck Test (5+)')
+              : Array.from({ length: d }, () => d6()))
+          : [];
+        success = rolls.some(x => Number(x) >= 5);
+        toast?.(`Plague Tent — ${hero.name || 'Hero'} rolled [${rolls.join(', ')}] → ${success ? 'Passed!' : 'Failed.'}`);
       }
 
       if (!success) {
+        // Auto-roll D3 corruption — no Willpower save
         const add = d3();
 
         updateHero(targetId, (h) => {
           const merged2 = getMergedStats?.(h) || {};
           const maxCor = Number(merged2.stats?.['Max Corruption'] ?? h.maxCorruption ?? 5) || 5;
-
           const cur = Math.max(0, Number(h.currentCorruption ?? 0));
           let next = cur + add;
 
           // Overflow → Mutations
           const overflow = Math.floor(next / maxCor);
           next = next % maxCor;
-
           const nextMut = Array.isArray(h.mutations) ? [...h.mutations] : [];
           for (let i = 0; i < overflow; i++) nextMut.push({ name: 'Mutation — Roll Needed' });
 
-          // TEMPORARY condition: merge safely into existing conditions (object or flat)
+          // Temporary condition: Max Grit capped at 1 for next Adventure
           const tmp = {
             id: `gritcap_nextadv_${Date.now()}`,
             type: 'Temporary',
             temporary: true,
-            name: 'Shaken Nerves',
+            name: 'Shaken Nerves (Plague Tent)',
             effectText: 'Max Grit is capped at 1 for the next Adventure.',
-            effects: {},
+            effects: { maxGritCap: 1 },
             gritCap: 1,
             duration: 'nextAdventure',
             active: true,
@@ -328,26 +291,21 @@ async function resolveMedicalMiracleForTargets(api, targets) {
           };
           const mergedConds = appendTemporary(h.conditions, tmp);
 
-          return {
-            ...h,
-            currentCorruption: next,
-            mutations: nextMut,
-            conditions: mergedConds
-          };
+          return { ...h, currentCorruption: next, mutations: nextMut, conditions: mergedConds };
         });
 
-        toast?.(`[Doc's #3] ${hero.name || 'Hero'} failed: +${add} Corruption (no saves). Added “Shaken Nerves” (Max Grit cap 1 next Adventure).`);
-      } else {
-        toast?.(`[Doc's #3] ${hero.name || 'Hero'} succeeded: no effect.`);
+        toast?.(`Plague Tent — ${hero.name || 'Hero'} failed! +${add} Corruption (no Willpower save). Max Grit capped at 1 for the next Adventure.`);
+        return {
+          ui: {
+            index: 1,
+            title: 'Plague Tent',
+            effect: `Failed: +${add} Corruption (no Willpower save). "Shaken Nerves" added — Max Grit = 1 next Adventure.`,
+          }
+        };
       }
 
-      return {
-        ui: {
-          index: 1,
-          title: 'Plague Tent',
-          effect: success ? 'No effect.' : 'Gain D3 Corruption; add Shaken Nerves (Max Grit cap 1 next Adventure).'
-        }
-      };
+      toast?.(`Plague Tent — ${hero.name || 'Hero'} passed: no effect.`);
+      return { ui: { index: 1, title: 'Plague Tent', effect: 'Passed: no effect.' } };
     }
 
     case 4:
@@ -426,11 +384,10 @@ case 12: {
     return { ui: { index: 10, title: 'Medical Miracle', effect: 'No qualifying conditions.' } };
   }
 
-  // NEW: Prompt per condition with option to autoroll (and auto-all)
   const results = await resolveMedicalMiracleForTargets(api2, targets);
 
-  // Tally natural 1s only for autorolled entries
-  const ones = results.reduce((acc, r) => acc + ((r.auto && Number(r.roll) === 1) ? 1 : 0), 0);
+  // Count 1s across all entries (auto and manual) — each adds 1 Corruption
+  const corruptionHits = results.reduce((acc, r) => acc + (r.corruption ? 1 : 0), 0);
 
   api2.updateHero?.(targetId, (h) => {
     const cur = normalizeConditionsObject(h.conditions);
@@ -444,26 +401,28 @@ case 12: {
       next[r.bucket] = arr;
     }
 
-    const nextHits = Math.max(0, Number(h.corruptionHits ?? 0)) + ones;
-    return { ...h, conditions: next, corruptionHits: nextHits };
+    // Apply corruption from rolled 1s to currentCorruption
+    const nextCor = Math.max(0, Number(h.currentCorruption ?? 0)) + corruptionHits;
+    return { ...h, conditions: next, currentCorruption: nextCor };
   });
 
   // Build a readable summary
   const summaryLines = results.map(r => {
-    const tag = r.auto ? (r.roll != null ? `rolled ${r.roll}` : 'auto') : 'manual';
-    return `• ${r.name}: ${tag} → ${r.removed ? 'Removed' : 'Kept'}`;
+    const rollTag = r.roll != null ? `rolled ${r.roll}` : (r.auto ? 'auto' : 'manual');
+    const outcomeTag = r.removed ? 'Removed' : (r.corruption ? 'Kept (+1 Corruption)' : 'Kept');
+    return `• ${r.name}: ${rollTag} → ${outcomeTag}`;
   });
 
   api2.toast?.(
-    `Medical Miracle — Results:\n${summaryLines.join('\n')}\n` +
-    (ones > 0 ? `Natural 1s: ${ones} → +${ones} Corruption Hit${ones === 1 ? '' : 's'}.` : 'No natural 1s on autorolls.')
+    `Medical Miracle — Results:\n${summaryLines.join('\n')}` +
+    (corruptionHits > 0 ? `\n+${corruptionHits} Corruption from rolled 1s.` : '')
   );
 
   return {
     ui: {
       index: 10,
       title: 'Medical Miracle',
-      effect: 'Pick per condition: Auto-roll (1d6) or mark manually. Remove on 3+, each auto-rolled 1 adds a Corruption Hit.'
+      effect: `Per condition: Auto-roll or enter result. 4+ removes, 1 = +1 Corruption. Removed: ${results.filter(r => r.removed).length}/${results.length}.`,
     }
   };
 }
