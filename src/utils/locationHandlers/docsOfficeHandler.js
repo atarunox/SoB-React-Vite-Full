@@ -225,13 +225,15 @@ async function resolveMedicalMiracleForTargets(api, targets) {
     }
 
     case 3: {
-      const { id: targetId, hero } = await resolveTargetHeroForShop(ctx, { title: "Plague Tent — choose a hero" });
+      // Use the active hero directly — no hero-selection prompt
+      const targetId = api.getActiveHeroId?.();
+      const hero = targetId ? api.getHero?.(targetId) : null;
       if (!targetId || !hero) {
         toast?.('Plague Tent — no hero present.');
         return { ui: { index: 1, title: 'Plague Tent', effect: 'No hero present.' } };
       }
 
-      // Single Luck test prompt — use merged Luck from Stats tab
+      // ONE prompt: Luck test — dice from Stats tab
       const merged = getMergedStats?.(hero) || {};
       const luckDice = Number(merged.stats?.Luck ?? hero.Luck ?? 0) || 0;
 
@@ -257,11 +259,11 @@ async function resolveMedicalMiracleForTargets(api, targets) {
               : Array.from({ length: d }, () => d6()))
           : [];
         success = rolls.some(x => Number(x) >= 5);
-        toast?.(`Plague Tent — ${hero.name || 'Hero'} rolled [${rolls.join(', ')}] → ${success ? 'Passed!' : 'Failed.'}`);
+        // no intermediate toast — result handled below
       }
 
       if (!success) {
-        // Auto-roll D3 corruption — no Willpower save
+        // Auto-roll D3 corruption — no Willpower save, no extra prompt
         const add = d3();
 
         updateHero(targetId, (h) => {
@@ -294,12 +296,14 @@ async function resolveMedicalMiracleForTargets(api, targets) {
           return { ...h, currentCorruption: next, mutations: nextMut, conditions: mergedConds };
         });
 
-        toast?.(`Plague Tent — ${hero.name || 'Hero'} failed! +${add} Corruption (no Willpower save). Max Grit capped at 1 for the next Adventure.`);
+        // Single result notification
+        const pts = add === 1 ? '1 Corruption point' : `${add} Corruption points`;
+        toast?.(`${hero.name || 'Hero'} has received ${pts} ignoring Willpower saves and is reduced to 1 Max Grit for the next Adventure.`);
         return {
           ui: {
             index: 1,
             title: 'Plague Tent',
-            effect: `Failed: +${add} Corruption (no Willpower save). "Shaken Nerves" added — Max Grit = 1 next Adventure.`,
+            effect: `Failed: +${add} Corruption (no Willpower saves). Max Grit = 1 for next Adventure.`,
           }
         };
       }
