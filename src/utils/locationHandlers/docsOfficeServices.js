@@ -1,4 +1,3 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=-9 brackets=0. Review this file. */
 // utils/locationHandlers/docsOfficeServices.js
 
 import { materializeInjuryByRoll } from '../../components/DM/charts/injuryChart';

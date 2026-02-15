@@ -1,4 +1,3 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=0 brackets=-1. Review this file. */
 export const targaEncounters = [
   {
     name: "Cold Intelligence",
@@ -44,8 +43,7 @@ export const targaEncounters = [
     name: "Dead Alien Hunter",
     tags: ["Targa", "Encounter", "Active", "Death", "Terror"],
     effect: "Strength 6+: Draw 3 Targa Artifacts, keep one. Then Luck 5+: If failed, the alien attacks—draw a Threat ignoring Defense."
-  }
-];
+  },
   {
     name: "Cryo Tubes",
     tags: ["Targa", "Encounter", "Active", "Tech"],

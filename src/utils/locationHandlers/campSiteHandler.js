@@ -1,5 +1,4 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=-2 brackets=0. Review this file. */
-// src/logic/handlers/campSiteHandler.js
+// src/utils/locationHandlers/campSiteHandler.js
 
 /**
  * Camp Site visit handler

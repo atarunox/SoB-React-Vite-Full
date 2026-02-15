@@ -1,4 +1,3 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=-4 brackets=0. Review this file. */
 // src/utils/locationHandlers/docsOfficeHandler.js
 //
 // Doc's Office Location Events (2d6)
