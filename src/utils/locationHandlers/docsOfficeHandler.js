@@ -164,7 +164,7 @@ export async function handleDocsOfficeEvent(ctx = {}) {
       r = d6() + d6();
     }
   }
-// Prompt per-condition with manual/autoroll options (and "auto all" shortcut)
+// Prompt per-condition with number entry or auto-roll (and "auto all" shortcut)
 async function resolveMedicalMiracleForTargets(api, targets) {
   const results = [];
   let autoAll = false;
@@ -175,7 +175,8 @@ async function resolveMedicalMiracleForTargets(api, targets) {
     // If user chose "auto all", just roll silently for the rest
     if (autoAll) {
       const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      results.push({ ...t, roll: Number(die) || 1, removed: (Number(die) || 1) >= 3, auto: true });
+      const val = Number(die) || 1;
+      results.push({ ...t, roll: val, removed: val >= 4, auto: true });
       continue;
     }
 
@@ -185,10 +186,9 @@ async function resolveMedicalMiracleForTargets(api, targets) {
         return api.promptChoice(
           `Medical Miracle — ${t.name}`,
           [
-            { label: 'Auto-roll (1d6)',            value: 'auto' },
-            { label: 'Mark Removed (manual 3+)',   value: 'manual_removed' },
-            { label: 'Mark Kept (manual 1–2)',     value: 'manual_kept' },
-            { label: 'Auto-roll ALL remaining',    value: 'auto_all' },
+            { label: 'Enter roll result (1–6)', value: 'manual' },
+            { label: 'Auto-roll (1d6)',          value: 'auto' },
+            { label: 'Auto-roll ALL remaining',  value: 'auto_all' },
           ]
         );
       }
@@ -197,43 +197,46 @@ async function resolveMedicalMiracleForTargets(api, targets) {
           type: 'select',
           title: `Medical Miracle — ${t.name}`,
           options: [
-            { label: 'Auto-roll (1d6)',            value: 'auto' },
-            { label: 'Mark Removed (manual 3+)',   value: 'manual_removed' },
-            { label: 'Mark Kept (manual 1–2)',     value: 'manual_kept' },
-            { label: 'Auto-roll ALL remaining',    value: 'auto_all' },
+            { label: 'Enter roll result (1–6)', value: 'manual' },
+            { label: 'Auto-roll (1d6)',          value: 'auto' },
+            { label: 'Auto-roll ALL remaining',  value: 'auto_all' },
           ]
         });
       }
       // very simple fallback (window.prompt)
       const raw = window?.prompt?.(
-        `Medical Miracle — ${t.name}\n1) Auto-roll (1d6)\n2) Mark Removed (manual 3+)\n3) Mark Kept (manual 1–2)\n4) Auto-roll ALL remaining`,
+        `Medical Miracle — ${t.name}\n1) Enter roll result (1–6)\n2) Auto-roll (1d6)\n3) Auto-roll ALL remaining`,
         '1'
       );
-      const idx = Math.max(1, Math.min(4, Number(raw) || 1));
-      return { value: ['auto','manual_removed','manual_kept','auto_all'][idx - 1] };
+      const idx = Math.max(1, Math.min(3, Number(raw) || 1));
+      return { value: ['manual','auto','auto_all'][idx - 1] };
     })();
 
     const v = choice?.value;
     if (v === 'auto_all') {
       autoAll = true;
       const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      results.push({ ...t, roll: Number(die) || 1, removed: (Number(die) || 1) >= 3, auto: true });
+      const val = Number(die) || 1;
+      results.push({ ...t, roll: val, removed: val >= 4, auto: true });
       continue;
     }
 
     if (v === 'auto') {
       const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      results.push({ ...t, roll: Number(die) || 1, removed: (Number(die) || 1) >= 3, auto: true });
+      const val = Number(die) || 1;
+      results.push({ ...t, roll: val, removed: val >= 4, auto: true });
       continue;
     }
 
-    if (v === 'manual_removed') {
-      results.push({ ...t, roll: null, removed: true, auto: false });
-      continue;
-    }
-
-    // default: kept
-    results.push({ ...t, roll: null, removed: false, auto: false });
+    // Manual entry: ask for the die result (1-6)
+    const entered = await uiAskNumber(api, {
+      title: `Medical Miracle — ${t.name}`,
+      message: 'Enter your D6 roll result (4+ removes, 1 = +1 Corruption)',
+      min: 1,
+      max: 6,
+      def: 4
+    });
+    results.push({ ...t, roll: entered, removed: entered >= 4, auto: false });
   }
 
   return results;
@@ -428,8 +431,8 @@ case 12: {
   // NEW: Prompt per condition with option to autoroll (and auto-all)
   const results = await resolveMedicalMiracleForTargets(api2, targets);
 
-  // Tally natural 1s only for autorolled entries
-  const ones = results.reduce((acc, r) => acc + ((r.auto && Number(r.roll) === 1) ? 1 : 0), 0);
+  // Tally natural 1s (both manual and autorolled entries now carry actual roll values)
+  const ones = results.reduce((acc, r) => acc + (Number(r.roll) === 1 ? 1 : 0), 0);
 
   api2.updateHero?.(targetId, (h) => {
     const cur = normalizeConditionsObject(h.conditions);
@@ -462,7 +465,7 @@ case 12: {
     ui: {
       index: 10,
       title: 'Medical Miracle',
-      effect: 'Pick per condition: Auto-roll (1d6) or mark manually. Remove on 3+, each auto-rolled 1 adds a Corruption Hit.'
+      effect: 'Roll D6 per condition (enter result or auto-roll). On 4+, remove it. On 1, take a Corruption Hit.'
     }
   };
 }
