@@ -5,17 +5,9 @@
 
 import { appendTemporary } from '../mergeConditions';
 import { normalizeConditionsObject } from '../mergeConditions';
+import { d6, d3, clamp2to12 } from '../../utils/diceHelpers';
 
 const shopId = 'docsOffice';
-
-// Dice
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const d3 = () => Math.ceil(d6() / 2);
-const clamp2to12 = (n) => {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return null;
-  return Math.max(2, Math.min(12, Math.floor(v)));
-};
 
 // ---- accessors: support ctx.fn OR ctx.posseApi/uiApi shapes
 function A(ctx) {

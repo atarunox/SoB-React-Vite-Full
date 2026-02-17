@@ -1,6 +1,5 @@
 import { loadTownState, saveTownState } from '../../utils/townState';
-
-const d6 = () => Math.floor(Math.random() * 6) + 1;
+import { d6 } from '../../utils/diceHelpers';
 
 function display(roll) {
   switch (roll) {

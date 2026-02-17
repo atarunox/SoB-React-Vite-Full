@@ -4,8 +4,7 @@
 
 import { loadTownState, saveTownState } from '../townState.js';
 
-// ----- small dice helpers -----
-const D6 = () => Math.floor(Math.random() * 6) + 1;
+import { d6 as D6 } from '../../utils/diceHelpers';
 
 // ----- context helpers (mirror Saloon style) -----
 const getActiveHero = (ctx = {}) => {

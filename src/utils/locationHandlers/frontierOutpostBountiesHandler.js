@@ -9,7 +9,7 @@ const FO_BOUNTY_FLAG = 'fo_bounty_board_selected';
 const hasBrowserStorage =
   typeof window !== 'undefined' && typeof localStorage !== 'undefined';
 
-const D6 = () => Math.floor(Math.random() * 6) + 1;
+import { d6 as D6 } from '../../utils/diceHelpers';
 
 const uid = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID

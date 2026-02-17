@@ -4,14 +4,10 @@ import gearCards from '../../data/items/gearCards.js';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
 import { addKeyword, hasKeyword } from '../keywords';
 import { withConditionAppended, normalizeConditionsObject } from '../mergeConditions';
-import { rollD3 } from '../diceHelpers';
+import { d6, d3 as rollD3, rollND, clamp } from '../diceHelpers';
 
-// ---------- dice & small helpers ----------
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const rollND = (n, s = 6) => Array.from({ length: n }, () => Math.floor(Math.random() * s) + 1);
+// ---------- small helpers ----------
 const randFrom = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
-
-const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const num = (v, def = 0) => (Number.isFinite(+v) ? +v : def);
 const asArr = (v) => (Array.isArray(v) ? v : []);
 

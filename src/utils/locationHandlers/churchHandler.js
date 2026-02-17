@@ -6,8 +6,7 @@ import churchData from '../../data/townLocations/FrontierTown/Church/church.js';
 import { mineArtifacts } from '../../data/items/mineArtifacts';
 import churchBlessedAuras from '../../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const roll2d6 = () => d6() + d6();
+import { d6, roll2d6 } from '../../utils/diceHelpers';
 const shopId = churchData?.id || 'church';
 
 // ----------------------------- UI helpers ---------------------------------

@@ -1,5 +1,5 @@
 // Frontier Outpost: Training & Bounty service executors
-const D6 = () => Math.floor(Math.random() * 6) + 1;
+import { d6 as D6 } from '../../utils/diceHelpers';
 
 function addTownFlag(townStateApi, flag, value = true) {
   const state = townStateApi?.get?.() || {};

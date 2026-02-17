@@ -1,11 +1,9 @@
 // src/utils/locationHandlers/saloonHandler.js
 import { loadTownState, saveTownState } from '../../utils/townState';
 
-const shopId = 'saloon';
+import { d6, d3 } from '../../utils/diceHelpers';
 
-// dice
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const d3 = () => Math.ceil(Math.random() * 3);
+const shopId = 'saloon';
 
 // ---------- townState helpers ----------
 function patchGlobalRules(patch) {
