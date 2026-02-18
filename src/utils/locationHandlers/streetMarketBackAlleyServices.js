@@ -1,7 +1,6 @@
 // src/utils/locationHandlers/streetMarketBackAlleysServices.js
 // Simple executor used by TownTab. Mirrors the FO Bank/Training patterns.
-const D6 = () => Math.floor(Math.random() * 6) + 1;
-const rollND = (n, s = 6) => Array.from({ length: n }, () => Math.floor(Math.random() * s) + 1);
+import { d6 as D6, rollND } from '../../utils/diceHelpers';
 
 const parseIdxList = (txt = '') =>
   String(txt || '')

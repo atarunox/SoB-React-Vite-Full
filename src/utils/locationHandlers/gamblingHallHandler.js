@@ -10,8 +10,7 @@
 import { loadTownState, saveTownState } from '../townState.js';
 import { performGamblingHallHighStakes } from './gamblingHallServices.js';
 import { withConditionAppended } from '../mergeConditions.js';
-
-const D6 = () => Math.floor(Math.random() * 6) + 1;
+import { d6 as D6 } from '../../utils/diceHelpers';
 
 /**
  * Try to figure out which heroes are actually at the Gambling Hall.

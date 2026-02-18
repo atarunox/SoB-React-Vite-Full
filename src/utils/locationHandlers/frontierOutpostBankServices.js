@@ -1,10 +1,5 @@
 // src/utils/locationHandlers/frontierOutpostBankServices.js
-
-// -------- Dice helpers --------
-const D6 = () => Math.floor(Math.random() * 6) + 1;
-const rollND = (n, s = 6) =>
-  Array.from({ length: Math.max(0, n | 0) }, () => Math.floor(Math.random() * s) + 1);
-const sum = (arr) => (Array.isArray(arr) ? arr.reduce((a, b) => a + b, 0) : 0);
+import { d6 as D6, rollND, sum } from '../../utils/diceHelpers';
 
 // -------- Engine / town-state --------
 import { getEventState as getLocEventState } from '../locationEventsEngine';

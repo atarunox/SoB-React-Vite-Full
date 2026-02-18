@@ -1,4 +1,3 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=0 brackets=-1. Review this file. */
 export const blastedWastesTravelHazards = [
   {
     roll: 11,
@@ -80,8 +79,6 @@ export const blastedWastesTravelHazards = [
     effect: "Every Hero may make a Cunning 4+ test. If successful, you keep an eye out for signs of unstable terrain and avoid the danger. If failed, you stumble into an unstable patch and are pulled under! After a few tense moments, you claw your way back to the surface, but have lost something in the struggle. You must discard 1 Item (your choice).",
     type: "Travel Hazard",
   },
-  // ... (25–36 will follow in next part)
-];
   {
     roll: 25,
     name: "Fire in the Sky",

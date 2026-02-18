@@ -6,9 +6,7 @@ import { mineArtifacts } from '../../data/items/mineArtifacts';
 
 // NEW: condition notes for permanent max stat changes
 import { makeMaxChangeNote, pushConditionNote } from '../../utils/conditionNotes';
-
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const d2d6 = () => d6() + d6();
+import { d6, roll2d6 as d2d6 } from '../../utils/diceHelpers';
 const shopId = blacksmithData?.id || 'blacksmith';
 
 function getShopMods() {

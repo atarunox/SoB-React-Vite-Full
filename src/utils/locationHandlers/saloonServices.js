@@ -1,9 +1,6 @@
 // src/utils/locationHandlers/saloonServices.js
 import gearCards from '../../data/items/gearCards.js';
-
-// --- tiny dice helpers ---
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const d3 = () => Math.floor(Math.random() * 3) + 1;
+import { d6, d3 } from '../../utils/diceHelpers';
 
 // Read a stat off the hero, falling back across shapes
 const readStat = (h, name, fallback = 1) => {

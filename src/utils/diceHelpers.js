@@ -1,13 +1,27 @@
 // src/utils/diceHelpers.js
+// Consolidated dice & math utilities — import from here instead of redefining locally.
 import { loadTownState } from './townState';
 
 /* ---------------- Basic dice helpers ---------------- */
-export const rollD6 = () => Math.floor(Math.random() * 6) + 1;
+export const d6 = () => Math.floor(Math.random() * 6) + 1;
+export const rollD6 = d6;
+export const d3 = () => Math.ceil(d6() / 2);
+export const rollD3 = d3;
 export const rollND = (n, s = 6) => Array.from({ length: n }, () => Math.floor(Math.random() * s) + 1);
-export const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+export const sum = (arr) => (Array.isArray(arr) ? arr.reduce((a, b) => a + b, 0) : 0);
 
-/* ---------------- NEW: true D3 ---------------- */
-export const rollD3 = () => Math.ceil((Math.floor(Math.random() * 6) + 1) / 2);
+/* ---------------- 2d6 helpers ---------------- */
+export const roll2d6 = () => d6() + d6();
+export const idxFrom2d6 = (roll) => Math.max(0, Math.min(10, (roll ?? 2) - 2));
+
+/* ---------------- Clamp helpers ---------------- */
+export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+export const clamp2to12 = (n) => {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return null;
+  return Math.max(2, Math.min(12, Math.floor(v)));
+};
+export const clampFloor = (v, floor) => (floor == null ? v : Math.max(floor, v));
 
 /* ---------------- Peril die: 3,3,4,4,5,6 ---------------- */
 /**

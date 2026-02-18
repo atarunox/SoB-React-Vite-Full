@@ -1,5 +1,4 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=-2 brackets=0. Review this file. */
-// src/logic/handlers/campSiteHandler.js
+// src/utils/locationHandlers/campSiteHandler.js
 
 /**
  * Camp Site visit handler
@@ -14,12 +13,9 @@
  * actions.forEach(dispatchAction) // your app applies them
  */
 
-const D6 = () => Math.floor(Math.random() * 6) + 1;
+import { d6 as D6, rollND, sum, roll2d6, idxFrom2d6 } from '../../utils/diceHelpers';
 const D = (sides) => Math.floor(Math.random() * sides) + 1;
-const rollND = (n, sides) => Array.from({ length: n }, () => D(sides));
-const sum = (arr) => arr.reduce((a, b) => a + b, 0);
-export const roll2d6 = () => sum(rollND(2, 6));
-export const idxFrom2d6 = (roll) => Math.max(0, Math.min(10, (roll ?? 2) - 2));
+export { roll2d6, idxFrom2d6 };
 
 /**
  * Optional I/O hooks to integrate with your UI.

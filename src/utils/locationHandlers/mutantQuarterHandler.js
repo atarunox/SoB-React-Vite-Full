@@ -27,13 +27,8 @@
  * - { type: 'FLAG_STAY_MOD', key, value, reason }                       // per-stay flags (e.g., 9 bonus once/hero)
  */
 
-const D6 = () => Math.floor(Math.random() * 6) + 1;
-const rollND = (n, s) => Array.from({ length: n }, () => Math.floor(Math.random() * s) + 1);
-const sum = (arr) => arr.reduce((a, b) => a + b, 0);
-const D3 = () => Math.ceil(D6() / 2);
-
-export const roll2d6 = () => sum(rollND(2, 6));
-export const idxFrom2d6 = (roll) => Math.max(0, Math.min(10, (roll ?? 2) - 2));
+import { d6 as D6, d3 as D3, rollND, sum, roll2d6, idxFrom2d6 } from '../../utils/diceHelpers';
+export { roll2d6, idxFrom2d6 };
 
 /** Optional I/O hooks:
  * io = {

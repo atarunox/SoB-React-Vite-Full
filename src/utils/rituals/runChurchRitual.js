@@ -1,4 +1,3 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=-5 brackets=0. Review this file. */
 // src/utils/rituals/runChurchRitual.js
 import { listActiveMadnesses } from '../isActiveMadness';
 

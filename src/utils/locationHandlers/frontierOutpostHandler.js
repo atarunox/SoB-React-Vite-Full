@@ -21,8 +21,7 @@
 
 import { calculateCurrentStats } from '../calculateStats';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
-
-const d6 = () => Math.floor(Math.random() * 6) + 1;
+import { d6 } from '../../utils/diceHelpers';
 
 /* ------------------------------ small helpers ------------------------------ */
 

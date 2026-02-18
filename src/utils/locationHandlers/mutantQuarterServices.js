@@ -1,8 +1,5 @@
 // src/utils/locationHandlers/mutantQuarterServices.js
-
-// ---------- tiny dice helpers ----------
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const d3 = () => Math.floor(Math.random() * 3) + 1;
+import { d6, d3 } from '../../utils/diceHelpers';
 
 const safeNum = (v, def = 0) => (Number.isFinite(+v) ? +v : def);
 

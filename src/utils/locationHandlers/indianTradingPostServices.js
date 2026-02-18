@@ -1,4 +1,3 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=1 brackets=0. Review this file. */
 // src/utils/locationHandlers/indianTradingPostServices.js
 
 // ---------- tiny dice helpers ----------

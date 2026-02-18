@@ -1,4 +1,3 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=-6 brackets=0. Review this file. */
 // src/components/DM/charts/injuryChart.js
 import { withConditionAppended } from '../../../utils/mergeConditions';
 // --- Base data (with structured effects/rules where applicable) ---

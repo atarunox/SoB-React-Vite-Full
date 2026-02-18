@@ -1,12 +1,7 @@
-/* FIXME: Unbalanced braces/parens detected: braces=0 parens=-9 brackets=0. Review this file. */
 // utils/locationHandlers/docsOfficeServices.js
 
 import { materializeInjuryByRoll } from '../../components/DM/charts/injuryChart';
-
-// ---------- tiny dice helpers ----------
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const rollN = (n, s = 6) => Array.from({ length: n }, () => Math.floor(Math.random() * s) + 1);
-const sum = (a) => a.reduce((x, y) => x + y, 0);
+import { d6, rollND as rollN, sum, clamp, clampFloor } from '../../utils/diceHelpers';
 
 // Normalize a hero patch result for TownTab's posseApi.updateHero
 function mergePatch(hero, patch) {
@@ -19,16 +14,6 @@ function mergePatch(hero, patch) {
 function safeNumber(n, def = 0) {
   const v = Number(n);
   return Number.isFinite(v) ? v : def;
-}
-
-function clamp(n, min = -1e9, max = 1e9) {
-  n = Number(n);
-  if (!Number.isFinite(n)) return min;
-  return Math.max(min, Math.min(max, n));
-}
-
-function clampFloor(v, floor) {
-  return floor == null ? v : Math.max(floor, v);
 }
 
 // ---------- robust condition removal (non-destructive to other buckets) ----------

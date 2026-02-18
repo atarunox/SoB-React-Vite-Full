@@ -2,8 +2,8 @@
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { calculateCurrentStats } from '../../utils/calculateStats';
 
-const D6 = () => Math.floor(Math.random() * 6) + 1;
-const D8 = () => Math.floor(Math.random() * 8) + 1;
+import { d6 as D6, rollND } from '../../utils/diceHelpers';
+const D8 = () => rollND(1, 8)[0];
 
 /* -------------------------------- totals helpers -------------------------------- */
 function getDerivedTotals(hero, posseApi) {

@@ -1,11 +1,9 @@
 // src/utils/locationHandlers/smugglersDenHandler.js
 import { loadTownState, saveTownState, patchDayMods } from '../../utils/townState';
 
-const shopId = 'smugglersDen';
+import { d6, roll2d6 as d2d6 } from '../../utils/diceHelpers';
 
-// dice
-const d6 = () => Math.floor(Math.random() * 6) + 1;
-const d2d6 = () => d6() + d6();
+const shopId = 'smugglersDen';
 
 // ---- shopMods helpers (flags for this town stay) --------------------------
 function getShopMods() {
