@@ -266,6 +266,21 @@ const deriveKeywords = (hero) => {
   return Array.from(out);
 };
 
+/* ---------------------- default tile positions (5-col grid) ---------------------- */
+
+const COL_W = 140; // 128px tile + 12px gap
+const ROW_H = 108; // 96px tile  + 12px gap
+const COLS  = 5;
+
+const DEFAULT_STAT_POSITIONS = Object.fromEntries(
+  [
+    'Agility', 'Cunning', 'Spirit', 'Strength', 'Lore',
+    'Luck', 'Initiative', 'Melee', 'Ranged', 'Defense',
+    'Willpower', 'Armor', 'Spirit Armor', 'Health', 'Sanity',
+    'Grit', 'Corruption', 'Special', 'Move', 'Combat',
+  ].map((label, i) => [label, { x: (i % COLS) * COL_W, y: Math.floor(i / COLS) * ROW_H }])
+);
+
 /* -------------------------------- component -------------------------------- */
 
 export default function StatsTab({
@@ -305,7 +320,10 @@ export default function StatsTab({
   );
 
   const dragAreaRef = useRef();
-  const [localPositions, setLocalPositions] = useState(activeHero?.statPositions || {});
+  const [localPositions, setLocalPositions] = useState(() => {
+    const saved = activeHero?.statPositions;
+    return saved && Object.keys(saved).length > 0 ? saved : { ...DEFAULT_STAT_POSITIONS };
+  });
   const [draggingLabel, setDraggingLabel] = useState(null);
   const [dragStart, setDragStart] = useState(null);
 
@@ -326,7 +344,8 @@ export default function StatsTab({
   const [showKeywordsBox, setShowKeywordsBox] = useState(false);
 
   useEffect(() => {
-    setLocalPositions(activeHero?.statPositions || {});
+    const saved = activeHero?.statPositions;
+    setLocalPositions(saved && Object.keys(saved).length > 0 ? saved : { ...DEFAULT_STAT_POSITIONS });
   }, [activeHero?.statPositions, activeHero?.id, activeHero?.localId]);
 
   // Persist details toggle per hero
@@ -362,8 +381,9 @@ export default function StatsTab({
   if (!activeHero) return <div>No hero loaded</div>;
 
   const handleResetLayout = () => {
+    setLocalPositions({ ...DEFAULT_STAT_POSITIONS });
+    updateHeroFunc({ statPositions: { ...DEFAULT_STAT_POSITIONS } });
     if (resetLayout) resetLayout();
-    else setLocalPositions({});
   };
 
   const handlePointerDown = (e, label) => {
@@ -769,11 +789,11 @@ export default function StatsTab({
       <div
         className="relative border-2 border-[#5C3A21] rounded-xl shadow-inner touch-none"
         ref={dragAreaRef}
-        style={{ minHeight: '400px' }}
+        style={{ minHeight: `${ROW_H * 4 + 16}px` }}
       >
         {statOrder.map((label) => {
           const value = getStatValue(label);
-          const pos = localPositions[label] || { x: 0, y: 0 };
+          const pos = localPositions[label] || DEFAULT_STAT_POSITIONS[label] || { x: 0, y: 0 };
           const displayLabel =
             label === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(label);
 
