@@ -7,6 +7,7 @@ import { WorldProvider } from './context/WorldContext';
 import { PosseProvider, usePosse } from './context/PosseContext';
 import { DeckRegistryProvider } from './context/DeckRegistryContext';
 import { HeroProvider, useHero } from './context/HeroContext'; // ⬅️ use HeroContext for active hero
+import { UIScaleProvider, useUIScale } from './context/UIScaleContext';
 
 import PossePanel from './components/PossePanel';
 import HeroScreen from './screens/HeroScreen';
@@ -29,6 +30,26 @@ function Home() {
   return <HeroScreen hero={hero} />;
 }
 
+function AppShell() {
+  const { scale } = useUIScale();
+  return (
+    <div className="min-h-screen bg-[url('/assets/Parchment.jpg')] bg-cover bg-fixed bg-center text-black">
+      <div
+        className="bg-[#fdf6e3]/40 min-h-screen px-2 py-4 border-[3px] border-[#5C3A21] shadow-lg rounded-lg w-full max-w-4xl mx-auto origin-top"
+        style={{ zoom: scale }}
+      >
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/dm" element={<DMTab />} />
+          <Route path="/active-enemies" element={<ActiveEnemyStatsPage />} />
+          <Route path="/enemies" element={<EnemyStatsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Router>
@@ -36,18 +57,10 @@ export default function App() {
         <WorldProvider>
           <CombatProvider>
             <PosseProvider>
-              <HeroProvider> {/* ⬅️ make sure this provider is in the tree */}
-                <div className="min-h-screen bg-[url('/assets/Parchment.jpg')] bg-cover bg-fixed bg-center text-black">
-                  <div className="bg-[#fdf6e3]/40 min-h-screen px-2 py-4 border-[3px] border-[#5C3A21] shadow-lg rounded-lg w-full max-w-4xl mx-auto">
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/dm" element={<DMTab />} />
-                      <Route path="/active-enemies" element={<ActiveEnemyStatsPage />} />
-                      <Route path="/enemies" element={<EnemyStatsPage />} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </div>
-                </div>
+              <HeroProvider>
+                <UIScaleProvider>
+                  <AppShell />
+                </UIScaleProvider>
               </HeroProvider>
             </PosseProvider>
           </CombatProvider>

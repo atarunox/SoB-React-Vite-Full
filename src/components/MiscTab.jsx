@@ -5,6 +5,7 @@ import { usePosse } from '../context/PosseContext';
 import { useCombatState } from '../hooks/useCombatState';
 import ReferenceLibrary from './ReferenceLibrary';
 import CreateHero from './CreateHero';
+import { useUIScale } from '../context/UIScaleContext';
 
 // ---------- helpers ----------
 const storageKeyFromId = (id) => `hero_${id}`;
@@ -91,6 +92,7 @@ export default function MiscTab() {
   const { hero, setHero } = useHero();
   const { posse, addHero, removeHero } = usePosse();
   const { darkness, growingDread } = useCombatState();
+  const { scale, setScale } = useUIScale();
 
   // UI state
   const [heroList, setHeroList] = useState([]);            // [{...hero, _lsKey}]
@@ -391,6 +393,33 @@ export default function MiscTab() {
   // ---------- render ----------
   return (
     <div className="p-4 space-y-6">
+      {/* UI Scale */}
+      <div className="border rounded-xl p-3 bg-white/80 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-sm">UI Scale</span>
+          <span className="text-sm text-gray-600">{Math.round(scale * 100)}%</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">50%</span>
+          <input
+            type="range"
+            min="0.5"
+            max="1.5"
+            step="0.05"
+            value={scale}
+            onChange={(e) => setScale(Number(e.target.value))}
+            className="flex-1"
+          />
+          <span className="text-xs text-gray-500">150%</span>
+          <button
+            className="btn btn-xs"
+            onClick={() => setScale(1)}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
       {/* tiny diagnostics */}
       <div className="text-xs text-gray-300">
         Heroes found: {heroList.length}&nbsp;
