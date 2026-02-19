@@ -3,7 +3,7 @@
 // - Growing Dread: queued during delve; reveal all at Objective fight (or when explicitly triggered).
 
 export function roll2D6() {
-  return Math.ceil(Math.random()*6) + Math.ceil(Math.random()*6);
+  return (Math.floor(Math.random()*6) + 1) + (Math.floor(Math.random()*6) + 1);
 }
 
 export function holdBackTheDarkness({ depthThreshold = 7, darknessTrack = 0, onAdvance = () => {}, onGrowingDread = () => {} } = {}) {

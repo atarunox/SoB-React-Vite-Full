@@ -91,7 +91,7 @@ const resourceField = (tok) => {
   return null;
 };
 const rollDie = (sides) =>
-  Math.max(1, Math.ceil(Math.random() * Math.max(2, Number(sides) || 6)));
+  Math.floor(Math.random() * Math.max(2, Number(sides) || 6)) + 1;
 
 function resolvePayoutFromName(name = "") {
   if (!name) return null;

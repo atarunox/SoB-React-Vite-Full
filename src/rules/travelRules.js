@@ -1,7 +1,7 @@
 // Travel to Town:
 // Each hero rolls 1D6; on 1-2 -> Travel Hazard.
 export function travelRoll() {
-  return Math.ceil(Math.random()*6);
+  return Math.floor(Math.random()*6) + 1;
 }
 
 export function computeTravelHazardsForPosse(posse) {

@@ -5,7 +5,7 @@ const bandidaLevelingChart = [
   {
     label: "+1 Strength. +D6 Health/Sanity",
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxHealth: (hero.maxHealth || hero.health || 0) + roll,
@@ -18,7 +18,7 @@ const bandidaLevelingChart = [
   {
     label: "+1 Cunning or +1 Agility. +D6 Health",
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxHealth: (hero.maxHealth || hero.health || 0) + roll
@@ -30,7 +30,7 @@ const bandidaLevelingChart = [
   {
     label: "+D6 Health and +3 Sanity",
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxHealth: (hero.maxHealth || hero.health || 0) + roll,
@@ -43,7 +43,7 @@ const bandidaLevelingChart = [
   {
     label: "+1 Lore or +1 Luck. +D6 Sanity",
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxSanity: (hero.maxSanity || hero.sanity || 0) + roll
@@ -61,6 +61,3 @@ const bandidaLevelingChart = [
 ];
 
 export default bandidaLevelingChart;
-
-
-export default function Placeholder() { return null; }

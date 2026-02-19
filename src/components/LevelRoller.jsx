@@ -1,7 +1,7 @@
 import React from 'react';
 
 function rollD6() {
-  return Math.ceil(Math.random() * 6);
+  return Math.floor(Math.random() * 6) + 1;
 }
 
 export default function LevelRoller({ levelChart, hero, updateHero }) {

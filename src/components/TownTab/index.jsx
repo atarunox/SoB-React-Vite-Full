@@ -970,6 +970,7 @@ const foWorldArtifactOffer =
           .map((o, i) => `${i + 1}. ${o.label || o}`)
           .join('\n')}\n\nEnter a number:`;
       const pick = window.prompt(msg, '1');
+      if (pick == null) return -1;
       const idx = Number.parseInt(pick, 10) - 1;
       if (!Number.isFinite(idx) || idx < 0 || idx >= options.length)
         return -1;
@@ -998,6 +999,7 @@ const foWorldArtifactOffer =
         }\n` +
         `Allowed: ${allowed.join(', ')}\n\nEnter -1, 0, or 1:`;
       const raw = window.prompt(msg, '0');
+      if (raw == null) return 0;
       const n = Number(raw);
       return allowed.includes(n) ? n : 0;
     },
