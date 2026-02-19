@@ -174,20 +174,12 @@ async function resolveMedicalMiracleForTargets(api, targets) {
       `  1 = No effect AND gain +1 Corruption Hit\n\n` +
       `Enter 1–6 or leave blank for auto-roll:`;
 
-    const raw = typeof api.promptNumber === 'function'
-      ? await api.promptNumber({
-          title: `Medical Miracle — ${label}`,
-          message: promptMsg,
-          min: 1,
-          max: 6,
-          defaultValue: null,
-        })
-      : (() => {
-          const v = window?.prompt?.(promptMsg);
-          if (v == null || v.trim() === '') return null;
-          const n = Number(v);
-          return (Number.isFinite(n) && n >= 1 && n <= 6) ? n : null;
-        })();
+    const raw = (() => {
+      const v = window.prompt(promptMsg);
+      if (v == null || v.trim() === '') return null;
+      const n = Number(v);
+      return (Number.isFinite(n) && n >= 1 && n <= 6) ? n : null;
+    })();
 
     let roll;
     let auto;
