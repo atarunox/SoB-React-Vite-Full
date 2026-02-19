@@ -164,20 +164,26 @@ async function resolveMedicalMiracleForTargets(api, targets) {
     const t = targets[i];
     const remaining = targets.length - i;
 
+    const label = `${t.bucket.charAt(0).toUpperCase() + t.bucket.slice(1)}: ${t.name}`;
+    const promptMsg =
+      `Medical Miracle — Rolling to remove ${label}\n` +
+      `(${remaining} condition${remaining === 1 ? '' : 's'} remaining)\n\n` +
+      `Roll a D6:\n` +
+      `  4+ = Remove this ${t.bucket}\n` +
+      `  2-3 = No effect\n` +
+      `  1 = No effect AND gain +1 Corruption Hit\n\n` +
+      `Enter 1–6 or leave blank for auto-roll:`;
+
     const raw = typeof api.promptNumber === 'function'
       ? await api.promptNumber({
-          title: `Medical Miracle — ${t.name}`,
-          message: `(${remaining} left) D6 for ${t.name}: 4+ removes, 1 = +1 Corruption.\nEnter 1–6 or leave blank for auto-roll:`,
+          title: `Medical Miracle — ${label}`,
+          message: promptMsg,
           min: 1,
           max: 6,
           defaultValue: null,
         })
       : (() => {
-          const v = window?.prompt?.(
-            `Medical Miracle — ${t.name} (${remaining} left)\n` +
-            `4+ removes, 1 = +1 Corruption.\n` +
-            `Enter 1–6 or leave blank for auto-roll:`
-          );
+          const v = window?.prompt?.(promptMsg);
           if (v == null || v.trim() === '') return null;
           const n = Number(v);
           return (Number.isFinite(n) && n >= 1 && n <= 6) ? n : null;
