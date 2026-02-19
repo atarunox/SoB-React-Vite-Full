@@ -294,6 +294,21 @@ export default function StatsTab({
   const { hero: activeHero, updateHero } = useHero();
   const { updateHero: updateHeroPosse } = usePosse();
 
+  // ---- Undo / Redo history for stat changes ----
+  const MAX_UNDO = 30;
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  // Reset stacks when switching heroes
+  const heroIdRef = useRef(activeHero?.id || activeHero?.localId);
+  useEffect(() => {
+    const cur = activeHero?.id || activeHero?.localId;
+    if (cur !== heroIdRef.current) {
+      heroIdRef.current = cur;
+      setUndoStack([]);
+      setRedoStack([]);
+    }
+  }, [activeHero?.id, activeHero?.localId]);
+
   // IMPORTANT: pass the hero through unchanged; let calculateCurrentStats
   // handle bucketed conditions internally.
   const normalizedHero = activeHero || {};
@@ -370,12 +385,52 @@ export default function StatsTab({
   }, [draggingLabel, localPositions]);
 
   // Update BOTH: Posse (source of truth) and HeroContext (instant UI)
-  const updateHeroFunc = (changes) => {
+  const applyHeroUpdate = (changes) => {
     if (!activeHero) return;
     const id = activeHero.id || activeHero.localId;
     const payload = { id, ...changes, updatedAt: Date.now() };
     if (typeof updateHeroPosse === 'function') updateHeroPosse(payload);
     if (typeof updateHero === 'function') updateHero(payload);
+  };
+
+  // Wrapped version that pushes an undo snapshot before applying
+  const updateHeroFunc = (changes) => {
+    if (!activeHero) return;
+    // Capture the previous values only for the keys being changed
+    const snapshot = {};
+    for (const key of Object.keys(changes)) {
+      if (key === 'id' || key === 'updatedAt') continue;
+      snapshot[key] = activeHero[key];
+    }
+    setUndoStack((prev) => [...prev.slice(-(MAX_UNDO - 1)), snapshot]);
+    setRedoStack([]); // clear redo on new action
+    applyHeroUpdate(changes);
+  };
+
+  const handleUndo = () => {
+    if (!undoStack.length || !activeHero) return;
+    const snapshot = undoStack[undoStack.length - 1];
+    // Save current state for redo before reverting
+    const redoSnapshot = {};
+    for (const key of Object.keys(snapshot)) {
+      redoSnapshot[key] = activeHero[key];
+    }
+    setRedoStack((prev) => [...prev, redoSnapshot]);
+    setUndoStack((prev) => prev.slice(0, -1));
+    applyHeroUpdate(snapshot);
+  };
+
+  const handleRedo = () => {
+    if (!redoStack.length || !activeHero) return;
+    const snapshot = redoStack[redoStack.length - 1];
+    // Save current state for undo
+    const undoSnapshot = {};
+    for (const key of Object.keys(snapshot)) {
+      undoSnapshot[key] = activeHero[key];
+    }
+    setUndoStack((prev) => [...prev, undoSnapshot]);
+    setRedoStack((prev) => prev.slice(0, -1));
+    applyHeroUpdate(snapshot);
   };
 
   if (!activeHero) return <div>No hero loaded</div>;
@@ -616,6 +671,22 @@ export default function StatsTab({
   return (
     <div onPointerMove={handlePointerMove}>
       <div className="flex justify-end mb-2 gap-2 flex-wrap">
+        <button
+          className="btn btn-sm"
+          onClick={handleUndo}
+          disabled={undoStack.length === 0}
+          title="Undo last stat change"
+        >
+          Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+        </button>
+        <button
+          className="btn btn-sm"
+          onClick={handleRedo}
+          disabled={redoStack.length === 0}
+          title="Redo last undone change"
+        >
+          Redo
+        </button>
         <button className="btn btn-sm" onClick={() => setDragLocked?.(!dragLocked)}>
           {dragLocked ? 'Unlock Drag' : 'Lock Drag'}
         </button>
