@@ -156,79 +156,47 @@ export async function handleDocsOfficeEvent(ctx = {}) {
       r = d6() + d6();
     }
   }
-// Prompt per-condition with number entry or auto-roll (and "auto all" shortcut)
+// Single prompt per condition: enter 1–6 or leave blank for auto-roll
 async function resolveMedicalMiracleForTargets(api, targets) {
   const results = [];
-  let autoAll = false;
 
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i];
+    const remaining = targets.length - i;
 
-    // If user chose "auto all", just roll silently for the rest
-    if (autoAll) {
-      const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      const val = Number(die) || 1;
-      results.push({ ...t, roll: val, removed: val >= 4, auto: true });
-      continue;
-    }
-
-    // Show the per-condition choice
-    const choice = await (async () => {
-      if (typeof api.promptChoice === 'function') {
-        return api.promptChoice(
-          `Medical Miracle — ${t.name}`,
-          [
-            { label: 'Enter roll result (1–6)', value: 'manual' },
-            { label: 'Auto-roll (1d6)',          value: 'auto' },
-            { label: 'Auto-roll ALL remaining',  value: 'auto_all' },
-          ]
-        );
-      }
-      if (typeof api.prompt === 'function') {
-        return api.prompt({
-          type: 'select',
+    const raw = typeof api.promptNumber === 'function'
+      ? await api.promptNumber({
           title: `Medical Miracle — ${t.name}`,
-          options: [
-            { label: 'Enter roll result (1–6)', value: 'manual' },
-            { label: 'Auto-roll (1d6)',          value: 'auto' },
-            { label: 'Auto-roll ALL remaining',  value: 'auto_all' },
-          ]
-        });
-      }
-      // very simple fallback (window.prompt)
-      const raw = window?.prompt?.(
-        `Medical Miracle — ${t.name}\n1) Enter roll result (1–6)\n2) Auto-roll (1d6)\n3) Auto-roll ALL remaining`,
-        '1'
-      );
-      const idx = Math.max(1, Math.min(3, Number(raw) || 1));
-      return { value: ['manual','auto','auto_all'][idx - 1] };
-    })();
+          message: `(${remaining} left) D6 for ${t.name}: 4+ removes, 1 = +1 Corruption.\nEnter 1–6 or leave blank for auto-roll:`,
+          min: 1,
+          max: 6,
+          defaultValue: null,
+        })
+      : (() => {
+          const v = window?.prompt?.(
+            `Medical Miracle — ${t.name} (${remaining} left)\n` +
+            `4+ removes, 1 = +1 Corruption.\n` +
+            `Enter 1–6 or leave blank for auto-roll:`
+          );
+          if (v == null || v.trim() === '') return null;
+          const n = Number(v);
+          return (Number.isFinite(n) && n >= 1 && n <= 6) ? n : null;
+        })();
 
-    const v = choice?.value;
-    if (v === 'auto_all') {
-      autoAll = true;
-      const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      const val = Number(die) || 1;
-      results.push({ ...t, roll: val, removed: val >= 4, auto: true });
-      continue;
+    let roll;
+    let auto;
+    if (raw != null && Number.isFinite(raw) && raw >= 1 && raw <= 6) {
+      roll = raw;
+      auto = false;
+    } else {
+      const [die] = typeof api.roll === 'function'
+        ? await api.roll(1, 6, `Medical Miracle — ${t.name}`)
+        : [d6()];
+      roll = Number(die) || 1;
+      auto = true;
     }
 
-    if (v === 'auto') {
-      const [die] = typeof api.roll === 'function' ? await api.roll(1, 6, `Medical Miracle — ${t.name}`) : [d6()];
-      const val = Number(die) || 1;
-      results.push({ ...t, roll: val, removed: val >= 4, auto: true });
-      continue;
-    }
-
-    // Manual entry: ask for the die result (1-6)
-    const entered = await uiAskNumber(api, {
-      title: `Medical Miracle — ${t.name}`,
-      message: 'Enter your D6 roll result (4+ removes, 1 = +1 Corruption)',
-      min: 1,
-      max: 6,
-      def: 4
-    });
-    results.push({ ...t, roll: entered, removed: entered >= 4, auto: false });
+    results.push({ ...t, roll, removed: roll >= 4, auto });
   }
 
   return results;
