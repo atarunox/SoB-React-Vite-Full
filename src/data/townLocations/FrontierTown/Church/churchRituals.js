@@ -182,6 +182,31 @@ export async function applyChurchRitual(ctx, ritualId) {
     } catch {}
   };
 
+  // --- Dark Stone Altar surcharge ---
+  // If event 4-5 fired, all rituals cost +1 Dark Stone this Town Stay.
+  let extraDS = 0;
+  try {
+    const { loadTownState } = await import('../../../../utils/townState.js');
+    const ts = loadTownState() || {};
+    extraDS = Number(ts.stayMods?.churchRitualExtraDarkStone) || 0;
+  } catch {}
+
+  if (extraDS > 0) {
+    const hero = getHero();
+    const curDS = Number(hero.darkStone ?? 0);
+    if (curDS < extraDS) {
+      alert(`This Ritual requires ${extraDS} Dark Stone (Dark Stone Altar surcharge). You only have ${curDS}.`);
+      return;
+    }
+    const ok = window.confirm(
+      `Dark Stone Altar surcharge: this Ritual costs +${extraDS} Dark Stone.\n` +
+      `You have ${curDS} Dark Stone. Proceed?`
+    );
+    if (!ok) return;
+    writeHero({ darkStone: curDS - extraDS });
+    toast(`Paid ${extraDS} Dark Stone (Dark Stone Altar surcharge).`);
+  }
+
   switch (ritualId) {
     case 'ch_ritual_exorcism_of_madness':
       return await runExorcismOfMadness(getHero, writeHero, uiApi, toast);
