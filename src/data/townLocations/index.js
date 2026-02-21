@@ -15,6 +15,7 @@ import sheriffsOffice from './sheriffsOffice';
 
 // ---- Blasted Wastes Town ----
 import miningOperation from './miningOperation';
+import desertMarketplace from './desertMarketplace';
 
 export const townLocations = [
   // Frontier Town
@@ -32,6 +33,7 @@ export const townLocations = [
   sheriffsOffice,
   // Blasted Wastes Town
   miningOperation,
+  desertMarketplace,
 ];
 
 export const townLocationById = townLocations.reduce((map, loc) => {

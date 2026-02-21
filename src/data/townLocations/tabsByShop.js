@@ -121,6 +121,12 @@ import miningOperationItems from './BlastedWastesTown/MiningOperation/miningOper
 import miningOperationFungus from './BlastedWastesTown/MiningOperation/miningOperationFungus.js';
 import miningOperationServices from './BlastedWastesTown/MiningOperation/miningOperationServices.js';
 
+// ---------------- Desert Marketplace ----------------
+import desertMarketplaceTokens from './BlastedWastesTown/DesertMarketplace/desertMarketplaceTokens.js';
+import desertMarketplaceBackAlleys from './BlastedWastesTown/DesertMarketplace/desertMarketplaceBackAlleys.js';
+import desertMarketplaceItems from './BlastedWastesTown/DesertMarketplace/desertMarketplaceItems.js';
+import desertMarketplaceTransports from './BlastedWastesTown/DesertMarketplace/desertMarketplaceTransports.js';
+
 // ============================================================================
 // MAKE TABS BY SHOP (ctx aware)
 // ============================================================================
@@ -218,6 +224,13 @@ export const makeTabsByShop = (ctx) => ({
     cat('mo_items', 'Mining Gear & Explosives', miningOperationItems, ctx),
     cat('mo_fungus', 'Fungus Crops', miningOperationFungus, ctx),
     cat('mo_work', 'Work Down in the Tunnels', miningOperationServices, ctx),
+  ),
+
+  desertMarketplace: catList(
+    cat('dm_tokens', 'Side Bag Tokens', desertMarketplaceTokens, ctx),
+    cat('dm_alleys', 'Market Back Alleys', desertMarketplaceBackAlleys, ctx),
+    cat('dm_items', 'Alien Clothing & Equipment', desertMarketplaceItems, ctx),
+    cat('dm_transports', 'Transports', desertMarketplaceTransports, ctx),
   ),
 });
 
