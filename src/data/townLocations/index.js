@@ -13,9 +13,11 @@ import smugglersDen from './smugglersDen';
 import streetMarket from './streetMarket';
 import sheriffsOffice from './sheriffsOffice';
 
-// If you later add a Camp Site or other towns, you can import and append here.
+// ---- Blasted Wastes Town ----
+import miningOperation from './miningOperation';
 
 export const townLocations = [
+  // Frontier Town
   blacksmith,
   church,
   docsOffice,
@@ -28,6 +30,8 @@ export const townLocations = [
   smugglersDen,
   streetMarket,
   sheriffsOffice,
+  // Blasted Wastes Town
+  miningOperation,
 ];
 
 export const townLocationById = townLocations.reduce((map, loc) => {

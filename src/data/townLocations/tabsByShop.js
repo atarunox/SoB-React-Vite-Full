@@ -50,8 +50,10 @@ const orTags = (...tags) => (entry) =>
   Array.isArray(entry?.tags) && tags.some((t) => entry.tags.includes(t));
 
 // ============================================================================
-// IMPORTS — FRONTIER TOWN ONLY
+// IMPORTS
 // ============================================================================
+
+// ====================== FRONTIER TOWN =======================================
 
 // ---------------- Church ----------------
 import churchRituals from './FrontierTown/Church/churchRituals.js';
@@ -111,6 +113,13 @@ import smugglersDenOutlawGear from './FrontierTown/SmugglersDen/smugglersDenOutl
 import mutantQuarterItems from './FrontierTown/MutantQuarter/mutantQuarterItems.js';
 import mutantQuarterCommunity from './FrontierTown/MutantQuarter/mutantQuarterCommunity.js';
 import mutantQuarterServices from './FrontierTown/MutantQuarter/mutantQuarterServices.js';
+
+// ====================== BLASTED WASTES TOWN =================================
+
+// ---------------- Mining Operation ----------------
+import miningOperationItems from './BlastedWastesTown/MiningOperation/miningOperationItems.js';
+import miningOperationFungus from './BlastedWastesTown/MiningOperation/miningOperationFungus.js';
+import miningOperationServices from './BlastedWastesTown/MiningOperation/miningOperationServices.js';
 
 // ============================================================================
 // MAKE TABS BY SHOP (ctx aware)
@@ -202,6 +211,13 @@ export const makeTabsByShop = (ctx) => ({
     cat('community', 'Community', mutantQuarterCommunity, ctx),
     cat('items', 'Mutant Gear', mutantQuarterItems, ctx),
     cat('services', 'Services', mutantQuarterServices, ctx),
+  ),
+
+  // ── Blasted Wastes Town ────────────────────────────────────────────────
+  miningOperation: catList(
+    cat('mo_items', 'Mining Gear & Explosives', miningOperationItems, ctx),
+    cat('mo_fungus', 'Fungus Crops', miningOperationFungus, ctx),
+    cat('mo_work', 'Work Down in the Tunnels', miningOperationServices, ctx),
   ),
 });
 
