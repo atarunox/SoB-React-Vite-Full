@@ -337,7 +337,7 @@ async function coreHandle(ctx = {}) {
       // Keep the original behavior: flag this in townState so the Poker service can detect it.
       const state = loadTownState() || {};
       state.gamblingHallFlags = state.gamblingHallFlags || {};
-      state.gamblingHallFlags.highStakesActive = true;
+      state.gamblingHallFlags.firstPokerWinAwardsArtifact = true;
       saveTownState(state);
 
       uiApi.toast?.(

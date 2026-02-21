@@ -178,7 +178,7 @@ async function apply(roll, ctx) {
 
   // 9–10: Big Haul — flag extra inventory rolls for Black Market (per-day + legacy shop flag)
   if (roll === 9 || roll === 10) {
-    const extra = d6(); // how many extra items to spawn/show; let UI honor this
+    const extra = 2; // event grants exactly 2 extra items
     try {
       // Preferred: a day-scoped flag (clears automatically at end of day)
       patchDayMods({ smugglersBigHaulExtra: extra });

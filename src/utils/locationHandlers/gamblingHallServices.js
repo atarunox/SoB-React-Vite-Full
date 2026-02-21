@@ -394,7 +394,7 @@ export async function performGamblingHallHighStakes(ctx = {}) {
   const state = loadTownState() || {};
   const flags = { ...(state.gamblingHallFlags || {}) };
 
-  flags.highStakesActive = true;
+  flags.firstPokerWinAwardsArtifact = true;
 
   saveTownState({
     ...state,

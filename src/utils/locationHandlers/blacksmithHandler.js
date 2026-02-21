@@ -121,7 +121,9 @@ async function apply(roll, ctx) {
         const prevMax =
           Number(h.maxHealth ?? h.max_health ?? h.healthMax ?? 10);
         const newMax = Math.max(1, prevMax - loss);
-        const next = { ...h, maxHealth: newMax };
+        const curHp = Number(h.currentHealth ?? h.health ?? prevMax);
+        const cappedHp = Math.min(curHp, newMax);
+        const next = { ...h, maxHealth: newMax, currentHealth: cappedHp, health: cappedHp };
         // Log a permanent change note for the Conditions tab
         const note = makeMaxChangeNote({
           stat: 'Max Health',

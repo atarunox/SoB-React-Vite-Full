@@ -209,8 +209,9 @@ export async function apply(roll, ctx) {
       const heal = d3();
       ctx.updateHero?.(id, (h) => {
         const max = h.maxHealth ?? h.max_health ?? 10;
-        const hp = Math.min(max, (h.health ?? max) + heal);
-        return { ...h, health: hp };
+        const cur = h.currentHealth ?? h.health ?? max;
+        const hp = Math.min(max, cur + heal);
+        return { ...h, health: hp, currentHealth: hp };
       });
       ctx.toast?.(`Song and Dance: regain ${heal} Health.`);
     } else {

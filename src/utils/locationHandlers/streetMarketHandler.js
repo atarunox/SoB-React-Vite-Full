@@ -141,14 +141,15 @@ async function apply(roll, ctx) {
     }
 
     const you = roll2D6();
-    const them = roll2D6();
-    if (you >= them) {
+    const hero = ctx.getHeroById?.(id) || {};
+    const heroInit = Number(hero.initiative ?? hero.Initiative ?? 0);
+    if (you >= heroInit) {
       ctx.updateHero(id, h => ({ ...h, xp: (h.xp || 0) + 50 }));
-      ctx.toast?.(`You won the scuffle (${you} vs ${them}): +50 XP`);
+      ctx.toast?.(`You won the scuffle (rolled ${you} vs Initiative ${heroInit}): +50 XP`);
     } else {
       const wounds = rollD6() + rollD6();
       ctx.updateHero(id, h => ({ ...h, wounds: (h.wounds || 0) + wounds }));
-      ctx.toast?.(`You lost (${you} vs ${them}): take ${wounds} Wounds (ignores Defense).`);
+      ctx.toast?.(`You lost (rolled ${you} vs Initiative ${heroInit}): take ${wounds} Wounds (ignores Defense).`);
     }
     return;
   }
