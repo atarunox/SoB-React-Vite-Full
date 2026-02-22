@@ -170,16 +170,20 @@ function collectArtifactsFromHero(hero) {
 // ------------------------------- core apply -------------------------------
 
 async function apply(roll, ctx) {
-  const activeId = ctx.getActiveHeroId?.();
-  const updateHero = (id, patchOrFn) => ctx.updateHero?.(id, patchOrFn);
-  const toast = (m) => ctx.toast?.(m);
-  const doTest = (id, spec) => ctx.doSkillCheck?.(id, spec);
+  const activeId = ctx.getActiveHeroId?.() ?? ctx.posseApi?.getActiveHeroId?.();
+  const _updateHero = ctx.updateHero || ctx.posseApi?.updateHero;
+  const updateHero = (id, patchOrFn) => _updateHero?.(id, patchOrFn);
+  const _getHero = ctx.getHero || ctx.getHeroById || ctx.posseApi?.getHero || ctx.posseApi?.getHeroById;
+  const getHero = (id) => _getHero?.(id) || null;
+  const toast = (m) => (ctx.toast || ctx.uiApi?.toast)?.(m);
+  const doTest = (id, spec) => (ctx.doSkillCheck || ctx.posseApi?.doSkillCheck)?.(id, spec);
+  const _getHeroesAtShop = ctx.getHeroesAtShop || ctx.posseApi?.getHeroesAtShop;
 
   switch (roll) {
     // 2: Cult Worshippers — STR 6+; pass: draw Mine Artifact. Fail: choose an Artifact to discard. Church closes.
     case 2: {
       if (activeId) {
-        const hero = ctx.getHero?.(activeId);
+        const hero = getHero(activeId);
         const heroName = hero?.name || 'Hero';
 
         // Roll dice equal to hero's Strength stat for a 6+ test
@@ -314,7 +318,7 @@ async function apply(roll, ctx) {
     // 3: Possession — D6 Horror Hits; any Sanity lost is permanent (reduce Max Sanity). Church closes.
     case 3: {
       if (!activeId) return;
-      const hero = ctx.getHero?.(activeId);
+      const hero = getHero(activeId);
       const heroName = hero?.name || 'Hero';
 
       const raw = window.prompt(
@@ -369,7 +373,7 @@ async function apply(roll, ctx) {
     case 4:
 case 5: {
   patchStayMods({ churchRitualExtraDarkStone: 1 });
-  ctx.toast?.('Dark Stone Altar — all Church Rituals cost +1 Dark Stone this Town Stay.');
+  toast?.('Dark Stone Altar — all Church Rituals cost +1 Dark Stone this Town Stay.');
   // let the Rituals tab reactively show the surcharge
   try { window.dispatchEvent(new CustomEvent('rituals:costOverride', { detail: { extraDarkStone: 1, scope: 'church' } })); } catch {}
   return;
@@ -412,50 +416,62 @@ case 5: {
       const sel = catalog[pickIdx];
       if (!sel) return;
 
+      const auraName = sel.name.replace(/\s*\(.*\)$/, '');
       const auraItem = {
         id: sel.id,
-        name: sel.name.replace(/\s*\(.*\)$/, ''),
+        name: auraName,
         type: 'Aura',
+        slot: 'Blessed Aura',
         tags: Array.isArray(sel.tags) ? sel.tags : ['Blessed Aura'],
         description: sel.effect,
+        effects: sel.effect ? [sel.effect] : [],
         rules: sel.rules,
         oneUse: true,
         scope: 'nextAdventure',
       };
 
       updateHero(activeId, (h) => {
+        // Place aura in inventory so it can be equipped to the Blessed Aura gear slot
         const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
         inv.push(auraItem);
-        return { ...h, inventory: inv };
+        // Also equip it to the Blessed Aura gear slot directly
+        const gear = { ...(h.gear || {}) };
+        gear['Blessed Aura'] = auraItem;
+        // Add to oncePerAdventure buffs so it shows on the Buffs tab
+        const buffs = Array.isArray(h.oncePerAdventure) ? [...h.oncePerAdventure] : [];
+        buffs.push({
+          id: `${sel.id}_${Date.now()}`,
+          name: auraName,
+          used: false,
+          notes: sel.effect || 'Blessed Aura (free from Church event)',
+        });
+        return { ...h, inventory: inv, gear, oncePerAdventure: buffs };
       });
 
-      toast?.(`A Gift of Blessing — ${auraItem.name} added to your inventory (free).`);
+      toast?.(`A Gift of Blessing — ${auraName} equipped to Blessed Aura slot and added to Buffs.`);
       dispatchUI('inventory:received', { heroId: activeId, item: auraItem });
       return;
     }
 
 
-    // 11: Protective Shield — give explicit inventory notice per hero.
+    // 11: Protective Shield — add to Buffs tab (oncePerAdventure).
     case 11: {
-      const hereIds = ctx.getHeroesAtShop?.(shopId) || (activeId ? [activeId] : []);
+      const hereIds = _getHeroesAtShop?.(shopId) || (activeId ? [activeId] : []);
       for (const id of hereIds) {
-        const item = {
-          id: `protective_shield_${Date.now()}_${id}`,
-          name: 'Protective Shield',
-          type: 'One-Use',
-          description: 'Next Adventure: cancel one Darkness or one Growing Dread card.',
-          tags: ['Church', 'Consumable'],
-          oneUse: true,
-          scope: 'nextAdventure',
-        };
+        const buffId = `protective_shield_${Date.now()}_${id}`;
         updateHero(id, (h) => {
-          const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
-          inv.push(item);
-          return { ...h, inventory: inv };
+          // Add to oncePerAdventure so it shows on the Buffs tab in GearTab
+          const buffs = Array.isArray(h.oncePerAdventure) ? [...h.oncePerAdventure] : [];
+          buffs.push({
+            id: buffId,
+            name: 'Protective Shield',
+            used: false,
+            notes: 'Next Adventure: cancel one Darkness or one Growing Dread card. (Church Event)',
+          });
+          return { ...h, oncePerAdventure: buffs };
         });
-        const heroName = ctx.getHero?.(id)?.name || 'A hero';
-        toast?.(`Protective Shield — ${heroName} received a temporary cancel item (check Inventory).`);
-        dispatchUI('inventory:received', { heroId: id, item });
+        const heroName = getHero(id)?.name || 'A hero';
+        toast?.(`Protective Shield — ${heroName} gains a buff (check Buffs tab on Gear).`);
       }
       return;
     }
@@ -463,7 +479,7 @@ case 5: {
     // 12: Divine Fortitude — Gain D3 Sanity (permanent).
     case 12: {
       if (!activeId) return;
-      const heroName = ctx.getHero?.(activeId)?.name || 'Hero';
+      const heroName = getHero(activeId)?.name || 'Hero';
 
       const raw = window.prompt(
         `Divine Fortitude\n\n` +
