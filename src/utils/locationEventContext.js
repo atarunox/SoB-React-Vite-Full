@@ -1,6 +1,7 @@
 // src/utils/locationEventContext.js
 
 import { getLocationEvents } from '../data/townLocations/index.js';
+import { calculateCurrentStats } from './calculateStats';
 
 /**
  * Build a context for Town Event handlers.
@@ -20,8 +21,14 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
   const listAllTownHeroes = () =>
     posseApi.listAllTownHeroes?.() || posseApi.getAllHeroes?.() || [];
 
+  // --- Hero update (handlers call ctx.updateHero) ----------------
+  const updateHero = (id, patchOrFn) => posseApi.updateHero?.(id, patchOrFn);
+
   // --- UI shims --------------------------------------------------
   const toast = (msg) => uiApi.toast?.(msg);
+  const promptChoice = (title, options) => uiApi.promptChoice?.(title, options);
+  const promptNumber = (msg, opts) => uiApi.promptNumber?.(msg, opts);
+  const promptYesNo = (msg, def) => uiApi.promptYesNo?.(msg, def);
 
   // Dice roller that *prompts* when available; otherwise auto-rolls
   const roll = async (n, sides, label) => {
@@ -33,10 +40,44 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     return Array.from({ length: n }, () => Math.floor(Math.random() * sides) + 1);
   };
 
-  // Ability test (uses UI hook if provided; else 1d6 >= target)
+  // --- Skill check (roll dice equal to hero's stat, any >= target passes) ---
+  const doSkillCheck = async (heroId, { stat, target = 5, prompt = true } = {}) => {
+    const hero = getHeroById(heroId);
+    // Get effective stat value from calculated stats
+    let statVal = 1;
+    if (hero) {
+      try {
+        const { stats: merged = {} } = calculateCurrentStats(hero);
+        statVal = Number(merged[stat] ?? hero?.stats?.[stat] ?? 0) || 1;
+      } catch {
+        statVal = Number(hero?.stats?.[stat] ?? 0) || 1;
+      }
+    }
+    const dice = Math.max(1, statVal);
+    const label = `${stat} ${target}+ test (${dice}d6) — ${stat}: ${statVal}`;
+    const rolls = await roll(dice, 6, label);
+    const arr = Array.isArray(rolls) ? rolls : [rolls];
+    return arr.some((r) => r >= target);
+  };
+
+  // Ability test (uses UI hook if provided; else stat-based dice)
   const test = async ({ hero, key, target = 4, label }) => {
     if (typeof uiApi.test === 'function') {
       return !!(await uiApi.test({ hero, key, target, label }));
+    }
+    // Use stat-based dice if we have a hero
+    if (hero) {
+      let statVal = 1;
+      try {
+        const { stats: merged = {} } = calculateCurrentStats(hero);
+        statVal = Number(merged[key] ?? hero?.stats?.[key] ?? 0) || 1;
+      } catch {
+        statVal = Number(hero?.stats?.[key] ?? 0) || 1;
+      }
+      const dice = Math.max(1, statVal);
+      const d = await roll(dice, 6, label || `${key} ${target}+ test`);
+      const arr = Array.isArray(d) ? d : [d];
+      return arr.some((r) => r >= target);
     }
     const d = await roll(1, 6, label || `${key} test`);
     return (Array.isArray(d) ? d[0] : d) >= target;
@@ -44,7 +85,7 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
 
   // Choice picker -> use your numeric list prompt if present
   const selectChoice = async ({ title, message, choices }) => {
-    // If your UI has a “promptChoice(title, options)” that returns an index:
+    // If your UI has a "promptChoice(title, options)" that returns an index:
     if (typeof uiApi.promptChoice === 'function') {
       const options = (choices || []).map((c) => ({
         label: c?.label ?? c?.key ?? String(c),
@@ -95,6 +136,77 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     }
   };
 
+  // --- Missing method stubs that handlers call without optional chaining ---
+  // enqueueChartRoll: some handlers call this directly (not ?.); provide a safe fallback
+  const enqueueChartRoll = async (heroId, chartType) => {
+    if (typeof posseApi.enqueueChartRoll === 'function') {
+      return posseApi.enqueueChartRoll(heroId, chartType);
+    }
+    const hero = getHeroById(heroId);
+    const name = hero?.name || 'Hero';
+    toast(`${name}: Roll on the ${chartType} chart.`);
+  };
+
+  // addToken: some handlers call without ?.
+  const addToken = (heroId, tokenName) => {
+    if (typeof posseApi.addToken === 'function') {
+      return posseApi.addToken(heroId, tokenName);
+    }
+    // Fallback: add to sidebag
+    updateHero(heroId, (h) => {
+      const sb = h.sideBag || h.sidebags || { capacity: 5, items: [] };
+      const items = Array.isArray(sb.items) ? [...sb.items] : [];
+      const existing = items.find((i) => i.name === tokenName);
+      if (existing) {
+        existing.qty = (existing.qty || 1) + 1;
+      } else {
+        items.push({ id: `token_${Date.now()}`, name: tokenName, qty: 1 });
+      }
+      return { ...h, sideBag: { ...sb, items } };
+    });
+    toast(`Added ${tokenName} token.`);
+  };
+
+  // addCondition: some handlers call with ?.
+  const addCondition = (heroId, payload) => {
+    if (typeof posseApi.addCondition === 'function') {
+      return posseApi.addCondition(heroId, payload);
+    }
+    // minimal fallback for UnwantedAttention
+    if (payload?.type === 'UnwantedAttention') {
+      const delta = Number(payload.delta || 1);
+      updateHero(heroId, (h) => ({
+        ...h,
+        unwantedAttention: (h.unwantedAttention || 0) + delta,
+      }));
+    }
+  };
+
+  // addKeyword: called with ?. so safe, but provide stub
+  const addKeyword = (heroId, keyword) => {
+    if (typeof posseApi.addKeyword === 'function') {
+      return posseApi.addKeyword(heroId, keyword);
+    }
+    updateHero(heroId, (h) => {
+      const kw = Array.isArray(h.keywords) ? [...h.keywords] : [];
+      if (!kw.includes(keyword)) kw.push(keyword);
+      return { ...h, keywords: kw };
+    });
+    toast(`Added keyword: ${keyword}`);
+  };
+
+  // getEffectiveStat: used by gambling hall
+  const getEffectiveStat = (heroId, stat) => {
+    const hero = getHeroById(heroId);
+    if (!hero) return 0;
+    try {
+      const { stats: merged = {} } = calculateCurrentStats(hero);
+      return Number(merged[stat] ?? hero?.stats?.[stat] ?? 0) || 0;
+    } catch {
+      return Number(hero?.stats?.[stat] ?? 0) || 0;
+    }
+  };
+
    // IMPORTANT: Handlers expect this `io` object.
   const io = {
     roll,
@@ -120,10 +232,21 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     // convenience for some engines/handlers:
     getActiveHeroId,
     getHeroById,
+    getHero: getHeroById,      // alias — many handlers call ctx.getHero
     getActiveHero,
     getHeroesAtShop,
     listAllTownHeroes,
+    updateHero,                // handlers call ctx.updateHero(id, patchOrFn)
+    doSkillCheck,              // handlers call ctx.doSkillCheck(id, { stat, target })
+    enqueueChartRoll,          // handlers call ctx.enqueueChartRoll(id, chartType)
+    addToken,                  // handlers call ctx.addToken(id, tokenName)
+    addCondition,              // handlers call ctx.addCondition(id, payload)
+    addKeyword,                // handlers call ctx.addKeyword(id, keyword)
+    getEffectiveStat,          // handlers call ctx.getEffectiveStat(id, stat)
     toast,
+    promptChoice,
+    promptNumber,
+    promptYesNo,
   };
 
 }
