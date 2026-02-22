@@ -14,7 +14,7 @@ export default {
       lore:
         "The Order here is not the Sacred Order, but the Order of the Crimson Hand! You struggle with the Inquisitor as he tries to use an artifact on you.",
       effect:
-        "Make a Strength 6+ test. Pass: Draw a Mine Artifact. Fail: he steals one Artifact from you. The Church is closed until after the next Adventure."
+        "Make a Strength 6+ test (roll a number of dice equal to your Strength). Pass: Draw a Mine Artifact. Fail: he steals one Artifact from you. The Church is closed until after the next Adventure."
     },
 
     {

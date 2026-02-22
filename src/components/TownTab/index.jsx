@@ -1201,18 +1201,22 @@ const foWorldArtifactOffer =
           ...uiApi,
           roll: async (n, sides, label) =>
             promptRoll(n, sides, label || 'Roll'),
-          rollCunning: async () =>
-            promptRoll(
-              1,
+          rollCunning: async () => {
+            const n = Math.max(1, heroView.Cunning || 1);
+            return promptRoll(
+              n,
               6,
-              `Cunning test (1d6) — Cunning: ${heroView.Cunning}`
-            ),
-          rollLuck: async () =>
-            promptRoll(
-              1,
+              `Cunning test (${n}d6) — Cunning: ${heroView.Cunning}`
+            );
+          },
+          rollLuck: async () => {
+            const n = Math.max(1, heroView.Luck || 1);
+            return promptRoll(
+              n,
               6,
-              `Luck test (1d6) — Luck: ${heroView.Luck}`
-            ),
+              `Luck test (${n}d6) — Luck: ${heroView.Luck}`
+            );
+          },
           rollAgilityMany: async (count) => {
             const n = Number.isFinite(count)
               ? Math.max(1, count)
@@ -1233,12 +1237,14 @@ const foWorldArtifactOffer =
               `Storytelling (Lore) — Lore: ${heroView.Lore} (rolling ${n}d6)`
             );
           },
-          rollAgility: async () =>
-            promptRoll(
-              1,
+          rollAgility: async () => {
+            const n = Math.max(1, heroView.Agility || 1);
+            return promptRoll(
+              n,
               6,
-              `Agility test (1d6) — Agility: ${heroView.Agility}`
-            ),
+              `Agility test (${n}d6) — Agility: ${heroView.Agility}`
+            );
+          },
         },
       };
 
@@ -2006,13 +2012,13 @@ const foWorldArtifactOffer =
           return res;
         },
 
-        // very simple generic skill check (1d6 ≥ target)
+        // skill check — roll dice equal to the hero's stat value
         doSkillCheck: async (_heroId, { stat, target = 4 } = {}) => {
-          const statVal = getStat(stat);
-          const label = `${stat} test (1d6) — ${stat}: ${statVal} (target ${target}+)`;
-          const rolls = await promptRoll(1, 6, label);
-          const roll = Array.isArray(rolls) ? rolls[0] : rolls;
-          return roll >= target;
+          const statVal = Math.max(1, getStat(stat) || 1);
+          const label = `${stat} ${target}+ test (${statVal}d6) — ${stat}: ${statVal} (target ${target}+)`;
+          const rolls = await promptRoll(statVal, 6, label);
+          const arr = Array.isArray(rolls) ? rolls : [rolls];
+          return arr.some((r) => r >= target);
         },
       };
 

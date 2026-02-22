@@ -6,7 +6,8 @@ import churchData from '../../data/townLocations/FrontierTown/Church/church.js';
 import { mineArtifacts } from '../../data/items/mineArtifacts';
 import churchBlessedAuras from '../../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
-import { d6, roll2d6 } from '../../utils/diceHelpers';
+import { d6, roll2d6, rollND } from '../../utils/diceHelpers';
+import { getStat as readStat } from '../../utils/statReaders';
 const shopId = churchData?.id || 'church';
 
 // ----------------------------- UI helpers ---------------------------------
@@ -181,26 +182,32 @@ async function apply(roll, ctx) {
         const hero = ctx.getHero?.(activeId);
         const heroName = hero?.name || 'Hero';
 
-        // Prompt for the Strength roll
+        // Roll dice equal to hero's Strength stat for a 6+ test
+        const strStat = Math.max(1, readStat(hero, 'Strength') || 1);
         const strRaw = window.prompt(
           `Cult Worshippers\n\n` +
           `"The Order here is not the Sacred Order, but the Order of the ` +
           `Crimson Hand! You struggle with the Inquisitor as he tries to ` +
           `use an artifact on you."\n\n` +
-          `Make a Strength 6+ test.\n` +
+          `Make a Strength 6+ test (rolling ${strStat}d6, Strength: ${strStat}).\n` +
           `  Pass: Draw a Mine Artifact\n` +
           `  Fail: Lose one Artifact\n\n` +
-          `Enter your Strength roll result (1-6), or leave blank to auto-roll:`,
+          `Enter ${strStat} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
           ''
         );
-        let strRoll;
+        let strRolls;
         if (strRaw == null || strRaw.trim() === '') {
-          strRoll = d6();
+          strRolls = rollND(strStat, 6);
         } else {
-          const n = Number(strRaw);
-          strRoll = (Number.isFinite(n) && n >= 1 && n <= 6) ? n : d6();
+          const parts = strRaw.split(',').map((s) => Number(s.trim()));
+          if (parts.every((n) => Number.isFinite(n) && n >= 1 && n <= 6)) {
+            strRolls = parts;
+          } else {
+            strRolls = rollND(strStat, 6);
+          }
         }
-        const passed = strRoll >= 6;
+        const strRoll = Math.max(...strRolls);
+        const passed = strRolls.some((r) => r >= 6);
 
         if (passed) {
           const card = drawMineArtifact();
@@ -211,7 +218,7 @@ async function apply(roll, ctx) {
               return { ...h, inventory: inv };
             });
             // Build full stats summary for the drawn artifact
-            const lines = [`You rolled ${strRoll} — Pass!`, '', `You seize a Mine Artifact:`, `  ${card.name}`];
+            const lines = [`You rolled [${strRolls.join(', ')}] — Pass!`, '', `You seize a Mine Artifact:`, `  ${card.name}`];
             if (card.type) lines.push(`  Type: ${card.type}`);
             if (card.slot && card.slot !== 'None') lines.push(`  Slot: ${card.slot}`);
             const val = typeof card.cost === 'object' && Number.isFinite(card.cost.gold) ? card.cost.gold : (Number.isFinite(card.value) ? card.value : null);
@@ -226,17 +233,17 @@ async function apply(roll, ctx) {
             }
             if (Array.isArray(card.tags) && card.tags.length) lines.push(`  Tags: ${card.tags.join(', ')}`);
             window.alert(lines.join('\n'));
-            toast?.(`Cult Worshippers — ${heroName} passed (rolled ${strRoll}). Drew ${card.name}.`);
+            toast?.(`Cult Worshippers — ${heroName} passed (rolled [${strRolls.join(', ')}]). Drew ${card.name}.`);
             dispatchUI('inventory:received', { heroId: activeId, item: card });
           } else {
-            window.alert(`You rolled ${strRoll} — Pass!\n\nNo artifact deck available.`);
+            window.alert(`You rolled [${strRolls.join(', ')}] — Pass!\n\nNo artifact deck available.`);
             toast?.('Cult Worshippers — success! (No artifact deck available.)');
           }
         } else {
           // Failed — choose an Artifact (not Gear) to discard
           const arts = collectArtifactsFromHero(hero);
           if (!arts.length) {
-            window.alert(`You rolled ${strRoll} — Fail!\n\nBut you have no Artifacts to lose.`);
+            window.alert(`You rolled [${strRolls.join(', ')}] — Fail!\n\nBut you have no Artifacts to lose.`);
             toast?.('Cult Worshippers — failed, but you have no Artifacts to lose.');
           } else {
             const listing = arts.map((a, i) => {
@@ -251,7 +258,7 @@ async function apply(roll, ctx) {
             }).join('\n\n');
 
             const pickRaw = window.prompt(
-              `You rolled ${strRoll} — Fail!\n\n` +
+              `You rolled [${strRolls.join(', ')}] — Fail!\n\n` +
               `The Inquisitor steals one of your Artifacts.\n` +
               `Choose which Artifact to lose:\n\n` +
               listing + `\n\nEnter a number (1-${arts.length}):`,
