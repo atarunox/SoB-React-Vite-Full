@@ -15,7 +15,7 @@ export default {
       lore:
         'Walking through a side street, you are pulled into the shadows and thrown to the ground! Standing over you, a masked assassin brandishes a rusty serrated blade and a contract for your life!',
       effect:
-        'Make a Luck 5+ test to break free and escape! If failed, roll once on the Injury Table, using only a single D6+1.',
+        'Make a Luck 5+ test (roll a number of dice equal to your Luck) to break free and escape! If failed, roll once on the Injury Table, using only a single D6+1.',
     },
 
     {
@@ -33,7 +33,7 @@ export default {
       lore:
         "A gang of angry looking alien thugs has decided that they don't like the way you look and begins chasing you through the market streets, with hate in their eyes!",
       effect:
-        'Make an Agility 4+ test to outrun the thugs or a Cunning 5+ test to outwit them, taking cover until they have passed. If successful, gain 25 XP. If failed, they find you and rough you up! Take 2D6 Wounds, ignoring Defense, and your Location Visit is over.',
+        'Make an Agility 4+ test (roll a number of dice equal to your Agility) to outrun the thugs or a Cunning 5+ test (dice = Cunning) to outwit them, taking cover until they have passed. If successful, gain 25 XP. If failed, they find you and rough you up! Take 2D6 Wounds, ignoring Defense, and your Location Visit is over.',
     },
 
     {

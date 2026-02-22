@@ -37,7 +37,7 @@ export default [
     limit: 'Once per Visit',
     description: 'Watch an exotic alien dancer perform at the Shady Alien Saloon.',
     effect:
-      'Gain 10 XP and make a Lore 4+ test. If successful, you may Recover a Grit. If failed, take 1 Corruption Hit.',
+      'Gain 10 XP and make a Lore 4+ test (roll a number of dice equal to your Lore). If successful, you may Recover a Grit. If failed, take 1 Corruption Hit.',
   },
 
   // ── Gambling ──────────────────────────────────────────────────────────
