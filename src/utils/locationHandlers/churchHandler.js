@@ -425,6 +425,7 @@ case 5: {
         tags: Array.isArray(sel.tags) ? sel.tags : ['Blessed Aura'],
         description: sel.effect,
         effects: sel.effect ? [sel.effect] : [],
+        mods: sel.mods || {},
         rules: sel.rules,
         oneUse: true,
         scope: 'nextAdventure',

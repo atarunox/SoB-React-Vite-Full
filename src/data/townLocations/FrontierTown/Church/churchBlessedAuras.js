@@ -10,6 +10,7 @@ const churchBlessedAuras = [
     cost: 200,
     effect: 'Armor 5+ (next Adventure).',
     test: 'Spirit 4+',
+    mods: { Armor: '5+' },
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -26,6 +27,7 @@ const churchBlessedAuras = [
     cost: 100,
     effect: '+D6 Damage to one Hit (next Adventure).',
     test: 'Spirit 4+',
+    // No stat mods — one-time damage bonus handled during combat
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -41,6 +43,7 @@ const churchBlessedAuras = [
     cost: 150,
     effect: 'Spirit Armor 5+ (next Adventure).',
     test: 'Spirit 4+',
+    mods: { 'Spirit Armor': '5+' },
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -57,6 +60,7 @@ const churchBlessedAuras = [
     cost: 250,
     effect: 'Armor 6+ / Spirit Armor 6+ (next Adventure).',
     test: 'Spirit 4+',
+    mods: { Armor: '6+', 'Spirit Armor': '6+' },
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -138,6 +142,7 @@ export async function redeemGiftOfBlessing(ctx = {}, heroId, opts = {}) {
       type: 'Aura',
       tags: Array.isArray(sel.tags) ? sel.tags : ['Blessed Aura'],
       description: sel.effect,
+      mods: sel.mods || {},
       rules: sel.rules,
       oneUse: true,
       scope: 'nextAdventure',
