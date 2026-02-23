@@ -361,17 +361,12 @@ async function runBanishCorruption(getHero, writeHero, uiApi, toast) {
     return;
   }
 
-  // Ask for both rolls up-front
+  // Roll for corruption removal
   const removalRoll = promptD6(
     'Banish Corruption: enter removal D6 (1–6), blank = auto-roll:',
     ''
   );
   if (removalRoll == null) return;
-  const damageRoll = promptD6(
-    'If none removed, enter damage D6 (1–6), blank = auto-roll:',
-    ''
-  );
-  if (damageRoll == null) return;
 
   // Pay immediately
   writeHero({ gold: Number(hero.gold ?? 0) - cost });
@@ -400,12 +395,13 @@ async function runBanishCorruption(getHero, writeHero, uiApi, toast) {
       corruption: next,
     });
 
-    toast(`Banish Corruption: removed ${removed} Corruption.`);
-    alert(`Removed ${removed} Corruption.`);
+    toast(`Banish Corruption: removed ${removed} Corruption (rolled ${removalRoll}).`);
+    alert(`Rolled ${removalRoll} (D6-2 = ${toRemove}). Removed ${removed} Corruption.`);
     return;
   }
 
-  // none removed -> take sanity damage ignoring willpower
+  // None removed -> auto-roll D6 sanity damage (ignores Willpower), just notify
+  const damageRoll = Math.floor(Math.random() * 6) + 1;
   const curSanity =
     Number(
       hero.currentSanity ??
@@ -424,9 +420,9 @@ async function runBanishCorruption(getHero, writeHero, uiApi, toast) {
   });
 
   toast(
-    `Banish Corruption: none removed — took ${damageRoll} Sanity damage (ignores Willpower).`
+    `Banish Corruption: none removed (rolled ${removalRoll}) — took ${damageRoll} Sanity damage (ignores Willpower).`
   );
-  alert(`No Corruption removed. Take ${damageRoll} Sanity damage (ignores Willpower).`);
+  alert(`Rolled ${removalRoll} (D6-2 = ${toRemove}). No Corruption removed.\nTook ${damageRoll} Sanity damage (ignores Willpower).`);
 }
 
 // Resurrection
