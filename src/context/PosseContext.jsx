@@ -340,6 +340,15 @@ export function PosseProvider({ children }) {
         return;
       }
 
+      // Sync posseRef immediately so back-to-back writes in the same
+      // tick (e.g. writeHero({gold}) then writeHero({corruption}))
+      // each see the previous write's result.
+      posseRef.current = posseRef.current.map((h) =>
+        normalizeDocId(h.id) === id || normalizeDocId(h.localId) === id
+          ? merged
+          : h
+      );
+
       if (!db || db?.localMode) {
         // Local-only mode
         setPosse((prev) => {
