@@ -4,6 +4,7 @@ import {
   loadTownState,
   resetTownState,
   saveTownState,
+  isLocationDestroyed,
 } from '../../utils/townState';
 import { usePosse } from '../../context/PosseContext';
 import { calculateCurrentStats } from '../../utils/calculateStats';
@@ -672,6 +673,12 @@ const foWorldArtifactOffer =
 
   const handleVisit = (shopId) => {
     if (hero.chosenLocation) return;
+
+    // Destroyed locations cannot be visited
+    if (isLocationDestroyed(shopId)) {
+      window.alert('This location has been destroyed and cannot be visited this town stay.');
+      return;
+    }
 
     // Smuggler's Den: Law heroes get a warning but can still visit (look only)
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
@@ -2600,12 +2607,15 @@ const foWorldArtifactOffer =
           const isVisited = hero.chosenLocation === sid;
           const isSmugglers = sid === 'smugglersDen';
           const lawWarning = isSmugglers && hasKeyword(hero, 'Law');
+          const isDestroyed = isLocationDestroyed(sid);
 
           return (
             <button
               key={sid}
               className={`btn justify-between ${
-                isVisited
+                isDestroyed
+                  ? 'btn-outline opacity-50 line-through'
+                  : isVisited
                   ? 'btn-success'
                   : lawWarning
                   ? 'btn-outline border-red-400 text-red-700'
@@ -2613,13 +2623,20 @@ const foWorldArtifactOffer =
               }`}
               onClick={() => handleOpenLocation(sid)}
               title={
-                lawWarning
+                isDestroyed
+                  ? 'This location is destroyed and cannot be visited this town stay.'
+                  : lawWarning
                   ? 'Law heroes are not welcome here. You may look around, but cannot buy anything or use services.'
                   : ''
               }
             >
               <span>{s.name}</span>
-              {isVisited && (
+              {isDestroyed && (
+                <span className="ml-2 text-xs text-red-600">
+                  (Closed)
+                </span>
+              )}
+              {isVisited && !isDestroyed && (
                 <span className="ml-2 text-xs">
                   (Visited)
                 </span>

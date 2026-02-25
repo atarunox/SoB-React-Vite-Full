@@ -394,6 +394,28 @@ export function clearStayMods() {
   return commit(state);
 }
 
+// ---- Shop price helpers ---------------------------------------------------
+
+/**
+ * Apply shop-level price modifiers (priceDelta from events) to a base gold cost.
+ * Returns the adjusted price (never below minFloor, default 0).
+ */
+export function applyShopPriceMods(baseGold, shopId, opts = {}) {
+  const s = loadTownState();
+  const mods = s.shopMods?.[shopId] || {};
+  const delta = Number(mods.priceDelta) || 0;
+  const minFloor = typeof opts.minFloor === 'number' ? opts.minFloor : 0;
+  return Math.max(minFloor, baseGold + delta);
+}
+
+/**
+ * Check if a location has been destroyed (closed) for this town stay.
+ */
+export function isLocationDestroyed(shopId) {
+  const s = loadTownState();
+  return !!(s.shopMods?.[shopId]?.destroyed);
+}
+
 // ---- Commit ---------------------------------------------------------------
 
 function commit(state) {

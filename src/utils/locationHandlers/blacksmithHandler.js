@@ -151,7 +151,28 @@ async function apply(roll, ctx) {
       ctx.updateHero(id, (h) => ({ ...h, gold: (h.gold || 0) + 100 }));
       ctx.toast?.('You wrangle the wild horse: +$100.');
     } else {
-      ctx.toast?.('A neighboring building is destroyed until after the next Adventure.');
+      // Pick a random building to destroy (exclude the blacksmith itself and camp)
+      const candidates = [
+        'generalStore', 'church', 'docsOffice', 'saloon',
+        'gamblingHall', 'sheriffsOffice', 'smugglersDen',
+        'streetMarket', 'indianTradingPost', 'mutantQuarter',
+        'frontierOutpost',
+      ];
+      const pick = candidates[Math.floor(Math.random() * candidates.length)];
+      const s = loadTownState();
+      const nextMods = { ...(s.shopMods || {}) };
+      nextMods[pick] = { ...(nextMods[pick] || {}), destroyed: true };
+      saveTownState({ ...s, shopMods: nextMods });
+
+      const names = {
+        generalStore: 'General Store', church: 'Church', docsOffice: "Doc's Office",
+        saloon: 'Saloon', gamblingHall: 'Gambling Hall', sheriffsOffice: "Sheriff's Office",
+        smugglersDen: "Smuggler's Den", streetMarket: 'Street Market',
+        indianTradingPost: 'Indian Trading Post', mutantQuarter: 'Mutant Quarter',
+        frontierOutpost: 'Frontier Outpost',
+      };
+      ctx.toast?.(`Wild Horse! The ${names[pick] || pick} is destroyed until after the next Adventure.`);
+
       const hereIds = getAllHeroesHere(ctx);
       for (const hid of hereIds) {
         const okAgi = await ctx.doSkillCheck(hid, { stat: 'Agility', target: 4 });

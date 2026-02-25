@@ -100,6 +100,18 @@ function splitTitleEffect(text) {
 }
 
 function buildEventIndex(events) {
+  // Handle object-form events: [{ roll, name, lore, effect }, ...]
+  if (Array.isArray(events) && events.length && typeof events[0] === 'object') {
+    return events.map((e) => ({
+      range: [Number(e.roll) || 2, Number(e.roll) || 2],
+      raw: '',
+      title: e.name ?? null,
+      effect: e.effect ?? null,
+      lore: e.lore ?? null,
+    }));
+  }
+
+  // String-form events (legacy)
   const arr = Array.isArray(events) ? events.map(String) : [];
   const allHavePrefix = arr.every((s) => RANGE_RE.test(s));
 
@@ -112,7 +124,7 @@ function buildEventIndex(events) {
     }));
   }
 
-  // Prefix map (“2:” or “4–5:”)
+  // Prefix map ("2:" or "4–5:")
   return arr.map((raw) => {
     const m = raw.match(RANGE_RE);
     if (!m) return { range: [2, 12], raw, ...splitTitleEffect(raw) };

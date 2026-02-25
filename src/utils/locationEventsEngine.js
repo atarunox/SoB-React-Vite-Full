@@ -442,6 +442,8 @@ export async function resolveEvent(shopKey, context = {}) {
   }
 
   if (!reg || typeof reg.handler !== 'function') {
+    // Mark resolved even without a handler
+    rolled.resolved = true;
     const out = {
       actions: [],
       townState: context.townState,
@@ -464,6 +466,9 @@ export async function resolveEvent(shopKey, context = {}) {
   }
 
   const result = await reg.handler({ ...context, forcedRoll: roll, ...extra });
+
+  // Mark event as resolved so the UI shows the correct status
+  rolled.resolved = true;
 
   const out = {
     ...result,
