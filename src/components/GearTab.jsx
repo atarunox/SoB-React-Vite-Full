@@ -64,6 +64,18 @@ function aggregateGearMods(gearObj = {}) {
     if (key) seen.add(key);
     if (!it || !it.mods) continue;
     for (const [k, v] of Object.entries(it.mods)) {
+      // Handle threshold strings like '5+' (Armor, Spirit Armor, etc.)
+      if (typeof v === 'string' && /^\d+\+$/.test(v.trim())) {
+        const newThresh = parseInt(v, 10);
+        const cur = totals[k];
+        if (typeof cur === 'string' && /^\d+\+$/.test(cur)) {
+          const curNum = parseInt(cur, 10);
+          if (newThresh < curNum) totals[k] = v.trim();
+        } else if (cur == null) {
+          totals[k] = v.trim();
+        }
+        continue;
+      }
       if (typeof v !== 'number') continue;
       totals[k] = (totals[k] || 0) + v;
     }
@@ -698,7 +710,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                   .sort(([a], [b]) => a.localeCompare(b))
                   .map(([k, v]) => (
                     <span key={k} className="badge badge-ghost">
-                      {statLabel(k)} {v > 0 ? `+${v}` : v}
+                      {statLabel(k)} {typeof v === 'string' ? v : (v > 0 ? `+${v}` : v)}
                     </span>
                   ))}
               </div>
@@ -758,19 +770,20 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                     )}
                   </div>
 
-                  {!!eqSafe?.description && (
+                  {!!(eqSafe?.description || eqSafe?.effect) && (
                     <div className="mt-1 text-[11px] leading-tight text-gray-700 max-h-20 overflow-auto pr-1 italic">
-                      {eqSafe.description}
+                      {eqSafe.description || eqSafe.effect}
                     </div>
                   )}
 
                   {eqSafe?.mods && typeof eqSafe.mods === 'object' && Object.keys(eqSafe.mods).length > 0 && (
                     <ul className="mt-1 text-[11px] leading-tight list-disc list-inside max-h-24 overflow-auto pr-1">
                       {Object.entries(eqSafe.mods)
-                        .filter(([, v]) => typeof v === 'number' && v !== 0)
+                        .filter(([, v]) => (typeof v === 'number' && v !== 0) || (typeof v === 'string' && /^\d+\+$/.test(v.trim())))
                         .map(([k, v]) => (
                           <li key={k}>
-                            <span className="font-semibold">{statLabel(k)}</span> {v > 0 ? '+' : ''}{v}
+                            <span className="font-semibold">{statLabel(k)}</span>{' '}
+                            {typeof v === 'string' ? v.trim() : `${v > 0 ? '+' : ''}${v}`}
                           </li>
                         ))}
                     </ul>
