@@ -62,7 +62,8 @@ export function sanitizeHero(inputHero) {
     fixedGear = { ...hero.gear };
   }
 
-  // Fill missing slots with explicit Empty Slot placeholders
+  // Fill missing standard slots with explicit Empty Slot placeholders
+  // BUT also preserve any extra slots (Blessed Aura, Necklace, Ring, Belt, etc.)
   const gear = {};
   for (const slot of standardSlots) {
     const item = fixedGear[slot];
@@ -73,6 +74,13 @@ export function sanitizeHero(inputHero) {
           name: 'Empty Slot',
           slot,
         };
+  }
+  // Preserve non-standard slots that have real items (e.g. Blessed Aura, Ring, Belt, etc.)
+  for (const [slot, item] of Object.entries(fixedGear)) {
+    if (standardSlots.includes(slot)) continue; // already handled
+    if (item && item.id && !isEmptySlot(item)) {
+      gear[slot] = { ...item, slot };
+    }
   }
 
   // ---------------- Inventory normalization ----------------

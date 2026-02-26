@@ -392,7 +392,7 @@ promptChoice: async (title, options) => {
       return;
     }
 
-    // Blessed Aura purchase — Spirit test then auto-equip
+    // Blessed Aura purchase — prompt, Spirit test, then auto-equip
     if (isBlessedAura(item)) {
       const costRaw = getCost(item);
       const costObj = normalizeCostObject(costRaw);
@@ -401,14 +401,25 @@ promptChoice: async (title, options) => {
         return;
       }
 
-      // Deduct cost first
+      const testSpec = item.rules?.test || { stat: 'Spirit', target: 4 };
+      const auraName = item.name.replace(/\s*\(.*\)$/, '');
+
+      // Prompt: confirm purchase and explain the test
+      const proceed = window.confirm(
+        `Purchase: ${auraName}\n` +
+        `Cost: $${costObj.gold ?? 0}\n\n` +
+        `This requires a ${testSpec.stat} ${testSpec.target}+ test to obtain.\n` +
+        `Gold is spent whether the test passes or fails.\n\n` +
+        `Proceed with purchase?`
+      );
+      if (!proceed) return;
+
+      // Deduct cost
       const goldAfter = (hero.gold ?? 0) - (costObj.gold ?? 0);
       const darkStoneAfter = (hero.darkStone ?? 0) - (costObj.darkStone ?? 0);
 
-      // Spirit 4+ test (required to obtain)
-      const testSpec = item.rules?.test || { stat: 'Spirit', target: 4 };
+      // Roll Spirit test using effective stat
       let statVal = Number(hero?.stats?.[testSpec.stat] ?? hero?.[testSpec.stat] ?? 1) || 1;
-      // Use effective stat (with gear bonuses) if calculateCurrentStats is available
       try {
         const { calculateCurrentStats } = await import('../../../utils/calculateStats');
         const { stats: merged = {} } = calculateCurrentStats(hero);
@@ -420,17 +431,17 @@ promptChoice: async (title, options) => {
       const passed = rolls.some(r => r >= testSpec.target);
 
       if (!passed) {
-        // Failed the test — pay gold but don't receive the aura
+        // Failed — pay gold but don't receive the aura
         updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter });
         alert(
-          `${testSpec.stat} ${testSpec.target}+ test failed (rolled: ${rolls.join(', ')}).\n\n` +
+          `${testSpec.stat} ${testSpec.target}+ Test FAILED\n\n` +
+          `Rolled: [${rolls.join(', ')}]  (${dice}d6, need ${testSpec.target}+)\n\n` +
           `You paid $${costObj.gold ?? 0} but the blessing did not take hold.`
         );
         return;
       }
 
       // Passed — add to inventory and auto-equip to Blessed Aura slot
-      const auraName = item.name.replace(/\s*\(.*\)$/, '');
       const auraItem = {
         ...item,
         id: item.id || `aura_${Date.now()}`,
@@ -453,8 +464,10 @@ promptChoice: async (title, options) => {
       updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter, inventory, gear });
 
       alert(
-        `${testSpec.stat} ${testSpec.target}+ test passed (rolled: ${rolls.join(', ')})!\n\n` +
-        `${auraName} has been equipped to your Blessed Aura slot.`
+        `${testSpec.stat} ${testSpec.target}+ Test PASSED!\n\n` +
+        `Rolled: [${rolls.join(', ')}]  (${dice}d6, need ${testSpec.target}+)\n\n` +
+        `${auraName} equipped to your Blessed Aura slot.\n` +
+        `Effect: ${item.effect || 'See gear details.'}`
       );
       return;
     }
