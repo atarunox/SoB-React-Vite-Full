@@ -37,6 +37,7 @@ import {
   isInjection,
   isRitualService,
   isBanishCorruptionService,
+  isBlessedAura,
   isExorcismService,
   isResurrectionService,
   isTokenPurchase,
@@ -388,6 +389,73 @@ promptChoice: async (title, options) => {
       isResurrectionService(item)
     ) {
       handlePerform(shopId, item, idx);
+      return;
+    }
+
+    // Blessed Aura purchase — Spirit test then auto-equip
+    if (isBlessedAura(item)) {
+      const costRaw = getCost(item);
+      const costObj = normalizeCostObject(costRaw);
+      if (!canAfford(costObj)) {
+        alert('Cannot afford this Blessed Aura.');
+        return;
+      }
+
+      // Deduct cost first
+      const goldAfter = (hero.gold ?? 0) - (costObj.gold ?? 0);
+      const darkStoneAfter = (hero.darkStone ?? 0) - (costObj.darkStone ?? 0);
+
+      // Spirit 4+ test (required to obtain)
+      const testSpec = item.rules?.test || { stat: 'Spirit', target: 4 };
+      let statVal = Number(hero?.stats?.[testSpec.stat] ?? hero?.[testSpec.stat] ?? 1) || 1;
+      // Use effective stat (with gear bonuses) if calculateCurrentStats is available
+      try {
+        const { calculateCurrentStats } = await import('../../../utils/calculateStats');
+        const { stats: merged = {} } = calculateCurrentStats(hero);
+        const effective = Number(merged[testSpec.stat]) || 0;
+        if (effective > statVal) statVal = effective;
+      } catch {}
+      const dice = Math.max(1, statVal);
+      const rolls = Array.from({ length: dice }, () => Math.floor(Math.random() * 6) + 1);
+      const passed = rolls.some(r => r >= testSpec.target);
+
+      if (!passed) {
+        // Failed the test — pay gold but don't receive the aura
+        updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter });
+        alert(
+          `${testSpec.stat} ${testSpec.target}+ test failed (rolled: ${rolls.join(', ')}).\n\n` +
+          `You paid $${costObj.gold ?? 0} but the blessing did not take hold.`
+        );
+        return;
+      }
+
+      // Passed — add to inventory and auto-equip to Blessed Aura slot
+      const auraName = item.name.replace(/\s*\(.*\)$/, '');
+      const auraItem = {
+        ...item,
+        id: item.id || `aura_${Date.now()}`,
+        name: auraName,
+        type: 'Aura',
+        slot: 'Blessed Aura',
+      };
+
+      const inventory = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
+      inventory.push(auraItem);
+
+      const gear = { ...(hero.gear || {}) };
+      // Return old aura to inventory if one was equipped
+      const oldAura = gear['Blessed Aura'];
+      if (oldAura && oldAura.name && oldAura.name !== 'Empty Slot') {
+        inventory.push(oldAura);
+      }
+      gear['Blessed Aura'] = auraItem;
+
+      updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter, inventory, gear });
+
+      alert(
+        `${testSpec.stat} ${testSpec.target}+ test passed (rolled: ${rolls.join(', ')})!\n\n` +
+        `${auraName} has been equipped to your Blessed Aura slot.`
+      );
       return;
     }
 

@@ -31,6 +31,13 @@ export const isRitualService = (svc) =>
 export const isBanishCorruptionService = (svc) =>
   svc?.id === 'ch_ritual_banish_corruption';
 
+export const isBlessedAura = (item) => {
+  if (!item) return false;
+  if (Array.isArray(item.tags) && item.tags.includes('Blessed Aura')) return true;
+  if (String(item.id || '').startsWith('church_aura_')) return true;
+  return false;
+};
+
 // Normalize ids like "Trading Post" / "trading_post" / "trading-post" / "tradingPost"
 const _norm = (s) =>
   String(s || '')
