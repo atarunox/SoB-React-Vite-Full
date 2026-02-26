@@ -83,9 +83,9 @@ function display(roll) {
     case 12:
       return {
         title: 'One Last Job',
-        lore: 'A train schedule, a map, and a promise you probably shouldn’t believe.',
+        lore: 'A train schedule, a map, and a promise you probably shouldn't believe.',
         effect:
-          'Cunning 5+ and Agility 6+ to succeed. Reward: cash. Fail: become Wanted.'
+          'Town Stay ends. Cunning 5+ (each success: +2 Agi for robbery). Then Agility 6+ (+2 if Transport): each 6+ earns $500 + 1 Corruption Hit. Finally Luck 5+: pass keeps loot; fail loses half and becomes Wanted.'
       };
     default:
       return {
@@ -209,17 +209,83 @@ async function apply(roll, ctx) {
     return;
   }
 
-  // 12: One Last Job — Cunning 5+ and Agility 6+; success=money, fail=Wanted
+  // 12: One Last Job — multi-phase train heist
   if (roll === 12) {
+    const accept = await ctx.promptChoice?.('One Last Job', [
+      'Accept the Job (Town Stay ends)',
+      'Decline',
+    ]);
+    const accepted = accept === 0 || accept === '0';
+    if (!accepted) {
+      ctx.toast?.('You wisely decline the offer.');
+      return;
+    }
+
+    ctx.toast?.('You accept the job — your Town Stay ends after this.');
+
+    // Phase 1: Cunning 5+ — each success grants +2 Agility for the robbery
     const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 5 });
-    const okAgi = okCun && await ctx.doSkillCheck(id, { stat: 'Agility', target: 6 });
-    if (okCun && okAgi) {
-      const haul = d6() * 100; // simple payout; adjust if you want bigger scores
-      ctx.updateHero(id, h => ({ ...h, gold: (h.gold || 0) + haul }));
-      ctx.toast?.(`One Last Job: Success! You score $${haul}.`);
+    const agiBonus = okCun ? 2 : 0;
+    if (okCun) {
+      ctx.toast?.(`Cunning test passed: +${agiBonus} Agility bonus for the robbery.`);
     } else {
+      ctx.toast?.('Cunning test failed: no Agility bonus.');
+    }
+
+    // Phase 2: Agility 6+ — check if hero has Transport for +2 bonus
+    // Each 6+ earns $500 and 1 Corruption Hit
+    const hero = ctx.getHeroById?.(id) || {};
+    const hasTransport = Array.isArray(hero.gear)
+      ? hero.gear.some(g => g && (
+          String(g.slot || '').toLowerCase() === 'transport' ||
+          String(g.type || '').toLowerCase() === 'transport' ||
+          (Array.isArray(g.keywords) && g.keywords.some(k => String(k).toLowerCase() === 'transport'))
+        ))
+      : false;
+    const transportBonus = hasTransport ? 2 : 0;
+    const totalAgiBonus = agiBonus + transportBonus;
+
+    if (totalAgiBonus > 0) {
+      ctx.toast?.(`Agility test with +${totalAgiBonus} bonus (${agiBonus} Cunning, ${transportBonus} Transport).`);
+    }
+
+    const okAgi = await ctx.doSkillCheck(id, { stat: 'Agility', target: 6 });
+    let earnings = 0;
+    let corruption = 0;
+    if (okAgi) {
+      earnings = 500;
+      corruption = 1;
+      ctx.toast?.(`Robbery success: +$${earnings}, +${corruption} Corruption Hit.`);
+    } else {
+      ctx.toast?.('The robbery doesn\'t go as planned — no loot from the Agility test.');
+    }
+
+    // Phase 3: Luck 5+ — keep loot or lose half + Wanted
+    if (earnings > 0) {
+      const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5 });
+      if (okLuck) {
+        ctx.updateHero(id, h => ({
+          ...h,
+          gold: (h.gold || 0) + earnings,
+          corruption: (h.corruption || 0) + corruption,
+        }));
+        ctx.toast?.(`Luck test passed! You keep $${earnings} (and take ${corruption} Corruption).`);
+      } else {
+        const halfEarnings = Math.floor(earnings / 2);
+        ctx.updateHero(id, h => {
+          const wanted = addWanted(h);
+          return {
+            ...wanted,
+            gold: (h.gold || 0) + halfEarnings,
+            corruption: (h.corruption || 0) + corruption,
+          };
+        });
+        ctx.toast?.(`Luck test failed! You only keep $${halfEarnings}, take ${corruption} Corruption, and become Wanted.`);
+      }
+    } else {
+      // No earnings but still might become Wanted on a botched job
       ctx.updateHero(id, h => addWanted(h));
-      ctx.toast?.('One Last Job: It goes sideways—you are now Wanted.');
+      ctx.toast?.('The heist was a bust — you become Wanted.');
     }
     return;
   }
@@ -228,6 +294,7 @@ async function apply(roll, ctx) {
 // --------- Named wrapper so the registry can call like others ---------------
 export async function handleSmugglersDenEvent(ctx = {}) {
   const roll = ctx.forcedRoll ?? d2d6();
+  const disp = display(roll);
   await apply(roll, ctx);
   return {
     actions: [],
@@ -235,6 +302,9 @@ export async function handleSmugglersDenEvent(ctx = {}) {
     log: [`Smuggler's Den Event Roll: ${roll}`],
     eventRoll: roll,
     eventIndex: Math.max(0, roll - 2),
+    title: disp.title,
+    lore: disp.lore,
+    effect: disp.effect,
   };
 }
 

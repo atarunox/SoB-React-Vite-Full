@@ -213,13 +213,45 @@ async function coreHandle(ctx = {}) {
       log.push(
         `[Gambling Hall] (${roll}) "Sorry Mister" — A drunken patron bumps into ${pname}.`
       );
-      log.push(
-        `→ ${pname} must lose ONE of the following (player's choice):\n` +
-          `   • $200\n` +
-          `   • 2 Dark Stone\n` +
-          `   • 1 Gear or Artifact\n` +
-          `Adjust the hero's gold / Dark Stone / inventory manually to match the choice.`
-      );
+
+      const pid = primary.id || primary.localId;
+
+      if (typeof uiApi.choose === 'function') {
+        const pick = await uiApi.choose({
+          title: '"Sorry Mister"',
+          message: `${pname} must lose ONE of the following:`,
+          options: [
+            { id: 'gold', label: 'Lose $200' },
+            { id: 'ds', label: 'Lose 2 Dark Stone' },
+            { id: 'gear', label: 'Lose 1 Gear or Artifact (remove manually)' },
+          ],
+        });
+
+        const choice = pick?.id ?? 'gold';
+
+        if (choice === 'gold') {
+          const curGold = Number(primary.gold || 0);
+          updateHero(ctx, pid, { gold: Math.max(0, curGold - 200) });
+          uiApi.toast?.(`${pname} loses $200.`);
+          log.push(`→ ${pname} loses $200.`);
+        } else if (choice === 'ds') {
+          const curDS = Number(primary.darkStone || 0);
+          updateHero(ctx, pid, { darkStone: Math.max(0, curDS - 2) });
+          uiApi.toast?.(`${pname} loses 2 Dark Stone.`);
+          log.push(`→ ${pname} loses 2 Dark Stone.`);
+        } else {
+          uiApi.toast?.(`${pname} must remove 1 Gear or Artifact from inventory.`);
+          log.push(`→ ${pname} must remove 1 Gear or Artifact manually.`);
+        }
+      } else {
+        log.push(
+          `→ ${pname} must lose ONE of the following (player's choice):\n` +
+            `   • $200\n` +
+            `   • 2 Dark Stone\n` +
+            `   • 1 Gear or Artifact\n` +
+            `Adjust the hero's gold / Dark Stone / inventory manually to match the choice.`
+        );
+      }
       break;
     }
 
