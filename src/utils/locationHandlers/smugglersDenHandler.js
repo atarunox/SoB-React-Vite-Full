@@ -83,7 +83,7 @@ function display(roll) {
     case 12:
       return {
         title: 'One Last Job',
-        lore: 'A train schedule, a map, and a promise you probably shouldn't believe.',
+        lore: "A train schedule, a map, and a promise you probably shouldn't believe.",
         effect:
           'Town Stay ends. Cunning 5+ (each success: +2 Agi for robbery). Then Agility 6+ (+2 if Transport): each 6+ earns $500 + 1 Corruption Hit. Finally Luck 5+: pass keeps loot; fail loses half and becomes Wanted.'
       };
