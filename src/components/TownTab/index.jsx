@@ -180,7 +180,7 @@ const foRateFromEvent = (ev) => {
   return 25; // default D6 × $25
 };
 
-// Per-hero Doc’s Office modifiers (4–5 : outcome −1 min 0, 9–10 : outcome +1)
+// Per-hero Doc's Office modifiers (4–5 : outcome −1 min 0, 9–10 : outcome +1)
 function getDocsOfficeModsForHero() {
   const rec = getLocEventState('docsOffice');
   const r = Number(rec?.roll);
@@ -680,21 +680,21 @@ const foWorldArtifactOffer =
       return;
     }
 
-    // Smuggler’s Den: Law heroes get a warning but can still visit (look only)
-    if (shopId === ‘smugglersDen’ && hasKeyword(hero, ‘Law’)) {
+    // Smuggler's Den: Law heroes get a warning but can still visit (look only)
+    if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       window.alert(
-        ‘Law heroes are not welcome in the Smuggler’s Den.\n\nYou may look around, but you cannot buy anything or use its services.’
+        "Law heroes are not welcome in the Smuggler's Den.\n\nYou may look around, but you cannot buy anything or use its services."
       );
     }
 
     // Saloon: Conversion check — D6 roll, on 1-2 lose the blessing
     const heroId = hero.id || hero.localId;
-    if (shopId === ‘saloon’ && hero.gear?.[‘Blessing’]?.id === ‘ch_conversion’) {
+    if (shopId === 'saloon' && hero.gear?.['Blessing']?.id === 'ch_conversion') {
       const goAhead = window.confirm(
-        ‘You have been Converted (Holy).\n\n’ +
-        ‘Visiting the Saloon means rolling a D6 — on a 1 or 2 you lose\n’ +
-        ‘your Conversion bonus (+1 Spirit and the Holy keyword).\n\n’ +
-        ‘Do you still want to visit the Saloon?’
+        'You have been Converted (Holy).\n\n' +
+        'Visiting the Saloon means rolling a D6 — on a 1 or 2 you lose\n' +
+        'your Conversion bonus (+1 Spirit and the Holy keyword).\n\n' +
+        'Do you still want to visit the Saloon?'
       );
       if (!goAhead) return;
 
@@ -702,8 +702,8 @@ const foWorldArtifactOffer =
       if (roll <= 2) {
         // Lost the Conversion
         const gear = { ...(hero.gear || {}) };
-        delete gear[‘Blessing’];
-        const keywords = removeKeyword(hero, ‘Holy’);
+        delete gear['Blessing'];
+        const keywords = removeKeyword(hero, 'Holy');
         updateHero({ id: heroId, gear, keywords });
         window.alert(
           `Saloon Conversion Check: Rolled ${roll}\n\n` +
@@ -1394,7 +1394,7 @@ const foWorldArtifactOffer =
               injuries.length + mutations.length === 0;
             alert(
               lockedOnly
-                ? 'All current Injuries/Mutations are “Too Far Gone”. None can be operated on.'
+                ? 'All current Injuries/Mutations are "Too Far Gone". None can be operated on.'
                 : 'No Injuries or Mutations found on this hero.'
             );
             return null;
@@ -1561,7 +1561,7 @@ const foWorldArtifactOffer =
               injuries.length + mutations.length === 0;
             alert(
               lockedOnly
-                ? 'All current Injuries/Mutations are marked as “Too Far Gone” (surgeryLocked). None can be operated on.'
+                ? 'All current Injuries/Mutations are marked as "Too Far Gone" (surgeryLocked). None can be operated on.'
                 : 'No Injuries or Mutations found on this hero.'
             );
             return null;
@@ -1816,7 +1816,7 @@ const foWorldArtifactOffer =
       // Heroes without access may look, but cannot use services
       if (hasKeyword(hero, 'Law')) {
         alert(
-          'Law heroes may not make deals in the Smuggler’s Den. You can look around, but cannot use these services.'
+          'Law heroes may not make deals in the Smuggler's Den. You can look around, but cannot use these services.'
         );
         return;
       }
@@ -1873,7 +1873,7 @@ const foWorldArtifactOffer =
               injuries.length + mutations.length === 0;
             alert(
               lockedOnly
-                ? 'All current Injuries/Mutations are “Too Far Gone”. None can be operated on.'
+                ? 'All current Injuries/Mutations are "Too Far Gone". None can be operated on.'
                 : 'No Injuries or Mutations found on this hero.'
             );
             return null;
@@ -2189,7 +2189,7 @@ const foWorldArtifactOffer =
     // Smuggler's Den — heroes without access may look but cannot buy
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       alert(
-        'Law heroes may not buy from the Smuggler’s Den. You can look around, but cannot purchase anything here.'
+        'Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here.'
       );
       return;
     }
@@ -2244,7 +2244,7 @@ const foWorldArtifactOffer =
       return;
     }
 
-    // Rituals attempted via “Buy” -> route to Perform
+    // Rituals attempted via "Buy" -> route to Perform
     if (
       isRitualService(item) ||
       isBanishCorruptionService(item) ||
@@ -2595,9 +2595,9 @@ const foWorldArtifactOffer =
             <b>Hotel</b>: Visit any Town
             location.
             <br />
-            <b>Camp</b>: Next day you’re
+            <b>Camp</b>: Next day you're
             limited to the Camp Site, but
-            you’ll roll Camp Events.
+            you'll roll Camp Events.
           </p>
           <div className="flex gap-2">
             <button
@@ -3416,7 +3416,7 @@ const foWorldArtifactOffer =
                           }
                           title={
                             gatedByLaw
-                              ? 'Law heroes may not use the Smuggler’s Den.'
+                              ? 'Law heroes may not use the Smuggler's Den.'
                               : gatedOutlaw
                               ? 'Outlaw only.'
                               : !hero
@@ -3445,7 +3445,7 @@ const foWorldArtifactOffer =
                           }
                           title={
                             gatedByLaw
-                              ? 'Law heroes may not use the Smuggler’s Den.'
+                              ? 'Law heroes may not use the Smuggler's Den.'
                               : gatedOutlaw
                               ? 'Outlaw only.'
                               : ''
@@ -3528,7 +3528,7 @@ const foWorldArtifactOffer =
     // Smuggler's Den: Law heroes may look but cannot buy
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       alert(
-        'Law heroes may not buy from the Smuggler’s Den. You can look around, but cannot purchase anything here.'
+        'Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here.'
       );
       return;
     }
