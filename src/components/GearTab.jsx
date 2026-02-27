@@ -764,7 +764,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                   <div className="text-[10px] uppercase tracking-wide text-gray-600 text-center">{slot}</div>
 
                   <div className="mt-1 text-base font-bold min-h-[1.5rem] flex items-center gap-2">
-                    {eqSafe ? eqSafe.name : <span className="text-gray-400 italic">Empty</span>}
+                    {eqSafe ? eqSafe.name.replace(/\s*\(.*Test.*\)$/, '') : <span className="text-gray-400 italic">Empty</span>}
                     {eqSafe && isTwoHandMirrored(slot, eqSafe) && (
                       <span className="badge badge-outline text-[10px]">2-Handed</span>
                     )}
@@ -835,15 +835,21 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                       <option value="">(Choose item)</option>
                       {eqSafe && (
                         <option value={eqSafe.id} disabled>
-                          (Equipped) {eqSafe.name}
+                          (Equipped) {eqSafe.name.replace(/\s*\(.*Test.*\)$/, '')}
                         </option>
                       )}
                       {opts.length === 0 && <option disabled>No compatible items</option>}
-                      {opts.map((it, i) => (
-                        <option key={`${it.id || it.name || 'opt'}-${i}`} value={it.id}>
-                          {it.name}
-                        </option>
-                      ))}
+                      {opts.map((it, i) => {
+                        const isAura = slot === 'Blessed Aura' && hasTag(it, 'Blessed Aura');
+                        const displayName = isAura
+                          ? `${it.name.replace(/\s*\(.*\)$/, '')}${it.description ? ' — ' + it.description : ''}`
+                          : it.name;
+                        return (
+                          <option key={`${it.id || it.name || 'opt'}-${i}`} value={it.id}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>

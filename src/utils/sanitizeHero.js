@@ -84,17 +84,31 @@ export function sanitizeHero(inputHero) {
     }
   }
 
-  // ---- Fix stale Blessed Aura data: ensure mods match the canonical aura definition ----
-  const auraInGear = gear['Blessed Aura'];
-  if (auraInGear && !isEmptySlot(auraInGear) && String(auraInGear.id || '').startsWith('church_aura_')) {
-    const canonical = (Array.isArray(churchBlessedAuras) ? churchBlessedAuras : [])
-      .find(a => a.id === auraInGear.id);
+  // ---- Fix stale Blessed Aura data: ensure mods/name match the canonical aura definition ----
+  const isAuraItem = (it) =>
+    it && !isEmptySlot(it) && (
+      String(it.id || '').startsWith('church_aura_') ||
+      (Array.isArray(it.tags) && it.tags.includes('Blessed Aura') && it.name !== 'Empty Slot')
+    );
+
+  const fixAura = (item) => {
+    if (!item) return item;
+    const auraList = Array.isArray(churchBlessedAuras) ? churchBlessedAuras : [];
+    // Match by id first, then by name substring
+    const canonical = auraList.find(a => a.id === item.id) ||
+      auraList.find(a => item.name && item.name.includes(a.name.replace(/\s*\(.*\)$/, '')));
     if (canonical) {
-      auraInGear.mods = canonical.mods ? { ...canonical.mods } : {};
-      auraInGear.description = canonical.effect || '';
-      delete auraInGear.effects; // remove stale effects array (description covers it)
+      item.mods = canonical.mods ? { ...canonical.mods } : {};
+      item.description = canonical.effect || '';
+      item.name = canonical.name.replace(/\s*\(.*\)$/, '');
+      item.slot = 'Blessed Aura';
+      delete item.effects;
     }
-  }
+    return item;
+  };
+
+  const auraInGear = gear['Blessed Aura'];
+  if (isAuraItem(auraInGear)) fixAura(auraInGear);
 
   // ---------------- Inventory normalization ----------------
   let inventory = [];
@@ -106,19 +120,8 @@ export function sanitizeHero(inputHero) {
 
   // Fix stale aura items in inventory too
   for (let i = 0; i < inventory.length; i++) {
-    const it = inventory[i];
-    if (it && String(it.id || '').startsWith('church_aura_')) {
-      const canonical = (Array.isArray(churchBlessedAuras) ? churchBlessedAuras : [])
-        .find(a => a.id === it.id);
-      if (canonical) {
-        inventory[i] = {
-          ...it,
-          mods: canonical.mods ? { ...canonical.mods } : {},
-          description: canonical.effect || '',
-          slot: 'Blessed Aura',
-        };
-        delete inventory[i].effects;
-      }
+    if (isAuraItem(inventory[i])) {
+      inventory[i] = fixAura({ ...inventory[i] });
     }
   }
 

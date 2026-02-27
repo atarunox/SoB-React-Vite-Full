@@ -4,7 +4,7 @@
 const churchBlessedAuras = [
   {
     id: 'church_aura_endurance',
-    name: 'Aura of Endurance (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Endurance (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura', 'Shield'],
     cost: 200,
@@ -21,7 +21,7 @@ const churchBlessedAuras = [
   },
   {
     id: 'church_aura_wrath',
-    name: 'Aura of Wrath (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Wrath (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura'],
     cost: 100,
@@ -37,7 +37,7 @@ const churchBlessedAuras = [
   },
   {
     id: 'church_aura_fortitude',
-    name: 'Aura of Fortitude (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Fortitude (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura', 'Shield'],
     cost: 150,
@@ -54,7 +54,7 @@ const churchBlessedAuras = [
   },
   {
     id: 'church_aura_protection',
-    name: 'Aura of Protection (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Protection (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura', 'Shield'],
     cost: 250,
