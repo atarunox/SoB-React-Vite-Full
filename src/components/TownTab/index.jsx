@@ -16,7 +16,7 @@ import { makeLocEventCtx } from '../../utils/locationEventContext';
 import { applyChurchRitual } from '../../data/townLocations/FrontierTown/Church/churchRituals.js';
 
 import BlackMarketPanel from './BlackMarketPanel';
-import { hasKeyword } from '../../utils/keywords';
+import { hasKeyword, removeKeyword } from '../../utils/keywords';
 
 // --- Service Executors ---
 import { performSaloonService } from '../../utils/locationHandlers/saloonServices.js';
@@ -680,14 +680,45 @@ const foWorldArtifactOffer =
       return;
     }
 
-    // Smuggler's Den: Law heroes get a warning but can still visit (look only)
-    if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
+    // Smuggler’s Den: Law heroes get a warning but can still visit (look only)
+    if (shopId === ‘smugglersDen’ && hasKeyword(hero, ‘Law’)) {
       window.alert(
-        'Law heroes are not welcome in the Smuggler’s Den.\n\nYou may look around, but you cannot buy anything or use its services.'
+        ‘Law heroes are not welcome in the Smuggler’s Den.\n\nYou may look around, but you cannot buy anything or use its services.’
       );
     }
 
-    const id = hero.id || hero.localId;
+    // Saloon: Conversion check — D6 roll, on 1-2 lose the blessing
+    const heroId = hero.id || hero.localId;
+    if (shopId === ‘saloon’ && hero.gear?.[‘Blessing’]?.id === ‘ch_conversion’) {
+      const goAhead = window.confirm(
+        ‘You have been Converted (Holy).\n\n’ +
+        ‘Visiting the Saloon means rolling a D6 — on a 1 or 2 you lose\n’ +
+        ‘your Conversion bonus (+1 Spirit and the Holy keyword).\n\n’ +
+        ‘Do you still want to visit the Saloon?’
+      );
+      if (!goAhead) return;
+
+      const roll = Math.floor(Math.random() * 6) + 1;
+      if (roll <= 2) {
+        // Lost the Conversion
+        const gear = { ...(hero.gear || {}) };
+        delete gear[‘Blessing’];
+        const keywords = removeKeyword(hero, ‘Holy’);
+        updateHero({ id: heroId, gear, keywords });
+        window.alert(
+          `Saloon Conversion Check: Rolled ${roll}\n\n` +
+          `You have lost your Conversion!\n` +
+          `-1 Spirit and the Holy keyword removed.`
+        );
+      } else {
+        window.alert(
+          `Saloon Conversion Check: Rolled ${roll}\n\n` +
+          `Your faith holds. You keep your Conversion blessing.`
+        );
+      }
+    }
+
+    const id = heroId;
     setVisitPurchases((v) => ({ ...v, [id]: v[id] || {} }));
     updateHero({ id, chosenLocation: shopId, isDone: true });
 

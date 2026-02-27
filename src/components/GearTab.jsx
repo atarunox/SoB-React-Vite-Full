@@ -764,13 +764,14 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                   <div className="text-[10px] uppercase tracking-wide text-gray-600 text-center">{slot}</div>
 
                   <div className="mt-1 text-base font-bold min-h-[1.5rem] flex items-center gap-2">
-                    {eqSafe ? eqSafe.name.replace(/\s*\(.*Test.*\)$/, '') : <span className="text-gray-400 italic">Empty</span>}
+                    {eqSafe ? eqSafe.name.replace(/\s*\(Spirit \d\+\+?\)$/, '') : <span className="text-gray-400 italic">Empty</span>}
                     {eqSafe && isTwoHandMirrored(slot, eqSafe) && (
                       <span className="badge badge-outline text-[10px]">2-Handed</span>
                     )}
                   </div>
 
-                  {!!(eqSafe?.description || eqSafe?.effect) && (
+                  {!!(eqSafe?.description || eqSafe?.effect) &&
+                   !(slot === 'Blessed Aura' && eqSafe?.mods && Object.keys(eqSafe.mods).length > 0) && (
                     <div className="mt-1 text-[11px] leading-tight text-gray-700 max-h-20 overflow-auto pr-1 italic">
                       {eqSafe.description || eqSafe.effect}
                     </div>
@@ -835,7 +836,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                       <option value="">(Choose item)</option>
                       {eqSafe && (
                         <option value={eqSafe.id} disabled>
-                          (Equipped) {eqSafe.name.replace(/\s*\(.*Test.*\)$/, '')}
+                          (Equipped) {eqSafe.name.replace(/\s*\(Spirit \d\+\+?\)$/, '')}
                         </option>
                       )}
                       {opts.length === 0 && <option disabled>No compatible items</option>}

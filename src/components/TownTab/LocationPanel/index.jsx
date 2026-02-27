@@ -6,6 +6,7 @@ import {
   saveTownState,
 } from '../../utils/townState';
 import { usePosse } from '../../context/PosseContext';
+import { hasKeyword, addKeyword, removeKeyword } from '../../utils/keywords';
 import { shopDataById } from '../../data/shopDataByID';
 import { tabsByShop } from '../../data/townLocations/tabsByShop.js';
 import { makeLocEventCtx } from '../../utils/locationEventContext';
@@ -476,6 +477,48 @@ promptChoice: async (title, options) => {
         `${auraName} equipped to your Blessed Aura slot.\n` +
         `Effect: ${item.effect || 'See gear details.'}`
       );
+      return;
+    }
+
+    // Conversion purchase — grants +1 Spirit, Holy keyword
+    if (item?.id === 'ch_conversion') {
+      // Block if hero already has Holy keyword
+      if (hasKeyword(hero, 'Holy')) {
+        alert('This hero already has the Holy keyword and cannot purchase Conversion.');
+        return;
+      }
+      const costRaw = getCost(item);
+      const costObj = normalizeCostObject(costRaw);
+      if (!canAfford(costObj)) {
+        alert('Cannot afford Conversion.');
+        return;
+      }
+      const proceed = window.confirm(
+        `Purchase: Conversion\nCost: $${costObj.gold ?? 0}\n\n` +
+        `Effect: +1 Spirit and gain the Holy keyword.\n` +
+        `Warning: Each time you visit the Saloon, roll a D6;\non 1–2, you lose this bonus.\n\n` +
+        `Proceed?`
+      );
+      if (!proceed) return;
+
+      const goldAfter = (hero.gold ?? 0) - (costObj.gold ?? 0);
+      const keywords = addKeyword(hero, 'Holy');
+
+      // Store as a gear slot so collectGearMods picks up the +1 Spirit
+      const conversionItem = {
+        id: 'ch_conversion',
+        name: 'Conversion',
+        type: 'Blessing',
+        slot: 'Blessing',
+        tags: ['Blessing', 'Holy', 'Conversion'],
+        description: '+1 Spirit, Holy keyword. Saloon visit: D6 roll 1–2 loses this.',
+        mods: { Spirit: 1 },
+      };
+      const gear = { ...(hero.gear || {}) };
+      gear['Blessing'] = conversionItem;
+
+      updateHero({ id: hero.id || hero.localId, gold: goldAfter, keywords, gear });
+      alert('Conversion purchased!\n\n+1 Spirit and you are now Holy.\nBeware the Saloon — a D6 roll of 1–2 will strip this blessing.');
       return;
     }
 
