@@ -1,6 +1,7 @@
 // src/utils/sanitizeHero.js
 import getLevelingChart from '../data/getLevelingChart';
 import { gearCards } from '../data/items/gearCards';
+import churchBlessedAuras from '../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
 // small helpers
 const isEmptySlot = (x) =>
@@ -83,12 +84,42 @@ export function sanitizeHero(inputHero) {
     }
   }
 
+  // ---- Fix stale Blessed Aura data: ensure mods match the canonical aura definition ----
+  const auraInGear = gear['Blessed Aura'];
+  if (auraInGear && !isEmptySlot(auraInGear) && String(auraInGear.id || '').startsWith('church_aura_')) {
+    const canonical = (Array.isArray(churchBlessedAuras) ? churchBlessedAuras : [])
+      .find(a => a.id === auraInGear.id);
+    if (canonical) {
+      auraInGear.mods = canonical.mods ? { ...canonical.mods } : {};
+      auraInGear.description = canonical.effect || '';
+      delete auraInGear.effects; // remove stale effects array (description covers it)
+    }
+  }
+
   // ---------------- Inventory normalization ----------------
   let inventory = [];
   if (Array.isArray(hero.inventory)) {
     inventory = hero.inventory.filter(i => i && typeof i === 'object');
   } else if (hero.inventory && typeof hero.inventory === 'object') {
     inventory = Object.values(hero.inventory).filter(i => i && typeof i === 'object');
+  }
+
+  // Fix stale aura items in inventory too
+  for (let i = 0; i < inventory.length; i++) {
+    const it = inventory[i];
+    if (it && String(it.id || '').startsWith('church_aura_')) {
+      const canonical = (Array.isArray(churchBlessedAuras) ? churchBlessedAuras : [])
+        .find(a => a.id === it.id);
+      if (canonical) {
+        inventory[i] = {
+          ...it,
+          mods: canonical.mods ? { ...canonical.mods } : {},
+          description: canonical.effect || '',
+          slot: 'Blessed Aura',
+        };
+        delete inventory[i].effects;
+      }
+    }
   }
 
   // ---------------- Starting items (one-time auto-equip) ----------------

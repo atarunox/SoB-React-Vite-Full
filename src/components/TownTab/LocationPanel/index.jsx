@@ -441,27 +441,34 @@ promptChoice: async (title, options) => {
         return;
       }
 
-      // Passed — add to inventory and auto-equip to Blessed Aura slot
+      // Passed — build a clean aura item and auto-equip to Blessed Aura slot
       const auraItem = {
-        ...item,
         id: item.id || `aura_${Date.now()}`,
         name: auraName,
         type: 'Aura',
         slot: 'Blessed Aura',
+        tags: Array.isArray(item.tags) ? [...item.tags] : ['Blessed Aura'],
+        description: item.effect || '',
+        mods: item.mods ? { ...item.mods } : {},
+        rules: item.rules ? { ...item.rules } : {},
+        oneUse: true,
+        scope: 'nextAdventure',
       };
 
       const inventory = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
-      inventory.push(auraItem);
+      // Remove any old auras from inventory with same id to prevent duplicates
+      const cleanInv = inventory.filter(i => i?.id !== auraItem.id);
+      cleanInv.push(auraItem);
 
       const gear = { ...(hero.gear || {}) };
-      // Return old aura to inventory if one was equipped
+      // Return old aura to inventory if one was equipped (different aura)
       const oldAura = gear['Blessed Aura'];
-      if (oldAura && oldAura.name && oldAura.name !== 'Empty Slot') {
-        inventory.push(oldAura);
+      if (oldAura && oldAura.name && oldAura.name !== 'Empty Slot' && oldAura.id !== auraItem.id) {
+        cleanInv.push(oldAura);
       }
       gear['Blessed Aura'] = auraItem;
 
-      updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter, inventory, gear });
+      updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter, inventory: cleanInv, gear });
 
       alert(
         `${testSpec.stat} ${testSpec.target}+ Test PASSED!\n\n` +
