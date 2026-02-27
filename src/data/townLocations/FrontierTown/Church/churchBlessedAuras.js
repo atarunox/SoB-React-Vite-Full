@@ -25,7 +25,7 @@ const churchBlessedAuras = [
     category: 'Service',
     tags: ['Blessed Aura'],
     cost: 100,
-    effect: '+D6 Damage to one Hit (next Adventure).',
+    effect: 'Once during the next Adventure, you may add a single D6 to one of your Hits.',
     test: 'Spirit 4+',
     // No stat mods — one-time damage bonus handled during combat
     rules: {
