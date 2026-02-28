@@ -6,6 +6,7 @@ import { flattenTokens } from '../data/SidebagLibrary';
 import { calculateCurrentStats } from '../utils/calculateStats';
 import { getConditionRules } from '../utils/conditionRules';
 import { ASSETS } from './TownTab/townTabHelpers';
+import churchBlessedAuras from '../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
 // --------------------------------- helpers ---------------------------------
 const baseGearSlots = [
@@ -772,7 +773,9 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
 
                   {!!(eqSafe?.description || eqSafe?.effect) && (
                     <div className="mt-1 text-[11px] leading-tight text-gray-700 max-h-20 overflow-auto pr-1 italic">
-                      {eqSafe.description || eqSafe.effect}
+                      {slot === 'Blessed Aura'
+                        ? (churchBlessedAuras.find(a => a.id === eqSafe.id)?.effect || eqSafe.description || eqSafe.effect)
+                        : (eqSafe.description || eqSafe.effect)}
                     </div>
                   )}
 
@@ -1175,6 +1178,20 @@ function equipGearFactory(viewHero, saveHero, condRules, setViewHero) {
     if (copy.gear[slot] && copy.gear[slot].name !== 'Empty Slot') {
       copy.inventory.push(copy.gear[slot]);
     }
+    // For Blessed Aura, apply canonical mods/effect so stats update immediately
+    if (slot === 'Blessed Aura') {
+      const canonical = churchBlessedAuras.find(a => a.id === it.id);
+      if (canonical) {
+        it = { ...it,
+          mods: canonical.mods ? { ...canonical.mods } : {},
+          description: canonical.effect || '',
+          effect: canonical.effect || '',
+          name: canonical.name.replace(/\s*\(.*\)$/, ''),
+        };
+        delete it.effects;
+      }
+    }
+
     copy.gear[slot] = it;
     copy.inventory = copy.inventory.filter(i => String(i.id) !== String(id));
 
