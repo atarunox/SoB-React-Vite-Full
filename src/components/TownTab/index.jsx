@@ -100,6 +100,25 @@ import {
   nextSideBag,
 } from './townTabHelpers';
 
+// Apply Blacksmith shopMods (priceDelta / saleActive) to a cost object
+function applyBlacksmithMods(costRaw, townState) {
+  const mods = townState?.shopMods?.blacksmith;
+  if (!mods || (!mods.priceDelta && !mods.saleActive)) return costRaw;
+  if (costRaw == null || typeof costRaw === 'string') return costRaw;
+  const delta = Number(mods.priceDelta || 0);
+  if (typeof costRaw === 'number') {
+    let g = costRaw + delta;
+    if (mods.saleActive) g = Math.max(10, g);
+    return Math.max(0, g);
+  }
+  if (typeof costRaw === 'object') {
+    let g = Number(costRaw.gold || 0) + delta;
+    if (mods.saleActive) g = Math.max(10, g);
+    return { ...costRaw, gold: Math.max(0, g) };
+  }
+  return costRaw;
+}
+
 // --- Derived stat reader (uses calculateCurrentStats, with debug logs)
 function getStatTotal(hero, statName) {
   if (!hero) return 0;
@@ -2288,7 +2307,11 @@ const foWorldArtifactOffer =
     }
 
     const itemId = getItemId(item, idx);
-    let costObj = normalizeCostObject(getCost(item));
+    const costBase = getCost(item);
+    const costAdjusted = openLocationId === 'blacksmith'
+      ? applyBlacksmithMods(costBase, state)
+      : costBase;
+    let costObj = normalizeCostObject(costAdjusted);
 
     // Smuggler's Den — Black Market pricing (for tagged Black Market goods)
     if (openLocationId === 'smugglersDen') {
@@ -2939,7 +2962,10 @@ const foWorldArtifactOffer =
                 outlawTagged &&
                 !heroIsOutlaw;
 
-              const costRaw = getCost(item);
+              const costBase = getCost(item);
+              const costRaw = openLocationId === 'blacksmith'
+                ? applyBlacksmithMods(costBase, state)
+                : costBase;
               const costObj =
                 typeof costRaw ===
                   'number' ||

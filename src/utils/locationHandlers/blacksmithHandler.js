@@ -184,8 +184,7 @@ async function apply(roll, ctx) {
 
   // 4–5: Price hike (+$100), cancels sale
   if (roll === 4 || roll === 5) {
-    const cur = getShopMods();
-    patchShopMods({ priceDelta: (cur.priceDelta || 0) + 100, saleActive: false });
+    patchShopMods({ priceDelta: 100, saleActive: false });
     ctx.toast?.('Blacksmith prices +$100 (Forging Sale canceled).');
     return;
   }
@@ -198,8 +197,7 @@ async function apply(roll, ctx) {
 
   // 9–10: Forging Sale –$50 (min $10)
   if (roll === 9 || roll === 10) {
-    const cur = getShopMods();
-    patchShopMods({ priceDelta: (cur.priceDelta || 0) - 50, saleActive: true });
+    patchShopMods({ priceDelta: -50, saleActive: true });
     ctx.toast?.('Forging Sale! All Blacksmith items –$50 (minimum $10).');
     return;
   }

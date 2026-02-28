@@ -65,6 +65,25 @@ const CAMP_SHOPS = ['campSiteTents'];
 const isObj = (v) => v && typeof v === 'object';
 const getItemId = (item, idx = 0) => item?.id || item?.name || `item_${idx}`;
 
+// Apply Blacksmith shopMods (priceDelta / saleActive) to a cost object
+function applyBlacksmithMods(costRaw, townState) {
+  const mods = townState?.shopMods?.blacksmith;
+  if (!mods || (!mods.priceDelta && !mods.saleActive)) return costRaw;
+  if (costRaw == null || typeof costRaw === 'string') return costRaw;
+  const delta = Number(mods.priceDelta || 0);
+  if (typeof costRaw === 'number') {
+    let g = costRaw + delta;
+    if (mods.saleActive) g = Math.max(10, g);
+    return Math.max(0, g);
+  }
+  if (typeof costRaw === 'object') {
+    let g = Number(costRaw.gold || 0) + delta;
+    if (mods.saleActive) g = Math.max(10, g);
+    return { ...costRaw, gold: Math.max(0, g) };
+  }
+  return costRaw;
+}
+
 // Event read wrapper (engine wants state)
 const getLocEventState = (shopId) => _getLocEventState(loadTownState(), shopId);
 
@@ -544,7 +563,10 @@ promptChoice: async (title, options) => {
     }
 
     const itemId = getItemId(item, idx);
-    const costRaw = getCost(item);
+    const costBase = getCost(item);
+    const costRaw = shopId === 'blacksmith'
+      ? applyBlacksmithMods(costBase, state)
+      : costBase;
     const costObj = normalizeCostObject(costRaw);
 
     if (!canAfford(costObj)) {
@@ -812,7 +834,10 @@ promptChoice: async (title, options) => {
             {entries.map((item, idx) => {
               if (!item) return null;
 
-              const costRaw = getCost(item);
+              const costBase = getCost(item);
+              const costRaw = openLocationId === 'blacksmith'
+                ? applyBlacksmithMods(costBase, state)
+                : costBase;
               const costObj =
                 typeof costRaw === 'number' || (costRaw && typeof costRaw === 'object')
                   ? typeof costRaw === 'number'
