@@ -1816,7 +1816,7 @@ const foWorldArtifactOffer =
       // Heroes without access may look, but cannot use services
       if (hasKeyword(hero, 'Law')) {
         alert(
-          'Law heroes may not make deals in the Smuggler's Den. You can look around, but cannot use these services.'
+          "Law heroes may not make deals in the Smuggler's Den. You can look around, but cannot use these services."
         );
         return;
       }
@@ -2189,7 +2189,7 @@ const foWorldArtifactOffer =
     // Smuggler's Den — heroes without access may look but cannot buy
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       alert(
-        'Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here.'
+        "Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here."
       );
       return;
     }
@@ -3416,7 +3416,7 @@ const foWorldArtifactOffer =
                           }
                           title={
                             gatedByLaw
-                              ? 'Law heroes may not use the Smuggler's Den.'
+                              ? "Law heroes may not use the Smuggler's Den."
                               : gatedOutlaw
                               ? 'Outlaw only.'
                               : !hero
@@ -3445,7 +3445,7 @@ const foWorldArtifactOffer =
                           }
                           title={
                             gatedByLaw
-                              ? 'Law heroes may not use the Smuggler's Den.'
+                              ? "Law heroes may not use the Smuggler's Den."
                               : gatedOutlaw
                               ? 'Outlaw only.'
                               : ''
@@ -3528,7 +3528,7 @@ const foWorldArtifactOffer =
     // Smuggler's Den: Law heroes may look but cannot buy
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       alert(
-        'Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here.'
+        "Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here."
       );
       return;
     }
