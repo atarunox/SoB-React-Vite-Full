@@ -30,6 +30,8 @@ import {
 // UI pieces
 import TownEventCard from './TownEventCard';
 import RareFindPanel from './RareFindPanel';
+import BlacksmithUpgradeReward from '../../BlacksmithUpgradeReward';
+import { FREE_ATTACK_UPGRADE } from '../../../utils/locationHandlers/blacksmithHandler';
 
 // icons / helpers
 import {
@@ -1039,6 +1041,25 @@ promptChoice: async (title, options) => {
               hero={hero}
               onBuy={() => handleBuyRareFind(openLocationId)}
             />
+          )}
+
+          {/* Unique Forging (Roll 12) — apply Free Attack upgrade */}
+          {openLocationId === 'blacksmith' && state?.shopMods?.blacksmith?.uniqueForging && (
+            <div className="mt-3">
+              <BlacksmithUpgradeReward
+                listedUpgrade={FREE_ATTACK_UPGRADE}
+                onDone={() => {
+                  // Clear the flag once applied or dismissed
+                  const s = loadTownState();
+                  const cur = s.shopMods?.blacksmith || {};
+                  const next = { ...cur };
+                  delete next.uniqueForging;
+                  s.shopMods = { ...(s.shopMods || {}), blacksmith: next };
+                  saveTownState(s);
+                  setState(loadTownState());
+                }}
+              />
+            </div>
           )}
         </div>
       )}

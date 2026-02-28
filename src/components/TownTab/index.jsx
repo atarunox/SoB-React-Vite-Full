@@ -74,6 +74,8 @@ import {
 // UI pieces
 import TownEventCard from './TownEventCard';
 import RareFindPanel from './RareFindPanel';
+import BlacksmithUpgradeReward from '../BlacksmithUpgradeReward';
+import { FREE_ATTACK_UPGRADE } from '../../utils/locationHandlers/blacksmithHandler';
 
 // icons / helpers
 import {
@@ -3510,6 +3512,24 @@ const foWorldArtifactOffer =
                 handleBuyRareFind(openLocationId)
               }
             />
+          )}
+
+          {/* Blacksmith Unique Forging (Roll 12) */}
+          {openLocationId === 'blacksmith' && state?.shopMods?.blacksmith?.uniqueForging && (
+            <div className="mt-3">
+              <BlacksmithUpgradeReward
+                listedUpgrade={FREE_ATTACK_UPGRADE}
+                onDone={() => {
+                  const s = loadTownState();
+                  const cur = s.shopMods?.blacksmith || {};
+                  const next = { ...cur };
+                  delete next.uniqueForging;
+                  s.shopMods = { ...(s.shopMods || {}), blacksmith: next };
+                  saveTownState(s);
+                  setState(loadTownState());
+                }}
+              />
+            </div>
           )}
 
           {/* Frontier Outpost — Trading Post Artifact Offer */}

@@ -108,14 +108,38 @@ function getAllHeroesHere(ctx) {
   return Array.from(new Set(viaCtx));
 }
 
+// The canonical Free Attack upgrade applied by roll 12
+const FREE_ATTACK_UPGRADE = {
+  id: 'bs_unique_forging_free_attack',
+  name: 'Free Attack (Unique Forging)',
+  description: 'Once per Adventure, do D6 Damage to every adjacent Enemy, ignoring Defense.',
+  mods: null,
+  tags: ['Blacksmith', 'Free Upgrade'],
+};
+
 // --- mechanics -------------------------------------------------------------
 async function apply(roll, ctx) {
+  const lore = blacksmithData[roll] || {};
+
   // 2: Dark Stone Poisoning (perm Max Health loss on fail)
   if (roll === 2) {
     const id = ctx.getActiveHeroId();
-    const okStr = await ctx.doSkillCheck(id, { stat: 'Strength', target: 5 });
-    const okAgi = okStr || (await ctx.doSkillCheck(id, { stat: 'Agility', target: 5 }));
-    if (!okAgi) {
+    const hero = ctx.getHeroById?.(id);
+    const heroName = hero?.name || 'Hero';
+
+    // Flavor text + choice prompt
+    const choice = window.confirm(
+      `DARK STONE POISONING\n\n` +
+      `${lore.effect}\n\n` +
+      `${heroName} must choose a test:\n` +
+      `  OK  =  Strength 5+ (overpower him)\n` +
+      `  Cancel  =  Agility 5+ (dodge and trip him)`
+    );
+
+    const stat = choice ? 'Strength' : 'Agility';
+    const passed = await ctx.doSkillCheck(id, { stat, target: 5 });
+
+    if (!passed) {
       const loss = d6();
       ctx.updateHero(id, (h) => {
         const prevMax =
@@ -124,7 +148,6 @@ async function apply(roll, ctx) {
         const curHp = Number(h.currentHealth ?? h.health ?? prevMax);
         const cappedHp = Math.min(curHp, newMax);
         const next = { ...h, maxHealth: newMax, currentHealth: cappedHp, health: cappedHp };
-        // Log a permanent change note for the Conditions tab
         const note = makeMaxChangeNote({
           stat: 'Max Health',
           delta: -loss,
@@ -134,22 +157,46 @@ async function apply(roll, ctx) {
         });
         return pushConditionNote(next, note);
       });
-      ctx.toast?.(`Dark Stone Poisoning: lose ${loss} Max Health (permanent).`);
+      window.alert(
+        `${stat} 5+ Test FAILED!\n\n` +
+        `The crazed blacksmith stabs ${heroName} with a hot poker, ` +
+        `searing a nasty Dark Stone Scar into your side.\n\n` +
+        `Rolled D6 = ${loss}\n` +
+        `${heroName} permanently loses ${loss} Max Health.\n\n` +
+        `The Blacksmith is closed until after the next Adventure.`
+      );
     } else {
-      ctx.toast?.('You overpower/dodge the crazed blacksmith.');
+      window.alert(
+        `${stat} 5+ Test PASSED!\n\n` +
+        `${heroName} ${choice ? 'overpowers' : 'dodges'} the crazed blacksmith!\n` +
+        `Either way, the blacksmith himself is shot dead.\n\n` +
+        `The Blacksmith is closed until after the next Adventure.`
+      );
     }
     patchShopMods({ destroyed: true });
-    ctx.toast?.('The Blacksmith is closed until after the next Adventure.');
     return;
   }
 
   // 3: Wild Horse incident (pass: +$100; fail: neighboring building destroyed + Injury checks)
   if (roll === 3) {
     const id = ctx.getActiveHeroId();
+    const hero = ctx.getHeroById?.(id);
+    const heroName = hero?.name || 'Hero';
+
+    window.alert(
+      `WILD HORSE\n\n` +
+      `${lore.effect}\n\n` +
+      `${heroName} must make a Strength 5+ test to wrangle the horse!`
+    );
+
     const passed = await ctx.doSkillCheck(id, { stat: 'Strength', target: 5 });
     if (passed) {
       ctx.updateHero(id, (h) => ({ ...h, gold: (h.gold || 0) + 100 }));
-      ctx.toast?.('You wrangle the wild horse: +$100.');
+      window.alert(
+        `Strength 5+ Test PASSED!\n\n` +
+        `${heroName} wrestles the wild horse under control.\n` +
+        `The blacksmith pays you $100 for your trouble.`
+      );
     } else {
       // Pick a random building to destroy (exclude the blacksmith itself and camp)
       const candidates = [
@@ -171,12 +218,34 @@ async function apply(roll, ctx) {
         indianTradingPost: 'Indian Trading Post', mutantQuarter: 'Mutant Quarter',
         frontierOutpost: 'Frontier Outpost',
       };
-      ctx.toast?.(`Wild Horse! The ${names[pick] || pick} is destroyed until after the next Adventure.`);
 
+      window.alert(
+        `Strength 5+ Test FAILED!\n\n` +
+        `The horse wreaks havoc through town and smashes into the ${names[pick] || pick}!\n` +
+        `The ${names[pick] || pick} is destroyed until after the next Adventure.\n\n` +
+        `All Heroes at the Blacksmith must now make an Agility 4+ test ` +
+        `or roll on the Injury Chart!`
+      );
+
+      // All heroes at the blacksmith must pass Agility 4+
       const hereIds = getAllHeroesHere(ctx);
       for (const hid of hereIds) {
+        const h = ctx.getHeroById?.(hid);
+        const hName = h?.name || 'Hero';
         const okAgi = await ctx.doSkillCheck(hid, { stat: 'Agility', target: 4 });
-        if (!okAgi) await ctx.enqueueChartRoll(hid, 'injury');
+        if (!okAgi) {
+          await ctx.enqueueChartRoll(hid, 'injury');
+          window.alert(
+            `${hName}: Agility 4+ Test FAILED!\n\n` +
+            `The building collapses on ${hName}!\n` +
+            `Roll on the Injury Chart.`
+          );
+        } else {
+          window.alert(
+            `${hName}: Agility 4+ Test PASSED!\n\n` +
+            `${hName} escapes the collapsing building safely!`
+          );
+        }
       }
     }
     return;
@@ -185,20 +254,29 @@ async function apply(roll, ctx) {
   // 4–5: Price hike (+$100), cancels sale
   if (roll === 4 || roll === 5) {
     patchShopMods({ priceDelta: 100, saleActive: false });
-    ctx.toast?.('Blacksmith prices +$100 (Forging Sale canceled).');
+    window.alert(
+      `COST INCREASE\n\n` +
+      `${lore.effect}`
+    );
     return;
   }
 
   // 6–8: No event
   if (roll >= 6 && roll <= 8) {
-    ctx.toast?.('No Event at the Blacksmith.');
+    window.alert(
+      `BLACK SMOKE AND HORSE MANURE\n\n` +
+      `${lore.effect}`
+    );
     return;
   }
 
   // 9–10: Forging Sale –$50 (min $10)
   if (roll === 9 || roll === 10) {
     patchShopMods({ priceDelta: -50, saleActive: true });
-    ctx.toast?.('Forging Sale! All Blacksmith items –$50 (minimum $10).');
+    window.alert(
+      `FORGING SALE!\n\n` +
+      `${lore.effect}`
+    );
     return;
   }
 
@@ -207,29 +285,26 @@ async function apply(roll, ctx) {
     const priceDS = d6() + 1;
     const card = drawMineArtifact();
     patchShopMods({ rareFind: card ? { priceDS, artifact: card } : null });
-    const label = card?.name ? `: ${card.name}` : '';
-    ctx.toast?.(`Rare Find${label} — you may buy it for ${priceDS} Dark Stone.`);
+    const label = card?.name || 'an Artifact';
+    window.alert(
+      `RARE FIND\n\n` +
+      `${lore.effect}\n\n` +
+      `Drawn: ${label}\n` +
+      `Price: ${priceDS} Dark Stone\n\n` +
+      `You can purchase this artifact in the shop below.`
+    );
     return;
   }
 
-  // 12: Unique Forging voucher (Free Attack upgrade)
+  // 12: Unique Forging (Free Attack upgrade — applied via shopMods flag)
   if (roll === 12) {
-    patchShopMods({ uniqueForgingFreeAttack: true });
-    const id = ctx.getActiveHeroId();
-    ctx.updateHero(id, (h) => {
-      const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
-      inv.push({
-        id: `upgrade_voucher_free_attack_${Date.now()}`,
-        name: 'Unique Forging Voucher',
-        type: 'Upgrade Voucher',
-        description:
-          'Free Attack – Once per Adventure, deal D6 damage to all adjacent Enemies (ignores Defense).',
-        tags: ['Blacksmith', 'Free Upgrade'],
-        oneUse: true,
-      });
-      return { ...h, inventory: inv };
-    });
-    ctx.toast?.('Unique Forging! You gained a free “Free Attack” upgrade.');
+    patchShopMods({ uniqueForging: true });
+    window.alert(
+      `UNIQUE FORGING\n\n` +
+      `${lore.effect}\n\n` +
+      `Choose one of your items with an empty Upgrade Slot below ` +
+      `to receive this free upgrade.`
+    );
     return;
   }
 }
@@ -275,7 +350,7 @@ export async function onBeforePurchaseBlacksmithTransport(item, ctx = {}) {
 
 /**
  * onAfterPurchaseBlacksmithTransport
- * Adds the purchased Transport into the buyer’s inventory.
+ * Adds the purchased Transport into the buyer's inventory.
  * Assumes gold/DS cost was already deducted by your generic shop flow.
  */
 export async function onAfterPurchaseBlacksmithTransport(item, ctx = {}) {
@@ -303,6 +378,8 @@ export async function onAfterPurchaseBlacksmithTransport(item, ctx = {}) {
 
   ctx.toast?.(`${item.name} added to inventory.`);
 }
+
+export { FREE_ATTACK_UPGRADE };
 
 export async function handleBlacksmithEvent(ctx = {}) {
   const roll = ctx.forcedRoll ?? d2d6();
