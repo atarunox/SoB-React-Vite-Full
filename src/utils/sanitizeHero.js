@@ -100,6 +100,7 @@ export function sanitizeHero(inputHero) {
     if (canonical) {
       item.mods = canonical.mods ? { ...canonical.mods } : {};
       item.description = canonical.effect || '';
+      item.effect = canonical.effect || '';
       item.name = canonical.name.replace(/\s*\(.*\)$/, '');
       item.slot = 'Blessed Aura';
       delete item.effects;

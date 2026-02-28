@@ -789,7 +789,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                     </ul>
                   )}
 
-                  {Array.isArray(eqSafe?.effects) && eqSafe.effects.length > 0 && (
+                  {slot !== 'Blessed Aura' && Array.isArray(eqSafe?.effects) && eqSafe.effects.length > 0 && (
                     <ul className="mt-1 text-[11px] leading-tight list-disc list-inside max-h-24 overflow-auto pr-1">
                       {eqSafe.effects.map((line, i) => (
                         <li key={`eff-${i}`}>{line}</li>
