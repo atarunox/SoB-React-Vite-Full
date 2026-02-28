@@ -1179,26 +1179,27 @@ function equipGearFactory(viewHero, saveHero, condRules, setViewHero) {
       copy.inventory.push(copy.gear[slot]);
     }
     // For Blessed Aura, apply canonical mods/effect so stats update immediately
+    let equipItem = it;
     if (slot === 'Blessed Aura') {
       const canonical = churchBlessedAuras.find(a => a.id === it.id);
       if (canonical) {
-        it = { ...it,
+        const { effects: _drop, ...rest } = it;
+        equipItem = { ...rest,
           mods: canonical.mods ? { ...canonical.mods } : {},
           description: canonical.effect || '',
           effect: canonical.effect || '',
           name: canonical.name.replace(/\s*\(.*\)$/, ''),
         };
-        delete it.effects;
       }
     }
 
-    copy.gear[slot] = it;
+    copy.gear[slot] = equipItem;
     copy.inventory = copy.inventory.filter(i => String(i.id) !== String(id));
 
     // Break old 2H mirror if present
     if (isHandSlot) {
       const other = slot === 'Main Hand' ? 'Off Hand' : 'Main Hand';
-      if (copy.gear[other] && copy.gear[other].id === it.id && it.twoHanded !== true) {
+      if (copy.gear[other] && copy.gear[other].id === equipItem.id && equipItem.twoHanded !== true) {
         copy.gear[other] = { id: `empty-${other.replace(/\s+/g, '').toLowerCase()}`, name: 'Empty Slot', slot: other };
       }
     }
