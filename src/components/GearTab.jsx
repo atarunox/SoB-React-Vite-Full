@@ -770,14 +770,13 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                     )}
                   </div>
 
-                  {!!(eqSafe?.description || eqSafe?.effect) &&
-                   !(slot === 'Blessed Aura' && eqSafe?.mods && Object.keys(eqSafe.mods).length > 0) && (
+                  {!!(eqSafe?.description || eqSafe?.effect) && (
                     <div className="mt-1 text-[11px] leading-tight text-gray-700 max-h-20 overflow-auto pr-1 italic">
                       {eqSafe.description || eqSafe.effect}
                     </div>
                   )}
 
-                  {eqSafe?.mods && typeof eqSafe.mods === 'object' && Object.keys(eqSafe.mods).length > 0 && (
+                  {slot !== 'Blessed Aura' && eqSafe?.mods && typeof eqSafe.mods === 'object' && Object.keys(eqSafe.mods).length > 0 && (
                     <ul className="mt-1 text-[11px] leading-tight list-disc list-inside max-h-24 overflow-auto pr-1">
                       {Object.entries(eqSafe.mods)
                         .filter(([, v]) => (typeof v === 'number' && v !== 0) || (typeof v === 'string' && /^\d+\+$/.test(v.trim())))
