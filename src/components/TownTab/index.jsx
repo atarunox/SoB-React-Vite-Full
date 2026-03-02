@@ -102,20 +102,30 @@ import {
   nextSideBag,
 } from './townTabHelpers';
 
-// Apply Blacksmith shopMods (priceDelta / saleActive) to a cost object
-function applyBlacksmithMods(costRaw, townState) {
-  const mods = townState?.shopMods?.blacksmith;
+// Apply shopMods (priceDelta / saleActive) to a cost object for any location
+const SHOPS_WITH_PRICE_MODS = {
+  blacksmith:        { saleFloor: 10 },
+  streetMarket:      { saleFloor: 25 },
+  indianTradingPost: { saleFloor: 0 },
+  smugglersDen:      { saleFloor: 0 },
+};
+
+function applyShopPriceMods(costRaw, townState, shopId) {
+  const cfg = SHOPS_WITH_PRICE_MODS[shopId];
+  if (!cfg) return costRaw;
+  const mods = townState?.shopMods?.[shopId];
   if (!mods || (!mods.priceDelta && !mods.saleActive)) return costRaw;
   if (costRaw == null || typeof costRaw === 'string') return costRaw;
   const delta = Number(mods.priceDelta || 0);
+  const floor = cfg.saleFloor || 0;
   if (typeof costRaw === 'number') {
     let g = costRaw + delta;
-    if (mods.saleActive) g = Math.max(10, g);
+    if (mods.saleActive && floor > 0) g = Math.max(floor, g);
     return Math.max(0, g);
   }
   if (typeof costRaw === 'object') {
     let g = Number(costRaw.gold || 0) + delta;
-    if (mods.saleActive) g = Math.max(10, g);
+    if (mods.saleActive && floor > 0) g = Math.max(floor, g);
     return { ...costRaw, gold: Math.max(0, g) };
   }
   return costRaw;
@@ -2310,9 +2320,7 @@ const foWorldArtifactOffer =
 
     const itemId = getItemId(item, idx);
     const costBase = getCost(item);
-    const costAdjusted = openLocationId === 'blacksmith'
-      ? applyBlacksmithMods(costBase, state)
-      : costBase;
+    const costAdjusted = applyShopPriceMods(costBase, state, openLocationId);
     let costObj = normalizeCostObject(costAdjusted);
 
     // Smuggler's Den — Black Market pricing (for tagged Black Market goods)
@@ -2965,9 +2973,7 @@ const foWorldArtifactOffer =
                 !heroIsOutlaw;
 
               const costBase = getCost(item);
-              const costRaw = openLocationId === 'blacksmith'
-                ? applyBlacksmithMods(costBase, state)
-                : costBase;
+              const costRaw = applyShopPriceMods(costBase, state, openLocationId);
               const costObj =
                 typeof costRaw ===
                   'number' ||

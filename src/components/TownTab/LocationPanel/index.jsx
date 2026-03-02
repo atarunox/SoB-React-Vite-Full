@@ -67,20 +67,31 @@ const CAMP_SHOPS = ['campSiteTents'];
 const isObj = (v) => v && typeof v === 'object';
 const getItemId = (item, idx = 0) => item?.id || item?.name || `item_${idx}`;
 
-// Apply Blacksmith shopMods (priceDelta / saleActive) to a cost object
-function applyBlacksmithMods(costRaw, townState) {
-  const mods = townState?.shopMods?.blacksmith;
+// Apply shopMods (priceDelta / saleActive) to a cost object for any location
+// Blacksmith sale floor = $10, Street Market sale floor = $25
+const SHOPS_WITH_PRICE_MODS = {
+  blacksmith:        { saleFloor: 10 },
+  streetMarket:      { saleFloor: 25 },
+  indianTradingPost: { saleFloor: 0 },
+  smugglersDen:      { saleFloor: 0 },
+};
+
+function applyShopPriceMods(costRaw, townState, shopId) {
+  const cfg = SHOPS_WITH_PRICE_MODS[shopId];
+  if (!cfg) return costRaw;
+  const mods = townState?.shopMods?.[shopId];
   if (!mods || (!mods.priceDelta && !mods.saleActive)) return costRaw;
   if (costRaw == null || typeof costRaw === 'string') return costRaw;
   const delta = Number(mods.priceDelta || 0);
+  const floor = cfg.saleFloor || 0;
   if (typeof costRaw === 'number') {
     let g = costRaw + delta;
-    if (mods.saleActive) g = Math.max(10, g);
+    if (mods.saleActive && floor > 0) g = Math.max(floor, g);
     return Math.max(0, g);
   }
   if (typeof costRaw === 'object') {
     let g = Number(costRaw.gold || 0) + delta;
-    if (mods.saleActive) g = Math.max(10, g);
+    if (mods.saleActive && floor > 0) g = Math.max(floor, g);
     return { ...costRaw, gold: Math.max(0, g) };
   }
   return costRaw;
@@ -566,9 +577,7 @@ promptChoice: async (title, options) => {
 
     const itemId = getItemId(item, idx);
     const costBase = getCost(item);
-    const costRaw = shopId === 'blacksmith'
-      ? applyBlacksmithMods(costBase, state)
-      : costBase;
+    const costRaw = applyShopPriceMods(costBase, state, shopId);
     const costObj = normalizeCostObject(costRaw);
 
     if (!canAfford(costObj)) {
@@ -837,9 +846,7 @@ promptChoice: async (title, options) => {
               if (!item) return null;
 
               const costBase = getCost(item);
-              const costRaw = openLocationId === 'blacksmith'
-                ? applyBlacksmithMods(costBase, state)
-                : costBase;
+              const costRaw = applyShopPriceMods(costBase, state, openLocationId);
               const costObj =
                 typeof costRaw === 'number' || (costRaw && typeof costRaw === 'object')
                   ? typeof costRaw === 'number'
