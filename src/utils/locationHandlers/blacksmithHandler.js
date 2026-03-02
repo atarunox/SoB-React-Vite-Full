@@ -3,11 +3,23 @@ import { loadTownState, saveTownState } from '../../utils/townState';
 import { getEventDisplay } from '../locationEventText';
 import blacksmithData from '../../data/townLocations/FrontierTown/Blacksmith/blacksmith.js';
 import { mineArtifacts } from '../../data/items/mineArtifacts';
+import { calculateCurrentStats } from '../calculateStats';
 
 // NEW: condition notes for permanent max stat changes
 import { makeMaxChangeNote, pushConditionNote } from '../../utils/conditionNotes';
 import { d6, roll2d6 as d2d6 } from '../../utils/diceHelpers';
 const shopId = blacksmithData?.id || 'blacksmith';
+
+// Resolve a hero's effective stat value (includes gear/skills/conditions)
+function getEffectiveStat(hero, statName) {
+  if (!hero) return 0;
+  try {
+    const { stats = {} } = calculateCurrentStats(hero);
+    const v = Number(stats[statName]) || 0;
+    if (v > 0) return v;
+  } catch {}
+  return Number(hero?.stats?.[statName] ?? hero?.[statName] ?? 0);
+}
 
 function getShopMods() {
   const s = loadTownState();
@@ -126,17 +138,22 @@ async function apply(roll, ctx) {
     const id = ctx.getActiveHeroId();
     const hero = ctx.getHeroById?.(id);
     const heroName = hero?.name || 'Hero';
+    const strVal = getEffectiveStat(hero, 'Strength');
+    const agiVal = getEffectiveStat(hero, 'Agility');
 
-    // Flavor text + choice prompt
-    const choice = window.confirm(
+    // Flavor text + named choice prompt
+    const raw = window.prompt(
       `DARK STONE POISONING\n\n` +
       `${lore.effect}\n\n` +
-      `${heroName} must choose a test:\n` +
-      `  OK  =  Strength 5+ (overpower him)\n` +
-      `  Cancel  =  Agility 5+ (dodge and trip him)`
+      `${heroName} must choose a test:\n\n` +
+      `  1  =  Strength 5+  (overpower him)  —  You have ${strVal} Strength (${strVal}d6)\n` +
+      `  2  =  Agility 5+  (dodge and trip him)  —  You have ${agiVal} Agility (${agiVal}d6)\n\n` +
+      `Enter 1 or 2:`,
+      '1'
     );
-
-    const stat = choice ? 'Strength' : 'Agility';
+    const pick = String(raw).trim();
+    const stat = pick === '2' ? 'Agility' : 'Strength';
+    const statVal = pick === '2' ? agiVal : strVal;
     const passed = await ctx.doSkillCheck(id, { stat, target: 5 });
 
     if (!passed) {
@@ -168,7 +185,7 @@ async function apply(roll, ctx) {
     } else {
       window.alert(
         `${stat} 5+ Test PASSED!\n\n` +
-        `${heroName} ${choice ? 'overpowers' : 'dodges'} the crazed blacksmith!\n` +
+        `${heroName} ${stat === 'Strength' ? 'overpowers' : 'dodges'} the crazed blacksmith!\n` +
         `Either way, the blacksmith himself is shot dead.\n\n` +
         `The Blacksmith is closed until after the next Adventure.`
       );
@@ -182,11 +199,13 @@ async function apply(roll, ctx) {
     const id = ctx.getActiveHeroId();
     const hero = ctx.getHeroById?.(id);
     const heroName = hero?.name || 'Hero';
+    const strVal = getEffectiveStat(hero, 'Strength');
 
     window.alert(
       `WILD HORSE\n\n` +
       `${lore.effect}\n\n` +
-      `${heroName} must make a Strength 5+ test to wrangle the horse!`
+      `${heroName} must make a Strength 5+ test to wrangle the horse!\n` +
+      `You have ${strVal} Strength (${strVal}d6)`
     );
 
     const passed = await ctx.doSkillCheck(id, { stat: 'Strength', target: 5 });
@@ -232,6 +251,11 @@ async function apply(roll, ctx) {
       for (const hid of hereIds) {
         const h = ctx.getHeroById?.(hid);
         const hName = h?.name || 'Hero';
+        const agiVal = getEffectiveStat(h, 'Agility');
+        window.alert(
+          `${hName} must make an Agility 4+ test to escape the collapsing building!\n` +
+          `${hName} has ${agiVal} Agility (${agiVal}d6)`
+        );
         const okAgi = await ctx.doSkillCheck(hid, { stat: 'Agility', target: 4 });
         if (!okAgi) {
           await ctx.enqueueChartRoll(hid, 'injury');
