@@ -129,6 +129,15 @@ const FREE_ATTACK_UPGRADE = {
   tags: ['Blacksmith', 'Free Upgrade'],
 };
 
+// Roll Nd6 skill check inline so we can capture and display the dice results
+function rollStatCheck(statVal, target) {
+  const dice = Math.max(1, statVal);
+  const rolls = Array.from({ length: dice }, () => d6());
+  const passed = rolls.some((r) => r >= target);
+  const rollStr = rolls.join(', ');
+  return { passed, rolls, rollStr };
+}
+
 // --- mechanics -------------------------------------------------------------
 async function apply(roll, ctx) {
   const lore = blacksmithData[roll] || {};
@@ -154,7 +163,7 @@ async function apply(roll, ctx) {
     const pick = String(raw).trim();
     const stat = pick === '2' ? 'Agility' : 'Strength';
     const statVal = pick === '2' ? agiVal : strVal;
-    const passed = await ctx.doSkillCheck(id, { stat, target: 5 });
+    const { passed, rollStr } = rollStatCheck(statVal, 5);
 
     if (!passed) {
       const loss = d6();
@@ -175,16 +184,18 @@ async function apply(roll, ctx) {
         return pushConditionNote(next, note);
       });
       window.alert(
-        `${stat} 5+ Test FAILED!\n\n` +
+        `${stat} 5+ Test FAILED!\n` +
+        `Rolled ${statVal}d6: [${rollStr}] — needed a 5+\n\n` +
         `The crazed blacksmith stabs ${heroName} with a hot poker, ` +
         `searing a nasty Dark Stone Scar into your side.\n\n` +
-        `Rolled D6 = ${loss}\n` +
+        `Damage Roll D6 = ${loss}\n` +
         `${heroName} permanently loses ${loss} Max Health.\n\n` +
         `The Blacksmith is closed until after the next Adventure.`
       );
     } else {
       window.alert(
-        `${stat} 5+ Test PASSED!\n\n` +
+        `${stat} 5+ Test PASSED!\n` +
+        `Rolled ${statVal}d6: [${rollStr}] — needed a 5+\n\n` +
         `${heroName} ${stat === 'Strength' ? 'overpowers' : 'dodges'} the crazed blacksmith!\n` +
         `Either way, the blacksmith himself is shot dead.\n\n` +
         `The Blacksmith is closed until after the next Adventure.`
@@ -208,11 +219,12 @@ async function apply(roll, ctx) {
       `You have ${strVal} Strength (${strVal}d6)`
     );
 
-    const passed = await ctx.doSkillCheck(id, { stat: 'Strength', target: 5 });
+    const { passed, rollStr } = rollStatCheck(strVal, 5);
     if (passed) {
       ctx.updateHero(id, (h) => ({ ...h, gold: (h.gold || 0) + 100 }));
       window.alert(
-        `Strength 5+ Test PASSED!\n\n` +
+        `Strength 5+ Test PASSED!\n` +
+        `Rolled ${strVal}d6: [${rollStr}] — needed a 5+\n\n` +
         `${heroName} wrestles the wild horse under control.\n` +
         `The blacksmith pays you $100 for your trouble.`
       );
@@ -239,7 +251,8 @@ async function apply(roll, ctx) {
       };
 
       window.alert(
-        `Strength 5+ Test FAILED!\n\n` +
+        `Strength 5+ Test FAILED!\n` +
+        `Rolled ${strVal}d6: [${rollStr}] — needed a 5+\n\n` +
         `The horse wreaks havoc through town and smashes into the ${names[pick] || pick}!\n` +
         `The ${names[pick] || pick} is destroyed until after the next Adventure.\n\n` +
         `All Heroes at the Blacksmith must now make an Agility 4+ test ` +
@@ -252,21 +265,19 @@ async function apply(roll, ctx) {
         const h = ctx.getHeroById?.(hid);
         const hName = h?.name || 'Hero';
         const agiVal = getEffectiveStat(h, 'Agility');
-        window.alert(
-          `${hName} must make an Agility 4+ test to escape the collapsing building!\n` +
-          `${hName} has ${agiVal} Agility (${agiVal}d6)`
-        );
-        const okAgi = await ctx.doSkillCheck(hid, { stat: 'Agility', target: 4 });
-        if (!okAgi) {
+        const agiCheck = rollStatCheck(agiVal, 4);
+        if (!agiCheck.passed) {
           await ctx.enqueueChartRoll(hid, 'injury');
           window.alert(
-            `${hName}: Agility 4+ Test FAILED!\n\n` +
+            `${hName}: Agility 4+ Test FAILED!\n` +
+            `Rolled ${agiVal}d6: [${agiCheck.rollStr}] — needed a 4+\n\n` +
             `The building collapses on ${hName}!\n` +
             `Roll on the Injury Chart.`
           );
         } else {
           window.alert(
-            `${hName}: Agility 4+ Test PASSED!\n\n` +
+            `${hName}: Agility 4+ Test PASSED!\n` +
+            `Rolled ${agiVal}d6: [${agiCheck.rollStr}] — needed a 4+\n\n` +
             `${hName} escapes the collapsing building safely!`
           );
         }
