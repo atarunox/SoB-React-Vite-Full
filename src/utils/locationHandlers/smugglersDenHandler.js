@@ -202,7 +202,7 @@ async function apply(roll, ctx) {
   if (roll === 3) {
     // Close the Smuggler's Den for the rest of this Town Stay
     patchShopMods({ destroyed: true });
-    ctx.toast?.('The Smuggler\u2019s Den is closed for the rest of this Town Stay!');
+    ctx.toast?.('US Marshals burst in, guns drawn, shouting for everyone to get their hands up. The Smuggler\u2019s Den is closed for the rest of this Town Stay!');
 
     const hero = ctx.getHeroById?.(id) || {};
     if (hasWanted(hero)) {
@@ -238,10 +238,11 @@ async function apply(roll, ctx) {
     const curGrit = hero.grit ?? 0;
     if (curGrit > 0) {
       ctx.updateHero(id, h => ({ ...h, grit: Math.max(0, (h.grit ?? 0) - 1) }));
-      ctx.toast?.('You stare down the thug and lose 1 Grit.');
+      ctx.toast?.('A mountain of a man gives you a hard look. You stare down the thug and lose 1 Grit.');
     } else {
+      // No Grit: removed from the Smuggler's Den for the day
       ctx.updateHero(id, h => ({ ...h, isDone: true }));
-      ctx.toast?.('You have no Grit to spare. You quietly back out — your visit is over.');
+      ctx.toast?.('A mountain of a man gives you a hard look. You have no Grit to spare. You quietly back out \u2014 you are removed from the Smuggler\u2019s Den for the day.');
     }
     return;
   }
@@ -303,7 +304,7 @@ async function apply(roll, ctx) {
   // 12: One Last Job — multi-phase train heist. Town Stay ends.
   if (roll === 12) {
     const accept = await ctx.promptChoice?.(
-      'A bandido offers you one big train heist that could set you up for life\u2026 or end it. If you accept, your Town Stay ends.',
+      'A bandido offers you one big train heist that could set you up for life\u2026 or end it. Accept and your Town Stay ends. Make a Cunning 5+ test for planning, then an Agility 6+ test (+2 with Transport) for the robbery \u2014 each success nets $500 and 1 Corruption Hit. Finally, a Luck 5+ test: pass to keep your loot, fail to lose half and become Wanted.',
       [
         'Accept the Job',
         'Decline',
