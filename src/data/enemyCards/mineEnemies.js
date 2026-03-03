@@ -43,7 +43,7 @@ export const mineEnemies = [
       "Assault: May Ranged Attack and then Move.",
       "Scaffold Pistol – Ranged Attack: Range 8, Shots 4, Damage 3.",
       "Firefight: At Initiative 1, if not adjacent, makes additional Ranged Attack using Shootout.",
-      "Give ‘em Hell Boys – All Scaffold models (including himself) gain +2 Shots during Firefight.",
+      "Give 'em Hell Boys – All Scaffold models (including himself) gain +2 Shots during Firefight.",
       "Tough – Immune to Critical Hits."
     ],
     eliteChart: [
@@ -52,7 +52,7 @@ export const mineEnemies = [
       "Dark Stone Greed – +2 Damage vs targets with 2 or more Dark Stone Icons.",
       "Bitter Feud – All Scaffold gain +1 Health and +1 Shot/Combat vs Heroes with Law or Outlaw keyword.",
       "Rebel Bite – Melee To Hit rolls of 6 cause Bleeding Marker; +3 Health; Use 1 Grit to discard and redo the Hit.",
-      "Burns’ Charge – If other Scaffold models are on the board, gains Endurance (2) (max 2 Wounds per Hit)."
+      "Burns' Charge – If other Scaffold models are on the board, gains Endurance (2) (max 2 Wounds per Hit)."
     ]
   },
   {
@@ -257,10 +257,10 @@ export const mineEnemies = [
       "Shootout – Blunderbuss: Range 5, Shots –, Damage 2D6 (use DB To Hit).",
       "Firefight – At Initiative 1, if not adjacent, makes additional Ranged Attack using Shootout.",
       "Ear Horn – While on board, Heroes collect Noise Markers. Only targets Heroes with ≥1 Noise Marker.",
-      "‘Ol Sum Bit – Tough (Immune to Critical Hits), Endurance (1) (Max 1 Wound per Hit)."
+      "'Ol Sum Bit – Tough (Immune to Critical Hits), Endurance (1) (Max 1 Wound per Hit)."
     ],
     eliteChart: [
-      "Git off ma’ Land! – Blunderbuss has 2 Shots for each Noise Marker on the target.",
+      "Git off ma' Land! – Blunderbuss has 2 Shots for each Noise Marker on the target.",
       "Moonshine – On failed Hold Back the Darkness roll, heals D6 Wounds (D3 if 1 or 2 Heroes).",
       "Dark Stone Pipe – Enters play with 1D6 Dark Stone. Remove 1 to ignore a Wound or add 2 Damage during that Attack.",
       "Straining to Hear – At start of each turn, every Hero gains -1 Initiative.",
