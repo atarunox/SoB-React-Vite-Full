@@ -62,54 +62,54 @@ function display(roll) {
     case 2:
       return {
         title: 'He Arrived in Town Just Before You Did',
-        lore: 'A relentless US Marshal finally catches up to you just as you step through the door.',
+        lore: 'A grizzled US Marshal that\u2019s been hunting you for months has finally caught up.',
         effect:
-          'If you are an Outlaw: your Location Visit ends; either play the “High Noon Duel” or spend 1 Grit to flee Town and become Wanted. If you are not an Outlaw: either pay D6×$100 or flee Town and become Wanted.'
+          'If you are an Outlaw, this is it! Your Location Visit is over and you must play the Solo Town Adventure \u201CHigh Noon Duel\u201D or use 1 Grit to flee Town and become Wanted! If you are not an Outlaw, you must pay D6\u00D7$100 or flee Town and become Wanted!'
       };
     case 3:
       return {
         title: '\u201CIt\u2019s a Raid!\u201D',
-        lore: 'US Marshals burst in, guns drawn, shouting for everyone to get their hands up.',
+        lore: 'Nobody move! U.S. Marshals! Marshals raid the Smuggler\u2019s Den, having a small shootout with the outlaws and arresting those with warrants.',
         effect:
-          'The Smuggler\u2019s Den is closed for the rest of this Town Stay. Any Wanted Hero here must make a Luck 6+ test to slip away. Fail: arrested and jailed. Make a Cunning 3+ test to escape and flee Town (Town Stay over, gain 20 XP); if that fails, your Hero is hanged (though the Hanging High Town Adventure may save you).'
+          'The Smuggler\u2019s Den is closed for the rest of this Town Stay. In addition, any Hero at the Smuggler\u2019s Den that is Wanted! must pass a Luck 6+ test to sneak out the back in the confusion. If failed, you are arrested and thrown in jail! Make a Cunning 3+ test to escape and flee Town (gain 20 XP but your Town Stay is over). If failed, you are hung at dawn\u2026 your Hero is killed (though your Hero Posse may play the Hanging High Town Adventure to rescue you).'
       };
     case 4:
     case 5:
       return {
         title: '\u201CWhat\u2019chu Lookin\u2019 at, Boy?\u201D',
-        lore: 'A mountain of a man gives you a hard look, daring you to make a move.',
+        lore: 'A large, nasty-looking thug turns his attention to you.',
         effect:
-          'Lose 1 Grit as you stare down a huge thug. If you have no Grit, your visit ends as you quietly back out.'
+          'Lose 1 Grit as you stare down the thug. If you do not have a Grit, you quickly make your way to the door and your visit to the Smuggler\u2019s Den is over.'
       };
     case 6:
     case 7:
     case 8:
       return {
         title: 'Drunken Debauchery and Veiled Threats',
-        lore: 'The crowd is too drunk and mean-spirited to notice you over the general chaos.',
+        lore: 'The scruffy, smelly, and downright vile scum that reside here barely notice your arrival amongst the revelry. Probably for the best.',
         effect: 'No Event.'
       };
     case 9:
     case 10:
       return {
         title: 'A Big Haul',
-        lore: 'A wagon \u201Caccidentally\u201D loses a shipment, and the goods quickly find their way inside.',
+        lore: 'More illicit items have found their way into the Black Market this afternoon. I\u2019m sure they just fell off the back of a wagon.',
         effect:
-          'Add 2 extra items to the Black Market Goods available this Town Stay.'
+          'Roll for and draw an extra 2 Items for the Black Market Goods.'
       };
     case 11:
       return {
         title: 'Honor Among Thieves',
-        lore: 'Sometimes being part of the criminal fraternity pays off; tonight is one of those times.',
+        lore: 'Sometimes it\u2019s good to be bad!',
         effect:
-          'Gain D6\u00D7$25 and 10 XP. If you are an Outlaw, also Recover 1 Grit. If you have the Wanted marker, recover to your Max Grit instead.'
+          'Gain D6\u00D7$25 and 10 XP. If you are an Outlaw, also Recover 1 Grit. If you are Wanted!, Recover Grit up to your Max Grit.'
       };
     case 12:
       return {
         title: 'One Last Job',
-        lore: 'A bandido offers you one big train heist that could set you up for life\u2026 or end it.',
+        lore: 'You are approached by a swarthy bandido with information on a train heist that could make you rich, but you have to act fast! This could be the big ticket, the one you\u2019ve been waiting for!',
         effect:
-          'If you accept the job, your Town Stay ends. Make a Cunning 5+ test; for each 5+ you gain +2 Agility for the train robbery. Then make an Agility 6+ test (with +2 if you have a Transport item); for each 6+, gain $500 and take 1 Corruption Hit. Finally, make a Luck 5+ test: pass and keep all your loot; fail and lose half your earnings and become Wanted.'
+          'If you accept the train heist job, your Town Stay is over. Make a Cunning 5+ test to plan out the heist. For every 5+ rolled, you are +2 Agility when robbing the train. Then make an Agility 6+ test to ride out and board the train (for this test, you are also +2 Agility if you have a Transport Item). For every 6+ rolled gain $500 and take 1 Corruption Hit. Once the train heist is complete, make a Luck 5+ test. If passed, you have gotten away without a hitch. If failed, the swarthy bandido sold you out \u2014 Lose half the $ you earned and you become Wanted!'
       };
     default:
       return {
@@ -202,7 +202,7 @@ async function apply(roll, ctx) {
   if (roll === 3) {
     // Close the Smuggler's Den for the rest of this Town Stay
     patchShopMods({ destroyed: true });
-    ctx.toast?.('US Marshals burst in, guns drawn, shouting for everyone to get their hands up. The Smuggler\u2019s Den is closed for the rest of this Town Stay!');
+    ctx.toast?.('Nobody move! U.S. Marshals! Marshals raid the Smuggler\u2019s Den, having a small shootout with the outlaws and arresting those with warrants. The Smuggler\u2019s Den is closed for the rest of this Town Stay!');
 
     const hero = ctx.getHeroById?.(id) || {};
     if (hasWanted(hero)) {
@@ -238,11 +238,11 @@ async function apply(roll, ctx) {
     const curGrit = hero.grit ?? 0;
     if (curGrit > 0) {
       ctx.updateHero(id, h => ({ ...h, grit: Math.max(0, (h.grit ?? 0) - 1) }));
-      ctx.toast?.('A mountain of a man gives you a hard look. You stare down the thug and lose 1 Grit.');
+      ctx.toast?.('A large, nasty-looking thug turns his attention to you. You stare down the thug and lose 1 Grit.');
     } else {
       // No Grit: removed from the Smuggler's Den for the day
       ctx.updateHero(id, h => ({ ...h, isDone: true }));
-      ctx.toast?.('A mountain of a man gives you a hard look. You have no Grit to spare. You quietly back out \u2014 you are removed from the Smuggler\u2019s Den for the day.');
+      ctx.toast?.('A large, nasty-looking thug turns his attention to you. You do not have a Grit \u2014 you quickly make your way to the door. Your visit to the Smuggler\u2019s Den is over.');
     }
     return;
   }
@@ -304,7 +304,7 @@ async function apply(roll, ctx) {
   // 12: One Last Job — multi-phase train heist. Town Stay ends.
   if (roll === 12) {
     const accept = await ctx.promptChoice?.(
-      'A bandido offers you one big train heist that could set you up for life\u2026 or end it. Accept and your Town Stay ends. Make a Cunning 5+ test for planning, then an Agility 6+ test (+2 with Transport) for the robbery \u2014 each success nets $500 and 1 Corruption Hit. Finally, a Luck 5+ test: pass to keep your loot, fail to lose half and become Wanted.',
+      'You are approached by a swarthy bandido with information on a train heist that could make you rich, but you have to act fast! This could be the big ticket, the one you\u2019ve been waiting for! If you accept, your Town Stay is over. Cunning 5+ to plan (+2 Agility per success), Agility 6+ to rob the train (+2 if you have Transport; $500 and 1 Corruption per success), then Luck 5+ to get away clean or lose half and become Wanted!',
       [
         'Accept the Job',
         'Decline',
