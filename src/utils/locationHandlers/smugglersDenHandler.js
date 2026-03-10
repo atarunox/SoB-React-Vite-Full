@@ -136,24 +136,24 @@ async function apply(roll, ctx) {
   const id = ctx.getActiveHeroId();
 
   // 2: He Arrived in Town Just Before You Did
-  //    Outlaw → High Noon Duel OR spend 1 Grit to flee (become Wanted). Visit ends.
-  //    Non-Outlaw → Pay D6×$100 OR flee Town and become Wanted.
   if (roll === 2) {
     const hero = ctx.getHeroById?.(id) || {};
     const isOutlaw = hasKeyword(hero, 'Outlaw');
 
     if (isOutlaw) {
       const choice = await ctx.promptChoice?.(
-        'A relentless US Marshal has tracked you down. Your visit ends here.',
+        'HE ARRIVED IN TOWN JUST BEFORE YOU DID\n\n' +
+        'A grizzled US Marshal that\u2019s been hunting you for months has finally caught up. ' +
+        'If you are an Outlaw, this is it! Your Location Visit is over.\n\n' +
+        'Choose:',
         [
-          'Face the High Noon Duel (2D6 quickdraw contest)',
-          'Spend 1 Grit to flee Town (become Wanted)',
+          'Play the \u201CHigh Noon Duel\u201D Solo Town Adventure',
+          'Use 1 Grit to flee Town (become Wanted!)',
         ]
       );
       const duel = choice === 0 || choice === '0';
 
       if (duel) {
-        // High Noon Duel — 2D6 vs 2D6; winner +25 XP, loser becomes Wanted
         const you = d2d6();
         const them = d2d6();
         if (you >= them) {
@@ -161,58 +161,59 @@ async function apply(roll, ctx) {
           ctx.toast?.(`High Noon Duel: You drew faster (${you} vs ${them})! +25 XP.`);
         } else {
           ctx.updateHero(id, h => addWanted(h));
-          ctx.toast?.(`High Noon Duel: Outdrawn (${you} vs ${them}). You are now Wanted.`);
+          ctx.toast?.(`High Noon Duel: Outdrawn (${you} vs ${them}). You are now Wanted!`);
         }
       } else {
-        // Spend 1 Grit to flee
         ctx.updateHero(id, h => {
           const wanted = addWanted(h);
           return { ...wanted, grit: Math.max(0, (h.grit ?? 0) - 1) };
         });
-        ctx.toast?.('You spend 1 Grit and flee Town. You are now Wanted.');
+        ctx.toast?.('You spend 1 Grit and flee Town. You are now Wanted!');
       }
-      // Visit ends for outlaws
       ctx.updateHero(id, h => ({ ...h, isDone: true }));
     } else {
-      // Non-Outlaw: pay D6×$100 or flee and become Wanted
       const cost = d6() * 100;
       const choice = await ctx.promptChoice?.(
-        `A US Marshal storms into the Den. You can pay $${cost} to slip away quietly, or flee Town and become Wanted.`,
+        'HE ARRIVED IN TOWN JUST BEFORE YOU DID\n\n' +
+        'A grizzled US Marshal that\u2019s been hunting you for months has finally caught up. ' +
+        'You are not an Outlaw, so you must pay D6\u00D7$100 or flee Town and become Wanted!\n\n' +
+        `Cost rolled: $${cost}\n\n` +
+        'Choose:',
         [
           `Pay $${cost} to avoid trouble`,
-          'Flee Town and become Wanted',
+          'Flee Town and become Wanted!',
         ]
       );
       const pay = choice === 0 || choice === '0';
       if (pay) {
         ctx.updateHero(id, h => ({ ...h, gold: Math.max(0, (h.gold || 0) - cost) }));
-        ctx.toast?.(`You pay $${cost} to avoid trouble.`);
+        ctx.toast?.(`You pay $${cost} to slip away quietly.`);
       } else {
         ctx.updateHero(id, h => ({ ...addWanted(h), isDone: true }));
-        ctx.toast?.('You flee Town. You are now Wanted.');
+        ctx.toast?.('You flee Town. You are now Wanted!');
       }
     }
     return;
   }
 
-  // 3: “It's a Raid!” — Den is closed for rest of Town Stay.
-  //    Wanted heroes: Luck 6+ to slip away. Fail → arrested → Cunning 3+ to escape
-  //    (+20 XP, Town Stay over). Fail that → hanged (Hanging High chart).
-  //    Non-Wanted heroes: just the Den closing.
+  // 3: “It's a Raid!”
   if (roll === 3) {
-    // Close the Smuggler's Den for the rest of this Town Stay
     patchShopMods({ destroyed: true });
-    ctx.toast?.('Nobody move! U.S. Marshals! Marshals raid the Smuggler\u2019s Den, having a small shootout with the outlaws and arresting those with warrants. The Smuggler\u2019s Den is closed for the rest of this Town Stay!');
+    ctx.toast?.(
+      '\u201CIT\u2019S A RAID!\u201D\n\n' +
+      'Nobody move! U.S. Marshals! Marshals raid the Smuggler\u2019s Den, having a small shootout ' +
+      'with the outlaws and arresting those with warrants.\n\n' +
+      'The Smuggler\u2019s Den is closed for the rest of this Town Stay.'
+    );
 
     const hero = ctx.getHeroById?.(id) || {};
     if (hasWanted(hero)) {
-      // Wanted hero must try to escape the raid
+      ctx.toast?.('You are Wanted! You must pass a Luck 6+ test to sneak out the back in the confusion.');
       const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 6 });
       if (okLuck) {
-        ctx.toast?.('You slip out the back just as the badges pour in. Safe — for now.');
+        ctx.toast?.('You slip out the back in the confusion. Safe \u2014 for now.');
       } else {
-        // Arrested — try Cunning 3+ to escape
-        ctx.toast?.('Caught! You are arrested and thrown in jail.');
+        ctx.toast?.('Failed! You are arrested and thrown in jail!\n\nMake a Cunning 3+ test to escape and flee Town (gain 20 XP but your Town Stay is over).');
         const okCunning = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 3 });
         if (okCunning) {
           ctx.updateHero(id, h => ({
@@ -220,10 +221,9 @@ async function apply(roll, ctx) {
             xp: (h.xp || 0) + 20,
             isDone: true,
           }));
-          ctx.toast?.('You pick the lock and escape! +20 XP. Your Town Stay is over — flee Town.');
+          ctx.toast?.('You escape and flee Town! +20 XP. Your Town Stay is over.');
         } else {
-          // Hanged — Hanging High chart may save
-          ctx.toast?.('Escape failed. You are sentenced to hang. The Hanging High chart may yet save you...');
+          ctx.toast?.('Escape failed\u2026 you are hung at dawn. Your Hero is killed (though your Hero Posse may play the Hanging High Town Adventure to rescue you).');
           await ctx.enqueueChartRoll?.(id, 'hangingHigh');
           ctx.updateHero(id, h => ({ ...h, isDone: true }));
         }
@@ -232,28 +232,40 @@ async function apply(roll, ctx) {
     return;
   }
 
-  // 4–5: “What'chu Lookin' at, Boy?” — Lose 1 Grit. No Grit → visit ends.
+  // 4-5: “What'chu Lookin' at, Boy?”
   if (roll === 4 || roll === 5) {
     const hero = ctx.getHeroById?.(id) || {};
     const curGrit = hero.grit ?? 0;
     if (curGrit > 0) {
       ctx.updateHero(id, h => ({ ...h, grit: Math.max(0, (h.grit ?? 0) - 1) }));
-      ctx.toast?.('A large, nasty-looking thug turns his attention to you. You stare down the thug and lose 1 Grit.');
+      ctx.toast?.(
+        '\u201CWHAT\u2019CHU LOOKIN\u2019 AT, BOY?\u201D\n\n' +
+        'A large, nasty-looking thug turns his attention to you. ' +
+        'Lose 1 Grit as you stare down the thug.'
+      );
     } else {
-      // No Grit: removed from the Smuggler's Den for the day
       ctx.updateHero(id, h => ({ ...h, isDone: true }));
-      ctx.toast?.('A large, nasty-looking thug turns his attention to you. You do not have a Grit \u2014 you quickly make your way to the door. Your visit to the Smuggler\u2019s Den is over.');
+      ctx.toast?.(
+        '\u201CWHAT\u2019CHU LOOKIN\u2019 AT, BOY?\u201D\n\n' +
+        'A large, nasty-looking thug turns his attention to you. ' +
+        'You do not have a Grit \u2014 you quickly make your way to the door and your visit to the Smuggler\u2019s Den is over.'
+      );
     }
     return;
   }
 
-  // 6–8: No event
+  // 6-8: Drunken Debauchery and Veiled Threats
   if (roll >= 6 && roll <= 8) {
-    ctx.toast?.('No Event.');
+    ctx.toast?.(
+      'DRUNKEN DEBAUCHERY AND VEILED THREATS\n\n' +
+      'The scruffy, smelly, and downright vile scum that reside here barely notice your arrival ' +
+      'amongst the revelry. Probably for the best.\n\n' +
+      'No Event.'
+    );
     return;
   }
 
-  // 9–10: A Big Haul — add 2 extra items to the Black Market Goods rolls
+  // 9-10: A Big Haul
   if (roll === 9 || roll === 10) {
     const extra = 2;
     try {
@@ -261,13 +273,16 @@ async function apply(roll, ctx) {
     } catch {
       patchShopMods({ bigHaulExtra: extra });
     }
-    ctx.toast?.(`A Big Haul: +${extra} extra items added to the Black Market Goods this visit.`);
+    ctx.toast?.(
+      'A BIG HAUL\n\n' +
+      'More illicit items have found their way into the Black Market this afternoon. ' +
+      'I\u2019m sure they just fell off the back of a wagon.\n\n' +
+      `Roll for and draw an extra ${extra} Items for the Black Market Goods.`
+    );
     return;
   }
 
-  // 11: Honor Among Thieves — Gain D6×$25 and 10 XP.
-  //     Outlaw keyword → Recover 1 Grit.
-  //     Wanted marker → Recover to Max Grit instead.
+  // 11: Honor Among Thieves
   if (roll === 11) {
     const cash = d6() * 25;
     const hero = ctx.getHeroById?.(id) || {};
@@ -279,10 +294,8 @@ async function apply(roll, ctx) {
       let grit = h.grit ?? 0;
 
       if (isWanted) {
-        // Wanted marker: recover to Max Grit
         grit = maxGrit;
       } else if (isOutlaw) {
-        // Outlaw keyword: recover 1 Grit
         grit = Math.min(maxGrit, grit + 1);
       }
 
@@ -295,16 +308,28 @@ async function apply(roll, ctx) {
     });
 
     let gritMsg = '';
-    if (isWanted) gritMsg = ' Wanted — recover to Max Grit!';
-    else if (isOutlaw) gritMsg = ' Outlaw — recover 1 Grit.';
-    ctx.toast?.(`Honor Among Thieves: +$${cash}, +10 XP.${gritMsg}`);
+    if (isWanted) gritMsg = '\nYou are Wanted! \u2014 Recover Grit up to your Max Grit.';
+    else if (isOutlaw) gritMsg = '\nYou are an Outlaw \u2014 also Recover 1 Grit.';
+    ctx.toast?.(
+      'HONOR AMONG THIEVES\n\n' +
+      'Sometimes it\u2019s good to be bad!\n\n' +
+      `Gain D6\u00D7$25 = $${cash} and 10 XP.${gritMsg}`
+    );
     return;
   }
 
-  // 12: One Last Job — multi-phase train heist. Town Stay ends.
+  // 12: One Last Job
   if (roll === 12) {
     const accept = await ctx.promptChoice?.(
-      'You are approached by a swarthy bandido with information on a train heist that could make you rich, but you have to act fast! This could be the big ticket, the one you\u2019ve been waiting for! If you accept, your Town Stay is over. Cunning 5+ to plan (+2 Agility per success), Agility 6+ to rob the train (+2 if you have Transport; $500 and 1 Corruption per success), then Luck 5+ to get away clean or lose half and become Wanted!',
+      'ONE LAST JOB\n\n' +
+      'You are approached by a swarthy bandido with information on a train heist that could make you rich, ' +
+      'but you have to act fast! This could be the big ticket, the one you\u2019ve been waiting for!\n\n' +
+      'If you accept the train heist job, your Town Stay is over.\n\n' +
+      'The heist has 3 phases:\n' +
+      '  1. Cunning 5+ \u2014 plan the heist (+2 Agility per success)\n' +
+      '  2. Agility 6+ \u2014 rob the train ($500 + 1 Corruption per success, +2 Agility if you have Transport)\n' +
+      '  3. Luck 5+ \u2014 get away clean, or lose half your earnings and become Wanted!\n\n' +
+      'Choose:',
       [
         'Accept the Job',
         'Decline',
@@ -312,35 +337,42 @@ async function apply(roll, ctx) {
     );
     const accepted = accept === 0 || accept === '0';
     if (!accepted) {
-      ctx.toast?.('You wisely decline the offer.');
+      ctx.toast?.('You wisely decline the bandido\u2019s offer.');
       return;
     }
 
-    // Town Stay ends regardless of outcome
     ctx.updateHero(id, h => ({ ...h, isDone: true }));
-    ctx.toast?.('You accept the job — your Town Stay ends after this.');
+    ctx.toast?.('You accept the job \u2014 your Town Stay is over after this.');
 
-    // Phase 1: Cunning 5+ — each success grants +2 Agility for the robbery
+    // Phase 1: Cunning 5+
+    ctx.toast?.('PHASE 1: PLANNING THE HEIST\n\nMake a Cunning 5+ test to plan out the heist. For every 5+ rolled, you are +2 Agility when robbing the train.');
     const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 5 });
     const agiBonus = okCun ? 2 : 0;
     if (okCun) {
-      ctx.toast?.(`Phase 1 — Cunning test passed: +${agiBonus} Agility bonus for the robbery.`);
+      ctx.toast?.(`Cunning test passed! +${agiBonus} Agility bonus for the robbery.`);
     } else {
-      ctx.toast?.('Phase 1 — Cunning test failed: no Agility bonus for the robbery.');
+      ctx.toast?.('Cunning test failed \u2014 no Agility bonus for the robbery.');
     }
 
-    // Phase 2: Agility 6+ — check if hero has Transport for +2 bonus
-    // Each 6+ earns $500 and 1 Corruption Hit
+    // Phase 2: Agility 6+
     const hero = ctx.getHeroById?.(id) || {};
     const hasTransportItem = heroHasTransport(hero);
     const transportBonus = hasTransportItem ? 2 : 0;
     const totalAgiBonus = agiBonus + transportBonus;
 
+    let bonusNote = '';
     if (totalAgiBonus > 0) {
-      ctx.toast?.(`Phase 2 — Agility 6+ test with +${totalAgiBonus} bonus (${agiBonus} planning, ${transportBonus} Transport).`);
-    } else {
-      ctx.toast?.('Phase 2 — Agility 6+ test for the robbery.');
+      const parts = [];
+      if (agiBonus > 0) parts.push(`+${agiBonus} from planning`);
+      if (transportBonus > 0) parts.push(`+${transportBonus} from Transport item`);
+      bonusNote = `\nAgility bonus: ${parts.join(', ')} = +${totalAgiBonus} total.`;
     }
+    ctx.toast?.(
+      'PHASE 2: ROBBING THE TRAIN\n\n' +
+      'Make an Agility 6+ test to ride out and board the train. ' +
+      'For every 6+ rolled, gain $500 and take 1 Corruption Hit.' +
+      bonusNote
+    );
 
     const okAgi = await ctx.doSkillCheck(id, { stat: 'Agility', target: 6 });
     let earnings = 0;
@@ -348,13 +380,19 @@ async function apply(roll, ctx) {
     if (okAgi) {
       earnings = 500;
       corruption = 1;
-      ctx.toast?.(`Robbery success: +$${earnings}, +${corruption} Corruption Hit.`);
+      ctx.toast?.(`Robbery success! +$${earnings}, +${corruption} Corruption Hit.`);
     } else {
-      ctx.toast?.('The robbery doesn\'t go as planned \u2014 no loot from the heist.');
+      ctx.toast?.('The robbery doesn\u2019t go as planned \u2014 no loot from the heist.');
     }
 
-    // Phase 3: Luck 5+ — keep loot or lose half + Wanted
+    // Phase 3: Luck 5+
     if (earnings > 0) {
+      ctx.toast?.(
+        'PHASE 3: THE GETAWAY\n\n' +
+        'Once the train heist is complete, make a Luck 5+ test. ' +
+        'If passed, you have gotten away without a hitch. ' +
+        'If failed, the swarthy bandido sold you out \u2014 Lose half the $ you earned and you become Wanted!'
+      );
       const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5 });
       if (okLuck) {
         ctx.updateHero(id, h => ({
@@ -362,7 +400,7 @@ async function apply(roll, ctx) {
           gold: (h.gold || 0) + earnings,
           corruption: (h.corruption || 0) + corruption,
         }));
-        ctx.toast?.(`Phase 3 — Luck test passed! You keep $${earnings} (and take ${corruption} Corruption).`);
+        ctx.toast?.(`You got away without a hitch! +$${earnings} (and ${corruption} Corruption).`);
       } else {
         const halfEarnings = Math.floor(earnings / 2);
         ctx.updateHero(id, h => {
@@ -373,11 +411,11 @@ async function apply(roll, ctx) {
             corruption: (h.corruption || 0) + corruption,
           };
         });
-        ctx.toast?.(`Phase 3 — Luck test failed! You only keep $${halfEarnings}, take ${corruption} Corruption, and become Wanted.`);
+        ctx.toast?.(`The swarthy bandido sold you out! You only keep $${halfEarnings}, take ${corruption} Corruption, and become Wanted!`);
       }
     } else {
       ctx.updateHero(id, h => addWanted(h));
-      ctx.toast?.('The heist was a bust \u2014 you become Wanted.');
+      ctx.toast?.('The heist was a bust \u2014 you become Wanted!');
     }
     return;
   }
