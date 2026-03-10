@@ -1,10 +1,31 @@
 // src/utils/locationHandlers/smugglersDenHandler.js
 import { loadTownState, saveTownState, patchDayMods } from '../../utils/townState';
 import { hasKeyword } from '../keywords';
+import { calculateCurrentStats } from '../calculateStats';
 
-import { d6, roll2d6 as d2d6 } from '../../utils/diceHelpers';
+import { d6, roll2d6 as d2d6, rollND } from '../../utils/diceHelpers';
 
 const shopId = 'smugglersDen';
+
+// Resolve a hero's effective stat value (includes gear/skills/conditions)
+function getEffectiveStat(hero, statName) {
+  if (!hero) return 0;
+  try {
+    const { stats = {} } = calculateCurrentStats(hero);
+    const v = Number(stats[statName]) || 0;
+    if (v > 0) return v;
+  } catch {}
+  return Number(hero?.stats?.[statName] ?? hero?.[statName] ?? 0);
+}
+
+// Roll Nd6 skill check inline so we can capture and display the dice results
+function rollStatCheck(statVal, target) {
+  const dice = Math.max(1, statVal);
+  const rolls = Array.from({ length: dice }, () => d6());
+  const passed = rolls.some((r) => r >= target);
+  const rollStr = rolls.join(', ');
+  return { passed, rolls, rollStr, dice };
+}
 
 // ---- shopMods helpers (flags for this town stay) --------------------------
 function getShopMods() {
@@ -199,31 +220,66 @@ async function apply(roll, ctx) {
   // 3: “It's a Raid!”
   if (roll === 3) {
     patchShopMods({ destroyed: true });
-    ctx.toast?.(
-      '\u201CIT\u2019S A RAID!\u201D\n\n' +
-      'Nobody move! U.S. Marshals! Marshals raid the Smuggler\u2019s Den, having a small shootout ' +
-      'with the outlaws and arresting those with warrants.\n\n' +
-      'The Smuggler\u2019s Den is closed for the rest of this Town Stay.'
+    const hero = ctx.getHeroById?.(id) || {};
+    const heroName = hero?.name || 'Hero';
+
+    window.alert(
+      `\u201CIT\u2019S A RAID!\u201D\n\n` +
+      `Nobody move! U.S. Marshals! Marshals raid the Smuggler\u2019s Den, having a small shootout ` +
+      `with the outlaws and arresting those with warrants.\n\n` +
+      `The Smuggler\u2019s Den is closed for the rest of this Town Stay.`
     );
 
-    const hero = ctx.getHeroById?.(id) || {};
     if (hasWanted(hero)) {
-      ctx.toast?.('You are Wanted! You must pass a Luck 6+ test to sneak out the back in the confusion.');
-      const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 6 });
-      if (okLuck) {
-        ctx.toast?.('You slip out the back in the confusion. Safe \u2014 for now.');
+      const luckVal = getEffectiveStat(hero, 'Luck');
+
+      window.alert(
+        `${heroName} is Wanted!\n\n` +
+        `You must pass a Luck 6+ test to sneak out the back in the confusion.\n\n` +
+        `You have ${luckVal} Luck (${luckVal}d6, need a 6+)`
+      );
+
+      const luckCheck = rollStatCheck(luckVal, 6);
+
+      if (luckCheck.passed) {
+        window.alert(
+          `Luck 6+ Test PASSED!\n` +
+          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed a 6+\n\n` +
+          `You slip out the back in the confusion. Safe \u2014 for now.`
+        );
       } else {
-        ctx.toast?.('Failed! You are arrested and thrown in jail!\n\nMake a Cunning 3+ test to escape and flee Town (gain 20 XP but your Town Stay is over).');
-        const okCunning = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 3 });
-        if (okCunning) {
+        const cunVal = getEffectiveStat(hero, 'Cunning');
+
+        window.alert(
+          `Luck 6+ Test FAILED!\n` +
+          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed a 6+\n\n` +
+          `You are arrested and thrown in jail!\n\n` +
+          `Make a Cunning 3+ test to escape and flee Town.\n` +
+          `(Gain 20 XP but your Town Stay is over.)\n\n` +
+          `You have ${cunVal} Cunning (${cunVal}d6, need a 3+)`
+        );
+
+        const cunCheck = rollStatCheck(cunVal, 3);
+
+        if (cunCheck.passed) {
           ctx.updateHero(id, h => ({
             ...h,
             xp: (h.xp || 0) + 20,
             isDone: true,
           }));
-          ctx.toast?.('You escape and flee Town! +20 XP. Your Town Stay is over.');
+          window.alert(
+            `Cunning 3+ Test PASSED!\n` +
+            `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed a 3+\n\n` +
+            `You pick the lock and escape, fleeing Town!\n` +
+            `+20 XP. Your Town Stay is over.`
+          );
         } else {
-          ctx.toast?.('Escape failed\u2026 you are hung at dawn. Your Hero is killed (though your Hero Posse may play the Hanging High Town Adventure to rescue you).');
+          window.alert(
+            `Cunning 3+ Test FAILED!\n` +
+            `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed a 3+\n\n` +
+            `Escape failed\u2026 you are hung at dawn.\n` +
+            `Your Hero is killed (though your Hero Posse may play the Hanging High Town Adventure to rescue you).`
+          );
           await ctx.enqueueChartRoll?.(id, 'hangingHigh');
           ctx.updateHero(id, h => ({ ...h, isDone: true }));
         }
@@ -320,87 +376,127 @@ async function apply(roll, ctx) {
 
   // 12: One Last Job
   if (roll === 12) {
-    const accept = await ctx.promptChoice?.(
-      'ONE LAST JOB\n\n' +
-      'You are approached by a swarthy bandido with information on a train heist that could make you rich, ' +
-      'but you have to act fast! This could be the big ticket, the one you\u2019ve been waiting for!\n\n' +
-      'If you accept the train heist job, your Town Stay is over.\n\n' +
-      'The heist has 3 phases:\n' +
-      '  1. Cunning 5+ \u2014 plan the heist (+2 Agility per success)\n' +
-      '  2. Agility 6+ \u2014 rob the train ($500 + 1 Corruption per success, +2 Agility if you have Transport)\n' +
-      '  3. Luck 5+ \u2014 get away clean, or lose half your earnings and become Wanted!\n\n' +
-      'Choose:',
-      [
-        'Accept the Job',
-        'Decline',
-      ]
+    const hero = ctx.getHeroById?.(id) || {};
+    const heroName = hero?.name || 'Hero';
+
+    const raw = window.prompt(
+      `ONE LAST JOB\n\n` +
+      `You are approached by a swarthy bandido with information on a train heist that could ` +
+      `make you rich, but you have to act fast! This could be the big ticket, the one ` +
+      `you\u2019ve been waiting for!\n\n` +
+      `If you accept the train heist job, your Town Stay is over.\n\n` +
+      `The heist has 3 phases:\n` +
+      `  1. Cunning 5+ \u2014 plan the heist (+2 Agility per success)\n` +
+      `  2. Agility 6+ \u2014 rob the train ($500 + 1 Corruption per success)\n` +
+      `  3. Luck 5+ \u2014 get away clean or lose half and become Wanted!\n\n` +
+      `Enter 1 to Accept the Job, or 2 to Decline:`,
+      '1'
     );
-    const accepted = accept === 0 || accept === '0';
+    const accepted = String(raw).trim() !== '2';
     if (!accepted) {
-      ctx.toast?.('You wisely decline the bandido\u2019s offer.');
+      window.alert(`${heroName} wisely declines the bandido\u2019s offer.`);
       return;
     }
 
     ctx.updateHero(id, h => ({ ...h, isDone: true }));
-    ctx.toast?.('You accept the job \u2014 your Town Stay is over after this.');
 
-    // Phase 1: Cunning 5+
-    ctx.toast?.('PHASE 1: PLANNING THE HEIST\n\nMake a Cunning 5+ test to plan out the heist. For every 5+ rolled, you are +2 Agility when robbing the train.');
-    const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 5 });
-    const agiBonus = okCun ? 2 : 0;
-    if (okCun) {
-      ctx.toast?.(`Cunning test passed! +${agiBonus} Agility bonus for the robbery.`);
-    } else {
-      ctx.toast?.('Cunning test failed \u2014 no Agility bonus for the robbery.');
-    }
+    // Phase 1: Cunning 5+ — plan the heist
+    const cunVal = getEffectiveStat(hero, 'Cunning');
 
-    // Phase 2: Agility 6+
-    const hero = ctx.getHeroById?.(id) || {};
-    const hasTransportItem = heroHasTransport(hero);
-    const transportBonus = hasTransportItem ? 2 : 0;
-    const totalAgiBonus = agiBonus + transportBonus;
-
-    let bonusNote = '';
-    if (totalAgiBonus > 0) {
-      const parts = [];
-      if (agiBonus > 0) parts.push(`+${agiBonus} from planning`);
-      if (transportBonus > 0) parts.push(`+${transportBonus} from Transport item`);
-      bonusNote = `\nAgility bonus: ${parts.join(', ')} = +${totalAgiBonus} total.`;
-    }
-    ctx.toast?.(
-      'PHASE 2: ROBBING THE TRAIN\n\n' +
-      'Make an Agility 6+ test to ride out and board the train. ' +
-      'For every 6+ rolled, gain $500 and take 1 Corruption Hit.' +
-      bonusNote
+    window.alert(
+      `PHASE 1: PLANNING THE HEIST\n\n` +
+      `Make a Cunning 5+ test to plan out the heist.\n` +
+      `For every 5+ rolled, you are +2 Agility when robbing the train.\n\n` +
+      `${heroName} has ${cunVal} Cunning (${cunVal}d6, need 5+)`
     );
 
-    const okAgi = await ctx.doSkillCheck(id, { stat: 'Agility', target: 6 });
-    let earnings = 0;
-    let corruption = 0;
-    if (okAgi) {
-      earnings = 500;
-      corruption = 1;
-      ctx.toast?.(`Robbery success! +$${earnings}, +${corruption} Corruption Hit.`);
+    const cunCheck = rollStatCheck(cunVal, 5);
+    const cunSuccesses = cunCheck.rolls.filter(r => r >= 5).length;
+    const agiBonus = cunSuccesses * 2;
+
+    if (cunSuccesses > 0) {
+      window.alert(
+        `Cunning 5+ Test PASSED!\n` +
+        `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed 5+\n\n` +
+        `${cunSuccesses} success(es) \u2014 +${agiBonus} Agility bonus for the robbery!`
+      );
     } else {
-      ctx.toast?.('The robbery doesn\u2019t go as planned \u2014 no loot from the heist.');
+      window.alert(
+        `Cunning 5+ Test FAILED!\n` +
+        `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed 5+\n\n` +
+        `No successes \u2014 no Agility bonus for the robbery.`
+      );
     }
 
-    // Phase 3: Luck 5+
-    if (earnings > 0) {
-      ctx.toast?.(
-        'PHASE 3: THE GETAWAY\n\n' +
-        'Once the train heist is complete, make a Luck 5+ test. ' +
-        'If passed, you have gotten away without a hitch. ' +
-        'If failed, the swarthy bandido sold you out \u2014 Lose half the $ you earned and you become Wanted!'
+    // Phase 2: Agility 6+ — rob the train
+    const hasTransportItem = heroHasTransport(hero);
+    const transportBonus = hasTransportItem ? 2 : 0;
+    const baseAgi = getEffectiveStat(hero, 'Agility');
+    const totalAgi = baseAgi + agiBonus + transportBonus;
+
+    let bonusParts = [];
+    if (agiBonus > 0) bonusParts.push(`+${agiBonus} from planning`);
+    if (transportBonus > 0) bonusParts.push(`+${transportBonus} from Transport item`);
+    const bonusStr = bonusParts.length ? `\nBonuses: ${bonusParts.join(', ')}` : '';
+
+    window.alert(
+      `PHASE 2: ROBBING THE TRAIN\n\n` +
+      `Make an Agility 6+ test to ride out and board the train.\n` +
+      `For every 6+ rolled, gain $500 and take 1 Corruption Hit.` +
+      (hasTransportItem ? `\n(+2 Agility because you have a Transport item)` : '') +
+      `\n\n${heroName} has ${baseAgi} Agility` +
+      (bonusParts.length ? ` (${totalAgi} with bonuses)` : '') +
+      ` (${totalAgi}d6, need 6+)` +
+      bonusStr
+    );
+
+    const agiCheck = rollStatCheck(totalAgi, 6);
+    const agiSuccesses = agiCheck.rolls.filter(r => r >= 6).length;
+    const earnings = agiSuccesses * 500;
+    const corruption = agiSuccesses;
+
+    if (agiSuccesses > 0) {
+      window.alert(
+        `Agility 6+ Test \u2014 ${agiSuccesses} success(es)!\n` +
+        `Rolled ${agiCheck.dice}d6: [${agiCheck.rollStr}] \u2014 needed 6+\n\n` +
+        `Robbery haul: $${earnings}\n` +
+        `Corruption Hits: ${corruption}`
       );
-      const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5 });
-      if (okLuck) {
+    } else {
+      window.alert(
+        `Agility 6+ Test FAILED!\n` +
+        `Rolled ${agiCheck.dice}d6: [${agiCheck.rollStr}] \u2014 needed 6+\n\n` +
+        `The robbery doesn\u2019t go as planned \u2014 no loot from the heist.`
+      );
+    }
+
+    // Phase 3: Luck 5+ — the getaway
+    if (earnings > 0) {
+      const luckVal = getEffectiveStat(hero, 'Luck');
+
+      window.alert(
+        `PHASE 3: THE GETAWAY\n\n` +
+        `Once the train heist is complete, make a Luck 5+ test.\n` +
+        `If passed, you have gotten away without a hitch.\n` +
+        `If failed, the swarthy bandido sold you out \u2014 Lose half the $\n` +
+        `you earned and you become Wanted!\n\n` +
+        `${heroName} has ${luckVal} Luck (${luckVal}d6, need 5+)`
+      );
+
+      const luckCheck = rollStatCheck(luckVal, 5);
+
+      if (luckCheck.passed) {
         ctx.updateHero(id, h => ({
           ...h,
           gold: (h.gold || 0) + earnings,
           corruption: (h.corruption || 0) + corruption,
         }));
-        ctx.toast?.(`You got away without a hitch! +$${earnings} (and ${corruption} Corruption).`);
+        window.alert(
+          `Luck 5+ Test PASSED!\n` +
+          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed 5+\n\n` +
+          `You got away without a hitch!\n` +
+          `+$${earnings}, +${corruption} Corruption Hit(s).`
+        );
       } else {
         const halfEarnings = Math.floor(earnings / 2);
         ctx.updateHero(id, h => {
@@ -411,11 +507,20 @@ async function apply(roll, ctx) {
             corruption: (h.corruption || 0) + corruption,
           };
         });
-        ctx.toast?.(`The swarthy bandido sold you out! You only keep $${halfEarnings}, take ${corruption} Corruption, and become Wanted!`);
+        window.alert(
+          `Luck 5+ Test FAILED!\n` +
+          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed 5+\n\n` +
+          `The swarthy bandido sold you out!\n` +
+          `You only keep $${halfEarnings} (half of $${earnings}),\n` +
+          `take ${corruption} Corruption Hit(s), and become Wanted!`
+        );
       }
     } else {
       ctx.updateHero(id, h => addWanted(h));
-      ctx.toast?.('The heist was a bust \u2014 you become Wanted!');
+      window.alert(
+        `The heist was a bust \u2014 no loot earned.\n` +
+        `You become Wanted!`
+      );
     }
     return;
   }
