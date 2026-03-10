@@ -56,6 +56,9 @@ import {
   performBlackMarketGoods,
   performDownDarkRoad,
   performBuyRoundOfShots,
+  performBankHeist,
+  performRustleCattle,
+  performShadyContacts,
 } from '../../utils/locationHandlers/smugglersDenServices';
 
 import {
@@ -1988,6 +1991,48 @@ const foWorldArtifactOffer =
 
       if (svc?.id === 'down_a_dark_road') {
         const res = await performDownDarkRoad({
+          hero,
+          posseApi,
+          ui: io,
+        });
+        applyActions(res?.actions);
+        setServiceUi(
+          res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
+        );
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'join_bank_heist') {
+        const res = await performBankHeist({
+          hero,
+          posseApi,
+          ui: io,
+        });
+        applyActions(res?.actions);
+        setServiceUi(
+          res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
+        );
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'rustle_cattle') {
+        const res = await performRustleCattle({
+          hero,
+          posseApi,
+          ui: io,
+        });
+        applyActions(res?.actions);
+        setServiceUi(
+          res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
+        );
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'shady_contacts') {
+        const res = await performShadyContacts({
           hero,
           posseApi,
           ui: io,

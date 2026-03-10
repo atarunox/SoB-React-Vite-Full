@@ -321,6 +321,10 @@ export async function performBuyRoundOfShots({ hero, posseApi, ui }) {
     return { actions: [], ui: { title: 'Buy a Round of Shots', outcome: ['No active hero.'] } };
   }
 
+  // Cost: D6×$5
+  const costRoll = d6();
+  const cost = costRoll * 5;
+
   const wounds = rollD3();
 
   const curGrit = Number(hero?.grit ?? hero?.currentGrit ?? 0);
@@ -331,20 +335,25 @@ export async function performBuyRoundOfShots({ hero, posseApi, ui }) {
   const maxHP = Number(hero?.health?.max ?? hero?.maxHealth ?? curHP);
   const nextHP = Math.max(0, curHP - wounds);
 
+  const curGold = num(hero?.gold, 0);
+  const nextGold = Math.max(0, curGold - cost);
+
   const actions = [{
     type: 'update',
-    grit: nextGrit,                                // current/usable grit
+    gold: nextGold,
+    grit: nextGrit,
     currentHealth: nextHP,
     health: { ...(hero?.health || {}), current: nextHP, max: maxHP },
   }];
 
-  ui?.notify?.(`Shots taken: +1 Grit (now ${nextGrit}/${maxGrit}); took ${wounds} Wounds (ignores Defense).`);
+  ui?.notify?.(`Paid $${cost} (D6=${costRoll} × $5). +1 Grit (now ${nextGrit}/${maxGrit}); took ${wounds} Wounds (ignores Defense).`);
 
   return {
     actions,
     ui: {
       title: 'Buy a Round of Shots',
       outcome: [
+        `Paid <b>$${cost}</b> (D6=${costRoll} × $5).`,
         `Recovered <b>+1 Grit</b> (now ${nextGrit}/${maxGrit}).`,
         `Took <b>${wounds}</b> Wounds (ignores Defense).`,
       ],
@@ -371,7 +380,7 @@ export async function performDownDarkRoad({ hero, posseApi, ui }) {
     permanent: true,
     active: true,
     effects: { Luck: 1 },
-    note: 'Gained at Smuggler’s Den. Also grants the Outlaw keyword.',
+    note: "Gained at Smuggler's Den. Also grants the Outlaw keyword.",
     addedAt: Date.now(),
   };
 
@@ -389,7 +398,7 @@ export async function performDownDarkRoad({ hero, posseApi, ui }) {
 
 /* ------------------------- NEW: Outlaw Actions -------------------------- */
 
-// Bank Heist — Agility 5+ test, 1’s cause D6 Hits (defendable), payout = successes × Luck × $50.
+// Bank Heist — Agility 5+ test, 1's cause D6 Hits (defendable), payout = successes × Luck × $50.
 // If 0 successes: arrested; simple escape test (Agility 4+) → +25 XP & end stay; else mark “Awaiting Hanging”.
 export async function performBankHeist({ hero, posseApi, ui }) {
   const log = [];
@@ -405,16 +414,16 @@ export async function performBankHeist({ hero, posseApi, ui }) {
     if (use) { bonus += 3; consumedExplosive = true; }
   }
 
-  const baseAgi = clamp(getStat(hero, 'Agility'), 0, 6);
-  const diceCount = clamp(baseAgi, 0, 6);
+  const baseCun = clamp(getStat(hero, 'Cunning'), 0, 6);
+  const diceCount = clamp(baseCun + bonus, 1, 12);
 
   // Prompted initial skill test
-  const dice = (await ui?.roll?.(diceCount, 6, 'Bank Heist — Agility 5+ test')) || rollND(diceCount, 6);
+  const dice = (await ui?.roll?.(diceCount, 6, `Bank Heist — Cunning 5+ test${bonus ? ` (+${bonus} Explosive)` : ''}`)) || rollND(diceCount, 6);
 
   const successes = dice.filter((v) => v >= 5).length;
   const ones = dice.filter((v) => v === 1).length;
 
-  log.push(`Bank Heist — Agility dice (${diceCount}): [${dice.join(', ')}], successes (5+) = ${successes}, 1’s = ${ones}.`);
+  log.push(`Bank Heist — Cunning dice (${diceCount}${bonus ? ` incl. +${bonus} Explosive` : ''}): [${dice.join(', ')}], successes (5+) = ${successes}, 1's = ${ones}.`);
 
   // Consume explosive if used
   if (consumedExplosive) {
@@ -520,15 +529,22 @@ export async function performBankHeist({ hero, posseApi, ui }) {
   return { log, actions: [], ui: { title: 'Bank Heist', outcome: log } };
 }
 
-// Rustle Cattle — Agility dice, 5’s pay $50, 6’s pay $200; fail → 2D6 Wounds (ignores Defense)
+// Rustle Cattle — Agility dice, 5's pay $50, 6's pay $200; fail → 2D6 Wounds (ignores Defense)
 export async function performRustleCattle({ hero, posseApi, ui }) {
   const log = [];
   const id = hero?.id || hero?.localId;
   if (!id) return { log: ['No active hero.'] };
 
+  // Take 1 Corruption Hit
+  posseApi.updateHero(id, (prev) => ({
+    ...prev,
+    corruption: num(prev?.corruption, 0) + 1,
+  }));
+  log.push('Took <b>1 Corruption Hit</b>.');
+
   const hasTransport = heroHasTransport(hero);
   const baseAgi = clamp(getStat(hero, 'Agility'), 0, 6);
-  const diceCount = clamp(baseAgi + (hasTransport ? 2 : 0), 0, 6);
+  const diceCount = clamp(baseAgi + (hasTransport ? 2 : 0), 1, 12);
 
   // Prompted initial skill test
   const dice = (await ui?.roll?.(diceCount, 6, `Rustle Cattle — Agility dice (5+${hasTransport ? ' with +2 dice (Transport)' : ''})`)) || rollND(diceCount, 6);

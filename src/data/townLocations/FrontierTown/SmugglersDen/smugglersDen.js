@@ -1,6 +1,6 @@
 // src/data/townLocations/smugglersDen.js
 export default {
-  id: 'smugglers_den',
+  id: 'smugglersDen',
   name: 'Smuggler’s Den',
   type: 'Shop',
   description:
