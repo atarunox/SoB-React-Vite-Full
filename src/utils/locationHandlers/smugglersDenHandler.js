@@ -18,13 +18,16 @@ function getEffectiveStat(hero, statName) {
   return Number(hero?.stats?.[statName] ?? hero?.[statName] ?? 0);
 }
 
-// Roll Nd6 skill check inline so we can capture and display the dice results
-function rollStatCheck(statVal, target) {
-  const dice = Math.max(1, statVal);
-  const rolls = Array.from({ length: dice }, () => d6());
-  const passed = rolls.some((r) => r >= target);
-  const rollStr = rolls.join(', ');
-  return { passed, rolls, rollStr, dice };
+// Parse manual dice entry or auto-roll
+function parseManualOrAutoRoll(raw, diceCount) {
+  if (raw == null || raw.trim() === '') {
+    return rollND(diceCount, 6);
+  }
+  const parts = raw.split(',').map(s => Number(s.trim()));
+  if (parts.every(n => Number.isFinite(n) && n >= 1 && n <= 6)) {
+    return parts;
+  }
+  return rollND(diceCount, 6);
 }
 
 // ---- shopMods helpers (flags for this town stay) --------------------------
@@ -232,36 +235,42 @@ async function apply(roll, ctx) {
 
     if (hasWanted(hero)) {
       const luckVal = getEffectiveStat(hero, 'Luck');
+      const luckDice = Math.max(1, luckVal);
 
-      window.alert(
+      const luckRaw = window.prompt(
         `${heroName} is Wanted!\n\n` +
         `You must pass a Luck 6+ test to sneak out the back in the confusion.\n\n` +
-        `You have ${luckVal} Luck (${luckVal}d6, need a 6+)`
+        `You have ${luckVal} Luck (${luckDice}d6, need a 6+)\n\n` +
+        `Enter ${luckDice} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
+        ''
       );
+      const luckRolls = parseManualOrAutoRoll(luckRaw, luckDice);
+      const luckPassed = luckRolls.some(r => r >= 6);
 
-      const luckCheck = rollStatCheck(luckVal, 6);
-
-      if (luckCheck.passed) {
+      if (luckPassed) {
         window.alert(
           `Luck 6+ Test PASSED!\n` +
-          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed a 6+\n\n` +
+          `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed a 6+\n\n` +
           `You slip out the back in the confusion. Safe \u2014 for now.`
         );
       } else {
         const cunVal = getEffectiveStat(hero, 'Cunning');
+        const cunDice = Math.max(1, cunVal);
 
-        window.alert(
+        const cunRaw = window.prompt(
           `Luck 6+ Test FAILED!\n` +
-          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed a 6+\n\n` +
+          `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed a 6+\n\n` +
           `You are arrested and thrown in jail!\n\n` +
           `Make a Cunning 3+ test to escape and flee Town.\n` +
           `(Gain 20 XP but your Town Stay is over.)\n\n` +
-          `You have ${cunVal} Cunning (${cunVal}d6, need a 3+)`
+          `You have ${cunVal} Cunning (${cunDice}d6, need a 3+)\n\n` +
+          `Enter ${cunDice} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
+          ''
         );
+        const cunRolls = parseManualOrAutoRoll(cunRaw, cunDice);
+        const cunPassed = cunRolls.some(r => r >= 3);
 
-        const cunCheck = rollStatCheck(cunVal, 3);
-
-        if (cunCheck.passed) {
+        if (cunPassed) {
           ctx.updateHero(id, h => ({
             ...h,
             xp: (h.xp || 0) + 20,
@@ -269,14 +278,14 @@ async function apply(roll, ctx) {
           }));
           window.alert(
             `Cunning 3+ Test PASSED!\n` +
-            `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed a 3+\n\n` +
+            `Rolled ${cunDice}d6: [${cunRolls.join(', ')}] \u2014 needed a 3+\n\n` +
             `You pick the lock and escape, fleeing Town!\n` +
             `+20 XP. Your Town Stay is over.`
           );
         } else {
           window.alert(
             `Cunning 3+ Test FAILED!\n` +
-            `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed a 3+\n\n` +
+            `Rolled ${cunDice}d6: [${cunRolls.join(', ')}] \u2014 needed a 3+\n\n` +
             `Escape failed\u2026 you are hung at dawn.\n` +
             `Your Hero is killed (though your Hero Posse may play the Hanging High Town Adventure to rescue you).`
           );
@@ -402,28 +411,30 @@ async function apply(roll, ctx) {
 
     // Phase 1: Cunning 5+ — plan the heist
     const cunVal = getEffectiveStat(hero, 'Cunning');
+    const cunDice = Math.max(1, cunVal);
 
-    window.alert(
+    const cunRaw = window.prompt(
       `PHASE 1: PLANNING THE HEIST\n\n` +
       `Make a Cunning 5+ test to plan out the heist.\n` +
       `For every 5+ rolled, you are +2 Agility when robbing the train.\n\n` +
-      `${heroName} has ${cunVal} Cunning (${cunVal}d6, need 5+)`
+      `${heroName} has ${cunVal} Cunning (${cunDice}d6, need 5+)\n\n` +
+      `Enter ${cunDice} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
+      ''
     );
-
-    const cunCheck = rollStatCheck(cunVal, 5);
-    const cunSuccesses = cunCheck.rolls.filter(r => r >= 5).length;
+    const cunRolls = parseManualOrAutoRoll(cunRaw, cunDice);
+    const cunSuccesses = cunRolls.filter(r => r >= 5).length;
     const agiBonus = cunSuccesses * 2;
 
     if (cunSuccesses > 0) {
       window.alert(
-        `Cunning 5+ Test PASSED!\n` +
-        `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed 5+\n\n` +
-        `${cunSuccesses} success(es) \u2014 +${agiBonus} Agility bonus for the robbery!`
+        `Cunning 5+ Test \u2014 ${cunSuccesses} success(es)!\n` +
+        `Rolled ${cunDice}d6: [${cunRolls.join(', ')}] \u2014 needed 5+\n\n` +
+        `+${agiBonus} Agility bonus for the robbery!`
       );
     } else {
       window.alert(
         `Cunning 5+ Test FAILED!\n` +
-        `Rolled ${cunCheck.dice}d6: [${cunCheck.rollStr}] \u2014 needed 5+\n\n` +
+        `Rolled ${cunDice}d6: [${cunRolls.join(', ')}] \u2014 needed 5+\n\n` +
         `No successes \u2014 no Agility bonus for the robbery.`
       );
     }
@@ -433,39 +444,41 @@ async function apply(roll, ctx) {
     const transportBonus = hasTransportItem ? 2 : 0;
     const baseAgi = getEffectiveStat(hero, 'Agility');
     const totalAgi = baseAgi + agiBonus + transportBonus;
+    const agiDice = Math.max(1, totalAgi);
 
     let bonusParts = [];
     if (agiBonus > 0) bonusParts.push(`+${agiBonus} from planning`);
     if (transportBonus > 0) bonusParts.push(`+${transportBonus} from Transport item`);
     const bonusStr = bonusParts.length ? `\nBonuses: ${bonusParts.join(', ')}` : '';
 
-    window.alert(
+    const agiRaw = window.prompt(
       `PHASE 2: ROBBING THE TRAIN\n\n` +
       `Make an Agility 6+ test to ride out and board the train.\n` +
       `For every 6+ rolled, gain $500 and take 1 Corruption Hit.` +
       (hasTransportItem ? `\n(+2 Agility because you have a Transport item)` : '') +
       `\n\n${heroName} has ${baseAgi} Agility` +
       (bonusParts.length ? ` (${totalAgi} with bonuses)` : '') +
-      ` (${totalAgi}d6, need 6+)` +
-      bonusStr
+      ` (${agiDice}d6, need 6+)` +
+      bonusStr + `\n\n` +
+      `Enter ${agiDice} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
+      ''
     );
-
-    const agiCheck = rollStatCheck(totalAgi, 6);
-    const agiSuccesses = agiCheck.rolls.filter(r => r >= 6).length;
+    const agiRolls = parseManualOrAutoRoll(agiRaw, agiDice);
+    const agiSuccesses = agiRolls.filter(r => r >= 6).length;
     const earnings = agiSuccesses * 500;
     const corruption = agiSuccesses;
 
     if (agiSuccesses > 0) {
       window.alert(
         `Agility 6+ Test \u2014 ${agiSuccesses} success(es)!\n` +
-        `Rolled ${agiCheck.dice}d6: [${agiCheck.rollStr}] \u2014 needed 6+\n\n` +
+        `Rolled ${agiDice}d6: [${agiRolls.join(', ')}] \u2014 needed 6+\n\n` +
         `Robbery haul: $${earnings}\n` +
         `Corruption Hits: ${corruption}`
       );
     } else {
       window.alert(
         `Agility 6+ Test FAILED!\n` +
-        `Rolled ${agiCheck.dice}d6: [${agiCheck.rollStr}] \u2014 needed 6+\n\n` +
+        `Rolled ${agiDice}d6: [${agiRolls.join(', ')}] \u2014 needed 6+\n\n` +
         `The robbery doesn\u2019t go as planned \u2014 no loot from the heist.`
       );
     }
@@ -473,19 +486,22 @@ async function apply(roll, ctx) {
     // Phase 3: Luck 5+ — the getaway
     if (earnings > 0) {
       const luckVal = getEffectiveStat(hero, 'Luck');
+      const luckDice = Math.max(1, luckVal);
 
-      window.alert(
+      const luckRaw = window.prompt(
         `PHASE 3: THE GETAWAY\n\n` +
         `Once the train heist is complete, make a Luck 5+ test.\n` +
         `If passed, you have gotten away without a hitch.\n` +
         `If failed, the swarthy bandido sold you out \u2014 Lose half the $\n` +
         `you earned and you become Wanted!\n\n` +
-        `${heroName} has ${luckVal} Luck (${luckVal}d6, need 5+)`
+        `${heroName} has ${luckVal} Luck (${luckDice}d6, need 5+)\n\n` +
+        `Enter ${luckDice} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
+        ''
       );
+      const luckRolls = parseManualOrAutoRoll(luckRaw, luckDice);
+      const luckPassed = luckRolls.some(r => r >= 5);
 
-      const luckCheck = rollStatCheck(luckVal, 5);
-
-      if (luckCheck.passed) {
+      if (luckPassed) {
         ctx.updateHero(id, h => ({
           ...h,
           gold: (h.gold || 0) + earnings,
@@ -493,7 +509,7 @@ async function apply(roll, ctx) {
         }));
         window.alert(
           `Luck 5+ Test PASSED!\n` +
-          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed 5+\n\n` +
+          `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed 5+\n\n` +
           `You got away without a hitch!\n` +
           `+$${earnings}, +${corruption} Corruption Hit(s).`
         );
@@ -509,7 +525,7 @@ async function apply(roll, ctx) {
         });
         window.alert(
           `Luck 5+ Test FAILED!\n` +
-          `Rolled ${luckCheck.dice}d6: [${luckCheck.rollStr}] \u2014 needed 5+\n\n` +
+          `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed 5+\n\n` +
           `The swarthy bandido sold you out!\n` +
           `You only keep $${halfEarnings} (half of $${earnings}),\n` +
           `take ${corruption} Corruption Hit(s), and become Wanted!`
