@@ -483,30 +483,33 @@ async function apply(roll, ctx) {
       );
     }
 
-    // Phase 3: Luck 5+ — the getaway
-    if (earnings > 0) {
-      const luckVal = getEffectiveStat(hero, 'Luck');
-      const luckDice = Math.max(1, luckVal);
+    // Phase 3: Luck 5+ — the getaway (always rolled, even with no earnings)
+    const luckVal = getEffectiveStat(hero, 'Luck');
+    const luckDice = Math.max(1, luckVal);
 
-      const luckRaw = window.prompt(
-        `PHASE 3: THE GETAWAY\n\n` +
-        `Once the train heist is complete, make a Luck 5+ test.\n` +
-        `If passed, you have gotten away without a hitch.\n` +
-        `If failed, the swarthy bandido sold you out \u2014 Lose half the $\n` +
-        `you earned and you become Wanted!\n\n` +
-        `${heroName} has ${luckVal} Luck (${luckDice}d6, need 5+)\n\n` +
-        `Enter ${luckDice} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
-        ''
-      );
-      const luckRolls = parseManualOrAutoRoll(luckRaw, luckDice);
-      const luckPassed = luckRolls.some(r => r >= 5);
+    const luckRaw = window.prompt(
+      `PHASE 3: THE GETAWAY\n\n` +
+      `Once the train heist is complete, make a Luck 5+ test.\n` +
+      `If passed, you have gotten away without a hitch.\n` +
+      `If failed, the swarthy bandido sold you out \u2014 Lose half the $\n` +
+      `you earned and you become Wanted!\n\n` +
+      (earnings > 0
+        ? `Current haul: $${earnings} and ${corruption} Corruption Hit(s).\n\n`
+        : `The robbery didn\u2019t go as planned \u2014 no loot from the heist.\n\n`) +
+      `${heroName} has ${luckVal} Luck (${luckDice}d6, need 5+)\n\n` +
+      `Enter ${luckDice} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
+      ''
+    );
+    const luckRolls = parseManualOrAutoRoll(luckRaw, luckDice);
+    const luckPassed = luckRolls.some(r => r >= 5);
 
-      if (luckPassed) {
-        ctx.updateHero(id, h => ({
-          ...h,
-          gold: (h.gold || 0) + earnings,
-          corruption: (h.corruption || 0) + corruption,
-        }));
+    if (luckPassed) {
+      ctx.updateHero(id, h => ({
+        ...h,
+        gold: (h.gold || 0) + earnings,
+        corruption: (h.corruption || 0) + corruption,
+      }));
+      if (earnings > 0) {
         window.alert(
           `Luck 5+ Test PASSED!\n` +
           `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed 5+\n\n` +
@@ -514,15 +517,23 @@ async function apply(roll, ctx) {
           `+$${earnings}, +${corruption} Corruption Hit(s).`
         );
       } else {
-        const halfEarnings = Math.floor(earnings / 2);
-        ctx.updateHero(id, h => {
-          const wanted = addWanted(h);
-          return {
-            ...wanted,
-            gold: (h.gold || 0) + halfEarnings,
-            corruption: (h.corruption || 0) + corruption,
-          };
-        });
+        window.alert(
+          `Luck 5+ Test PASSED!\n` +
+          `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed 5+\n\n` +
+          `The robbery was a bust, but at least you got away without a hitch.`
+        );
+      }
+    } else {
+      const halfEarnings = Math.floor(earnings / 2);
+      ctx.updateHero(id, h => {
+        const wanted = addWanted(h);
+        return {
+          ...wanted,
+          gold: (h.gold || 0) + halfEarnings,
+          corruption: (h.corruption || 0) + corruption,
+        };
+      });
+      if (earnings > 0) {
         window.alert(
           `Luck 5+ Test FAILED!\n` +
           `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed 5+\n\n` +
@@ -530,13 +541,14 @@ async function apply(roll, ctx) {
           `You only keep $${halfEarnings} (half of $${earnings}),\n` +
           `take ${corruption} Corruption Hit(s), and become Wanted!`
         );
+      } else {
+        window.alert(
+          `Luck 5+ Test FAILED!\n` +
+          `Rolled ${luckDice}d6: [${luckRolls.join(', ')}] \u2014 needed 5+\n\n` +
+          `The swarthy bandido sold you out!\n` +
+          `The robbery was a bust and you become Wanted!`
+        );
       }
-    } else {
-      ctx.updateHero(id, h => addWanted(h));
-      window.alert(
-        `The heist was a bust \u2014 no loot earned.\n` +
-        `You become Wanted!`
-      );
     }
     return;
   }
