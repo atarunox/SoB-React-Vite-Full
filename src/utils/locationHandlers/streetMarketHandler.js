@@ -32,7 +32,7 @@ function displayFor(roll) {
     case roll === 3: return {
       title: 'Swamp Slug Stampede',
       lore: 'A herd of slimy Swamp Slugs suddenly stampede through the Street Market, crashing through all the stalls and shops, flattening everything in their path.',
-      effect: 'Every Hero at the Street Market must pass a Lore 5+ or Strength 5+ test or be trampled and roll once on the Injury Chart. The Street Market is destroyed for the rest of this Town Stay.'
+      effect: 'Every Hero at the Street Market must pass a Lore 5+ or Strength 6+ test or be trampled and roll once on the Injury Chart. The Street Market is destroyed for the rest of this Town Stay.'
     };
     case roll === 4: return {
       title: 'Held Up',
@@ -67,7 +67,7 @@ function displayFor(roll) {
     case roll === 12: return {
       title: 'Rare Deal',
       lore: 'Something catches your eye in the market today.',
-      effect: 'Draw a World card, then draw an Artifact from that World. You may buy the Artifact for half its listed price (round up to the nearest $25). If the Artifact doesn\u2019t have a listed price, re-draw.'
+      effect: 'Draw a World card, then draw an Artifact from that World. You may buy the Artifact for half its listed price (round up to the nearest $5). If the Artifact doesn\u2019t have a listed price, re-draw.'
     };
     default: return {
       title: 'Street Market Event',
@@ -126,7 +126,7 @@ async function apply(roll, ctx) {
     const heroIds = ctx.getHeroesAtShop?.(shopId) || [ctx.getActiveHeroId()];
     for (const hid of heroIds) {
       const okLore = await ctx.doSkillCheck(hid, { stat: 'Lore', target: 5 });
-      const okStr = okLore || await ctx.doSkillCheck(hid, { stat: 'Strength', target: 5 });
+      const okStr = okLore || await ctx.doSkillCheck(hid, { stat: 'Strength', target: 6 });
       if (!okStr) {
         await ctx.enqueueChartRoll(hid, 'injury');
         const hero = ctx.getHeroById?.(hid) || {};

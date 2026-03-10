@@ -19,7 +19,7 @@ export default {
       roll: 3,
       name: 'Swamp Slug Stampede',
       effect:
-        'Every Hero in the Street Market must pass a Lore 5+ or Strength 5+ test or be trampled and roll once on the Injury chart. The Street Market is destroyed for the rest of this Town Stay.',
+        'Every Hero in the Street Market must pass a Lore 5+ or Strength 6+ test or be trampled and roll once on the Injury chart. The Street Market is destroyed for the rest of this Town Stay.',
       lore:
         'A herd of slime-covered swamp slugs crashes through the stalls, flattening everything in their path.',
     },
@@ -87,7 +87,7 @@ export default {
       roll: 12,
       name: 'Rare Deal',
       effect:
-        'Draw a World card, then draw an Artifact from that World. You may buy that Artifact for half its listed price (round up; if no price is listed, re-draw).',
+        'Draw a World card, then draw an Artifact from that World. You may buy that Artifact for half its listed price (round up to the nearest $5). If there is no price listed, re-draw.',
       lore:
         'Something rare and wonderful catches your eye on the highest shelf of a market stall.',
     },
