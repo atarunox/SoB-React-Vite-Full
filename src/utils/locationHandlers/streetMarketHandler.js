@@ -1,6 +1,9 @@
 // src/utils/locationHandlers/streetMarketHandler.js
 import { loadTownState, saveTownState } from '../townState';
 import { calculateCurrentStats } from '../calculateStats';
+import { WORLD_CARDS } from '../../data/worldCards';
+import { mineArtifacts } from '../../data/items/mineArtifacts';
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts';
 
 // Convenience money dice
 const rollD6 = () => Math.floor(Math.random() * 6) + 1;
@@ -239,8 +242,8 @@ async function apply(roll, ctx) {
       `HELD UP\n\n` +
       `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
       `Pay $${costGold} or ${costDS} Dark Stone to the robbers.\n` +
-      `Or take 'em on — roll 2D6 ≤ your Initiative to fight them off.\n\n` +
-      `You have ${heroInit} Initiative.`,
+      `Or take 'em on — roll 2D6 ≤ your Initiative (${heroInit}) to fight them off.\n\n` +
+      `Your Initiative is ${heroInit} (check your Stats tab to confirm).`,
       [
         `Pay $${costGold}`,
         `Pay ${costDS} Dark Stone`,
@@ -268,13 +271,33 @@ async function apply(roll, ctx) {
       return;
     }
 
-    const you = roll2D6();
+    // Manual 2D6 roll entry — prompt the player to enter their real dice roll
+    let you;
+    const rollInput = window.prompt(
+      `HELD UP — FIGHT!\n\n` +
+      `Roll 2D6 and enter the total (2–12).\n` +
+      `You need ≤ ${heroInit} (your Initiative) to fight them off.\n\n` +
+      `Enter your 2D6 total (leave blank for auto-roll):`,
+      ''
+    );
+    if (rollInput != null && rollInput.trim() !== '') {
+      const parsed = Number(rollInput);
+      if (Number.isFinite(parsed) && parsed >= 2 && parsed <= 12) {
+        you = parsed;
+      } else {
+        window.alert('Invalid entry. Auto-rolling 2D6.');
+        you = roll2D6();
+      }
+    } else {
+      you = roll2D6();
+    }
+
     if (you <= heroInit) {
       ctx.updateHero(id, h => ({ ...h, xp: (h.xp || 0) + 50 }));
       window.alert(
         `HELD UP — FIGHT RESULT\n\n` +
         `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `Rolled 2D6 = ${you} ≤ Initiative ${heroInit} — SUCCESS!\n\n` +
+        `2D6 = ${you} ≤ Initiative ${heroInit} — SUCCESS!\n\n` +
         `${heroName} fights them off!\n` +
         `Gain 50 XP.`
       );
@@ -284,7 +307,7 @@ async function apply(roll, ctx) {
       window.alert(
         `HELD UP — FIGHT RESULT\n\n` +
         `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `Rolled 2D6 = ${you} > Initiative ${heroInit} — FAILED!\n\n` +
+        `2D6 = ${you} > Initiative ${heroInit} — FAILED!\n\n` +
         `They beat ${heroName} down!\n` +
         `Take ${wounds} Wounds, ignoring Defense.`
       );
@@ -329,6 +352,8 @@ async function apply(roll, ctx) {
   // --- Roll 10: Fortune Teller ---
   if (roll === 10) {
     const id = ctx.getActiveHeroId();
+    const hero = ctx.getHeroById?.(id) || {};
+    const heroName = hero?.name || 'Hero';
     const choice = await ctx.promptChoice?.(
       `FORTUNE TELLER\n\n` +
       `A Fortune Teller has set up shop in the market today. She reads your future in cards and bones, offering either glory or risky riches.\n\n` +
@@ -341,21 +366,79 @@ async function apply(roll, ctx) {
     const idx = (choice === '0' ? 0 : choice === '1' ? 1 : choice);
 
     if (idx === 0) {
-      ctx.updateHero(id, h => ({ ...h, fortuneTellerPath: 'glory' }));
+      // Path of Glory: add temporary condition for next adventure
+      ctx.updateHero(id, h => {
+        const conds = h.conditions && typeof h.conditions === 'object' && !Array.isArray(h.conditions)
+          ? h.conditions : {};
+        const tempList = Array.isArray(conds.temporary) ? [...conds.temporary] : [];
+        tempList.push({
+          name: 'Path of Glory',
+          type: 'temporary',
+          temporary: true,
+          duration: 'nextAdventure',
+          effect: 'You may re-roll one Defense roll per turn for the entire Adventure.',
+          effectText: 'Re-roll one Defense roll per turn for the entire Adventure.',
+          source: 'Fortune Teller (Street Market)',
+        });
+        return {
+          ...h,
+          fortuneTellerPath: 'glory',
+          conditions: { ...conds, temporary: tempList },
+        };
+      });
       window.alert(
         `FORTUNE TELLER\n\n` +
-        `A Fortune Teller has set up shop in the market today. She reads your future in cards and bones, offering either glory or risky riches.\n\n` +
         `Path of Glory chosen!\n` +
-        `You may re-roll one Defense roll per turn during your next Adventure.`
+        `${heroName} may re-roll one Defense roll per turn during the next Adventure.\n\n` +
+        `This has been added to your Temporary Conditions.`
       );
     } else {
-      ctx.updateHero(id, h => ({ ...h, fortuneTellerPath: 'fortune' }));
+      // Path of Fortune: reduce health to half max (round up), add revive token, add condition
+      const maxHealth = hero?.health?.max ?? hero?.maxHealth ?? hero?.stats?.Health ?? 12;
+      const halfHealth = Math.ceil(maxHealth / 2);
+
+      ctx.updateHero(id, h => {
+        const conds = h.conditions && typeof h.conditions === 'object' && !Array.isArray(h.conditions)
+          ? h.conditions : {};
+        const tempList = Array.isArray(conds.temporary) ? [...conds.temporary] : [];
+        tempList.push({
+          name: 'Path of Fortune',
+          type: 'temporary',
+          temporary: true,
+          duration: 'nextAdventure',
+          effect: `Start Adventure at half Max Health (${halfHealth}/${maxHealth}). Personal Revive Token: if you die, use it to revive (only you can use it). If still held at end of Adventure, gain D6\u00D7$100 and D6\u00D750 XP.`,
+          effectText: `Start at half Max Health (${halfHealth}/${maxHealth}). You have a personal Revive Token. If still held at end of Adventure, gain D6\u00D7$100 and D6\u00D750 XP.`,
+          source: 'Fortune Teller (Street Market)',
+        });
+        tempList.push({
+          name: 'Revive Token (Fortune Teller)',
+          type: 'temporary',
+          temporary: true,
+          duration: 'nextAdventure',
+          effect: 'Personal Revive Token \u2014 only you can use this. If you die, discard to revive. If still held at end of Adventure, gain D6\u00D7$100 and D6\u00D750 XP.',
+          effectText: 'Personal Revive Token \u2014 only you can use this. If you die, discard to revive. If still held at the end of the Adventure, gain D6\u00D7$100 and D6\u00D750 XP.',
+          source: 'Fortune Teller (Street Market)',
+        });
+
+        // Set current health to half max (round up)
+        const health = h.health ? { ...h.health } : { current: maxHealth, max: maxHealth };
+        health.current = halfHealth;
+
+        return {
+          ...h,
+          fortuneTellerPath: 'fortune',
+          fortuneReviveToken: true,
+          conditions: { ...conds, temporary: tempList },
+          health,
+        };
+      });
       window.alert(
         `FORTUNE TELLER\n\n` +
-        `A Fortune Teller has set up shop in the market today. She reads your future in cards and bones, offering either glory or risky riches.\n\n` +
         `Path of Fortune chosen!\n` +
-        `You will start your next Adventure at half Max Health but gain a personal Revive Token.\n` +
-        `Keep it to the end for D6\u00D7$100 and D6\u00D750 XP!`
+        `${heroName}'s Health reduced to ${halfHealth}/${maxHealth} (half of Max, rounded up).\n\n` +
+        `You gain a personal Revive Token \u2014 only you can use it if you die.\n` +
+        `If you still have the Revive Token at the end of the Adventure, gain D6\u00D7$100 and D6\u00D750 XP!\n\n` +
+        `Both conditions have been added to your Temporary Conditions tab.`
       );
     }
     return;
@@ -365,26 +448,157 @@ async function apply(roll, ctx) {
   if (roll === 11) {
     setGlobalRule('streetGamblingLuckyStreak', true);
     const id = ctx.getActiveHeroId();
-    ctx.updateHero(id, h => ({ ...h, grit: Math.min((h.maxGrit || 2), (h.grit || 0) + 1) }));
+    const hero = ctx.getHeroById?.(id) || {};
+    const heroName = hero?.name || 'Hero';
+    ctx.updateHero(id, h => {
+      const conds = h.conditions && typeof h.conditions === 'object' && !Array.isArray(h.conditions)
+        ? h.conditions : {};
+      const tempList = Array.isArray(conds.temporary) ? [...conds.temporary] : [];
+      tempList.push({
+        name: 'Lucky Streak',
+        type: 'temporary',
+        temporary: true,
+        duration: 'thisTownStay',
+        effect: 'When Street Gambling, after all re-rolls are complete, you may add or subtract 1 from any one die.',
+        effectText: 'Street Gambling: after all re-rolls, you may adjust one die by \u00B11.',
+        source: 'Lucky Streak (Street Market Event #11)',
+      });
+      return {
+        ...h,
+        grit: Math.min((h.maxGrit || 2), (h.grit || 0) + 1),
+        conditions: { ...conds, temporary: tempList },
+      };
+    });
     window.alert(
       `LUCKY STREAK\n\n` +
-      `Lady Luck seems to be smiling on you today!\n\n` +
+      `Lady Luck seems to be smiling on ${heroName} today!\n\n` +
       `When Street Gambling during this Town Stay, after all re-rolls are complete, you may add or subtract 1 from any one die.\n\n` +
-      `Also, Recover 1 Grit.`
+      `Recovered 1 Grit.\n\n` +
+      `Lucky Streak has been added to your Temporary Conditions.`
     );
     return;
   }
 
   // --- Roll 12: Rare Deal ---
   if (roll === 12) {
-    patchShopMods(shopId, { rareDealHalfPriceArtifact: true });
-    window.alert(
+    const id = ctx.getActiveHeroId();
+    const hero = ctx.getHeroById?.(id) || {};
+    const heroName = hero?.name || 'Hero';
+
+    // Build a mapping of world names to their artifact pools
+    const worldArtifactMap = {};
+    // Mine artifacts (the core world)
+    if (Array.isArray(mineArtifacts) && mineArtifacts.length > 0) {
+      worldArtifactMap['Mines'] = mineArtifacts;
+    }
+    // Other world artifacts (grouped by world property)
+    if (Array.isArray(otherWorldArtifacts)) {
+      for (const art of otherWorldArtifacts) {
+        const w = art?.world || 'Unknown';
+        if (!worldArtifactMap[w]) worldArtifactMap[w] = [];
+        worldArtifactMap[w].push(art);
+      }
+    }
+
+    // Draw a random world card
+    const availableWorlds = Array.isArray(WORLD_CARDS) && WORLD_CARDS.length > 0
+      ? WORLD_CARDS
+      : Object.keys(worldArtifactMap).map(w => ({ name: w }));
+
+    if (!availableWorlds.length) {
+      window.alert(
+        `RARE DEAL\n\nNo world cards available. Draw a World card manually, then draw an Artifact from that World.\nYou may buy it for half price (round up to nearest $5).`
+      );
+      patchShopMods(shopId, { rareDealHalfPriceArtifact: true });
+      return;
+    }
+
+    const worldCard = availableWorlds[Math.floor(Math.random() * availableWorlds.length)];
+    const worldName = worldCard.name || 'Unknown World';
+
+    // Find artifacts for this world
+    let pool = worldArtifactMap[worldName] || [];
+    // If no exact match, try loose matching
+    if (!pool.length) {
+      const looseKey = Object.keys(worldArtifactMap).find(
+        k => k.toLowerCase().includes(worldName.toLowerCase()) ||
+             worldName.toLowerCase().includes(k.toLowerCase())
+      );
+      if (looseKey) pool = worldArtifactMap[looseKey];
+    }
+
+    // Filter to artifacts with a listed price (value > 0), re-draw if needed
+    const pricedPool = pool.filter(a => Number(a?.value) > 0);
+
+    if (!pricedPool.length) {
+      window.alert(
+        `RARE DEAL\n\n` +
+        `World Card drawn: ${worldName}\n\n` +
+        `No priced Artifacts found for ${worldName}.\n` +
+        `Draw a physical Artifact card from that World.\n` +
+        `You may buy it for half its listed price (round up to nearest $5).\n` +
+        `If it doesn\u2019t have a listed price, re-draw.`
+      );
+      patchShopMods(shopId, { rareDealHalfPriceArtifact: true });
+      return;
+    }
+
+    const artifact = pricedPool[Math.floor(Math.random() * pricedPool.length)];
+    const fullPrice = Number(artifact.value) || 0;
+    const halfPrice = Math.ceil(fullPrice / 2 / 5) * 5; // round up to nearest $5
+
+    const buyChoice = await ctx.promptChoice?.(
       `RARE DEAL\n\n` +
-      `Something catches your eye in the market today.\n\n` +
-      `Draw a World card, then draw an Artifact from that World.\n` +
-      `You may buy the Artifact for half its listed price (round up to the nearest $5).\n` +
-      `If the Artifact doesn\u2019t have a listed price, re-draw.`
+      `World Card: ${worldName}\n` +
+      `Artifact: ${artifact.name}\n` +
+      `Type: ${artifact.type || 'Artifact'}\n` +
+      `Full Price: $${fullPrice}\n` +
+      `Half Price (yours): $${halfPrice}\n\n` +
+      (artifact.effects
+        ? `Effects: ${Array.isArray(artifact.effects) ? artifact.effects.join(' ') : JSON.stringify(artifact.effects)}\n\n`
+        : '') +
+      `Would you like to buy ${artifact.name} for $${halfPrice}?`,
+      [
+        `Buy ${artifact.name} for $${halfPrice}`,
+        'Pass on this deal',
+      ]
     );
+    const buyIdx = (buyChoice === '0' ? 0 : buyChoice === '1' ? 1 : buyChoice);
+
+    if (buyIdx === 0) {
+      const heroGold = hero?.gold ?? 0;
+      if (heroGold < halfPrice) {
+        window.alert(
+          `RARE DEAL\n\n` +
+          `${heroName} doesn't have enough gold! Need $${halfPrice}, have $${heroGold}.`
+        );
+        return;
+      }
+      ctx.updateHero(id, h => {
+        const items = Array.isArray(h.items) ? [...h.items] : [];
+        items.push({
+          ...artifact,
+          id: artifact.id || `rare_deal_${Date.now()}`,
+          acquiredFrom: 'Rare Deal (Street Market)',
+          pricePaid: halfPrice,
+        });
+        return {
+          ...h,
+          gold: Math.max(0, (h.gold || 0) - halfPrice),
+          items,
+        };
+      });
+      window.alert(
+        `RARE DEAL\n\n` +
+        `${heroName} purchases ${artifact.name} for $${halfPrice} (half of $${fullPrice})!\n\n` +
+        `The artifact has been added to your inventory.`
+      );
+    } else {
+      window.alert(
+        `RARE DEAL\n\n` +
+        `${heroName} passes on ${artifact.name}. Perhaps next time.`
+      );
+    }
     return;
   }
 }
