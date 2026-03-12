@@ -98,7 +98,7 @@ function renderItemStats(item) {
         {items.map((item, idx) => {
           const base = goldCostOf(item);
           let price = base + (mods.priceDelta || 0);
-          if (mods.saleActive) price = Math.max(10, price); // sale floor
+          if (base > 0) price = Math.max(10, price); // enforce floor
           const key = item.id ?? item.name ?? `itm_${idx}`;
           return (
             <div key={key} className="card bg-white shadow">

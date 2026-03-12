@@ -61,7 +61,7 @@ function displayFor(roll) {
     case roll === 4: return {
       title: 'Held Up',
       lore: 'A couple of gunmen jump out from behind a stall to rob you!',
-      effect: 'You must pay D6\u00D7$100 OR D6 Dark Stone to the robbers. Alternatively, you can take \u2019em on! Roll 2D6; if the total is equal to or less than your Initiative, you fight them off and gain 50 XP. Otherwise, they beat you down \u2014 take 2D6 Wounds, ignoring Defense.'
+      effect: 'You must pay D6\u00D7$100 OR D6 Dark Stone to the robbers. Alternatively, you can take \u2019em on! Roll 2D6; if the total is equal to or greater than your Initiative, you fight them off and gain 50 XP. Otherwise, they beat you down \u2014 take 2D6 Wounds, ignoring Defense.'
     };
     case roll === 5: return {
       title: 'Market Prices Up',
@@ -177,46 +177,68 @@ async function apply(roll, ctx) {
       const loreVal = getEffectiveStat(hero, 'Lore');
       const strVal = getEffectiveStat(hero, 'Strength');
 
-      window.alert(
+      // Let the player choose which test to take
+      const testChoice = await ctx.promptChoice?.(
         `SWAMP SLUG STAMPEDE\n\n` +
         `A herd of slimy Swamp Slugs suddenly stampede through the Street Market, crashing through all the stalls and shops, flattening everything in their path.\n\n` +
         `${heroName} must pass a Lore 5+ or Strength 6+ test or be trampled!\n\n` +
-        `You have ${loreVal} Lore (${loreVal}d6, need 5+) and ${strVal} Strength (${strVal}d6, need 6+).`
+        `You have ${loreVal} Lore (${loreVal}d6, need 5+) and ${strVal} Strength (${strVal}d6, need 6+).\n\n` +
+        `Choose which test to attempt:`,
+        [
+          `Lore 5+ test (You have ${loreVal} Lore)`,
+          `Strength 6+ test (You have ${strVal} Strength)`,
+          'Enter result manually',
+        ]
       );
+      const tIdx = (testChoice === '0' ? 0 : testChoice === '1' ? 1 : testChoice === '2' ? 2 : testChoice);
 
-      // Try Lore 5+ first
-      const loreCheck = rollStatCheck(loreVal, 5);
-      if (loreCheck.passed) {
+      // Manual entry path
+      if (tIdx === 2) {
+        const manualChoice = await ctx.promptChoice?.(
+          `SWAMP SLUG STAMPEDE — Manual Entry\n\n` +
+          `Did ${heroName} pass the Lore 5+ or Strength 6+ test?`,
+          ['Passed', 'Failed']
+        );
+        const manualPassed = manualChoice === 0 || manualChoice === '0';
+        if (manualPassed) {
+          window.alert(
+            `SWAMP SLUG STAMPEDE\n\n` +
+            `${heroName} passes the test and avoids the stampede!`
+          );
+          continue;
+        }
+        await ctx.enqueueChartRoll(hid, 'injury');
         window.alert(
-          `Lore 5+ Test PASSED!\n` +
-          `Rolled ${loreVal}d6: [${loreCheck.rollStr}] — needed a 5+\n\n` +
-          `${heroName} recognizes the slugs' path and dodges out of the way!`
+          `SWAMP SLUG STAMPEDE\n\n` +
+          `${heroName} is trampled by the stampeding slugs!\n` +
+          `Roll once on the Injury Chart.`
         );
         continue;
       }
 
-      // Lore failed, try Strength 6+
-      window.alert(
-        `Lore 5+ Test FAILED!\n` +
-        `Rolled ${loreVal}d6: [${loreCheck.rollStr}] — needed a 5+\n\n` +
-        `Attempting Strength 6+ test instead...`
-      );
+      // Auto-roll the chosen test
+      const isLore = tIdx === 0;
+      const statVal = isLore ? loreVal : strVal;
+      const statName = isLore ? 'Lore' : 'Strength';
+      const target = isLore ? 5 : 6;
+      const check = rollStatCheck(statVal, target);
 
-      const strCheck = rollStatCheck(strVal, 6);
-      if (strCheck.passed) {
+      if (check.passed) {
         window.alert(
-          `Strength 6+ Test PASSED!\n` +
-          `Rolled ${strVal}d6: [${strCheck.rollStr}] — needed a 6+\n\n` +
-          `${heroName} braces and shoves the slugs aside!`
+          `${statName} ${target}+ Test PASSED!\n` +
+          `Rolled ${statVal}d6: [${check.rollStr}] — needed a ${target}+\n\n` +
+          (isLore
+            ? `${heroName} recognizes the slugs' path and dodges out of the way!`
+            : `${heroName} braces and shoves the slugs aside!`)
         );
         continue;
       }
 
-      // Both failed — trampled
+      // Failed — trampled
       await ctx.enqueueChartRoll(hid, 'injury');
       window.alert(
-        `Strength 6+ Test FAILED!\n` +
-        `Rolled ${strVal}d6: [${strCheck.rollStr}] — needed a 6+\n\n` +
+        `${statName} ${target}+ Test FAILED!\n` +
+        `Rolled ${statVal}d6: [${check.rollStr}] — needed a ${target}+\n\n` +
         `${heroName} is trampled by the stampeding slugs!\n` +
         `Roll once on the Injury Chart.`
       );
@@ -242,12 +264,12 @@ async function apply(roll, ctx) {
       `HELD UP\n\n` +
       `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
       `Pay $${costGold} or ${costDS} Dark Stone to the robbers.\n` +
-      `Or take 'em on — roll 2D6 ≤ your Initiative (${heroInit}) to fight them off.\n\n` +
+      `Or take 'em on — roll 2D6 ≥ your Initiative (${heroInit}) to fight them off.\n\n` +
       `Your Initiative is ${heroInit} (check your Stats tab to confirm).`,
       [
         `Pay $${costGold}`,
         `Pay ${costDS} Dark Stone`,
-        `Fight them! (Roll 2D6 ≤ Initiative ${heroInit})`,
+        `Fight them! (Roll 2D6 ≥ Initiative ${heroInit})`,
       ]
     );
     const idx = (choice === '0' ? 0 : choice === '1' ? 1 : choice === '2' ? 2 : choice);
@@ -276,7 +298,7 @@ async function apply(roll, ctx) {
     const rollInput = window.prompt(
       `HELD UP — FIGHT!\n\n` +
       `Roll 2D6 and enter the total (2–12).\n` +
-      `You need ≤ ${heroInit} (your Initiative) to fight them off.\n\n` +
+      `You need ≥ ${heroInit} (your Initiative) to fight them off.\n\n` +
       `Enter your 2D6 total (leave blank for auto-roll):`,
       ''
     );
@@ -292,12 +314,12 @@ async function apply(roll, ctx) {
       you = roll2D6();
     }
 
-    if (you <= heroInit) {
+    if (you >= heroInit) {
       ctx.updateHero(id, h => ({ ...h, xp: (h.xp || 0) + 50 }));
       window.alert(
         `HELD UP — FIGHT RESULT\n\n` +
         `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `2D6 = ${you} ≤ Initiative ${heroInit} — SUCCESS!\n\n` +
+        `2D6 = ${you} ≥ Initiative ${heroInit} — SUCCESS!\n\n` +
         `${heroName} fights them off!\n` +
         `Gain 50 XP.`
       );
@@ -307,7 +329,7 @@ async function apply(roll, ctx) {
       window.alert(
         `HELD UP — FIGHT RESULT\n\n` +
         `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `2D6 = ${you} > Initiative ${heroInit} — FAILED!\n\n` +
+        `2D6 = ${you} < Initiative ${heroInit} — FAILED!\n\n` +
         `They beat ${heroName} down!\n` +
         `Take ${wounds} Wounds, ignoring Defense.`
       );
@@ -421,6 +443,7 @@ async function apply(roll, ctx) {
         });
 
         // Set current health to half max (round up)
+        // Update both health.current and currentHealth so StatsTab reflects the change
         const health = h.health ? { ...h.health } : { current: maxHealth, max: maxHealth };
         health.current = halfHealth;
 
@@ -430,6 +453,7 @@ async function apply(roll, ctx) {
           fortuneReviveToken: true,
           conditions: { ...conds, temporary: tempList },
           health,
+          currentHealth: halfHealth,
         };
       });
       window.alert(

@@ -123,12 +123,12 @@ function applyShopPriceMods(costRaw, townState, shopId) {
   const floor = cfg.saleFloor || 0;
   if (typeof costRaw === 'number') {
     let g = costRaw + delta;
-    if (mods.saleActive && floor > 0) g = Math.max(floor, g);
+    if (floor > 0 && costRaw > 0) g = Math.max(floor, g);
     return Math.max(0, g);
   }
   if (typeof costRaw === 'object') {
     let g = Number(costRaw.gold || 0) + delta;
-    if (mods.saleActive && floor > 0) g = Math.max(floor, g);
+    if (floor > 0 && Number(costRaw.gold || 0) > 0) g = Math.max(floor, g);
     return { ...costRaw, gold: Math.max(0, g) };
   }
   return costRaw;
