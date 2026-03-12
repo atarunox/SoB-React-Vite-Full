@@ -11,6 +11,13 @@ import { loadTownState, saveTownState } from '../townState.js';
 import { performGamblingHallHighStakes } from './gamblingHallServices.js';
 import { withConditionAppended } from '../mergeConditions.js';
 import { d6 as D6 } from '../../utils/diceHelpers';
+import gamblingHallData from '../../data/townLocations/FrontierTown/GamblingHall/gamblingHall.js';
+
+/** Look up the event data (name, lore, effect) for a given 2d6 roll. */
+function getEventData(roll) {
+  const ev = gamblingHallData?.events?.find(e => e.roll === roll);
+  return ev || { name: 'Unknown', lore: '', effect: '' };
+}
 
 /**
  * Try to figure out which heroes are actually at the Gambling Hall.
@@ -122,9 +129,11 @@ async function coreHandle(ctx = {}) {
     // 2 — Assassination Attempt
     // ---------------------------------------------------------
     case 2: {
+      const ev2 = getEventData(2);
       log.push(
-        `[Gambling Hall] (2) Assassination Attempt — ${pname} must make a Cunning 5+ OR Lore 6+ test.`
+        `[Gambling Hall] (2) ${ev2.name} — ${ev2.lore}`
       );
+      log.push(`Effect: ${ev2.effect}`);
 
       const passed = await askPassFail(ctx, {
         title: 'Assassination Attempt',
@@ -171,9 +180,11 @@ async function coreHandle(ctx = {}) {
     // 3 — “I Say You’re Cheatin’ Me!”
     // ---------------------------------------------------------
     case 3: {
+      const ev3 = getEventData(3);
       log.push(
-        `[Gambling Hall] (3) "I Say You're Cheatin' Me!" — ${pname} must make a Luck 4+ test.`
+        `[Gambling Hall] (3) ${ev3.name} — ${ev3.lore}`
       );
+      log.push(`Effect: ${ev3.effect}`);
 
       const passed = await askPassFail(ctx, {
         title: `"I Say You're Cheatin' Me!"`,
@@ -210,9 +221,11 @@ async function coreHandle(ctx = {}) {
     // ---------------------------------------------------------
     case 4:
     case 5: {
+      const ev45 = getEventData(roll);
       log.push(
-        `[Gambling Hall] (${roll}) "Sorry Mister" — A drunken patron bumps into ${pname}.`
+        `[Gambling Hall] (${roll}) ${ev45.name} — ${ev45.lore}`
       );
+      log.push(`Effect: ${ev45.effect}`);
 
       const pid = primary.id || primary.localId;
 
@@ -261,10 +274,11 @@ async function coreHandle(ctx = {}) {
     case 6:
     case 7:
     case 8: {
+      const ev678 = getEventData(roll);
       log.push(
-        `[Gambling Hall] (${roll}) Laughter, Cheers, and Sadness — No Event. ` +
-          `${pname} watches winners and losers pass by without incident.`
+        `[Gambling Hall] (${roll}) ${ev678.name} — ${ev678.lore}`
       );
+      log.push(`Effect: ${ev678.effect}`);
       break;
     }
 
@@ -273,9 +287,11 @@ async function coreHandle(ctx = {}) {
     // ---------------------------------------------------------
     case 9:
     case 10: {
+      const ev910 = getEventData(roll);
       log.push(
-        `[Gambling Hall] (${roll}) Everyone's a Winner — The Devil's Wheel hits a jackpot!`
+        `[Gambling Hall] (${roll}) ${ev910.name} — ${ev910.lore}`
       );
+      log.push(`Effect: ${ev910.effect}`);
 
       const { posseApi = {} } = ctx;
 
@@ -320,9 +336,11 @@ async function coreHandle(ctx = {}) {
     // 11 — Drinks and Cigars All Around
     // ---------------------------------------------------------
     case 11: {
+      const ev11 = getEventData(11);
       log.push(
-        `[Gambling Hall] (11) Drinks and Cigars All Around — A high roller spreads the wealth.`
+        `[Gambling Hall] (11) ${ev11.name} — ${ev11.lore}`
       );
+      log.push(`Effect: ${ev11.effect}`);
 
       const { posseApi = {} } = ctx;
       const hasAddToken = typeof posseApi.addToken === 'function';
@@ -356,9 +374,11 @@ async function coreHandle(ctx = {}) {
     // 12 — High Stakes Bet
     // ---------------------------------------------------------
     case 12: {
+      const ev12 = getEventData(12);
       log.push(
-        `[Gambling Hall] (12) High Stakes Bet — A gambler places their most prized possession on the table.`
+        `[Gambling Hall] (12) ${ev12.name} — ${ev12.lore}`
       );
+      log.push(`Effect: ${ev12.effect}`);
       log.push(
         `→ For this Town Stay: If ${pname} (or another hero here) plays Five Card Draw Poker and wins during their FIRST game, they draw:\n` +
           `   • 1 World card\n` +
