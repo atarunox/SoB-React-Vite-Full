@@ -107,66 +107,90 @@ export function display(roll) {
  */
 export async function apply(roll, ctx) {
   const id = ctx.getActiveHeroId?.();
-  if (!id) return;
+  if (!id) return { log: [] };
+
+  const info = display(roll);
+  const log = [];
+
+  // Every event starts with its title and lore/flavor text
+  log.push(`[Saloon] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
 
   // 2: Assassination Attempt – Spirit 5+ or Luck 6+ else Injury
   if (roll === 2) {
     const okSpirit = await ctx.doSkillCheck(id, { stat: 'Spirit', target: 5 });
     const okLuck = okSpirit || (await ctx.doSkillCheck(id, { stat: 'Luck', target: 6 }));
-    if (!okLuck) {
+    if (okLuck) {
+      log.push('You sense the danger just in time and dodge the attack. No further effect.');
+      ctx.toast?.('Assassination Attempt avoided!');
+    } else {
       await ctx.enqueueChartRoll(id, 'injury');
+      log.push('The shot catches you off guard. Roll on the Injury chart with only a single D6 (instead of 2D6).');
       ctx.toast?.('Assassination Attempt: roll on the Injury chart (single D6).');
     }
-    return;
+    return { log };
   }
 
-  // 3: “You a’Cheatin’ Us?!” – Cunning 6+ or Agility 4+ else Injury & thrown out
+  // 3: Cheatin – Cunning 6+ or Agility 4+ else Injury & thrown out
   if (roll === 3) {
     const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 6 });
     const okAgi = okCun || (await ctx.doSkillCheck(id, { stat: 'Agility', target: 4 }));
-    if (!okAgi) {
+    if (okAgi) {
+      log.push(okCun
+        ? 'You talk your way out of it, calming the mob down.'
+        : 'You slip out the door before the mob can grab you. You leave the Saloon.');
+      ctx.toast?.(okCun ? 'You diffused the situation.' : 'You escaped the mob!');
+    } else {
       await ctx.enqueueChartRoll(id, 'injury');
       ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
-      ctx.toast?.('Mob roughs you up and throws you out — roll on the Injury chart. Visit ends.');
+      log.push('The mob roughs you up and throws you out the door. Roll on the Injury chart. Your visit ends.');
+      ctx.toast?.('Mob roughs you up and throws you out. Roll on Injury chart. Visit ends.');
     }
-    return;
+    return { log };
   }
 
-  // 4: Spilled Drink – Leave or pay D6×$25
+  // 4: Spilled Drink – Leave or pay D6x$25
   if (roll === 4) {
     const cost = d6() * 25;
     const idx = await ctx.promptChoice?.('Spilled Drink', [
-      { label: 'Leave (end your visit at day’s end)' },
-      { label: `Buy drinks for $${cost}` },
+      { label: 'Leave Town at the end of the day' },
+      { label: `Buy him and his friends drinks for $${cost}` },
     ]);
     if (idx === 0) {
       ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
-      ctx.toast?.('You decide to leave it be. Your visit ends at the end of the day.');
+      log.push('You decide to leave rather than deal with the drunken patron. Your visit ends at the end of the day.');
+      ctx.toast?.('Spilled Drink: leaving Town at end of day.');
     } else if (idx === 1) {
       ctx.updateHero?.(id, (h) => ({ ...h, gold: Math.max(0, (h.gold || 0) - cost) }));
+      log.push(`You buy a round for the offended patron and his friends: -$${cost}.`);
       ctx.toast?.(`You buy a round: -$${cost}.`);
     }
-    return;
+    return { log };
   }
 
   // 5: Bar Fight – Strength 5+ else D6 Wounds
   if (roll === 5) {
     const okStr = await ctx.doSkillCheck(id, { stat: 'Strength', target: 5 });
-    if (!okStr) {
+    if (okStr) {
+      log.push('You push your way through the brawl to safety. No injuries.');
+      ctx.toast?.('Bar Fight: you push through safely!');
+    } else {
       const wounds = d6();
       ctx.updateHero?.(id, (h) => ({ ...h, wounds: (h.wounds || 0) + wounds }));
+      log.push(`You take ${wounds} Wounds from the bumps and bruises (these carry over to the next Adventure).`);
       ctx.toast?.(`Bar Fight: take ${wounds} Wounds (carry over).`);
     }
-    return;
+    return { log };
   }
 
-  // 6: Dark Tidings – Next Adventure –1 Grit
+  // 6: Dark Tidings – Next Adventure -1 Grit
   if (roll === 6) {
     const s = loadTownState() || {};
     const cur = Number(s.globalRules?.nextAdventureMinusGrit || 0);
     patchGlobalRules({ nextAdventureMinusGrit: cur + 1 });
-    ctx.toast?.('Dark Tidings: Next Adventure starts with –1 Grit.');
-    return;
+    log.push('A gloomy patron tells you of a stagecoach torn to pieces by a swarm of HellBats. Start the next Adventure with one less Grit than normal.');
+    ctx.toast?.('Dark Tidings: Next Adventure starts with -1 Grit.');
+    return { log };
   }
 
   // 7: A Good Time – pay $10, recover 1 Grit (to max)
@@ -174,16 +198,18 @@ export async function apply(roll, ctx) {
     const hero = typeof ctx.getHero === 'function' && id ? ctx.getHero(id) : null;
     const heroGold = Number(hero?.gold ?? 0);
     if (heroGold < 10) {
+      log.push('Not enough gold to buy a round ($10 needed).');
       ctx.toast?.('A Good Time: Not enough gold to buy a round ($10 needed).');
-      return;
+      return { log };
     }
     ctx.updateHero?.(id, (h) => {
       const mg = h.maxGrit ?? 2;
       const next = Math.min(mg, (h.grit ?? 0) + 1);
       return { ...h, gold: (h.gold || 0) - 10, grit: next };
     });
+    log.push('A round of drinks and good company lifts your spirits. Pay $10, recover 1 Grit for use in Town.');
     ctx.toast?.('A Good Time: -$10, recover 1 Grit.');
-    return;
+    return { log };
   }
 
   // 8: A Tall Tale – Lore 5+: gain 10 XP for every 5+ rolled
@@ -204,11 +230,13 @@ export async function apply(roll, ctx) {
     if (successes > 0) {
       const xpGain = successes * 10;
       ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + xpGain }));
-      ctx.toast?.(`Tall Tale: ${successes} success(es) → +${xpGain} XP.`);
+      log.push(`Inspired by tales of deadly adventure, you tell a story of your own! ${successes} success(es) on Lore 5+ test: +${xpGain} XP.`);
+      ctx.toast?.(`Tall Tale: ${successes} success(es) — +${xpGain} XP.`);
     } else {
+      log.push('You try to tell a story of your own, but it falls flat. No XP gained.');
       ctx.toast?.('Your story falls flat.');
     }
-    return;
+    return { log };
   }
 
   // 9: Aces and Eights – +2 Luck & +2 Cunning this visit (flag)
@@ -217,11 +245,12 @@ export async function apply(roll, ctx) {
     const buffs = { ...(s.saloonVisitBuffs || {}) };
     buffs[id] = { luck: 2, cunning: 2 };
     saveTownState({ ...s, saloonVisitBuffs: buffs });
+    log.push('This seems to be your lucky night! You gain +2 Luck and +2 Cunning during this Location Visit.');
     ctx.toast?.('Aces and Eights: +2 Luck and +2 Cunning this visit.');
-    return;
+    return { log };
   }
 
-  // 10: Song and Dance – Luck 5+: heal D3; fail: lose D6×$25 and visit ends
+  // 10: Song and Dance – Luck 5+: heal D3; fail: lose D6x$25 and visit ends
   if (roll === 10) {
     const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5 });
     if (okLuck) {
@@ -232,6 +261,7 @@ export async function apply(roll, ctx) {
         const hp = Math.min(max, cur + heal);
         return { ...h, health: hp, currentHealth: hp };
       });
+      log.push(`You are reinvigorated by her comforting presence. Gain ${heal} Health.`);
       ctx.toast?.(`Song and Dance: regain ${heal} Health.`);
     } else {
       const cost = d6() * 25;
@@ -240,16 +270,18 @@ export async function apply(roll, ctx) {
         isDone: true,
         gold: Math.max(0, (h.gold || 0) - cost),
       }));
+      log.push(`You are knocked over the head and wake hours later to find your wallet gone. Lose $${cost} and your visit to the Saloon ends immediately.`);
       ctx.toast?.(`Knocked out: lose $${cost} and your visit ends.`);
     }
-    return;
+    return { log };
   }
 
   // 11: A Catchy Tune – Next Adventure starts with Max Grit
   if (roll === 11) {
     patchGlobalRules({ nextAdventureMaxGrit: true });
+    log.push('The song from the piano warms your heart and lingers in your mind, long into the night. Start the next Adventure with Max Grit.');
     ctx.toast?.('A Catchy Tune: Next Adventure starts with Max Grit.');
-    return;
+    return { log };
   }
 
   // 12: Hero of the People – double gambling & 2 Whiskey tokens
@@ -261,18 +293,22 @@ export async function apply(roll, ctx) {
 
     await ctx.addToken?.(id, 'Whiskey');
     await ctx.addToken?.(id, 'Whiskey');
+    log.push('Great luck at the poker table! The locals have recognized you as a true hero, cheering you on for your efforts to clean up the West! All of your Gambling winnings are doubled during this Location Visit. The locals buy you a few drinks: gain 2 Whiskey Tokens.');
     ctx.toast?.('Hero of the People: Double gambling this visit and +2 Whiskey tokens.');
+    return { log };
   }
+
+  return { log };
 }
 
 // --------- Dispatcher compatible with locationEventsEngine ---------------
 export async function handleSaloonEvent(ctx = {}) {
   const roll = ctx.forcedRoll ?? (d6() + d6());
-  await apply(roll, ctx);
+  const result = await apply(roll, ctx);
   return {
     actions: [],
     townState: ctx.townState,
-    log: [`Saloon Event Roll: ${roll}`],
+    log: result?.log || [`Saloon Event Roll: ${roll}`],
     eventRoll: roll,
     eventIndex: Math.max(0, roll - 2),
   };
