@@ -269,6 +269,10 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
     const counts = {};
     dice.forEach(d => counts[d] = (counts[d] || 0) + 1);
 
+    // Check if already a winning hand
+    if (isStraight4(dice)) return 'Hint: You already have a Straight!';
+    if (fourOfAKindFace(dice)) return `Hint: You already have a Set (four ${fourOfAKindFace(dice)}s)!`;
+
     const hints = [];
     // Check for 3-of-a-kind
     for (const [face, cnt] of Object.entries(counts)) {

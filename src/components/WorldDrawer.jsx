@@ -17,9 +17,12 @@ export default function WorldDrawer() {
   const [current, setCurrent] = useState(null);
 
   function drawWorld() {
-    if (deck.length === 0) return;
-    setCurrent(deck[0]);
-    setDeck(deck.slice(1));
+    let currentDeck = deck;
+    if (currentDeck.length === 0) {
+      currentDeck = shuffle([...WORLD_CARDS]);
+    }
+    setCurrent(currentDeck[0]);
+    setDeck(currentDeck.slice(1));
   }
 
   return (
