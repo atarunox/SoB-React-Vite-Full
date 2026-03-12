@@ -170,7 +170,13 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
     }
 
     case 'saloon_troupe_pickpocket': {
-      // Agility test: per-die 4–5 = $10, per 6 = draw a Gear card
+      // Take D3 Corruption Hits first (cost of attempting)
+      const corruptionHits = d3();
+      const curCorruption = Number(hero.corruption || 0);
+      pushUpdate({ corruption: curCorruption + corruptionHits });
+      log.push(`Pickpocket costs <b>${corruptionHits} Corruption Hit(s)</b> (D3).`);
+
+      // Agility 4+ test: per-die 4–5 = $10, per 6 = draw a Gear card
       const ag = Math.max(1, stat('Agility', 1));
       const rolls = await rollND(
         ui,

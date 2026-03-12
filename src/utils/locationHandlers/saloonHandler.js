@@ -80,7 +80,7 @@ export function display(roll) {
       return {
         title: 'A Catchy Tune',
         lore: 'The song lingers in your mind, long into the night.',
-        effect: 'Start the next Adventure with Max Grit (+1 Grit).',
+        effect: 'Start the next Adventure with Max Grit.',
       };
     case 12:
       return {
@@ -120,13 +120,14 @@ export async function apply(roll, ctx) {
     return;
   }
 
-  // 3: “You a’Cheatin’ Us?!” – Cunning 6+ or Agility 4+ else Injury
+  // 3: “You a’Cheatin’ Us?!” – Cunning 6+ or Agility 4+ else Injury & thrown out
   if (roll === 3) {
     const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 6 });
     const okAgi = okCun || (await ctx.doSkillCheck(id, { stat: 'Agility', target: 4 }));
     if (!okAgi) {
       await ctx.enqueueChartRoll(id, 'injury');
-      ctx.toast?.('Mob roughs you up — roll on the Injury chart.');
+      ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
+      ctx.toast?.('Mob roughs you up and throws you out — roll on the Injury chart. Visit ends.');
     }
     return;
   }
@@ -170,22 +171,40 @@ export async function apply(roll, ctx) {
 
   // 7: A Good Time – pay $10, recover 1 Grit (to max)
   if (roll === 7) {
+    const hero = typeof ctx.getHero === 'function' && id ? ctx.getHero(id) : null;
+    const heroGold = Number(hero?.gold ?? 0);
+    if (heroGold < 10) {
+      ctx.toast?.('A Good Time: Not enough gold to buy a round ($10 needed).');
+      return;
+    }
     ctx.updateHero?.(id, (h) => {
-      if ((h.gold || 0) < 10) return h; // cannot afford; quietly ignore
       const mg = h.maxGrit ?? 2;
       const next = Math.min(mg, (h.grit ?? 0) + 1);
       return { ...h, gold: (h.gold || 0) - 10, grit: next };
     });
-    ctx.toast?.('A Good Time: -$10, recover 1 Grit (if not at max).');
+    ctx.toast?.('A Good Time: -$10, recover 1 Grit.');
     return;
   }
 
-  // 8: A Tall Tale – Lore 5+: +10 XP
+  // 8: A Tall Tale – Lore 5+: gain 10 XP for every 5+ rolled
   if (roll === 8) {
-    const okLore = await ctx.doSkillCheck(id, { stat: 'Lore', target: 5 });
-    if (okLore) {
-      ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + 10 }));
-      ctx.toast?.('Tall Tale: +10 XP.');
+    const result = await ctx.doSkillCheck(id, { stat: 'Lore', target: 5, returnDetails: true });
+    let successes = 0;
+    if (result && typeof result === 'object' && Number.isFinite(result.successes)) {
+      successes = result.successes;
+    } else if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+      successes = result.rolls.filter(r => r >= 5).length;
+    } else if (ctx.promptNumber) {
+      const n = await ctx.promptNumber?.('How many 5+ did you roll on the Lore test?', 'successes');
+      successes = Math.max(0, Number(n || 0));
+    } else {
+      successes = result ? 1 : 0;
+    }
+
+    if (successes > 0) {
+      const xpGain = successes * 10;
+      ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + xpGain }));
+      ctx.toast?.(`Tall Tale: ${successes} success(es) → +${xpGain} XP.`);
     } else {
       ctx.toast?.('Your story falls flat.');
     }
@@ -226,12 +245,10 @@ export async function apply(roll, ctx) {
     return;
   }
 
-  // 11: A Catchy Tune – Next Adventure +1 Grit
+  // 11: A Catchy Tune – Next Adventure starts with Max Grit
   if (roll === 11) {
-    const s = loadTownState() || {};
-    const cur = Number(s.globalRules?.nextAdventurePlusGrit || 0);
-    patchGlobalRules({ nextAdventurePlusGrit: cur + 1 });
-    ctx.toast?.('A Catchy Tune: Next Adventure starts with +1 Grit.');
+    patchGlobalRules({ nextAdventureMaxGrit: true });
+    ctx.toast?.('A Catchy Tune: Next Adventure starts with Max Grit.');
     return;
   }
 
