@@ -2127,12 +2127,16 @@ const foWorldArtifactOffer =
         },
 
         // skill check — roll dice equal to the hero's stat value
-        doSkillCheck: async (_heroId, { stat, target = 4 } = {}) => {
+        doSkillCheck: async (_heroId, { stat, target = 4, message = '', returnDetails = false } = {}) => {
           const statVal = Math.max(1, getStat(stat) || 1);
-          const label = `${stat} ${target}+ test (${statVal}d6) — ${stat}: ${statVal} (target ${target}+)`;
+          const mechLabel = `${stat} ${target}+ test (${statVal}d6)`;
+          const label = message ? `${message}\n\n${mechLabel}` : mechLabel;
           const rolls = await promptRoll(statVal, 6, label);
           const arr = Array.isArray(rolls) ? rolls : [rolls];
-          return arr.some((r) => r >= target);
+          const successes = arr.filter((r) => r >= target).length;
+          const passed = successes > 0;
+          if (returnDetails) return { passed, rolls: arr, successes };
+          return passed;
         },
       };
 

@@ -118,8 +118,9 @@ export async function apply(roll, ctx) {
 
   // 2: Assassination Attempt – Spirit 5+ or Luck 6+ else Injury
   if (roll === 2) {
-    const okSpirit = await ctx.doSkillCheck(id, { stat: 'Spirit', target: 5 });
-    const okLuck = okSpirit || (await ctx.doSkillCheck(id, { stat: 'Luck', target: 6 }));
+    const lore2 = `ASSASSINATION ATTEMPT\n${info.lore}`;
+    const okSpirit = await ctx.doSkillCheck(id, { stat: 'Spirit', target: 5, message: lore2 });
+    const okLuck = okSpirit || (await ctx.doSkillCheck(id, { stat: 'Luck', target: 6, message: lore2 }));
     if (okLuck) {
       log.push('You sense the danger just in time and dodge the attack. No further effect.');
       ctx.toast?.('Assassination Attempt avoided!');
@@ -133,8 +134,9 @@ export async function apply(roll, ctx) {
 
   // 3: Cheatin – Cunning 6+ or Agility 4+ else Injury & thrown out
   if (roll === 3) {
-    const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 6 });
-    const okAgi = okCun || (await ctx.doSkillCheck(id, { stat: 'Agility', target: 4 }));
+    const lore3 = `"YOU A'CHEATIN' US?!"\n${info.lore}`;
+    const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 6, message: lore3 });
+    const okAgi = okCun || (await ctx.doSkillCheck(id, { stat: 'Agility', target: 4, message: lore3 }));
     if (okAgi) {
       log.push(okCun
         ? 'You talk your way out of it, calming the mob down.'
@@ -152,7 +154,7 @@ export async function apply(roll, ctx) {
   // 4: Spilled Drink – Leave or pay D6x$25
   if (roll === 4) {
     const cost = d6() * 25;
-    const idx = await ctx.promptChoice?.('Spilled Drink', [
+    const idx = await ctx.promptChoice?.(`SPILLED DRINK\n${info.lore}`, [
       { label: 'Leave Town at the end of the day' },
       { label: `Buy him and his friends drinks for $${cost}` },
     ]);
@@ -170,7 +172,8 @@ export async function apply(roll, ctx) {
 
   // 5: Bar Fight – Strength 5+ else D6 Wounds
   if (roll === 5) {
-    const okStr = await ctx.doSkillCheck(id, { stat: 'Strength', target: 5 });
+    const lore5 = `BAR FIGHT\n${info.lore}`;
+    const okStr = await ctx.doSkillCheck(id, { stat: 'Strength', target: 5, message: lore5 });
     if (okStr) {
       log.push('You push your way through the brawl to safety. No injuries.');
       ctx.toast?.('Bar Fight: you push through safely!');
@@ -214,7 +217,8 @@ export async function apply(roll, ctx) {
 
   // 8: A Tall Tale – Lore 5+: gain 10 XP for every 5+ rolled
   if (roll === 8) {
-    const result = await ctx.doSkillCheck(id, { stat: 'Lore', target: 5, returnDetails: true });
+    const lore8 = `A TALL TALE\n${info.lore}`;
+    const result = await ctx.doSkillCheck(id, { stat: 'Lore', target: 5, returnDetails: true, message: lore8 });
     let successes = 0;
     if (result && typeof result === 'object' && Number.isFinite(result.successes)) {
       successes = result.successes;
@@ -252,7 +256,8 @@ export async function apply(roll, ctx) {
 
   // 10: Song and Dance – Luck 5+: heal D3; fail: lose D6x$25 and visit ends
   if (roll === 10) {
-    const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5 });
+    const lore10 = `SONG AND DANCE\n${info.lore}`;
+    const okLuck = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5, message: lore10 });
     if (okLuck) {
       const heal = d3();
       ctx.updateHero?.(id, (h) => {

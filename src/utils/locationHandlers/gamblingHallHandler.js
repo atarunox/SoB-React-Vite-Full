@@ -138,6 +138,7 @@ async function coreHandle(ctx = {}) {
       const passed = await askPassFail(ctx, {
         title: 'Assassination Attempt',
         message:
+          `${ev2.lore}\n\n` +
           `${pname} must make a Cunning 5+ or Lore 6+ test.\n\n` +
           `Resolve the roll at the table, then choose whether they Passed or Failed.`,
       });
@@ -189,6 +190,7 @@ async function coreHandle(ctx = {}) {
       const passed = await askPassFail(ctx, {
         title: `"I Say You're Cheatin' Me!"`,
         message:
+          `${ev3.lore}\n\n` +
           `${pname} must make a Luck 4+ test.\n\n` +
           `Resolve the roll at the table, then choose whether they Passed or Failed.`,
       });
@@ -232,7 +234,7 @@ async function coreHandle(ctx = {}) {
       if (typeof uiApi.choose === 'function') {
         const pick = await uiApi.choose({
           title: '"Sorry Mister"',
-          message: `${pname} must lose ONE of the following:`,
+          message: `${ev45.lore}\n\n${pname} must lose ONE of the following:`,
           options: [
             { id: 'gold', label: 'Lose $200' },
             { id: 'ds', label: 'Lose 2 Dark Stone' },
@@ -305,7 +307,7 @@ async function coreHandle(ctx = {}) {
             const rolls = await uiApi.roll(
               1,
               6,
-              "Everyone's a Winner (D6 × $25)"
+              `${ev910.lore}\n\nEveryone's a Winner (D6 x $25)`
             );
             if (Array.isArray(rolls) && rolls.length) {
               const n = Number(rolls[0]);

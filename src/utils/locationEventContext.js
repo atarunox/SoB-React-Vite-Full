@@ -41,7 +41,9 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
   };
 
   // --- Skill check (roll dice equal to hero's stat, any >= target passes) ---
-  const doSkillCheck = async (heroId, { stat, target = 5, prompt = true } = {}) => {
+  // `message` — optional lore/flavor text shown above the mechanical label
+  // `returnDetails` — if true, return { passed, rolls, successes } instead of boolean
+  const doSkillCheck = async (heroId, { stat, target = 5, prompt = true, message = '', returnDetails = false } = {}) => {
     const hero = getHeroById(heroId);
     // Get effective stat value from calculated stats
     let statVal = 1;
@@ -54,10 +56,14 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
       }
     }
     const dice = Math.max(1, statVal);
-    const label = `${stat} ${target}+ test (${dice}d6) — ${stat}: ${statVal}`;
+    const mechLabel = `${stat} ${target}+ test (${dice}d6)`;
+    const label = message ? `${message}\n\n${mechLabel}` : mechLabel;
     const rolls = await roll(dice, 6, label);
     const arr = Array.isArray(rolls) ? rolls : [rolls];
-    return arr.some((r) => r >= target);
+    const successes = arr.filter((r) => r >= target).length;
+    const passed = successes > 0;
+    if (returnDetails) return { passed, rolls: arr, successes };
+    return passed;
   };
 
   // Ability test (uses UI hook if provided; else stat-based dice)
