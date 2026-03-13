@@ -2,6 +2,7 @@
 
 import { getLocationEvents } from '../data/townLocations/index.js';
 import { calculateCurrentStats } from './calculateStats';
+import { offerGritReroll } from './diceHelpers.js';
 
 /**
  * Build a context for Town Event handlers.
@@ -65,10 +66,20 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     const mechLabel = `${stat} ${target}+ test (${dice}d6)`;
     const label = message ? `${message}\n\n${mechLabel}` : mechLabel;
     const rolls = await roll(dice, 6, label);
-    const arr = Array.isArray(rolls) ? rolls : [rolls];
+    let arr = Array.isArray(rolls) ? rolls : [rolls];
+
+    // Offer grit reroll
+    const gritResult = await offerGritReroll(arr, hero, {
+      promptChoice,
+      updateHero,
+      heroId,
+      sides: 6,
+    });
+    arr = gritResult.rolls;
+
     const successes = arr.filter((r) => r >= target).length;
     const passed = successes > 0;
-    if (returnDetails) return { passed, rolls: arr, successes };
+    if (returnDetails) return { passed, rolls: arr, successes, gritRerolled: gritResult.rerolled };
     return passed;
   };
 
@@ -88,7 +99,18 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
       }
       const dice = Math.max(1, statVal);
       const d = await roll(dice, 6, label || `${key} ${target}+ test`);
-      const arr = Array.isArray(d) ? d : [d];
+      let arr = Array.isArray(d) ? d : [d];
+
+      // Offer grit reroll
+      const hId = hero.id || hero.localId;
+      const gritResult = await offerGritReroll(arr, hero, {
+        promptChoice,
+        updateHero,
+        heroId: hId,
+        sides: 6,
+      });
+      arr = gritResult.rolls;
+
       return arr.some((r) => r >= target);
     }
     const d = await roll(1, 6, label || `${key} test`);

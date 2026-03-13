@@ -35,6 +35,7 @@ import {
 import { performOutpostBankService } from '../../utils/locationHandlers/frontierOutpostBankServices';
 import { performOutpostTrainingService } from '../../utils/locationHandlers/frontierOutpostTrainingServices';
 import { performFrontierOutpostBounty } from "../../utils/locationHandlers/frontierOutpostBountiesHandler";
+import { offerGritReroll } from '../../utils/diceHelpers.js';
 
 
 
@@ -2132,10 +2133,20 @@ const foWorldArtifactOffer =
           const mechLabel = `${stat} ${target}+ test (${statVal}d6)`;
           const label = message ? `${message}\n\n${mechLabel}` : mechLabel;
           const rolls = await promptRoll(statVal, 6, label);
-          const arr = Array.isArray(rolls) ? rolls : [rolls];
+          let arr = Array.isArray(rolls) ? rolls : [rolls];
+
+          // Offer grit reroll
+          const gritResult = await offerGritReroll(arr, heroView, {
+            promptChoice: uiApi.promptChoice,
+            updateHero: (id, patchOrFn) => ghCtx.updateHero(id, patchOrFn),
+            heroId: heroView.id || heroView.localId,
+            sides: 6,
+          });
+          arr = gritResult.rolls;
+
           const successes = arr.filter((r) => r >= target).length;
           const passed = successes > 0;
-          if (returnDetails) return { passed, rolls: arr, successes };
+          if (returnDetails) return { passed, rolls: arr, successes, gritRerolled: gritResult.rerolled };
           return passed;
         },
       };
