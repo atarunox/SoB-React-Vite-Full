@@ -1,6 +1,21 @@
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { d6 } from '../../utils/diceHelpers';
 
+// ---------- result helpers (shared pattern — see CLAUDE.md) ----------
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+  }
+  return null;
+}
+
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+}
+
 function display(roll) {
   switch (roll) {
     case 2:
@@ -45,7 +60,9 @@ async function apply(roll, ctx) {
       nextAdventure: 'Town:Jailbreak',
       globalRules: { ...(s.globalRules || {}), allWantedNextAdventure: true, noGritNextAdventure: true },
     });
-    log.push('Outlaws have broken out of jail! Next Adventure will be a Town "Jailbreak". All Heroes are Wanted until the end of the next Adventure — no Grit allowed.');
+    const outcome = 'Outlaws have broken out of jail! Next Adventure will be a Town "Jailbreak". All Heroes are Wanted until the end of the next Adventure — no Grit allowed.';
+    log.push(outcome);
+    await showResult(ctx, 'JAILBREAK — Result', [outcome]);
     ctx.toast?.('Jailbreak! Next Adventure: Town Jailbreak. All Wanted, no Grit.');
     return { log };
   }
@@ -61,24 +78,36 @@ async function apply(roll, ctx) {
       ]
     );
     if (testChoice === 1) {
-      log.push('You decide discretion is the better part of valor and slip away before things escalate.');
+      const outcome = 'You decide discretion is the better part of valor and slip away before things escalate.';
+      log.push(outcome);
+      await showResult(ctx, 'CORRUPT SHERIFF — Result', [outcome]);
       ctx.toast?.('You fled from the Corrupt Sheriff.');
     } else {
-      const passed = await ctx.doSkillCheck(id, {
-        stat: 'Spirit', target: 5,
+      const result = await ctx.doSkillCheck(id, {
+        stat: 'Spirit', target: 5, returnDetails: true,
         message: `${lore3}\nYou stare the corrupt lawman down and challenge his authority!`,
       });
+      const checkLine = formatCheckResult(result, 'Spirit', 5);
+      if (checkLine) log.push(checkLine);
+      const passed = result?.passed ?? result;
       if (passed) {
-        const gold = d6() * 50;
+        const goldRoll = d6();
+        const gold = goldRoll * 50;
         ctx.updateHero?.(id, (h) => ({
           ...h,
           xp: (h.xp || 0) + 50,
           gold: (h.gold || 0) + gold,
         }));
-        log.push(`You stand your ground and the sheriff backs down, exposed as a fraud! The townsfolk reward your courage. +50 XP, +$${gold}.`);
+        const goldLine = `Rolled [${goldRoll}] × $50 = $${gold} reward.`;
+        log.push(goldLine);
+        const outcome = `You stand your ground and the sheriff backs down, exposed as a fraud! The townsfolk reward your courage. +50 XP, +$${gold}.`;
+        log.push(outcome);
+        await showResult(ctx, 'CORRUPT SHERIFF — Result', [checkLine, goldLine, '', outcome]);
         ctx.toast?.(`Corrupt Sheriff defeated! +50 XP, +$${gold}.`);
       } else {
-        log.push('The sheriff draws on you before you can react. Roll on the Injury Chart.');
+        const outcome = 'The sheriff draws on you before you can react. Roll on the Injury Chart.';
+        log.push(outcome);
+        await showResult(ctx, 'CORRUPT SHERIFF — Result', [checkLine, '', outcome]);
         ctx.toast?.('The sheriff guns you down — roll on the Injury Chart.');
         await ctx.enqueueChartRoll?.(id, 'injury');
       }
@@ -96,7 +125,7 @@ async function apply(roll, ctx) {
     const lore4 = `INSANE RAMBLINGS\n${info.lore}\nA prisoner babbles about the Void and the insignificance of mankind, and the madness seeps into your mind.`;
 
     const idx = await ctx.promptChoice?.(
-      `${lore4}\n\nTake 2D6 Horror Hits. If doubles, also advance Darkness Track by 2.\n\nAuto-roll: ${die1} + ${die2} = ${autoTotal}${autoDoubles ? ' (DOUBLES!)' : ''}`,
+      `${lore4}\n\nTake 2D6 Horror Hits. If doubles, also advance Darkness Track by 2.\n\nAuto-roll: [${die1}, ${die2}] = ${autoTotal}${autoDoubles ? ' (DOUBLES!)' : ''}`,
       [
         { label: `Accept auto-roll (${autoTotal} Horror Hits${autoDoubles ? ', doubles' : ''})` },
         { label: 'Enter manual roll' },
@@ -124,14 +153,20 @@ async function apply(roll, ctx) {
       return { ...h, sanity: nextSanity, currentSanity: nextSanity };
     });
 
+    const rollLine = `Rolled [${die1}, ${die2}] = ${horrorTotal} Horror Hits${isDoubles ? ' (DOUBLES!)' : ''}.`;
+    log.push(rollLine);
     if (isDoubles) {
       const s = loadTownState();
       const darkness = Number(s.darknessTrack ?? 0) + 2;
       saveTownState({ ...s, darknessTrack: darkness });
-      log.push(`The prisoner's mad ravings bore into your soul. You take ${horrorTotal} Horror Hits (doubles!) — the Darkness Track advances by 2.`);
+      const outcome = `The prisoner's mad ravings bore into your soul. You take ${horrorTotal} Horror Hits (doubles!) — the Darkness Track advances by 2.`;
+      log.push(outcome);
+      await showResult(ctx, 'INSANE RAMBLINGS — Result', [rollLine, '', outcome]);
       ctx.toast?.(`Insane Ramblings: ${horrorTotal} Horror Hits (doubles — Darkness +2).`);
     } else {
-      log.push(`The prisoner's mad ravings leave you shaken. You take ${horrorTotal} Horror Hits.`);
+      const outcome = `The prisoner's mad ravings leave you shaken. You take ${horrorTotal} Horror Hits.`;
+      log.push(outcome);
+      await showResult(ctx, 'INSANE RAMBLINGS — Result', [rollLine, '', outcome]);
       ctx.toast?.(`Insane Ramblings: ${horrorTotal} Horror Hits.`);
     }
     return { log };
@@ -139,7 +174,9 @@ async function apply(roll, ctx) {
 
   // 5-8: Cold, Hard Justice — No Event
   if (roll >= 5 && roll <= 8) {
-    log.push('The sheriff goes about his business. Nothing of note happens today.');
+    const outcome = 'The sheriff goes about his business. Nothing of note happens today.';
+    log.push(outcome);
+    await showResult(ctx, 'COLD, HARD JUSTICE — Result', [outcome]);
     ctx.toast?.('Cold, Hard Justice: No Event.');
     return { log };
   }
@@ -147,10 +184,12 @@ async function apply(roll, ctx) {
   // 9-10: Telegraph — Recover 1 Grit and Heal D6 Wounds/Sanity (any mix)
   if (roll === 9 || roll === 10) {
     const healTotal = d6();
+    const healLine = `Rolled [${healTotal}] for healing pool (D6).`;
+    log.push(healLine);
     const lore910 = `TELEGRAPH\n${info.lore}\nAn urgent wire brings news of a looming Void storm, stiffening your resolve for what's ahead.`;
 
     const idx = await ctx.promptChoice?.(
-      `${lore910}\n\nRecover 1 Grit and Heal up to ${healTotal} total across Health and Sanity (any mix).\n\nHow much goes to Health? (remainder heals Sanity)`,
+      `${lore910}\n\n${healLine}\n\nRecover 1 Grit and Heal up to ${healTotal} total across Health and Sanity (any mix).\n\nHow much goes to Health? (remainder heals Sanity)`,
       Array.from({ length: healTotal + 1 }, (_, i) => ({
         label: `${i} Health, ${healTotal - i} Sanity`,
       }))
@@ -161,7 +200,8 @@ async function apply(roll, ctx) {
 
     ctx.updateHero?.(id, (h) => {
       const maxGrit = h.maxGrit ?? 2;
-      const grit = Math.min(maxGrit, (h.grit ?? 0) + 1);
+      const curGrit = Number(h.currentGrit ?? h.grit ?? 0);
+      const nextGrit = Math.min(maxGrit, curGrit + 1);
       const maxHp = Number(h.maxHealth ?? h.max_health ?? 10);
       const curHp = Number(h.currentHealth ?? h.health ?? maxHp);
       const newHp = Math.min(maxHp, curHp + healthHeal);
@@ -170,12 +210,14 @@ async function apply(roll, ctx) {
       const newSan = Math.min(maxSan, curSan + sanityHeal);
       return {
         ...h,
-        grit,
+        currentGrit: nextGrit,
         health: newHp, currentHealth: newHp,
         sanity: newSan, currentSanity: newSan,
       };
     });
-    log.push(`The telegraph brings urgent news that steels your resolve. Recover 1 Grit. Healed ${healthHeal} Health and ${sanityHeal} Sanity.`);
+    const outcome = `The telegraph brings urgent news that steels your resolve. Recover 1 Grit. Healed ${healthHeal} Health and ${sanityHeal} Sanity.`;
+    log.push(outcome);
+    await showResult(ctx, 'TELEGRAPH — Result', [healLine, '', outcome]);
     ctx.toast?.(`Telegraph: +1 Grit, healed ${healthHeal} Health and ${sanityHeal} Sanity.`);
     return { log };
   }
@@ -195,11 +237,14 @@ async function apply(roll, ctx) {
     }
     const s = loadTownState();
     saveTownState({ ...s, sheriffsOfficeFlags: { ...(s.sheriffsOfficeFlags || {}), manhuntDoubleRewardsToday: true } });
+    let outcome;
     if (deputized.length > 0) {
-      log.push(`The sheriff pins a badge on every willing volunteer: ${deputized.join(', ')} are now Deputized. Manhunt awards double XP & Gold today.`);
+      outcome = `The sheriff pins a badge on every willing volunteer: ${deputized.join(', ')} are now Deputized. Manhunt awards double XP & Gold today.`;
     } else {
-      log.push('All heroes here are already Law or Holy. Manhunt awards double XP & Gold today.');
+      outcome = 'All heroes here are already Law or Holy. Manhunt awards double XP & Gold today.';
     }
+    log.push(outcome);
+    await showResult(ctx, '"WE NEED SIX MEN!" — Result', [outcome]);
     ctx.toast?.('"We need Six Men!" — Non-Law/Holy Heroes become Deputized. Manhunt double XP & Gold today.');
     return { log };
   }
@@ -208,7 +253,9 @@ async function apply(roll, ctx) {
   if (roll === 12) {
     const s = loadTownState();
     saveTownState({ ...s, sheriffsOfficeFlags: { ...(s.sheriffsOfficeFlags || {}), escortLegendaryBonusToday: true } });
-    log.push('"Sparky" McBride himself sits in the cells, grinning through broken teeth. Escort Prisoner today uses Lore 6+ and the reward becomes D8×$100 if successful.');
+    const outcome = '"Sparky" McBride himself sits in the cells, grinning through broken teeth. Escort Prisoner today uses Lore 6+ and the reward becomes D8×$100 if successful.';
+    log.push(outcome);
+    await showResult(ctx, 'LEGENDARY OUTLAW — Result', [outcome]);
     ctx.toast?.('Legendary Outlaw — Escort Prisoner today uses Lore 6+ but rewards D8×$100.');
     return { log };
   }

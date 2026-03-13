@@ -14,16 +14,25 @@ function patchGlobalRules(patch) {
 
 // ---------- result formatting helper ----------
 /**
- * Formats a doSkillCheck result (from returnDetails: true) into a readable log line.
+ * Formats a doSkillCheck result (from returnDetails: true) into a readable string.
  * Shows the dice rolled, pass/fail, and success count.
  */
 function formatCheckResult(result, stat, target) {
   if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
     const diceStr = result.rolls.join(', ');
     const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
-    return `→ Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
   }
   return null;
+}
+
+/**
+ * Shows a result prompt to the player so they can see the outcome before continuing.
+ * Uses promptChoice with a single "Continue" button as an acknowledgement dialog.
+ */
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
 }
 
 // ---------- display (title / lore / effect) ----------
@@ -142,27 +151,31 @@ export async function apply(roll, ctx) {
       ]
     );
     let result;
+    let checkLine;
     if (testChoice === 1) {
       result = await ctx.doSkillCheck(id, {
         stat: 'Luck', target: 6, returnDetails: true,
         message: `${lore2}\nYou try to duck at the last second!`,
       });
-      const rl = formatCheckResult(result, 'Luck', 6);
-      if (rl) log.push(rl);
+      checkLine = formatCheckResult(result, 'Luck', 6);
     } else {
       result = await ctx.doSkillCheck(id, {
         stat: 'Spirit', target: 5, returnDetails: true,
         message: `${lore2}\nYou try to sense the danger before it strikes!`,
       });
-      const rl = formatCheckResult(result, 'Spirit', 5);
-      if (rl) log.push(rl);
+      checkLine = formatCheckResult(result, 'Spirit', 5);
     }
+    if (checkLine) log.push(checkLine);
     const passed = result?.passed ?? result;
     if (passed) {
-      log.push('Your instincts save your life! You dodge the shot just in time. No further effect.');
+      const outcome = 'Your instincts save your life! You dodge the shot just in time. No further effect.';
+      log.push(outcome);
+      await showResult(ctx, 'ASSASSINATION ATTEMPT — Result', [checkLine, '', outcome]);
       ctx.toast?.('Assassination Attempt avoided!');
     } else {
-      log.push('The shot catches you off guard! Roll once on the Injury Chart using only a single D6 (instead of 2D6).');
+      const outcome = 'The shot catches you off guard! Roll once on the Injury Chart using only a single D6 (instead of 2D6).';
+      log.push(outcome);
+      await showResult(ctx, 'ASSASSINATION ATTEMPT — Result', [checkLine, '', outcome]);
       ctx.toast?.('Hit! Roll on the Injury Chart (single D6).');
       await ctx.enqueueChartRoll(id, 'injury');
     }
@@ -180,33 +193,34 @@ export async function apply(roll, ctx) {
       ]
     );
     let result;
+    let checkLine;
     const usedAgility = testChoice === 1;
     if (usedAgility) {
       result = await ctx.doSkillCheck(id, {
         stat: 'Agility', target: 4, returnDetails: true,
         message: `${lore3}\nYou shove a chair into the crowd and bolt for the door!`,
       });
-      const rl = formatCheckResult(result, 'Agility', 4);
-      if (rl) log.push(rl);
+      checkLine = formatCheckResult(result, 'Agility', 4);
     } else {
       result = await ctx.doSkillCheck(id, {
         stat: 'Cunning', target: 6, returnDetails: true,
         message: `${lore3}\nYou raise your hands and try to calm the angry mob...`,
       });
-      const rl = formatCheckResult(result, 'Cunning', 6);
-      if (rl) log.push(rl);
+      checkLine = formatCheckResult(result, 'Cunning', 6);
     }
+    if (checkLine) log.push(checkLine);
     const passed = result?.passed ?? result;
     if (passed) {
-      if (usedAgility) {
-        log.push('You burst through the saloon doors and disappear into the night! You escape, but your Saloon visit ends.');
-        ctx.toast?.('You escaped the mob! Visit ends.');
-      } else {
-        log.push('Smooth talking saves your hide. The mob grumbles but backs down.');
-        ctx.toast?.('You talked your way out of it!');
-      }
+      const outcome = usedAgility
+        ? 'You burst through the saloon doors and disappear into the night! You escape, but your Saloon visit ends.'
+        : 'Smooth talking saves your hide. The mob grumbles but backs down.';
+      log.push(outcome);
+      await showResult(ctx, '"YOU A\'CHEATIN\' US?!" — Result', [checkLine, '', outcome]);
+      ctx.toast?.(usedAgility ? 'You escaped the mob! Visit ends.' : 'You talked your way out of it!');
     } else {
-      log.push('The mob drags you outside and roughs you up good. Roll once on the Injury Chart. Your Saloon visit ends immediately.');
+      const outcome = 'The mob drags you outside and roughs you up good. Roll once on the Injury Chart. Your Saloon visit ends immediately.';
+      log.push(outcome);
+      await showResult(ctx, '"YOU A\'CHEATIN\' US?!" — Result', [checkLine, '', outcome]);
       ctx.toast?.('The mob throws you out! Roll on the Injury Chart. Visit ends.');
       await ctx.enqueueChartRoll(id, 'injury');
       ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
@@ -216,11 +230,12 @@ export async function apply(roll, ctx) {
 
   // 4: Spilled Drink – Leave or pay D6x$25
   if (roll === 4) {
-    const cost = d6();
-    const total = cost * 25;
-    log.push(`→ Rolled [${cost}] × $25 = $${total} for the cost of drinks.`);
+    const costRoll = d6();
+    const total = costRoll * 25;
+    const costLine = `Rolled [${costRoll}] × $25 = $${total} for the cost of drinks.`;
+    log.push(costLine);
     const idx = await ctx.promptChoice?.(
-      `SPILLED DRINK\n${info.lore}\n\nHe squares up to you, fists clenched. What do you do?`,
+      `SPILLED DRINK\n${info.lore}\n\n${costLine}\n\nHe squares up to you, fists clenched. What do you do?`,
       [
         { label: 'Walk away and leave Town at the end of the day' },
         { label: `Buy him and his friends a round of drinks ($${total})` },
@@ -228,11 +243,15 @@ export async function apply(roll, ctx) {
     );
     if (idx === 0) {
       ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
-      log.push('You tip your hat and walk away before things get ugly. Your stay in Town ends at the end of the day.');
+      const outcome = 'You tip your hat and walk away before things get ugly. Your stay in Town ends at the end of the day.';
+      log.push(outcome);
+      await showResult(ctx, 'SPILLED DRINK — Result', [outcome]);
       ctx.toast?.('Spilled Drink: your stay ends at end of day.');
     } else if (idx === 1) {
       ctx.updateHero?.(id, (h) => ({ ...h, gold: Math.max(0, (h.gold || 0) - total) }));
-      log.push(`You buy a round for the offended patron and his rowdy friends. The tension fades into laughter. -$${total}.`);
+      const outcome = `You buy a round for the offended patron and his rowdy friends. The tension fades into laughter. -$${total}.`;
+      log.push(outcome);
+      await showResult(ctx, 'SPILLED DRINK — Result', [costLine, '', outcome]);
       ctx.toast?.(`Bought a round: -$${total}.`);
     }
     return { log };
@@ -245,17 +264,22 @@ export async function apply(roll, ctx) {
       stat: 'Strength', target: 5, returnDetails: true,
       message: `${lore5}\nMake a Strength 5+ test to shove through the chaos.`,
     });
-    const rl = formatCheckResult(result, 'Strength', 5);
-    if (rl) log.push(rl);
+    const checkLine = formatCheckResult(result, 'Strength', 5);
+    if (checkLine) log.push(checkLine);
     const passed = result?.passed ?? result;
     if (passed) {
-      log.push('You bull your way through the flying fists and broken glass, pushing to safety. No injuries!');
+      const outcome = 'You bull your way through the flying fists and broken glass, pushing to safety. No injuries!';
+      log.push(outcome);
+      await showResult(ctx, 'BAR FIGHT — Result', [checkLine, '', outcome]);
       ctx.toast?.('Bar Fight: you push through safely!');
     } else {
       const woundRoll = d6();
       ctx.updateHero?.(id, (h) => ({ ...h, wounds: (h.wounds || 0) + woundRoll }));
-      log.push(`→ Rolled [${woundRoll}] for Wounds.`);
-      log.push(`The brawl catches you square. You take ${woundRoll} Wounds (these carry over to the next Adventure).`);
+      const woundLine = `Rolled [${woundRoll}] for Wounds.`;
+      log.push(woundLine);
+      const outcome = `The brawl catches you square. You take ${woundRoll} Wounds (these carry over to the next Adventure).`;
+      log.push(outcome);
+      await showResult(ctx, 'BAR FIGHT — Result', [checkLine, woundLine, '', outcome]);
       ctx.toast?.(`Bar Fight: take ${woundRoll} Wounds (carry over).`);
     }
     return { log };
@@ -273,8 +297,11 @@ export async function apply(roll, ctx) {
     const s = loadTownState() || {};
     const cur = Number(s.globalRules?.nextAdventureMinusGrit || 0);
     patchGlobalRules({ nextAdventureMinusGrit: cur + 1 });
-    log.push('A gloomy patron tells you of a stagecoach torn to pieces by a swarm of HellBats. The dark news weighs on your spirit.');
-    log.push('Debuff applied: Start the next Adventure with one less Grit than normal (–1 Grit).');
+    const outcome = 'A gloomy patron tells you of a stagecoach torn to pieces by a swarm of HellBats. The dark news weighs on your spirit.';
+    const buff = 'Debuff applied: Start the next Adventure with one less Grit than normal (–1 Grit).';
+    log.push(outcome);
+    log.push(buff);
+    await showResult(ctx, 'DARK TIDINGS — Result', [outcome, '', buff]);
     ctx.toast?.('Dark Tidings: Next Adventure starts with -1 Grit.');
     return { log };
   }
@@ -284,7 +311,9 @@ export async function apply(roll, ctx) {
     const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
     const heroGold = Number(hero?.gold ?? 0);
     if (heroGold < 10) {
-      log.push('You\'d love to join in, but you can\'t afford a round ($10 needed). Maybe next time.');
+      const outcome = 'You\'d love to join in, but you can\'t afford a round ($10 needed). Maybe next time.';
+      log.push(outcome);
+      await showResult(ctx, 'A GOOD TIME — Result', [outcome]);
       ctx.toast?.('A Good Time: Not enough gold ($10 needed).');
       return { log };
     }
@@ -294,7 +323,9 @@ export async function apply(roll, ctx) {
       const nextGrit = Math.min(maxGrit, curGrit + 1);
       return { ...h, gold: (h.gold || 0) - 10, currentGrit: nextGrit };
     });
-    log.push('A round of drinks and good company lifts your spirits. Pay $10, recover 1 Grit for use in Town.');
+    const outcome = 'A round of drinks and good company lifts your spirits. Pay $10, recover 1 Grit for use in Town.';
+    log.push(outcome);
+    await showResult(ctx, 'A GOOD TIME — Result', [outcome]);
     ctx.toast?.('A Good Time: -$10, +1 Grit.');
     return { log };
   }
@@ -306,8 +337,8 @@ export async function apply(roll, ctx) {
       stat: 'Lore', target: 5, returnDetails: true,
       message: `${lore8}\nMake a Lore 5+ test. Gain 10 XP for every 5+ rolled.`,
     });
-    const rl = formatCheckResult(result, 'Lore', 5);
-    if (rl) log.push(rl);
+    const checkLine = formatCheckResult(result, 'Lore', 5);
+    if (checkLine) log.push(checkLine);
 
     let successes = 0;
     if (result && typeof result === 'object' && Number.isFinite(result.successes)) {
@@ -324,10 +355,14 @@ export async function apply(roll, ctx) {
     if (successes > 0) {
       const xpGain = successes * 10;
       ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + xpGain }));
-      log.push(`The bar erupts in cheers! ${successes} success${successes !== 1 ? 'es' : ''} on Lore 5+ test: +${xpGain} XP.`);
+      const outcome = `The bar erupts in cheers! ${successes} success${successes !== 1 ? 'es' : ''} on Lore 5+ test: +${xpGain} XP.`;
+      log.push(outcome);
+      await showResult(ctx, 'A TALL TALE — Result', [checkLine, '', outcome]);
       ctx.toast?.(`Tall Tale: ${successes} success${successes !== 1 ? 'es' : ''} — +${xpGain} XP.`);
     } else {
-      log.push('You try to tell a story of your own, but it falls flat. The crowd loses interest. No XP gained.');
+      const outcome = 'You try to tell a story of your own, but it falls flat. The crowd loses interest. No XP gained.';
+      log.push(outcome);
+      await showResult(ctx, 'A TALL TALE — Result', [checkLine, '', outcome]);
       ctx.toast?.('Your story falls flat — no XP.');
     }
     return { log };
@@ -349,8 +384,11 @@ export async function apply(roll, ctx) {
     const buffs = { ...(s.saloonVisitBuffs || {}) };
     buffs[id] = { luck: 2, cunning: 2 };
     saveTownState({ ...s, saloonVisitBuffs: buffs });
-    log.push('This seems to be your lucky night! The cards fall your way and you feel sharp as a tack.');
-    log.push('Buff applied: +2 Luck and +2 Cunning for this Location Visit.');
+    const outcome = 'This seems to be your lucky night! The cards fall your way and you feel sharp as a tack.';
+    const buff = 'Buff applied: +2 Luck and +2 Cunning for this Location Visit.';
+    log.push(outcome);
+    log.push(buff);
+    await showResult(ctx, 'ACES AND EIGHTS — Result', [outcome, '', buff]);
     ctx.toast?.('Aces and Eights: +2 Luck and +2 Cunning this visit!');
     return { log };
   }
@@ -362,8 +400,8 @@ export async function apply(roll, ctx) {
       stat: 'Luck', target: 5, returnDetails: true,
       message: `${lore10}\nMake a Luck 5+ test to see how the evening goes...`,
     });
-    const rl = formatCheckResult(result, 'Luck', 5);
-    if (rl) log.push(rl);
+    const checkLine = formatCheckResult(result, 'Luck', 5);
+    if (checkLine) log.push(checkLine);
     const passed = result?.passed ?? result;
     if (passed) {
       const healRoll = d3();
@@ -373,8 +411,11 @@ export async function apply(roll, ctx) {
         const hp = Math.min(max, cur + healRoll);
         return { ...h, health: hp, currentHealth: hp };
       });
-      log.push(`→ Rolled [${healRoll}] for healing (D3).`);
-      log.push(`You are reinvigorated by her comforting presence. Regain ${healRoll} Health.`);
+      const healLine = `Rolled [${healRoll}] for healing (D3).`;
+      log.push(healLine);
+      const outcome = `You are reinvigorated by her comforting presence. Regain ${healRoll} Health.`;
+      log.push(outcome);
+      await showResult(ctx, 'SONG AND DANCE — Result', [checkLine, healLine, '', outcome]);
       ctx.toast?.(`Song and Dance: regain ${healRoll} Health.`);
     } else {
       const costRoll = d6();
@@ -384,8 +425,11 @@ export async function apply(roll, ctx) {
         isDone: true,
         gold: Math.max(0, (h.gold || 0) - cost),
       }));
-      log.push(`→ Rolled [${costRoll}] × $25 = $${cost} lost.`);
-      log.push(`You are knocked over the head and wake hours later to find your wallet gone. Lose $${cost} and your visit to the Saloon ends immediately.`);
+      const costLine = `Rolled [${costRoll}] × $25 = $${cost} lost.`;
+      log.push(costLine);
+      const outcome = `You are knocked over the head and wake hours later to find your wallet gone. Lose $${cost} and your visit to the Saloon ends immediately.`;
+      log.push(outcome);
+      await showResult(ctx, 'SONG AND DANCE — Result', [checkLine, costLine, '', outcome]);
       ctx.toast?.(`Knocked out: lose $${cost} and your visit ends.`);
     }
     return { log };
@@ -404,8 +448,11 @@ export async function apply(roll, ctx) {
     }));
     // Also store in globalRules for any system-level consumption
     patchGlobalRules({ nextAdventureMaxGrit: true });
-    log.push('The song from the piano warms your heart and lingers in your mind, long into the night.');
-    log.push('Buff applied: Start the next Adventure with Max Grit.');
+    const outcome = 'The song from the piano warms your heart and lingers in your mind, long into the night.';
+    const buff = 'Buff applied: Start the next Adventure with Max Grit.';
+    log.push(outcome);
+    log.push(buff);
+    await showResult(ctx, 'A CATCHY TUNE — Result', [outcome, '', buff]);
     ctx.toast?.('A Catchy Tune: Next Adventure starts with Max Grit!');
     return { log };
   }
@@ -419,8 +466,11 @@ export async function apply(roll, ctx) {
 
     await ctx.addToken?.(id, 'Whiskey');
     await ctx.addToken?.(id, 'Whiskey');
-    log.push('The locals have recognized you as a true hero, cheering you on! All Gambling winnings are doubled during this Location Visit.');
-    log.push('The locals buy you a few drinks: gained 2 Whiskey Tokens.');
+    const outcome = 'The locals have recognized you as a true hero, cheering you on! All Gambling winnings are doubled during this Location Visit.';
+    const tokens = 'The locals buy you a few drinks: gained 2 Whiskey Tokens.';
+    log.push(outcome);
+    log.push(tokens);
+    await showResult(ctx, 'HERO OF THE PEOPLE — Result', [outcome, '', tokens]);
     ctx.toast?.('Hero of the People: Double gambling + 2 Whiskey tokens!');
     return { log };
   }

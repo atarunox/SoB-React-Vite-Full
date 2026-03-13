@@ -73,6 +73,79 @@ Data is organized as nested objects: `category > className > details`. Arrays fo
 - **Firebase localMode:** When env vars are missing, Firebase gracefully falls back to localStorage-only mode.
 - **Sanitization:** Hero data is sanitized on every write — undefined values stripped, dot-keys rejected, circular refs detected.
 
+## Location Handler Conventions
+
+All location event handlers in `src/utils/locationHandlers/` **must** follow these patterns. Reference `saloonHandler.js` as the canonical example.
+
+### Required patterns for every handler
+
+1. **display() function** — Return `{ title, lore, effect }` for each roll value. Lore should match the card text from the board game rulebook.
+
+2. **Lore in log output** — Every event starts with title + lore in the log:
+   ```js
+   log.push(`[Location] (${roll}) ${info.title} — ${info.lore}`);
+   log.push(`Effect: ${info.effect}`);
+   ```
+
+3. **Result prompts** — After every roll (skill checks, damage, costs, healing), **show the result as a prompt dialog** so the player can see and acknowledge the outcome before continuing:
+   ```js
+   await showResult(ctx, 'EVENT TITLE — Result', [checkLine, '', outcome]);
+   ```
+   Use `ctx.promptChoice` with a single `[{ label: 'Continue' }]` button. The `showResult` helper does this:
+   ```js
+   async function showResult(ctx, title, lines) {
+     const body = Array.isArray(lines) ? lines.join('\n') : lines;
+     await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+   }
+   ```
+
+4. **Skill checks use returnDetails** — Always use `returnDetails: true` and format the result:
+   ```js
+   const result = await ctx.doSkillCheck(id, {
+     stat: 'Strength', target: 5, returnDetails: true,
+     message: `EVENT TITLE\nLore text\nFlavor about what you're doing.`,
+   });
+   const checkLine = formatCheckResult(result, 'Strength', 5);
+   // checkLine = "Rolled [3, 5] — PASSED (Strength 5+, 1 success)"
+   ```
+
+5. **Auto-rolled dice show values** — When rolling D6 for damage, costs, healing, etc., always show the roll:
+   ```js
+   const woundRoll = d6();
+   const woundLine = `Rolled [${woundRoll}] for Wounds.`;
+   log.push(woundLine);
+   ```
+
+6. **Skill check messages include hero context** — The `message` param to `doSkillCheck` should include the event title, lore, and a flavor line about what the hero is attempting. The system appends the mechanical label (e.g., "Strength 5+ test (3d6)") automatically.
+
+7. **Player choices for OR-tests** — When the rulebook says "Stat1 X+ OR Stat2 Y+", use `promptChoice` to let the player pick which test to attempt (don't auto-chain them).
+
+### Hero data field names
+
+- **Grit:** Use `currentGrit` (not `grit`). Read: `h.currentGrit ?? h.grit ?? 0`. Write: `{ currentGrit: newVal }`.
+- **Health:** Use `currentHealth`. Max at `h.maxHealth ?? h.max_health ?? 10`.
+- **Sanity:** Use `currentSanity`. Max at `h.maxSanity ?? h.SanityMax ?? 0`.
+- **Gold:** Use `h.gold`. Always `Math.max(0, ...)` to prevent negative.
+- **XP:** Use `h.xp`.
+- **Location visit buffs:** Store on `hero.locationVisitBuffs` (e.g., `{ Luck: 2, Cunning: 2 }`). These are automatically picked up by `doSkillCheck` and `getEffectiveStat` in `locationEventContext.js`.
+- **Adventure buffs/debuffs:** Store on `hero.adventureBuffs` / `hero.adventureDebuffs` for effects that apply at next adventure start.
+
+### Handler return format
+
+```js
+return {
+  actions: [],
+  townState: ctx.townState,
+  log: result?.log || [`Location Event Roll: ${roll}`],
+  eventRoll: roll,
+  eventIndex: Math.max(0, roll - 2),
+};
+```
+
+### Never use `window.prompt`, `window.alert`, or `window.confirm`
+
+Use the structured ctx methods instead: `ctx.promptChoice`, `ctx.promptNumber`, `ctx.promptYesNo`, `ctx.doSkillCheck`.
+
 ## Don'ts
 
 - Don't add TypeScript — project is JS-only by design.
