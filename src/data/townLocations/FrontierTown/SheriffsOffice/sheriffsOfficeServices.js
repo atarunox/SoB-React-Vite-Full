@@ -67,8 +67,9 @@ export default [
     endsVisit: true,
     rules: {
       text: [
-        'Make a **Cunning 5+** test (dice = Cunning).',
-        'Gain XP for successes; on any **6**, also gain some $ (see Outcome).',
+        'Make a **Cunning 5+** test. For each 5+ rolled, gain **20 XP**.',
+        'If at least one **6** is rolled, you track down the Outlaw for a shootout! Roll **2D6** and subtract your **Initiative** for hits taken (4 Wounds each, or 8 if Hero Level 5+). Roll Defense as normal.',
+        'Unless KO\'d, you capture the Outlaw: gain **25 XP** and **D6 × $100**.',
         'Ends your location visit.',
       ],
     },
@@ -83,9 +84,10 @@ export default [
     endsVisit: true,
     rules: {
       text: [
-        'Make a **Lore 5+** test (dice = Lore).',
-        'On success, you will be prompted for your payout (**D8 × $25**).',
-        'For **each 1** rolled, you will be prompted to roll a **Travel Hazard** (DM resolves).',
+        'Make a **Lore 5+** test to follow the best roads.',
+        'If successful, gain **D8 × $25** for a job well done.',
+        'If failed, you are ambushed by the prisoner\'s gang! **Lose all Grit** you currently have and return to Town empty-handed.',
+        'For **each 1** rolled as part of the Lore test, roll once on the **Travel Hazard Chart**.',
         'Ends your location visit.',
       ],
     },

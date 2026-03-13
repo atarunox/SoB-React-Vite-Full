@@ -54,6 +54,66 @@ export default [
     ],
   },
 
+  // Law and Order — Badges (Gear + Law + Icon, Limit 1 Badge)
+  {
+    id: 'so_marshal_badge',
+    name: 'Marshal/Sheriff Badge',
+    type: 'Gear',
+    slot: 'Badge',
+    cost: { gold: 0 },
+    weight: 0,
+    upgradeSlots: 0,
+    tags: ['Gear', 'Law', 'Icon', 'Badge', 'USMarshalOrLawManOnly'],
+    limit: 'Limit 1 Badge',
+    effects: [
+      'Once per Adventure, give all Heroes +2 Shots with a Gun or +2 Combat (they choose) during their next Activation.',
+    ],
+  },
+  {
+    id: 'so_bounty_hunter_badge',
+    name: "Bounty Hunter's Badge",
+    type: 'Gear',
+    slot: 'Badge',
+    cost: { gold: 850 },
+    weight: 0,
+    upgradeSlots: 0,
+    tags: ['Gear', 'Law', 'Icon', 'Badge'],
+    limit: 'Limit 1 Badge',
+    effects: [
+      'Gain Keyword Traveler.',
+      'Once per Adventure, allow all Heroes to Recover 1 Grit.',
+    ],
+  },
+  {
+    id: 'so_deputy_badge',
+    name: 'Deputy Badge',
+    type: 'Gear',
+    slot: 'Badge',
+    cost: { gold: 1200 },
+    weight: 0,
+    upgradeSlots: 0,
+    tags: ['Gear', 'Law', 'Icon', 'Badge'],
+    limit: 'Limit 1 Badge',
+    effects: [
+      'At the end of each successful Adventure, gain 50 XP.',
+      'Once per Adventure, Heal D6 Wounds/Sanity (any mix) from each Hero.',
+    ],
+  },
+  {
+    id: 'so_executioners_badge',
+    name: "Executioner's Badge",
+    type: 'Gear',
+    slot: 'Badge',
+    cost: { gold: 2400 },
+    weight: 0,
+    upgradeSlots: 0,
+    tags: ['Gear', 'Law', 'Icon', 'Badge'],
+    limit: 'Limit 1 Badge',
+    effects: [
+      'Once per Adventure, add +3 Damage to each of your Hits until the end of the Turn.',
+    ],
+  },
+
   // Law and Order (Guns)
   {
     id: 'so_peacekeeper_pistol',
@@ -81,8 +141,8 @@ export default [
     effects: [
       'Range: 3',
       'Shots: 3',
-      'Uses the D8 for To Hit and Damage (6, 7, or 8 count as a Critical Hit).',
-      '+1 Damage if adjacent.',
+      'Uses the D8 for To Hit (6, 7, or 8 count as a Critical Hit). Note: Only uses normal D6 for Damage.',
+      '+1 Damage if target is adjacent.',
     ],
   },
   {

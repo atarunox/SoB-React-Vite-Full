@@ -19,23 +19,51 @@ async function showResult(ctx, title, lines) {
 function display(roll) {
   switch (roll) {
     case 2:
-      return { title: 'Jailbreak', lore: 'Outlaws storm the jail at dawn.', effect: 'Next Adventure: Town "Jailbreak". All Heroes Wanted until end of next Adventure (no Grit).' };
+      return {
+        title: 'Jailbreak',
+        lore: 'With his hanging scheduled for today, a ruthless band of Outlaws wastes no time in trying to break out their jailed comrade. You just happen to be in the wrong place at the wrong time!',
+        effect: 'The Town Stay is over for all Heroes at the end of the current Day (you must still roll for Town Event). The Heroes\' next Adventure is automatically the Town Adventure "Jailbreak", though this can be avoided if all Heroes agree to flee before the shooting begins (and to start the next Adventure with no Grit).',
+      };
     case 3:
-      return { title: 'Corrupt Sheriff', lore: 'Power has gone to his head.', effect: 'Law Heroes must Flee or challenge (Spirit 5+). Pass: +50 XP and D6×$50. Fail: Injury.' };
+      return {
+        title: 'Corrupt Sheriff',
+        lore: 'The local Sheriff has gone mad with power and greed. Every Law Hero at the Sheriff\'s Office must immediately Flee Town or challenge the Corrupt Sheriff\'s authority!',
+        effect: 'To challenge him, make a Spirit 5+ test. If successful, he is defeated and runs for the hills, gain 50 XP and D6×$50. If failed, he draws on you and guns you down. Roll once on the Injury Chart. If the Corrupt Sheriff is not defeated by any Law Hero here, all Heroes in Town are considered Wanted! until the end of this Town Stay.',
+      };
     case 4:
-      return { title: 'Insane Ramblings', lore: 'Whispers from the cell block.', effect: 'Take 2D6 Horror Hits; doubles advance Darkness by 2.' };
+      return {
+        title: 'Insane Ramblings',
+        lore: 'One of the prisoners is rambling on in his jail cell about the insignificance of humanity and the coming of dark gods. It\'s hard not to be unnerved by it.',
+        effect: 'Take 2D6 Horror Hits. If the number rolled is doubles, also immediately move the marker 2 spaces forward on the Town Event Track.',
+      };
     case 5:
     case 6:
     case 7:
     case 8:
-      return { title: 'Cold, Hard Justice', lore: 'Business as usual.', effect: 'No Event.' };
+      return {
+        title: 'Cold, Hard Justice',
+        lore: 'Blind, with a smoking pistol in each hand! You wouldn\'t want it any other way.',
+        effect: 'No Event.',
+      };
     case 9:
     case 10:
-      return { title: 'Telegraph', lore: 'Bad weather on the wire.', effect: 'Recover 1 Grit and Heal D6 Wounds/Sanity (any mix).' };
+      return {
+        title: 'Telegraph',
+        lore: 'An incoming telegraph brings news of a Void Storm warning in your area. Time to steel your resolve.',
+        effect: 'You may Recover 1 Grit and Heal up to D6 Wounds/Sanity (any mix).',
+      };
     case 11:
-      return { title: '"We need Six Men!"', lore: 'A call to arms.', effect: 'Non-Law/Holy here become Deputized for free today. Manhunt awards double XP & Gold today.' };
+      return {
+        title: '"We need Six Men!"',
+        lore: 'Mount Up! We\'ve got a job to do! Every Hero at the Sheriff\'s Office that is not Law or Holy immediately gains the Become Deputized bonus for free.',
+        effect: 'Then, any Hero that Joins a Manhunt today gains double any XP and Gold earned.',
+      };
     case 12:
-      return { title: 'Legendary Outlaw', lore: '"Sparky" is in the cells.', effect: 'Escort Prisoner today uses Lore 6+; reward becomes D8×$100 if successful.' };
+      return {
+        title: 'Legendary Outlaw',
+        lore: 'Locked up in a cell, legendary Outlaw \'Sparky\' Scafford sits, waiting his transfer to the federal Marshals. With a wink and a smile he says, "My Pa\' might\'n have somthin\' to say \'bout that!"',
+        effect: 'If you Escort a Prisoner today, it requires a Lore 6+ test, but you gain D8×$100 instead if successful.',
+      };
     default:
       return { title: 'Quiet Day', lore: '', effect: 'No Event.' };
   }

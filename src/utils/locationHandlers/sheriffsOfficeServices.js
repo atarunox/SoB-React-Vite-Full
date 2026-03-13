@@ -392,10 +392,7 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const hits = Math.max(0, total - initiative);
 
       const level = Number(hero?.level ?? 1);
-      const perHit =
-        level <= 4 ? 4 :
-        level <= 8 ? 8 :
-        12; // optional if you support higher tiers
+      const perHit = level >= 5 ? 8 : 4;
 
       log.push(
         `Shootout: rolled ${Array.isArray(shootoutRolls) ? shootoutRolls.join(' + ') : shootoutRolls} = ${total}. ` +
@@ -424,11 +421,18 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         log.push('You duck behind cover — no hits get through!');
       }
 
-      // A small bonus if you did well
-      if (successes > 0 && hits <= 1) {
+      // Unless KO'd, you capture the Outlaw! Gain 25 XP and D6 × $100.
+      const hpAfter = Number(hero?.currentHealth ?? 0) -
+        (hits > 0 ? Math.max(0, hits * perHit) : 0); // rough check
+      const knockedOut = hpAfter <= 0;
+      if (!knockedOut) {
+        const bountyRoll = D6();
+        const bountyGold = bountyRoll * 100;
         addXP(25, 'Captured the outlaw');
-        addGold(100, 'Outlaw bounty');
-        log.push('<b>Captured!</b> +25 XP and $100 for bringing the outlaw in alive.');
+        addGold(bountyGold, `Outlaw bounty (${bountyRoll} × $100)`);
+        log.push(`<b>Captured!</b> +25 XP and $${bountyGold} (rolled [${bountyRoll}] × $100) for bringing the outlaw in.`);
+      } else {
+        log.push('You were knocked out in the shootout — the outlaw escapes!');
       }
 
       endsVisit = true;
@@ -456,10 +460,11 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         }
         const payout = d8 * 25;
         addGold(payout, `Escort payoff (${d8} × $25)`);
-        addXP(successes * 10, 'Escort experience');
-        log.push('You safely completed the transfer.');
+        log.push(`You safely delivered the prisoner. Gained $${payout} (D8 [${d8}] × $25).`);
       } else {
-        log.push('Ambushed on the road — the transfer yields no payout.');
+        // Failed: ambushed by the prisoner's gang. Lose all Grit.
+        pushUpdate(actions, { currentGrit: 0 });
+        log.push('Ambushed by the prisoner\'s gang! Surrounded, you have no choice but to let him Escape and return to Town empty-handed. You lose all Grit you currently have.');
       }
 
       if (ones > 0) {
