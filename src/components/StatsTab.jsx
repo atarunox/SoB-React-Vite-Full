@@ -324,10 +324,24 @@ export default function StatsTab({
   );
 
   // recompute totals whenever gear signature or hero changes
-  const { stats: mergedStats = {}, breakdown = {} } = React.useMemo(
+  const { stats: rawMergedStats = {}, breakdown = {} } = React.useMemo(
     () => calculateCurrentStats(normalizedHero || {}),
     [gearSig, activeHero?.id, activeHero?.localId, normalizedHero]
   );
+
+  // Apply location visit buffs (e.g., Saloon "Aces and Eights" +2 Luck/Cunning)
+  const visitBuffs = activeHero?.locationVisitBuffs;
+  const mergedStats = React.useMemo(() => {
+    if (!visitBuffs || typeof visitBuffs !== 'object') return rawMergedStats;
+    const patched = { ...rawMergedStats };
+    for (const [stat, val] of Object.entries(visitBuffs)) {
+      const buffVal = Number(val ?? 0);
+      if (buffVal > 0 && typeof patched[stat] === 'number') {
+        patched[stat] = patched[stat] + buffVal;
+      }
+    }
+    return patched;
+  }, [rawMergedStats, visitBuffs]);
 
   const heroKeywords = React.useMemo(
     () => deriveKeywords(activeHero),
@@ -711,6 +725,9 @@ export default function StatsTab({
                   <th className="py-2 pr-3 text-right">Gear</th>
                   <th className="py-2 pr-3 text-right">Skills</th>
                   <th className="py-2 pr-3 text-right">Conditions</th>
+                  {visitBuffs && Object.keys(visitBuffs).length > 0 && (
+                    <th className="py-2 pr-3 text-right">Buffs</th>
+                  )}
                   <th className="py-2 pr-3 text-right">Total</th>
                 </tr>
               </thead>
@@ -735,6 +752,9 @@ export default function StatsTab({
                   let gear = readBucket(breakdown?.gear, lookupKey);
                   let skills = readBucket(breakdown?.skills, lookupKey);
                   let conditions = readBucket(breakdown?.conditions, lookupKey);
+                  const buffVal = visitBuffs && typeof visitBuffs === 'object'
+                    ? Number(visitBuffs[lookupKey] ?? 0) || 0
+                    : 0;
 
                   // fallback base from hero if still null
                   if (base == null) base = baseFromHero(lookupKey, activeHero);
@@ -745,6 +765,7 @@ export default function StatsTab({
                     gear != null ||
                     skills != null ||
                     conditions != null ||
+                    buffVal > 0 ||
                     mergedVal != null;
 
                   const isCoreStat = statOrder.includes(rawKey);
@@ -810,6 +831,11 @@ export default function StatsTab({
                       <td className="py-1 pr-3 text-right tabular-nums text-rose-200">
                         {fmt(conditions)}
                       </td>
+                      {visitBuffs && Object.keys(visitBuffs).length > 0 && (
+                        <td className="py-1 pr-3 text-right tabular-nums text-yellow-300">
+                          {buffVal > 0 ? `+${buffVal}` : fmt(null)}
+                        </td>
+                      )}
                       <td className="py-1 pr-3 text-right tabular-nums font-semibold text-amber-200">
                         {fmt(mergedTotal)}
                       </td>

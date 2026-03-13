@@ -47,6 +47,8 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
   const doSkillCheck = async (heroId, { stat, target = 5, prompt = true, message = '', returnDetails = false } = {}) => {
     const hero = getHeroById(heroId);
     // Get effective stat value from calculated stats
+    // NOTE: locationVisitBuffs are NOT applied here — they only affect
+    // services (gambling) via getEffectiveStat / readStat, not event skill checks.
     let statVal = 1;
     if (hero) {
       try {
@@ -54,12 +56,6 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
         statVal = Number(merged[stat] ?? hero?.stats?.[stat] ?? 0) || 1;
       } catch {
         statVal = Number(hero?.stats?.[stat] ?? 0) || 1;
-      }
-      // Apply location visit buffs (e.g., Saloon "Aces and Eights" +2 Luck/Cunning)
-      const visitBuffs = hero.locationVisitBuffs;
-      if (visitBuffs && typeof visitBuffs === 'object') {
-        const buffVal = Number(visitBuffs[stat] ?? 0);
-        if (buffVal > 0) statVal += buffVal;
       }
     }
     const dice = Math.max(1, statVal);
@@ -186,9 +182,9 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     if (typeof posseApi.addToken === 'function') {
       return posseApi.addToken(heroId, tokenName);
     }
-    // Fallback: add to sidebag
+    // Fallback: add to sidebag (use "sidebags" field to match SidebagsTab)
     updateHero(heroId, (h) => {
-      const sb = h.sideBag || h.sidebags || { capacity: 5, items: [] };
+      const sb = h.sidebags || h.sideBag || { capacity: 6, items: [] };
       const items = Array.isArray(sb.items) ? [...sb.items] : [];
       const existing = items.find((i) => i.name === tokenName);
       if (existing) {
@@ -196,7 +192,7 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
       } else {
         items.push({ id: `token_${Date.now()}`, name: tokenName, qty: 1 });
       }
-      return { ...h, sideBag: { ...sb, items } };
+      return { ...h, sidebags: { ...sb, items } };
     });
     toast(`Added ${tokenName} token.`);
   };

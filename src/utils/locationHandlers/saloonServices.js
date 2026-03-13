@@ -1,17 +1,35 @@
 // src/utils/locationHandlers/saloonServices.js
 import gearCards from '../../data/items/gearCards.js';
 import { d6, d3 } from '../../utils/diceHelpers';
+import { loadTownState } from '../townState.js';
+import { calculateCurrentStats } from '../calculateStats';
 
-// Read a stat off the hero, falling back across shapes
+// Read a stat off the hero using calculateCurrentStats + locationVisitBuffs
 const readStat = (h, name, fallback = 1) => {
-  const direct = Number(h?.[name]);
-  if (Number.isFinite(direct)) return direct;
-  const fromStats = Number(h?.stats?.[name]);
-  if (Number.isFinite(fromStats)) return fromStats;
-  const fromDerived = Number(h?.derived?.[name]);
-  if (Number.isFinite(fromDerived)) return fromDerived;
-  return fallback;
+  let val = fallback;
+  if (h) {
+    try {
+      const { stats: merged = {} } = calculateCurrentStats(h);
+      val = Number(merged[name] ?? h?.stats?.[name] ?? 0) || fallback;
+    } catch {
+      val = Number(h?.stats?.[name] ?? 0) || fallback;
+    }
+    // Apply location visit buffs (e.g., Saloon "Aces and Eights" +2 Luck/Cunning)
+    const visitBuffs = h.locationVisitBuffs;
+    if (visitBuffs && typeof visitBuffs === 'object') {
+      const buffVal = Number(visitBuffs[name] ?? 0);
+      if (buffVal > 0) val += buffVal;
+    }
+  }
+  return val;
 };
+
+// Saloon Event (12) doubles gambling winnings this visit
+function applyGamblingMultiplier(amount) {
+  const s = loadTownState() || {};
+  const dbl = s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
+  return amount * dbl;
+}
 
 // Roll N dS using the UI roller when available (so prompts show stat numbers)
 async function rollND(ui, n, sides, label) {
@@ -74,7 +92,7 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
       log.push(`Cunning rolls: <b>${rolls.join(', ')}</b>`);
 
       if (wins > 0) {
-        const take = wins * 50;
+        const take = applyGamblingMultiplier(wins * 50);
         const baseGold = Number(hero.gold || 0);
         pushUpdate({ gold: baseGold + take });
         log.push(`You leave the table up <b>$${take}</b>.`);
@@ -91,7 +109,7 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
       log.push(`Luck rolls: <b>${rolls.join(', ')}</b>`);
 
       if (wins > 0) {
-        const take = wins * 100;
+        const take = applyGamblingMultiplier(wins * 100);
         const baseGold = Number(hero.gold || 0);
         pushUpdate({ gold: baseGold + take });
         log.push(`Hot streak! You pocket <b>$${take}</b>.`);
