@@ -116,37 +116,75 @@ export async function apply(roll, ctx) {
   log.push(`[Saloon] (${roll}) ${info.title} — ${info.lore}`);
   log.push(`Effect: ${info.effect}`);
 
-  // 2: Assassination Attempt – Spirit 5+ or Luck 6+ else Injury
+  // 2: Assassination Attempt – Choose: Spirit 5+ to sense it OR Luck 6+ to duck
   if (roll === 2) {
     const lore2 = `ASSASSINATION ATTEMPT\n${info.lore}`;
-    const okSpirit = await ctx.doSkillCheck(id, { stat: 'Spirit', target: 5, message: lore2 });
-    const okLuck = okSpirit || (await ctx.doSkillCheck(id, { stat: 'Luck', target: 6, message: lore2 }));
-    if (okLuck) {
-      log.push('You sense the danger just in time and dodge the attack. No further effect.');
+    const testChoice = await ctx.promptChoice?.(
+      `ASSASSINATION ATTEMPT\n${info.lore}\n\nChoose how to react:`,
+      [
+        { label: 'Sense it coming (Spirit 5+ test)' },
+        { label: 'Duck at the last second (Luck 6+ test)' },
+      ]
+    );
+    let passed = false;
+    if (testChoice === 1) {
+      passed = await ctx.doSkillCheck(id, {
+        stat: 'Luck', target: 6,
+        message: `${lore2}\nYou try to duck at the last second!`,
+      });
+    } else {
+      passed = await ctx.doSkillCheck(id, {
+        stat: 'Spirit', target: 5,
+        message: `${lore2}\nYou try to sense the danger before it strikes!`,
+      });
+    }
+    if (passed) {
+      log.push('Your instincts save your life! You dodge the shot just in time. No further effect.');
       ctx.toast?.('Assassination Attempt avoided!');
     } else {
+      log.push('The shot catches you off guard! Roll once on the Injury Chart using only a single D6 (instead of 2D6).');
+      ctx.toast?.('Hit! Roll on the Injury Chart (single D6).');
       await ctx.enqueueChartRoll(id, 'injury');
-      log.push('The shot catches you off guard. Roll on the Injury chart with only a single D6 (instead of 2D6).');
-      ctx.toast?.('Assassination Attempt: roll on the Injury chart (single D6).');
     }
     return { log };
   }
 
-  // 3: Cheatin – Cunning 6+ or Agility 4+ else Injury & thrown out
+  // 3: Cheatin – Choose: Cunning 6+ to talk your way out OR Agility 4+ to escape
   if (roll === 3) {
     const lore3 = `"YOU A'CHEATIN' US?!"\n${info.lore}`;
-    const okCun = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 6, message: lore3 });
-    const okAgi = okCun || (await ctx.doSkillCheck(id, { stat: 'Agility', target: 4, message: lore3 }));
-    if (okAgi) {
-      log.push(okCun
-        ? 'You talk your way out of it, calming the mob down.'
-        : 'You slip out the door before the mob can grab you. You leave the Saloon.');
-      ctx.toast?.(okCun ? 'You diffused the situation.' : 'You escaped the mob!');
+    const testChoice = await ctx.promptChoice?.(
+      `"YOU A'CHEATIN' US?!"\n${info.lore}\n\nThe mob closes in. Choose how to handle it:`,
+      [
+        { label: 'Talk your way out (Cunning 6+ test)' },
+        { label: 'Make a run for it (Agility 4+ test)' },
+      ]
+    );
+    let passed = false;
+    const usedAgility = testChoice === 1;
+    if (usedAgility) {
+      passed = await ctx.doSkillCheck(id, {
+        stat: 'Agility', target: 4,
+        message: `${lore3}\nYou shove a chair into the crowd and bolt for the door!`,
+      });
     } else {
+      passed = await ctx.doSkillCheck(id, {
+        stat: 'Cunning', target: 6,
+        message: `${lore3}\nYou raise your hands and try to calm the angry mob...`,
+      });
+    }
+    if (passed) {
+      if (usedAgility) {
+        log.push('You burst through the saloon doors and disappear into the night! You escape, but your Saloon visit ends.');
+        ctx.toast?.('You escaped the mob! Visit ends.');
+      } else {
+        log.push('Smooth talking saves your hide. The mob grumbles but backs down.');
+        ctx.toast?.('You talked your way out of it!');
+      }
+    } else {
+      log.push('The mob drags you outside and roughs you up good. Roll once on the Injury Chart. Your Saloon visit ends immediately.');
+      ctx.toast?.('The mob throws you out! Roll on the Injury Chart. Visit ends.');
       await ctx.enqueueChartRoll(id, 'injury');
       ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
-      log.push('The mob roughs you up and throws you out the door. Roll on the Injury chart. Your visit ends.');
-      ctx.toast?.('Mob roughs you up and throws you out. Roll on Injury chart. Visit ends.');
     }
     return { log };
   }
@@ -154,18 +192,21 @@ export async function apply(roll, ctx) {
   // 4: Spilled Drink – Leave or pay D6x$25
   if (roll === 4) {
     const cost = d6() * 25;
-    const idx = await ctx.promptChoice?.(`SPILLED DRINK\n${info.lore}`, [
-      { label: 'Leave Town at the end of the day' },
-      { label: `Buy him and his friends drinks for $${cost}` },
-    ]);
+    const idx = await ctx.promptChoice?.(
+      `SPILLED DRINK\n${info.lore}\n\nHe squares up to you, fists clenched. What do you do?`,
+      [
+        { label: 'Walk away and leave Town at the end of the day' },
+        { label: `Buy him and his friends a round of drinks ($${cost})` },
+      ]
+    );
     if (idx === 0) {
       ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
-      log.push('You decide to leave rather than deal with the drunken patron. Your visit ends at the end of the day.');
+      log.push('You tip your hat and walk away before things get ugly. You leave Town at the end of the day.');
       ctx.toast?.('Spilled Drink: leaving Town at end of day.');
     } else if (idx === 1) {
       ctx.updateHero?.(id, (h) => ({ ...h, gold: Math.max(0, (h.gold || 0) - cost) }));
-      log.push(`You buy a round for the offended patron and his friends: -$${cost}.`);
-      ctx.toast?.(`You buy a round: -$${cost}.`);
+      log.push(`You buy a round for the offended patron and his rowdy friends. The tension fades into laughter. -$${cost}.`);
+      ctx.toast?.(`Bought a round: -$${cost}.`);
     }
     return { log };
   }
