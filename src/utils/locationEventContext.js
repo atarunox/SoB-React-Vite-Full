@@ -54,6 +54,12 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
       } catch {
         statVal = Number(hero?.stats?.[stat] ?? 0) || 1;
       }
+      // Apply location visit buffs (e.g., Saloon "Aces and Eights" +2 Luck/Cunning)
+      const visitBuffs = hero.locationVisitBuffs;
+      if (visitBuffs && typeof visitBuffs === 'object') {
+        const buffVal = Number(visitBuffs[stat] ?? 0);
+        if (buffVal > 0) statVal += buffVal;
+      }
     }
     const dice = Math.max(1, statVal);
     const mechLabel = `${stat} ${target}+ test (${dice}d6)`;
@@ -201,16 +207,24 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     toast(`Added keyword: ${keyword}`);
   };
 
-  // getEffectiveStat: used by gambling hall
+  // getEffectiveStat: used by gambling hall and other handlers
   const getEffectiveStat = (heroId, stat) => {
     const hero = getHeroById(heroId);
     if (!hero) return 0;
+    let val = 0;
     try {
       const { stats: merged = {} } = calculateCurrentStats(hero);
-      return Number(merged[stat] ?? hero?.stats?.[stat] ?? 0) || 0;
+      val = Number(merged[stat] ?? hero?.stats?.[stat] ?? 0) || 0;
     } catch {
-      return Number(hero?.stats?.[stat] ?? 0) || 0;
+      val = Number(hero?.stats?.[stat] ?? 0) || 0;
     }
+    // Apply location visit buffs (e.g., Saloon "Aces and Eights" +2 Luck/Cunning)
+    const visitBuffs = hero.locationVisitBuffs;
+    if (visitBuffs && typeof visitBuffs === 'object') {
+      const buffVal = Number(visitBuffs[stat] ?? 0);
+      if (buffVal > 0) val += buffVal;
+    }
+    return val;
   };
 
    // IMPORTANT: Handlers expect this `io` object.
