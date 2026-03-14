@@ -2151,11 +2151,18 @@ const foWorldArtifactOffer =
         },
       };
 
-      const res = await performGamblingHallService(
-        svc.id || svc.name,
-        {},
-        ghCtx
-      );
+      // If the service has its own exec() (e.g. games from gamblingHallGames),
+      // call it directly so it gets the full uiApi and posseApi
+      let res;
+      if (typeof svc.exec === 'function') {
+        res = await svc.exec(heroView, posseApi, uiApi);
+      } else {
+        res = await performGamblingHallService(
+          svc.id || svc.name,
+          {},
+          ghCtx
+        );
+      }
 
       applyActions(res?.actions);
       if (res?.log?.length) console.log(res.log.join('\n'));
