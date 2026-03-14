@@ -25,10 +25,12 @@ const readStat = (h, name, fallback = 1) => {
 };
 
 // Saloon Event (12) doubles gambling winnings this visit
-function applyGamblingMultiplier(amount) {
+function getGamblingMultiplier() {
   const s = loadTownState() || {};
-  const dbl = s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
-  return amount * dbl;
+  return s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
+}
+function applyGamblingMultiplier(amount) {
+  return amount * getGamblingMultiplier();
 }
 
 // Roll N dS using the UI roller when available (so prompts show stat numbers)
@@ -86,16 +88,23 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
   switch (String(serviceId)) {
     // ------------------- Gambling -------------------
     case 'saloon_casual_poker': {
+      const mult = getGamblingMultiplier();
+      if (mult > 1) log.push('<b>Hero of the People — Gambling winnings doubled!</b>');
       const n = Math.max(1, stat('Cunning', 1));
       const rolls = await rollND(ui, n, 6, `Poker — Cunning ${n}d6`);
       const wins = rolls.filter((r) => r >= 5).length;
       log.push(`Cunning rolls: <b>${rolls.join(', ')}</b>`);
 
       if (wins > 0) {
-        const take = applyGamblingMultiplier(wins * 50);
+        const base = wins * 50;
+        const take = base * mult;
         const baseGold = Number(hero.gold || 0);
         pushUpdate({ gold: baseGold + take });
-        log.push(`You leave the table up <b>$${take}</b>.`);
+        if (mult > 1) {
+          log.push(`You leave the table up <b>$${take}</b> (base $${base} × ${mult}).`);
+        } else {
+          log.push(`You leave the table up <b>$${take}</b>.`);
+        }
       } else {
         log.push('Cold cards tonight. You leave with nothing.');
       }
@@ -103,16 +112,23 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
     }
 
     case 'saloon_brimstone_craps': {
+      const mult = getGamblingMultiplier();
+      if (mult > 1) log.push('<b>Hero of the People — Gambling winnings doubled!</b>');
       const n = Math.max(1, stat('Luck', 1));
       const rolls = await rollND(ui, n, 6, `Craps — Luck ${n}d6`);
       const wins = rolls.filter((r) => r >= 5).length;
       log.push(`Luck rolls: <b>${rolls.join(', ')}</b>`);
 
       if (wins > 0) {
-        const take = applyGamblingMultiplier(wins * 100);
+        const base = wins * 100;
+        const take = base * mult;
         const baseGold = Number(hero.gold || 0);
         pushUpdate({ gold: baseGold + take });
-        log.push(`Hot streak! You pocket <b>$${take}</b>.`);
+        if (mult > 1) {
+          log.push(`Hot streak! You pocket <b>$${take}</b> (base $${base} × ${mult}).`);
+        } else {
+          log.push(`Hot streak! You pocket <b>$${take}</b>.`);
+        }
       } else {
         log.push('The dice turn against you. Nothing gained.');
       }

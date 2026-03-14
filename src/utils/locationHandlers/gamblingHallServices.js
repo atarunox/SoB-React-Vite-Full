@@ -49,10 +49,12 @@ const addUA = (ctx, heroId, n = 1) =>
   ctx.addCondition?.(heroId, { type: 'UnwantedAttention', delta: +n });
 
 // Saloon Event (12) doubles gambling winnings this visit
-function applyGamblingMultiplier(amount) {
+function getGamblingMultiplier() {
   const s = loadTownState() || {};
-  const dbl = s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
-  return amount * dbl;
+  return s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
+}
+function applyGamblingMultiplier(amount) {
+  return amount * getGamblingMultiplier();
 }
 
 /**
@@ -78,6 +80,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
 
   // ---------- Five Card Draw Poker ----------
   if (serviceId === 'gh_five_card_draw_poker') {
+    const mult = getGamblingMultiplier();
+    if (mult > 1) log.push('Hero of the People — Gambling winnings doubled!');
     const baseCost = 50;
     if (!canAffordGold(hero, baseCost)) {
       toast?.('Not enough gold.');
@@ -124,12 +128,17 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       (await ctx.promptNumber?.('Poker payout roll (D6) [leave blank to auto-roll]', 'die')) ??
       D6();
 
-    let payout = die * 25 + (extra ? extra * 2 : 0);
-    payout = applyGamblingMultiplier(payout);
+    const basePayout = die * 25 + (extra ? extra * 2 : 0);
+    const payout = basePayout * mult;
 
     addGold(ctx, id, payout);
-    toast?.(`Poker win: +$${payout}.`);
-    log.push(`Poker payout: D6(${die})×25 + 2×$${extra} => $${payout}.`);
+    if (mult > 1) {
+      toast?.(`Poker win: +$${payout} (doubled from $${basePayout}).`);
+      log.push(`Poker payout: D6(${die})×25 + 2×$${extra} = $${basePayout} × ${mult} => $${payout}.`);
+    } else {
+      toast?.(`Poker win: +$${payout}.`);
+      log.push(`Poker payout: D6(${die})×25 + 2×$${extra} => $${payout}.`);
+    }
 
     // Optional: bonus World+Artifact if some external flag is set
     const state = loadTownState() || {};
@@ -173,13 +182,20 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       successes = ok ? 1 : 0;
     }
 
-    let payout = successes * 100;
-    payout = applyGamblingMultiplier(payout);
+    const mult = getGamblingMultiplier();
+    if (mult > 1 && log.length === 1) log.push('Hero of the People — Gambling winnings doubled!');
+    const basePay = successes * 100;
+    const payout = basePay * mult;
 
     if (payout > 0) {
       addGold(ctx, id, payout);
-      toast?.(`Craps: +$${payout}.`);
-      log.push(`Craps: ${successes} successes, payout $${payout}.`);
+      if (mult > 1) {
+        toast?.(`Craps: +$${payout} (doubled from $${basePay}).`);
+        log.push(`Craps: ${successes} successes, payout $${basePay} × ${mult} = $${payout}.`);
+      } else {
+        toast?.(`Craps: +$${payout}.`);
+        log.push(`Craps: ${successes} successes, payout $${payout}.`);
+      }
     } else {
       toast?.('Craps: no winnings.');
       log.push('Craps: no payout.');
