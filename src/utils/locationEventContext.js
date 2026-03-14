@@ -245,6 +245,16 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     return val;
   };
 
+  // Convenience dice helpers that go through the roll system (respects manual mode)
+  const d6 = async (label) => {
+    const arr = await roll(1, 6, label || 'Roll 1d6');
+    return Array.isArray(arr) ? arr[0] : arr;
+  };
+  const d3 = async (label) => {
+    const r = await d6(label || 'Roll 1d3 (d6: 1-2=1, 3-4=2, 5-6=3)');
+    return Math.ceil(r / 2);
+  };
+
    // IMPORTANT: Handlers expect this `io` object.
   const io = {
     roll,
@@ -285,6 +295,9 @@ export function makeLocEventCtx({ posseApi = {}, uiApi = {}, townStateApi = null
     promptChoice,
     promptNumber,
     promptYesNo,
+    d6,                        // handlers call await ctx.d6(label) — goes through roll system (respects manual mode)
+    d3,                        // handlers call await ctx.d3(label) — goes through roll system (respects manual mode)
+    roll,                      // handlers call await ctx.roll(n, sides, label) — raw dice
   };
 
 }

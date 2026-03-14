@@ -1,7 +1,11 @@
 // src/utils/locationHandlers/saloonHandler.js
 import { loadTownState, saveTownState } from '../../utils/townState';
 
-import { d6, d3 } from '../../utils/diceHelpers';
+import { d6 as _d6, d3 as _d3 } from '../../utils/diceHelpers';
+
+// Use ctx.d6/ctx.d3 when available (respects manual roll mode); fallback to auto-roll
+const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
+const ctxD3 = async (ctx, label) => (typeof ctx?.d3 === 'function') ? ctx.d3(label) : _d3();
 
 const shopId = 'saloon';
 
@@ -230,7 +234,7 @@ export async function apply(roll, ctx) {
 
   // 4: Spilled Drink – Leave or pay D6x$25
   if (roll === 4) {
-    const costRoll = d6();
+    const costRoll = await ctxD6(ctx, 'Spilled Drink — Roll 1d6 for cost (×$25)');
     const total = costRoll * 25;
     const costLine = `Rolled [${costRoll}] × $25 = $${total} for the cost of drinks.`;
     log.push(costLine);
@@ -273,7 +277,7 @@ export async function apply(roll, ctx) {
       await showResult(ctx, 'BAR FIGHT — Result', [checkLine, '', outcome]);
       ctx.toast?.('Bar Fight: you push through safely!');
     } else {
-      const woundRoll = d6();
+      const woundRoll = await ctxD6(ctx, 'Bar Fight — Roll 1d6 for Wounds');
       ctx.updateHero?.(id, (h) => ({ ...h, wounds: (h.wounds || 0) + woundRoll }));
       const woundLine = `Rolled [${woundRoll}] for Wounds.`;
       log.push(woundLine);
@@ -404,7 +408,7 @@ export async function apply(roll, ctx) {
     if (checkLine) log.push(checkLine);
     const passed = result?.passed ?? result;
     if (passed) {
-      const healRoll = d3();
+      const healRoll = await ctxD3(ctx, 'Song and Dance — Roll 1d3 for healing');
       ctx.updateHero?.(id, (h) => {
         const max = h.maxHealth ?? h.max_health ?? 10;
         const cur = h.currentHealth ?? h.health ?? max;
@@ -418,7 +422,7 @@ export async function apply(roll, ctx) {
       await showResult(ctx, 'SONG AND DANCE — Result', [checkLine, healLine, '', outcome]);
       ctx.toast?.(`Song and Dance: regain ${healRoll} Health.`);
     } else {
-      const costRoll = d6();
+      const costRoll = await ctxD6(ctx, 'Song and Dance — Roll 1d6 for gold lost (×$25)');
       const cost = costRoll * 25;
       ctx.updateHero?.(id, (h) => ({
         ...h,
@@ -480,7 +484,7 @@ export async function apply(roll, ctx) {
 
 // --------- Dispatcher compatible with locationEventsEngine ---------------
 export async function handleSaloonEvent(ctx = {}) {
-  const roll = ctx.forcedRoll ?? (d6() + d6());
+  const roll = ctx.forcedRoll ?? (_d6() + _d6());
   const result = await apply(roll, ctx);
   return {
     actions: [],

@@ -1,5 +1,5 @@
 // src/components/TownTab/index.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   loadTownState,
   resetTownState,
@@ -530,6 +530,12 @@ export default function TownTab({ heroId }) {
   const { posse, activeHeroId, updateHero } = usePosse();
   const resolvedHeroId = heroId ?? activeHeroId;
 
+  // Roll mode: 'auto' (digital dice) or 'manual' (physical dice, enter results)
+  // Persisted in localStorage so the player's preference sticks across sessions.
+  const rollModeRef = useRef(
+    (() => { try { return localStorage.getItem('sob_rollMode') || null; } catch { return null; } })()
+  );
+
   const hero = useMemo(
     () =>
       posse.find((h) => (h.id || h.localId) === resolvedHeroId) ?? null,
@@ -917,19 +923,39 @@ const foWorldArtifactOffer =
   };
 
   const promptRoll = async (n, sides, label) => {
-    const choice = window.prompt(
-      `${label || 'Roll'}:\n` +
-        `- Enter ${n} value(s) 1–${sides} (comma-separated)\n` +
-        `- Accepts "3+" → 3, "1d6" / "d6" → auto\n` +
-        `- Leave blank for auto-roll`,
-      ''
-    );
-
     const auto = () =>
       Array.from(
         { length: n },
         () => Math.floor(Math.random() * sides) + 1
       );
+
+    // On the very first roll, ask the player how they want to handle dice
+    if (!rollModeRef.current) {
+      const pick = window.prompt(
+        'How would you like to handle dice rolls?\n\n' +
+          '1. Auto-roll — app rolls digital dice automatically\n' +
+          '2. Manual — roll physical dice and enter the results\n\n' +
+          'Enter 1 or 2:',
+        '1'
+      );
+      const mode = String(pick).trim() === '2' ? 'manual' : 'auto';
+      rollModeRef.current = mode;
+      try { localStorage.setItem('sob_rollMode', mode); } catch {}
+    }
+
+    // Auto mode: roll digitally, no prompt
+    if (rollModeRef.current === 'auto') {
+      return auto();
+    }
+
+    // Manual mode: describe the roll, let the player enter their physical dice results
+    const choice = window.prompt(
+      `${label || 'Roll'}:\n\n` +
+        `Roll ${n}d${sides} with your dice.\n` +
+        `Enter ${n} value${n > 1 ? 's' : ''} (1–${sides}, comma-separated):`,
+      ''
+    );
+
     if (!choice) return auto();
 
     const rawParts = choice
