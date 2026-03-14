@@ -5,6 +5,37 @@
 import { loadTownState, saveTownState } from '../townState.js';
 
 import { d6 as D6 } from '../../utils/diceHelpers';
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
+
+// ---------- world artifact helpers (for High Stakes Bet event 12) ----------
+const randFrom = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
+
+function normalizeWorldArtifacts(db) {
+  if (!db) return {};
+  if (db && typeof db === 'object' && !Array.isArray(db)) {
+    const out = {}; for (const [k, v] of Object.entries(db)) { if (Array.isArray(v)) out[k] = v; } return out;
+  }
+  if (Array.isArray(db)) {
+    const out = {};
+    for (const it of db) {
+      const w = it?.tags?.find(t => /Jargono|Targa|Cynder|Trederra|Derelict Ship|Blasted Wastes|The Canyons/i.test(t))
+             || it?.world || it?.originWorld || 'Unknown';
+      const world =
+        /jargono/i.test(w) ? 'Jargono' :
+        /targa/i.test(w) ? 'Targa Plateau' :
+        /cynder/i.test(w) ? 'Caverns of Cynder' :
+        /trederra/i.test(w) ? 'Trederra' :
+        /derelict/i.test(w) ? 'Derelict Ship' :
+        /wastes/i.test(w) ? 'Blasted Wastes' :
+        /canyon/i.test(w) ? 'The Canyons' : w;
+      if (!out[world]) out[world] = [];
+      out[world].push(it);
+    }
+    return out;
+  }
+  return {};
+}
+const WORLD_ARTS = normalizeWorldArtifacts(otherWorldArtifacts);
 
 // ----- context helpers (mirror Saloon style) -----
 const getActiveHero = (ctx = {}) => {
@@ -140,13 +171,52 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       log.push(`Poker payout: D6(${die})×25 + 2×$${extra} => $${payout}.`);
     }
 
-    // Optional: bonus World+Artifact if some external flag is set
+    // High Stakes Bet (event 12): first Poker win draws a World card then an Artifact from that World
     const state = loadTownState() || {};
-    if (state.gamblingHallFlags?.firstPokerWinAwardsArtifact && ctx.drawWorldThenArtifact) {
-      await ctx.drawWorldThenArtifact(id);
-      toast?.('Bonus: Draw a World, then an Artifact (event bonus).');
-      log.push('Awarded bonus World+Artifact (event 12).');
+    if (state.gamblingHallFlags?.firstPokerWinAwardsArtifact) {
+      const worlds = Object.keys(WORLD_ARTS).filter(w => WORLD_ARTS[w]?.length);
+      if (worlds.length) {
+        // Let the player draw/pick a World card
+        const worldIdx = await ctx.promptChoice?.(
+          'HIGH STAKES BET — BONUS REWARD!\n\nYou won your first Poker game! Draw a World card:\n\nChoose a World to draw an Artifact from:',
+          worlds.map((w) => ({ label: w }))
+        );
+        const chosenWorld = worlds[worldIdx ?? 0] || worlds[0];
+        const pool = WORLD_ARTS[chosenWorld] || [];
+        const artifact = randFrom(pool);
 
+        if (artifact) {
+          const artName = artifact.name || artifact.title || artifact.id || 'Artifact';
+          // Add artifact to hero inventory
+          ctx.updateHero?.(id, (h) => {
+            const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
+            inv.push({
+              ...artifact,
+              id: artifact.id || `art_${Date.now()}`,
+              name: artName,
+              type: artifact.type || 'Artifact',
+              originWorld: chosenWorld,
+              source: 'High Stakes Bet',
+            });
+            return { ...h, inventory: inv };
+          });
+          toast?.(`High Stakes Bet: Drew ${artName} from ${chosenWorld}!`);
+          log.push(`High Stakes Bet: Drew ${chosenWorld} Artifact — ${artName}.`);
+
+          await ctx.promptChoice?.(
+            `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${artifact.effect || artifact.description || ''}`,
+            [{ label: 'Continue' }]
+          );
+        } else {
+          toast?.(`High Stakes Bet: No artifacts available for ${chosenWorld}.`);
+          log.push(`High Stakes Bet: No artifacts found for ${chosenWorld}.`);
+        }
+      } else {
+        toast?.('High Stakes Bet: No world artifact data available.');
+        log.push('High Stakes Bet: No world artifact data available.');
+      }
+
+      // Clear the flag so it only applies to the first win
       saveTownState({
         ...state,
         gamblingHallFlags: {

@@ -9,6 +9,87 @@ import { loadTownState, saveTownState } from '../townState.js';
 import { performGamblingHallHighStakes } from './gamblingHallServices.js';
 import { d6 } from '../../utils/diceHelpers';
 
+// ---------- gear / artifact collection helpers ----------
+function isGearOrArtifact(it) {
+  if (!it) return false;
+  const t = String(it?.type || '').toLowerCase();
+  const hasTag = Array.isArray(it?.tags) &&
+    it.tags.some((tag) => /^(gear|artifact)/i.test(tag));
+  return hasTag || t === 'gear' || t.startsWith('gear ') || t === 'artifact' || t.startsWith('artifact ');
+}
+
+function collectGearAndArtifacts(hero) {
+  const results = [];
+
+  // inventory items
+  const inv = Array.isArray(hero?.inventory) ? hero.inventory : [];
+  inv.forEach((it, idx) => {
+    if (isGearOrArtifact(it)) {
+      results.push({
+        source: 'inventory', idx, it,
+        label: `${it?.name || it?.id || 'Item'} (${String(it?.type || 'Gear')})`,
+      });
+    }
+  });
+
+  // equipped / gear slots
+  const pushEquipped = (slotKey, it) => {
+    if (!isGearOrArtifact(it)) return;
+    results.push({
+      source: 'slot', slot: slotKey, it,
+      label: `${it?.name || it?.id || 'Item'} (equipped: ${slotKey})`,
+    });
+  };
+
+  if (hero?.equipped && typeof hero.equipped === 'object') {
+    Object.entries(hero.equipped).forEach(([k, it]) => pushEquipped(k, it));
+  }
+  if (hero?.gear && typeof hero.gear === 'object' && !Array.isArray(hero.gear)) {
+    Object.entries(hero.gear).forEach(([k, it]) => pushEquipped(k, it));
+  }
+  if (hero?.gearSlots && typeof hero.gearSlots === 'object') {
+    Object.entries(hero.gearSlots).forEach(([k, it]) => pushEquipped(k, it));
+  }
+  if (Array.isArray(hero?.slots)) {
+    hero.slots.forEach((entry) => {
+      const slotKey = entry?.slot || entry?.name || 'Slot';
+      const it = entry?.item || entry?.equipped || null;
+      pushEquipped(slotKey, it);
+    });
+  } else if (hero?.slots && typeof hero.slots === 'object') {
+    Object.entries(hero.slots).forEach(([slotKey, maybe]) => {
+      const it = maybe && typeof maybe === 'object' && 'item' in maybe ? maybe.item : maybe;
+      pushEquipped(slotKey, it);
+    });
+  }
+
+  return results;
+}
+
+function removeItemFromHero(ctx, heroId, picked) {
+  ctx.updateHero?.(heroId, (h) => {
+    const next = { ...h };
+    if (picked.source === 'inventory') {
+      const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
+      inv.splice(picked.idx, 1);
+      next.inventory = inv;
+    } else if (picked.source === 'slot') {
+      const slot = picked.slot;
+      if (next.equipped?.[slot]) {
+        next.equipped = { ...next.equipped };
+        delete next.equipped[slot];
+      } else if (next.gear?.[slot] && typeof next.gear === 'object' && !Array.isArray(next.gear)) {
+        next.gear = { ...next.gear };
+        delete next.gear[slot];
+      } else if (next.gearSlots?.[slot]) {
+        next.gearSlots = { ...next.gearSlots };
+        delete next.gearSlots[slot];
+      }
+    }
+    return next;
+  });
+}
+
 // ---------- result formatting helper ----------
 function formatCheckResult(result, stat, target) {
   if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
@@ -171,9 +252,13 @@ export async function apply(roll, ctx) {
 
     if (pathChoice === 1) {
       // Draw weapon path: D6 vs Initiative (6 always fails)
-      const weaponRoll = d6();
       const hero = (ctx.getHeroById ?? ctx.getHero)?.(id);
       const initiative = Number(hero?.initiative ?? hero?.stats?.Initiative ?? 0);
+      const rawRoll = await ctx.promptNumber?.(
+        `Draw your weapon! Roll a D6 vs your Initiative (${initiative}).\n6 always fails.\n\nEnter your D6 roll:`,
+        'initiativeRoll',
+      );
+      const weaponRoll = Math.max(1, Math.min(6, Number(rawRoll) || d6()));
       const weaponLine = `Rolled [${weaponRoll}] vs Initiative ${initiative} (6 always fails).`;
       log.push(weaponLine);
 
@@ -235,7 +320,7 @@ export async function apply(roll, ctx) {
       [
         { label: 'Lose $200' },
         { label: 'Lose 2 Dark Stone' },
-        { label: 'Lose 1 Gear or Artifact (remove manually)' },
+        { label: 'Lose 1 Gear or Artifact' },
       ]
     );
 
@@ -252,10 +337,29 @@ export async function apply(roll, ctx) {
       await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
       ctx.toast?.('Pickpocketed! -2 Dark Stone.');
     } else {
-      const outcome = 'Something is missing from your pack! Remove 1 Gear or Artifact from your inventory.';
-      log.push(outcome);
-      await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
-      ctx.toast?.('Pickpocketed! Remove 1 Gear or Artifact.');
+      // Collect gear and artifact items from the hero
+      const hero = (ctx.getHeroById ?? ctx.getHero)?.(id);
+      const lossItems = collectGearAndArtifacts(hero);
+
+      if (lossItems.length === 0) {
+        const outcome = 'You have no Gear or Artifacts to lose! The thief finds nothing of value.';
+        log.push(outcome);
+        await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
+        ctx.toast?.('No Gear or Artifacts to lose.');
+      } else {
+        const itemChoice = await ctx.promptChoice?.(
+          `"SORRY MISTER"\n\nChoose a Gear or Artifact to lose:`,
+          lossItems.map((it) => ({ label: it.label }))
+        );
+        const picked = lossItems[itemChoice ?? 0];
+        if (picked) {
+          removeItemFromHero(ctx, id, picked);
+          const outcome = `Something is missing from your pack! You lost: ${picked.label}.`;
+          log.push(outcome);
+          await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
+          ctx.toast?.(`Pickpocketed! Lost ${picked.label}.`);
+        }
+      }
     }
     return { log };
   }
