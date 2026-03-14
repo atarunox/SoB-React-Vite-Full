@@ -1,5 +1,5 @@
 // src/data/townLocations/gamblingHallGames.js
-// Entertainment: Poker, Craps, Devil’s Wheel
+// Entertainment: Poker, Craps, Devil\'s Wheel
 
 import { rollD6, rollND } from '../../../../utils/diceHelpers.js';
 
@@ -15,14 +15,11 @@ export default [
     tags: ['Entertainment', 'Gambling'],
     description: 'Gambling • Limit Three Times per Visit',
     effects: [
-      'Pay $50 to sit down at the Poker table.',
-      'Roll 5d6 to form your “hand” (you may auto-roll or enter the dice manually).',
-      'After seeing your hand, you must either place an Extra Bet of $50–$250 or Fold, losing only your $50 table cost.',
-      'If you place the Extra Bet, you may then re-roll any number of your hand dice once, by selecting which dice to HOLD from a list (the rest are re-rolled).',
-      'After that, you may spend 1 Grit to add an additional $0–$250 to your Extra Bet.',
-      'Your final hand quality determines the difficulty of a Cunning Test.',
-      'If any dice in that Cunning Test are re-rolled, you gain +1 Unwanted Attention.',
-      'On a successful Cunning Test, gain D6 × $25 and double the total Extra Bet. On a failure, you lose all bets.',
+      'Pay $50 → 5d6 are rolled for your hand.',
+      'Bet $50–$250 or Fold. Then select dice to HOLD (others re-rolled once).',
+      'Optionally spend 1 Grit to increase your bet.',
+      'Hand quality sets Cunning Test difficulty. Failed? You can re-roll for +1 Unwanted Attention.',
+      'Pass → D6 × $25 + double your bet. Fail → lose all bets.',
     ],
     async exec(hero, posseApi, uiApi, params = {}) {
       const log = [];
@@ -41,7 +38,7 @@ export default [
       async function promptSelectPositions(label, dice, mode = 'hold') {
         if (uiApi.promptMultiSelect) {
           const options = dice.map((v, idx) => ({
-            value: String(idx + 1), // 1-based for display
+            value: String(idx + 1),
             label: `Die ${idx + 1}: ${v}`,
           }));
           const selected = await uiApi.promptMultiSelect({
@@ -53,7 +50,7 @@ export default [
           (selected || []).forEach((val) => {
             const n = Number(val);
             if (Number.isFinite(n) && n >= 1 && n <= dice.length) {
-              set.add(n); // keep 1-based
+              set.add(n);
             }
           });
           return set;
@@ -121,90 +118,57 @@ export default [
 
       const availableAfterTable = startingGold - 50;
 
-      log.push(
-        `RULES SUMMARY:
-• Pay $50 to sit down at the table.
-• Roll 5d6 for your hand, then either place an Extra Bet of $50–$250 or Fold.
-• If you place the Extra Bet, you select which dice to HOLD; unheld dice are re-rolled once.
-• You may then spend 1 Grit to add another $0–$250 to your Extra Bet (if you have the gold).
-• Hand type sets your Cunning Test difficulty.
-• You roll a number of dice equal to your Cunning. "Anything Else" hands require 2 successes; all others require 1.
-• If any Cunning dice are re-rolled, you gain +1 Unwanted Attention.
-• Success → Gain D6 × $25 and double your total Extra Bet. Failure → Lose all bets.`
-      );
-
-      // Pay the $50 table cost (delta; TownTab applyActions will merge)
+      // Pay the $50 table cost
       actions.gold = (actions.gold ?? 0) - 50;
-      log.push('You pay $50 to sit down at the Poker table.');
 
-      // --------- Roll 5d6 for initial hand ---------
-      const autoRoll = await promptYesNo(
-        'AUTO-ROLL 5d6 for your Poker hand? (No = enter each die manually)',
-        true
-      );
+      // --------- Roll 5d6 for initial hand (auto-roll) ---------
+      let hand = rollND(5, 6);
+      log.push(`You pay $50 and are dealt your hand: [${hand.join(', ')}]`);
 
-      let hand = [];
-      if (autoRoll) {
-        hand = rollND(5, 6);
-        log.push(`You auto-roll 5d6 for your hand: [${hand.join(', ')}].`);
-      } else {
-        log.push('Enter the results for each die of your 5d6 Poker hand (values 1–6).');
-        for (let i = 1; i <= 5; i++) {
-          let val = await promptNumber(`Hand die ${i} (1–6):`, 1);
-          val = Math.max(1, Math.min(6, Math.floor(val || 1)));
-          hand.push(val);
-        }
-        log.push(`Your manually-entered hand is: [${hand.join(', ')}].`);
-      }
-
-      // --------- Extra Bet or Fold ---------
+      // --------- Extra Bet or Fold (single prompt) ---------
       if (availableAfterTable < 50) {
         log.push(
-          'You do not have at least $50 remaining after the table cost, so you cannot make an Extra Bet. You are forced to Fold, losing only your $50.'
+          'You don\'t have enough gold remaining for an Extra Bet. You fold, losing your $50.'
         );
-        return { log, actions };
-      }
-
-      const wantsExtra = await promptYesNo(
-        `Your starting hand is [${hand.join(
-          ', '
-        )}]. Place an Extra Bet of $50–$250 and continue, instead of Folding (and losing just your $50 table cost)?`,
-        true
-      );
-
-      if (!wantsExtra) {
-        log.push('You decide to Fold and walk away from the table, losing your $50 table cost.');
         return { log, actions };
       }
 
       const maxExtraBet = Math.min(250, availableAfterTable);
-      let extraBet = await promptNumber(
-        `How much do you place as your Extra Bet on this hand? (Between $50 and $${maxExtraBet})`,
-        Math.min(50, maxExtraBet)
-      );
-      extraBet = Math.max(50, Math.min(maxExtraBet, Math.floor(extraBet || 50)));
+      const betOptions = [];
+      for (let amt = 50; amt <= maxExtraBet; amt += 50) {
+        betOptions.push({ label: `Bet $${amt}` });
+      }
+      betOptions.push({ label: 'Fold (lose $50)' });
 
+      const betChoice = uiApi.promptChoice
+        ? await uiApi.promptChoice(
+            `Your hand: [${hand.join(', ')}]\nPlace your Extra Bet or Fold?`,
+            betOptions
+          )
+        : 0;
+
+      const foldIndex = betOptions.length - 1;
+      if (betChoice === foldIndex || betChoice === undefined || betChoice === null) {
+        log.push('You fold and walk away, losing your $50 table cost.');
+        return { log, actions };
+      }
+
+      let extraBet = (betChoice + 1) * 50;
+      extraBet = Math.min(extraBet, maxExtraBet);
       actions.gold = (actions.gold ?? 0) - extraBet;
-      log.push(`You push an Extra Bet of $${extraBet} into the pot.`);
+      log.push(`You push $${extraBet} into the pot as your Extra Bet.`);
 
-      // --------- Reroll any number of hand dice (select which to HOLD) ---------
-      const wantsHandReroll = await promptYesNo(
-        [
-          `Your current hand is [${hand.join(', ')}].`,
-          '',
-          'Do you want to re-roll any of these dice?',
-          'You will select which dice to HOLD; all others will be re-rolled once.',
-        ].join('\n'),
-        false
+      // --------- Reroll: go straight to dice selector ---------
+      // Selecting all dice = keep hand as-is (no separate yes/no prompt)
+      const holdSet = await promptSelectPositions(
+        `Hand: [${hand.join(', ')}]\nSelect dice to HOLD. Unselected dice are re-rolled once.\nSelect ALL to keep your hand as-is.`,
+        hand,
+        'hold'
       );
 
-      if (wantsHandReroll) {
-        const holdSet = await promptSelectPositions(
-          'Select which dice to HOLD for your final Poker hand.',
-          hand,
-          'hold'
-        );
-
+      // If they selected nothing, treat as holding all (no reroll)
+      const holdAll = holdSet.size === 0 || holdSet.size === 5;
+      if (!holdAll) {
         const newHand = [];
         const heldPositions = [];
         const rerolledPositions = [];
@@ -221,61 +185,34 @@ export default [
           }
         }
 
-        if (rerolledPositions.length > 0) {
-          log.push(
-            `You HOLD dice at positions [${heldPositions.join(
-              ', '
-            )}] and re-roll positions [${rerolledPositions.join(', ')}].`
-          );
-        } else {
-          log.push('You chose to hold all dice; no re-rolls were made.');
-        }
-
+        log.push(
+          `Held [${heldPositions.join(', ')}], re-rolled [${rerolledPositions.join(', ')}].`
+        );
         hand = newHand;
-        log.push(`After re-rolling, your final hand is: [${hand.join(', ')}].`);
+        log.push(`New hand: [${hand.join(', ')}]`);
       } else {
-        log.push('You keep your original hand with no re-rolls.');
+        log.push('You keep your hand with no re-rolls.');
       }
 
-      // --------- Optional Grit side-bet ---------
+      // --------- Optional Grit side-bet (single prompt) ---------
       let gritBet = 0;
       const grit = getCurrentGrit();
       const remainingGoldAfterExtra = availableAfterTable - extraBet;
 
       if (grit > 0 && remainingGoldAfterExtra > 0) {
-        const wantsGrit = await promptYesNo(
-          [
-            `You currently have ${grit} Grit and $${remainingGoldAfterExtra} still available.`,
-            '',
-            'Spend **1 Grit** to add $0–$250 more to your Extra Bet?',
-          ].join('\n'),
-          false
+        const gritMax = Math.min(250, remainingGoldAfterExtra);
+        gritBet = await promptNumber(
+          `You have ${grit} Grit and $${remainingGoldAfterExtra} remaining.\nSpend 1 Grit to add to your bet? Enter amount ($0 to skip, max $${gritMax}):`,
+          0
         );
-        if (wantsGrit) {
-          const gritMax = Math.min(250, remainingGoldAfterExtra);
-          gritBet = await promptNumber(
-            `How much additional do you add using 1 Grit? (0–${gritMax})`,
-            0
-          );
-          gritBet = Math.max(0, Math.min(gritMax, Math.floor(gritBet || 0)));
+        gritBet = Math.max(0, Math.min(gritMax, Math.floor(gritBet || 0)));
 
-          if (gritBet > 0) {
-            // Deduct 1 Grit — these are deltas; TownTab applyActions merges them
-            actions.currentGrit = (actions.currentGrit ?? 0) - 1;
-            actions.grit = (actions.grit ?? 0) - 1;
-
-            actions.gold = (actions.gold ?? 0) - gritBet;
-            log.push(`You spend 1 Grit and add another $${gritBet} to your Extra Bet.`);
-          } else {
-            log.push('You spend no extra gold with your Grit after all.');
-          }
-        } else {
-          log.push('You hold onto your Grit for now.');
+        if (gritBet > 0) {
+          actions.currentGrit = (actions.currentGrit ?? 0) - 1;
+          actions.grit = (actions.grit ?? 0) - 1;
+          actions.gold = (actions.gold ?? 0) - gritBet;
+          log.push(`You spend 1 Grit and add $${gritBet} to your bet.`);
         }
-      } else if (grit <= 0) {
-        log.push('You have no Grit to fuel an additional side bet.');
-      } else {
-        log.push('You lack the extra gold to add more to your bet, even with Grit.');
       }
 
       // --------- Evaluate hand quality → Cunning difficulty ---------
@@ -290,7 +227,7 @@ export default [
       const isFullHouse = has3 && has2;
       const is3Kind = has3 && !has2;
 
-      let target = 6; // Cunning X+ target
+      let target = 6;
       let requiredSuccesses = 1;
       let handLabel = 'Anything Else';
 
@@ -316,62 +253,29 @@ export default [
       }
 
       log.push(
-        `Your final hand is evaluated as: **${handLabel}**. This sets your Cunning Test to ${target}+ with ${requiredSuccesses} required success(es).`
+        `Hand: **${handLabel}** → Cunning ${target}+ (${requiredSuccesses} success needed)`
       );
 
-      // --------- Cunning Test (manual/auto) ---------
+      // --------- Cunning Test (auto-roll) ---------
       const rawCunning =
         Number(hero.Cunning ?? hero.cunning ?? hero.stats?.Cunning ?? 1) || 1;
       const cunningDice = Math.max(1, Math.floor(rawCunning));
 
-      const autoCunning = await promptYesNo(
-        `CUNNING TEST:\nYou roll ${cunningDice}d6 (your Cunning), needing ${target}+ with ${requiredSuccesses} success(es).\n\nAUTO-ROLL these dice? (No = enter each die manually)`,
-        true
-      );
-
-      let cunningRolls = [];
-      if (autoCunning) {
-        cunningRolls = rollND(cunningDice, 6);
-        log.push(
-          `You auto-roll your Cunning test (${cunningDice}d6): [${cunningRolls.join(', ')}].`
-        );
-      } else {
-        log.push(
-          `Enter the results for your Cunning Test (${cunningDice}d6). You need ${target}+ with ${requiredSuccesses} success(es).`
-        );
-        for (let i = 1; i <= cunningDice; i++) {
-          let val = await promptNumber(`Cunning die ${i} (1–6):`, 1);
-          val = Math.max(1, Math.min(6, Math.floor(val || 1)));
-          cunningRolls.push(val);
-        }
-        log.push(
-          `Your manually-entered Cunning dice are: [${cunningRolls.join(', ')}].`
-        );
-      }
-
+      let cunningRolls = rollND(cunningDice, 6);
       let successCount = cunningRolls.filter((r) => r >= target).length;
 
       log.push(
-        `Initial Cunning rolls: [${cunningRolls.join(
-          ', '
-        )}] → ${successCount} success(es) (you need ${requiredSuccesses}).`
+        `Cunning Test (${cunningDice}d6): [${cunningRolls.join(', ')}] → ${successCount} success(es)`
       );
 
-      // Optional Cunning re-roll → list selection, adds Unwanted Attention
-      const wantsCunningReroll = await promptYesNo(
-        [
-          'CUNNING TEST RESULT:',
-          `• Rolls: [${cunningRolls.join(', ')}]`,
-          `• Successes: ${successCount} (need ${requiredSuccesses} at ${target}+)`,
-          '',
-          'Re-roll any of these dice? If you do, you’ll select which dice to re-roll and gain +1 Unwanted Attention.',
-        ].join('\n'),
-        false
-      );
-
-      if (wantsCunningReroll) {
+      // Offer Cunning re-roll only if they didn't already pass
+      if (successCount < requiredSuccesses) {
         const rerollSet = await promptSelectPositions(
-          'Select which Cunning dice to RE-ROLL (others will be kept).',
+          [
+            `Cunning: [${cunningRolls.join(', ')}] — ${successCount}/${requiredSuccesses} successes (need ${target}+)`,
+            'Select dice to RE-ROLL for +1 Unwanted Attention.',
+            'Select NONE to accept the result.',
+          ].join('\n'),
           cunningRolls,
           're-roll'
         );
@@ -394,15 +298,12 @@ export default [
           cunningRolls = newCunning;
           successCount = cunningRolls.filter((r) => r >= target).length;
           log.push(
-            `You re-roll ${rerolled} Cunning die/dice, gaining +1 Unwanted Attention. New Cunning dice: [${cunningRolls.join(
-              ', '
-            )}] → ${successCount} success(es).`
+            `Re-rolled ${rerolled} die/dice (+1 Unwanted Attention): [${cunningRolls.join(', ')}] → ${successCount} success(es)`
           );
-        } else {
-          log.push('You chose not to re-roll any of your Cunning dice after all.');
         }
       }
 
+      // --------- Resolution ---------
       const totalExtraBet = extraBet + gritBet;
 
       if (successCount >= requiredSuccesses) {
@@ -410,15 +311,11 @@ export default [
         const payout = winnings + totalExtraBet * 2;
         actions.gold = (actions.gold ?? 0) + payout;
         log.push(
-          `🎉 SUCCESS! You win the Poker game. You gain D6 × $25 → $${winnings}, and your total Extra Bet of $${totalExtraBet} is doubled for an additional $${totalExtraBet *
-            2}.`
+          `SUCCESS! D6 x $25 = $${winnings} + doubled bet $${totalExtraBet * 2} = **$${payout} payout**`
         );
-        log.push(`Total payout from this hand: **$${payout}**.`);
       } else {
         log.push(
-          `❌ FAILURE. You do not meet the Cunning requirement and lose the Poker game, along with your Extra Bet${
-            totalExtraBet ? ` of $${totalExtraBet}` : ''
-          }.`
+          `FAILURE. You lose the hand and your $${totalExtraBet} bet.`
         );
       }
 
@@ -522,7 +419,7 @@ export default [
   },
 
   // ===============================
-  // 🎡 THE DEVIL’S WHEEL — PLAY
+  // 🎡 THE DEVIL'S WHEEL — PLAY
   // ===============================
   {
     id: 'gh_wheel_play',
@@ -532,8 +429,8 @@ export default [
     tags: ['Entertainment', 'Gambling'],
     description: 'Gambling • Limit Three Times per Visit',
     effects: [
-      'Pay $25 to spin the Devil’s Wheel.',
-      'Set up and play The Devil’s Wheel mini-game as detailed in the Rulebook.',
+      'Pay $25 to spin the Devil\'s Wheel.',
+      'Set up and play The Devil\'s Wheel mini-game as detailed in the Rulebook.',
       'After resolving the mini-game, total your points and consult this Reward Table:',
       '• 0–9   → No Reward',
       '• 10–12 → $50',
@@ -542,7 +439,7 @@ export default [
       '• 25–30 → $500',
       '• 31–35 → $1,000',
       '• 36    → $5,000',
-      'Any time an Artifact is collected from The Devil’s Wheel, it also triggers a jackpot, giving D6 × $25 to each other Hero currently at the Gambling Hall.',
+      'Any time an Artifact is collected from The Devil\'s Wheel, it also triggers a jackpot, giving D6 × $25 to each other Hero currently at the Gambling Hall.',
     ],
     async exec(hero, posseApi, uiApi) {
       const log = [];
@@ -561,8 +458,8 @@ export default [
 
       log.push(
         `RULES SUMMARY:
-• Pay $25 to spin the Devil’s Wheel.
-• Set up and play The Devil’s Wheel mini-game exactly as described in the Rulebook.
+• Pay $25 to spin the Devil\'s Wheel.
+• Set up and play The Devil\'s Wheel mini-game exactly as described in the Rulebook.
 • When finished, total your points and compare to the Reward Table:
   0–9  → No Reward
   10–12 → $50
@@ -571,25 +468,25 @@ export default [
   25–30 → $500
   31–35 → $1,000
   36    → $5,000
-• If you also collect an Artifact from The Devil’s Wheel, every other Hero at the Gambling Hall gains D6 × $25.`
+• If you also collect an Artifact from The Devil\'s Wheel, every other Hero at the Gambling Hall gains D6 × $25.`
       );
 
       if ((hero.gold ?? 0) < 25) {
-        return { log: ['Not enough gold to spin the Devil’s Wheel (need $25).'], actions: {} };
+        return { log: ['Not enough gold to spin the Devil\'s Wheel (need $25).'], actions: {} };
       }
 
       // Pay the spin cost (delta)
       actions.gold = (actions.gold ?? 0) - 25;
-      log.push('You place $25 on the table as the croupier sends the Devil’s Wheel spinning.');
+      log.push('You place $25 on the table as the croupier sends the Devil\'s Wheel spinning.');
 
       // Manual: player resolves the mini-game using the Rulebook, then enters total points
       let total = await promptNumber(
-        'Enter your final Total Points from The Devil’s Wheel mini-game (0–36):',
+        'Enter your final Total Points from The Devil\'s Wheel mini-game (0–36):',
         0
       );
       total = Math.max(0, Math.min(36, Math.floor(total || 0)));
 
-      log.push(`Your final Devil’s Wheel total is **${total}**.`);
+      log.push(`Your final Devil\'s Wheel total is **${total}**.`);
 
       let reward = 0;
 
@@ -605,12 +502,12 @@ export default [
         actions.gold = (actions.gold ?? 0) + reward;
         log.push(`🎉 The Wheel rewards you with **$${reward}** based on your score of ${total}.`);
       } else {
-        log.push('The Devil’s Wheel offers you nothing this time… no reward.');
+        log.push('The Devil\'s Wheel offers you nothing this time… no reward.');
       }
 
       // Optional Artifact jackpot hook (manual confirmation)
       const gotArtifact = await promptYesNo(
-        'Did you also collect an Artifact from The Devil’s Wheel on this spin? (Check the Rulebook result.)',
+        'Did you also collect an Artifact from The Devil\'s Wheel on this spin? (Check the Rulebook result.)',
         false
       );
 
