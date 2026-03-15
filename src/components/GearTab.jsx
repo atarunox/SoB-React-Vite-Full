@@ -280,6 +280,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
     Object.keys(liveHero?.gear || {}).map(s => `${s}:${liveHero?.gear?.[s]?.id ?? ''}`).join('|'),
     liveHero?.sidebags?.capacity,
     (liveHero?.sidebags?.items || []).map(i => `${i?.name}:${i?.qty}`).join('|'),
+    JSON.stringify(liveHero?.sideBag || liveHero?.sideBagTokens || null),
   ]);
 
   // Local UI state
@@ -374,10 +375,10 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
   const gear = viewHero.gear || {};
   const sidebags = (function ensureSidebags(hero) {
     const sb = hero?.sidebags;
-    if (!sb || typeof sb !== 'object') return { capacity: 6, items: [] };
-    const capacity = Number.isFinite(sb.capacity) ? sb.capacity : 6;
-    const items = Array.isArray(sb.items)
-      ? sb.items.map(i => {
+    const base = (sb && typeof sb === 'object') ? sb : { capacity: 6, items: [] };
+    const capacity = Number.isFinite(base.capacity) ? base.capacity : 6;
+    const items = Array.isArray(base.items)
+      ? base.items.map(i => {
           const id = i?.id || uid();
           const name = i?.name || 'Token';
           const qty = Math.max(1, Number(i?.qty) || 1);
@@ -386,6 +387,23 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
           return { id, name, qty, description };
         })
       : [];
+
+    // Merge tokens from legacy flat sideBag format (e.g. { Whiskey: 2, 'Fine Cigar': 1 })
+    const legacy = hero?.sideBag || hero?.sideBagTokens;
+    if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+      for (const [tokenName, count] of Object.entries(legacy)) {
+        const qty = Math.max(0, Number(count) || 0);
+        if (qty <= 0 || !tokenName) continue;
+        const existing = items.find(i => i.name.toLowerCase() === tokenName.toLowerCase());
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          const preset = PRESETS.find(p => p.name.toLowerCase() === tokenName.toLowerCase());
+          items.push({ id: uid(), name: tokenName, qty, description: preset?.description || '' });
+        }
+      }
+    }
+
     return { capacity, items };
   })(viewHero);
 

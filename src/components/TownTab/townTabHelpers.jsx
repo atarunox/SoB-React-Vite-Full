@@ -469,12 +469,40 @@ function collectByType(hero, wantType /* 'injury' | 'mutation' */) {
 export const getInjuryList = (hero)   => collectByType(hero, 'injury');
 export const getMutationList = (hero) => collectByType(hero, 'mutation');
 
-// Side bag update (no underflow)
+// Side bag update (structured format matching GearTab's sidebags)
+// Returns { capacity, items } suitable for hero.sidebags
 export function nextSideBag(hero, tokenType, addAmount) {
-  const bag = hero.sideBag || hero.sidebag || hero.sideBagTokens || {};
-  const current = Number(bag[tokenType] || 0);
-  const updatedVal = Math.max(0, current + Number(addAmount || 0));
-  return { ...bag, [tokenType]: updatedVal };
+  const sb = hero?.sidebags;
+  const base = (sb && typeof sb === 'object' && !Array.isArray(sb))
+    ? sb : { capacity: 6, items: [] };
+  const capacity = Number.isFinite(base.capacity) ? base.capacity : 6;
+  const items = Array.isArray(base.items) ? base.items.map(i => ({ ...i })) : [];
+  const delta = Number(addAmount || 0);
+
+  // Also merge from legacy flat sideBag if present and items is empty
+  if (items.length === 0) {
+    const legacy = hero?.sideBag || hero?.sideBagTokens;
+    if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+      for (const [name, count] of Object.entries(legacy)) {
+        const qty = Math.max(0, Number(count) || 0);
+        if (qty > 0 && name) items.push({ id: `token_${Date.now()}_${name}`, name, qty });
+      }
+    }
+  }
+
+  const idx = items.findIndex(i => (i.name || '').toLowerCase() === (tokenType || '').toLowerCase());
+  if (idx >= 0) {
+    const newQty = Math.max(0, (items[idx].qty ?? 1) + delta);
+    if (newQty <= 0) {
+      items.splice(idx, 1);
+    } else {
+      items[idx] = { ...items[idx], qty: newQty };
+    }
+  } else if (delta > 0) {
+    items.push({ id: `token_${Date.now()}_${tokenType}`, name: tokenType, qty: delta });
+  }
+
+  return { capacity, items };
 }
 
 // --------- UI category helpers ----------

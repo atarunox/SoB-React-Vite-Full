@@ -254,8 +254,8 @@ export default function TownTab({ heroId }) {
     },
     addToken: (id, tokenName) => {
       const target = posse.find((h) => (h.id || h.localId) === id) || {};
-      const sideBag = nextSideBag(target, tokenName, 1);
-      updateHero({ id, sideBag });
+      const sidebags = nextSideBag(target, tokenName, 1);
+      updateHero({ id, sidebags });
     },
     getHeroesAtShop: (shopId) => {
       if (!shopId) return [resolvedHeroId].filter(Boolean);
@@ -614,8 +614,8 @@ promptChoice: async (title, options) => {
       const scrap = (hero.scrap ?? 0) - (costObj.scrap ?? 0);
       const tech = (hero.tech ?? 0) - (costObj.tech ?? 0);
 
-      const sideBag = nextSideBag(hero, type, amount);
-      updateHero({ id: hero.id || hero.localId, gold, darkStone, scrap, tech, sideBag });
+      const sidebags = nextSideBag(hero, type, amount);
+      updateHero({ id: hero.id || hero.localId, gold, darkStone, scrap, tech, sidebags });
 
       incVisitCount(itemId);
       return;

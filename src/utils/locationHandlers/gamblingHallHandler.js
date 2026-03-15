@@ -448,17 +448,34 @@ export async function apply(roll, ctx) {
       const hero = (ctx.getHeroById ?? ctx.getHero)?.(rawId);
       const hName = hero?.name || 'Hero';
 
-      // Add both tokens in a single update to avoid race conditions
+      // Add both tokens in a single update using structured sidebags format
       ctx.updateHero?.(rawId, (h) => {
-        const bag = h.sideBag || h.sidebag || h.sideBagTokens || {};
-        return {
-          ...h,
-          sideBag: {
-            ...bag,
-            Whiskey: (Number(bag.Whiskey) || 0) + 1,
-            'Fine Cigar': (Number(bag['Fine Cigar']) || 0) + 1,
-          },
+        const sb = h.sidebags && typeof h.sidebags === 'object' ? h.sidebags : { capacity: 6, items: [] };
+        const items = Array.isArray(sb.items) ? [...sb.items] : [];
+
+        // Also migrate legacy flat sideBag data if items are empty
+        if (items.length === 0) {
+          const legacy = h.sideBag || h.sideBagTokens;
+          if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+            for (const [name, count] of Object.entries(legacy)) {
+              const qty = Math.max(0, Number(count) || 0);
+              if (qty > 0 && name) items.push({ id: `token_${Date.now()}_${name}`, name, qty });
+            }
+          }
+        }
+
+        const addOrIncrement = (tokenName) => {
+          const idx = items.findIndex(i => (i.name || '').toLowerCase() === tokenName.toLowerCase());
+          if (idx >= 0) {
+            items[idx] = { ...items[idx], qty: (items[idx].qty ?? 1) + 1 };
+          } else {
+            items.push({ id: `token_${Date.now()}_${tokenName}`, name: tokenName, qty: 1 });
+          }
         };
+        addOrIncrement('Whiskey');
+        addOrIncrement('Fine Cigar');
+
+        return { ...h, sidebags: { ...sb, items } };
       });
       const line = `${hName} gains 1 Whiskey Token and 1 Fine Cigar Token.`;
       log.push(line);

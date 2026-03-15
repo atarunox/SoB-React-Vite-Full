@@ -1004,8 +1004,8 @@ const foWorldArtifactOffer =
     addToken: (id, tokenName) => {
       const target =
         posse.find((h) => (h.id || h.localId) === id) || {};
-      const sideBag = nextSideBag(target, tokenName, 1);
-      updateHero({ id, sideBag });
+      const sidebags = nextSideBag(target, tokenName, 1);
+      updateHero({ id, sidebags });
     },
     getHeroesAtShop: (sid) => {
       if (!sid) return [resolvedHeroId].filter(Boolean);
@@ -2196,6 +2196,67 @@ const foWorldArtifactOffer =
       }
 
       applyActions(res?.actions);
+
+      // High Stakes Bet (event 12): if poker was won, award bonus artifact
+      const isPokerGame = /poker/i.test(svc.id || svc.name || '');
+      const pokerWon = isPokerGame && Array.isArray(res?.log) && res.log.some(l => /SUCCESS/i.test(l));
+      if (pokerWon) {
+        const ts = loadTownState() || {};
+        if (ts.gamblingHallFlags?.firstPokerWinAwardsArtifact) {
+          // Build world → artifact map from imported data
+          const worldMap = {};
+          for (const art of (otherWorldArtifacts || [])) {
+            const w = art?.world || 'Unknown';
+            if (!worldMap[w]) worldMap[w] = [];
+            worldMap[w].push(art);
+          }
+          const worlds = Object.keys(worldMap).filter(w => worldMap[w]?.length);
+
+          if (worlds.length && uiApi.promptChoice) {
+            const worldIdx = await uiApi.promptChoice(
+              'HIGH STAKES BET — BONUS REWARD!\n\nYou won your first Poker game! Draw a World card:\n\nChoose a World to draw an Artifact from:',
+              worlds.map(w => ({ label: w }))
+            );
+            const chosenWorld = worlds[worldIdx ?? 0] || worlds[0];
+            const pool = worldMap[chosenWorld] || [];
+            const artifact = pool[Math.floor(Math.random() * pool.length)];
+
+            if (artifact) {
+              const artName = artifact.name || artifact.id || 'Artifact';
+              const heroId = heroView.id || heroView.localId;
+              const currentHero = posse.find(h => (h.id || h.localId) === heroId) || heroView;
+              const inv = Array.isArray(currentHero.inventory) ? [...currentHero.inventory] : [];
+              inv.push({
+                ...artifact,
+                id: artifact.id || `art_${Date.now()}`,
+                name: artName,
+                type: artifact.type || 'Artifact',
+                originWorld: chosenWorld,
+                source: 'High Stakes Bet',
+              });
+              updateHero({ id: heroId, inventory: inv });
+
+              if (res.log) res.log.push(`High Stakes Bet: Drew ${chosenWorld} Artifact — ${artName}.`);
+              uiApi.toast?.(`High Stakes Bet: Drew ${artName} from ${chosenWorld}!`);
+
+              await uiApi.promptChoice?.(
+                `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${artifact.effect || artifact.description || artifact.rules?.join?.('\n') || ''}`,
+                [{ label: 'Continue' }]
+              );
+            }
+          }
+
+          // Clear the flag (one-time reward)
+          saveTownState({
+            ...ts,
+            gamblingHallFlags: {
+              ...(ts.gamblingHallFlags || {}),
+              firstPokerWinAwardsArtifact: false,
+            },
+          });
+        }
+      }
+
       if (res?.log?.length) console.log(res.log.join('\n'));
       setServiceUi(
         res?.ui || {
@@ -2522,14 +2583,14 @@ const foWorldArtifactOffer =
       const tech =
         (hero.tech ?? 0) - (costObj.tech ?? 0);
 
-      const sideBag = nextSideBag(hero, type, amount);
+      const sidebags = nextSideBag(hero, type, amount);
       updateHero({
         id: hero.id || hero.localId,
         gold,
         darkStone,
         scrap,
         tech,
-        sideBag,
+        sidebags,
       });
 
       incVisitCount(itemId);

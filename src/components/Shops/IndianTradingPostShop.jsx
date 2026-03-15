@@ -80,8 +80,8 @@ export default function IndianTradingPostShop({ hero: heroProp, posseApi: posseA
       },
       addToken: (id, tokenName) => {
         const target = posseCtx.posse.find((h) => (h.id || h.localId) === id) || {};
-        const sideBag = nextSideBag(target, tokenName, 1);
-        posseCtx.updateHero({ id, sideBag });
+        const sidebags = nextSideBag(target, tokenName, 1);
+        posseCtx.updateHero({ id, sidebags });
       },
     };
   }, [posseApiProp, posseCtx]);
@@ -219,8 +219,8 @@ export default function IndianTradingPostShop({ hero: heroProp, posseApi: posseA
       const scrap = (hero.scrap ?? 0) - (costObj.scrap ?? 0);
       const tech = (hero.tech ?? 0) - (costObj.tech ?? 0);
 
-      const sideBag = nextSideBag(hero, type, amount);
-      posseApi.updateHero(meId, { gold, darkStone, scrap, tech, sideBag });
+      const sidebags = nextSideBag(hero, type, amount);
+      posseApi.updateHero(meId, { gold, darkStone, scrap, tech, sidebags });
       return;
     }
 
