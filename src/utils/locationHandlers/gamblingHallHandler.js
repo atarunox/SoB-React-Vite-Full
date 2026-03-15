@@ -18,6 +18,24 @@ function isGearOrArtifact(it) {
   return hasTag || t === 'gear' || t.startsWith('gear ') || t === 'artifact' || t.startsWith('artifact ');
 }
 
+// Build a compact stat summary for an item (mods/effects)
+function itemStatSummary(it) {
+  if (!it) return '';
+  const parts = [];
+  // mods: { Armor: "4+", Strength: 2 }
+  const mods = it.mods || it.effects;
+  if (mods && typeof mods === 'object' && !Array.isArray(mods)) {
+    for (const [k, v] of Object.entries(mods)) {
+      if (typeof v === 'number' && v !== 0) parts.push(`${k} ${v > 0 ? '+' : ''}${v}`);
+      else if (/^\d+\+$/.test(v)) parts.push(`${k} ${v}`);
+    }
+  }
+  // description/effect as fallback
+  if (!parts.length && it.description) parts.push(it.description);
+  else if (!parts.length && it.effect) parts.push(it.effect);
+  return parts.length ? ` [${parts.join(', ')}]` : '';
+}
+
 function collectGearAndArtifacts(hero) {
   const results = [];
 
@@ -27,7 +45,7 @@ function collectGearAndArtifacts(hero) {
     if (isGearOrArtifact(it)) {
       results.push({
         source: 'inventory', idx, it,
-        label: `${it?.name || it?.id || 'Item'} (${String(it?.type || 'Gear')})`,
+        label: `${it?.name || it?.id || 'Item'} (${String(it?.type || 'Gear')})${itemStatSummary(it)}`,
       });
     }
   });
@@ -37,7 +55,7 @@ function collectGearAndArtifacts(hero) {
     if (!isGearOrArtifact(it)) return;
     results.push({
       source: 'slot', slot: slotKey, it,
-      label: `${it?.name || it?.id || 'Item'} (equipped: ${slotKey})`,
+      label: `${it?.name || it?.id || 'Item'} (equipped: ${slotKey})${itemStatSummary(it)}`,
     });
   };
 
@@ -75,15 +93,23 @@ function removeItemFromHero(ctx, heroId, picked) {
       next.inventory = inv;
     } else if (picked.source === 'slot') {
       const slot = picked.slot;
+      const emptySlot = { id: `empty-${slot}`, name: 'Empty Slot', slot };
+      // Unequip: set slot to Empty Slot placeholder (matching GearTab convention)
       if (next.equipped?.[slot]) {
-        next.equipped = { ...next.equipped };
-        delete next.equipped[slot];
+        next.equipped = { ...next.equipped, [slot]: emptySlot };
       } else if (next.gear?.[slot] && typeof next.gear === 'object' && !Array.isArray(next.gear)) {
-        next.gear = { ...next.gear };
-        delete next.gear[slot];
+        next.gear = { ...next.gear, [slot]: emptySlot };
+        // If it was a two-handed weapon, also clear the other hand
+        const it = picked.it;
+        const isTwoHanded = it?.twoHanded || (Array.isArray(it?.keywords) && it.keywords.some(k => /two.?hand/i.test(k)));
+        if (isTwoHanded) {
+          const otherHand = slot === 'Main Hand' ? 'Off Hand' : slot === 'Off Hand' ? 'Main Hand' : null;
+          if (otherHand && next.gear[otherHand]?.name === it?.name) {
+            next.gear[otherHand] = { id: `empty-${otherHand}`, name: 'Empty Slot', slot: otherHand };
+          }
+        }
       } else if (next.gearSlots?.[slot]) {
-        next.gearSlots = { ...next.gearSlots };
-        delete next.gearSlots[slot];
+        next.gearSlots = { ...next.gearSlots, [slot]: emptySlot };
       }
     }
     return next;
@@ -409,23 +435,32 @@ export async function apply(roll, ctx) {
 
   // 11: Drinks and Cigars All Around — each hero gains 1 Whiskey + 1 Fine Cigar
   if (roll === 11) {
-    const heroes = getHeroesAtGamblingHall(ctx);
+    // Get hero IDs at the gambling hall directly (avoid stale object resolution)
+    let heroIds = ctx.getHeroesAtShop?.('gamblingHall') || [];
+    if (!heroIds.length) heroIds = ctx.getHeroesAtShop?.('gambling_hall') || [];
+    if (!heroIds.length) heroIds = [id]; // fallback to active hero
+
     const results = [];
 
-    for (const h of heroes) {
-      const hid = h.id || h.localId;
-      const hName = h.name || 'Hero';
-      await ctx.addToken?.(hid, 'Whiskey');
-      await ctx.addToken?.(hid, 'Fine Cigar');
-      const line = `${hName} gains 1 Whiskey Token and 1 Fine Cigar Token.`;
-      log.push(line);
-      results.push(line);
-    }
+    for (const hid of heroIds) {
+      const rawId = typeof hid === 'object' ? (hid.id || hid.localId) : hid;
+      if (!rawId) continue;
+      const hero = (ctx.getHeroById ?? ctx.getHero)?.(rawId);
+      const hName = hero?.name || 'Hero';
 
-    if (!heroes.length) {
-      await ctx.addToken?.(id, 'Whiskey');
-      await ctx.addToken?.(id, 'Fine Cigar');
-      const line = 'Gained 1 Whiskey Token and 1 Fine Cigar Token.';
+      // Add both tokens in a single update to avoid race conditions
+      ctx.updateHero?.(rawId, (h) => {
+        const bag = h.sideBag || h.sidebag || h.sideBagTokens || {};
+        return {
+          ...h,
+          sideBag: {
+            ...bag,
+            Whiskey: (Number(bag.Whiskey) || 0) + 1,
+            'Fine Cigar': (Number(bag['Fine Cigar']) || 0) + 1,
+          },
+        };
+      });
+      const line = `${hName} gains 1 Whiskey Token and 1 Fine Cigar Token.`;
       log.push(line);
       results.push(line);
     }

@@ -2130,12 +2130,17 @@ const foWorldArtifactOffer =
         // stat reader used by fallback doSkillCheck
         getEffectiveStat: (_id, stat) => getStat(stat),
 
-        // logging
+        // logging — use visible toast from uiApi, not just console
         toast: (msg) => {
-          try {
-            console.log('[GamblingHall]', msg);
-          } catch {}
+          if (typeof uiApi.toast === 'function') {
+            uiApi.toast(msg);
+          } else {
+            try { console.log('[GamblingHall]', msg); } catch {}
+          }
         },
+
+        // choice prompt (needed for High Stakes Bet world/artifact selection)
+        promptChoice: uiApi.promptChoice,
 
         // simple numeric prompt helper, matches ctx.promptNumber(msg, key?)
         promptNumber: async (message /*, key */) => {
