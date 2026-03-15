@@ -35,9 +35,9 @@ export default [
     cost: { gold: 2250 },
     weight: 1,
     upgradeSlots: 0,
-    tags: ['Gear', 'Clothing', 'FrontierOrLawOnly'],
+    tags: ['Gear', 'FrontierOrLawOnly'],
     effects: [
-      'Free Attack (once per Adventure): Take D3 Corruption Hits to do "Peril" Wounds to an adjacent model ignoring Defense.',
+      'Free Attack (Once per Adventure): Take D3 Corruption Hits to do D6 Wounds to an adjacent model, ignoring Defense.',
     ],
   },
   {
@@ -137,7 +137,7 @@ export default [
     upgradeSlots: 1,
     twoHanded: true,
     darkStone: 1, // contains 1 DS
-    tags: ['Gear', 'Gun', 'Shotgun', 'Law'],
+    tags: ['Gear', 'Gun', 'Shotgun'],
     effects: [
       'Range: 3',
       'Shots: 3',

@@ -324,6 +324,13 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
 
     /* ---------------- Become Deputized ---------------- */
     case 'so_become_deputized': {
+      // Not available to Law or Holy heroes
+      const heroKw = Array.isArray(hero?.keywords) ? hero.keywords : [];
+      if (heroKw.includes('Law') || heroKw.includes('Holy')) {
+        log.push('Not available to Law or Holy Heroes.');
+        return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
+      }
+
       if ((hero?.xp ?? 0) < 50) {
         log.push('Not enough XP (need 50).');
         return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
@@ -331,7 +338,7 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
 
       addXP(-50, 'Deputized fee');
 
-      const kw = Array.isArray(hero?.keywords) ? [...hero.keywords] : [];
+      const kw = [...heroKw];
       if (!kw.includes('Law')) kw.push('Law');
 
       const cond = hero?.conditions || {};
@@ -340,15 +347,16 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         id: 'deputized_cunning_plus1',
         name: 'Deputized',
         type: 'temporary',
-        effect: '+1 Cunning while deputized',
+        effect: '+1 Cunning and Keyword Law. At end of each Adventure, roll D6 — on 1-3 lose this bonus.',
         statMods: { Cunning: +1 },
         active: true,
         expires: 'endOfAdventureCheck',
+        expiryRoll: { die: 6, loseOn: [1, 2, 3] },
         addedAt: Date.now(),
       });
 
       pushUpdate(actions, { keywords: kw, conditions: { ...cond, temporary } });
-      log.push('You are now Deputized: gained the Law keyword and +1 Cunning (temporary).');
+      log.push('You are now Deputized: gained the Law keyword and +1 Cunning. At the end of each Adventure, roll D6 — on 1, 2, or 3 you lose this bonus.');
       return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
     }
 

@@ -49,11 +49,13 @@ export default [
     name: 'Become Deputized',
     type: 'Service',
     cost: { xp: 50 },
-    tags: ['Service', 'LawOnlyGated', 'Badge'],
+    tags: ['Service', 'NotLawOrHoly'],
     limit: 'oncePerStay',
     rules: {
       text: [
-        'Spend **50 XP** to gain the **Law** keyword and a temporary **+1 Cunning**.',
+        'Spend **50 XP** to gain **+1 Cunning** and the Keyword **Law**.',
+        'At the end of each Adventure, roll a D6. On the roll of **1, 2, or 3**, you lose this bonus.',
+        '_Not Available to Law or Holy Heroes._',
       ],
     },
   },
