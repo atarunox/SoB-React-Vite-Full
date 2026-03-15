@@ -388,16 +388,13 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
         })
       : [];
 
-    // Merge tokens from legacy flat sideBag format (e.g. { Whiskey: 2, 'Fine Cigar': 1 })
-    const legacy = hero?.sideBag || hero?.sideBagTokens;
-    if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
-      for (const [tokenName, count] of Object.entries(legacy)) {
-        const qty = Math.max(0, Number(count) || 0);
-        if (qty <= 0 || !tokenName) continue;
-        const existing = items.find(i => i.name.toLowerCase() === tokenName.toLowerCase());
-        if (existing) {
-          existing.qty += qty;
-        } else {
+    // Migrate tokens from legacy flat sideBag format (only when items list is empty)
+    if (items.length === 0) {
+      const legacy = hero?.sideBag || hero?.sideBagTokens;
+      if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+        for (const [tokenName, count] of Object.entries(legacy)) {
+          const qty = Math.max(0, Number(count) || 0);
+          if (qty <= 0 || !tokenName) continue;
           const preset = PRESETS.find(p => p.name.toLowerCase() === tokenName.toLowerCase());
           items.push({ id: uid(), name: tokenName, qty, description: preset?.description || '' });
         }
@@ -569,6 +566,9 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
 
   const persistSidebags = (nextSB) => {
     const nextHero = { ...viewHero, sidebags: nextSB, updatedAt: Date.now() };
+    // Clear legacy flat-format fields so they don't re-merge on next render
+    delete nextHero.sideBag;
+    delete nextHero.sideBagTokens;
     saveHero(nextHero);
     try { setViewHero && setViewHero(nextHero); } catch {}
   };

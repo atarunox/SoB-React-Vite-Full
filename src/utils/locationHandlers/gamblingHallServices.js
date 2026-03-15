@@ -176,12 +176,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     if (state.gamblingHallFlags?.firstPokerWinAwardsArtifact) {
       const worlds = Object.keys(WORLD_ARTS).filter(w => WORLD_ARTS[w]?.length);
       if (worlds.length) {
-        // Let the player draw/pick a World card
-        const worldIdx = await ctx.promptChoice?.(
-          'HIGH STAKES BET — BONUS REWARD!\n\nYou won your first Poker game! Draw a World card:\n\nChoose a World to draw an Artifact from:',
-          worlds.map((w) => ({ label: w }))
-        );
-        const chosenWorld = worlds[worldIdx ?? 0] || worlds[0];
+        // Randomly draw a World card
+        const chosenWorld = randFrom(worlds);
         const pool = WORLD_ARTS[chosenWorld] || [];
         const artifact = randFrom(pool);
 

@@ -2212,12 +2212,9 @@ const foWorldArtifactOffer =
           }
           const worlds = Object.keys(worldMap).filter(w => worldMap[w]?.length);
 
-          if (worlds.length && uiApi.promptChoice) {
-            const worldIdx = await uiApi.promptChoice(
-              'HIGH STAKES BET — BONUS REWARD!\n\nYou won your first Poker game! Draw a World card:\n\nChoose a World to draw an Artifact from:',
-              worlds.map(w => ({ label: w }))
-            );
-            const chosenWorld = worlds[worldIdx ?? 0] || worlds[0];
+          if (worlds.length) {
+            // Randomly draw a World card
+            const chosenWorld = worlds[Math.floor(Math.random() * worlds.length)];
             const pool = worldMap[chosenWorld] || [];
             const artifact = pool[Math.floor(Math.random() * pool.length)];
 
