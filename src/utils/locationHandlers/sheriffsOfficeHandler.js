@@ -80,36 +80,101 @@ async function apply(roll, ctx) {
   log.push(`[Sheriff's Office] (${roll}) ${info.title} — ${info.lore}`);
   log.push(`Effect: ${info.effect}`);
 
-  // 2: Jailbreak — Next Adventure: Town "Jailbreak", all Wanted, no Grit
+  // 2: Jailbreak — Town Stay over; choose Jailbreak adventure or flee (no Grit)
   if (roll === 2) {
     const s = loadTownState();
+
+    // Mark the Town Stay as ending at end of current Day for all heroes
     saveTownState({
       ...s,
-      nextAdventure: 'Town:Jailbreak',
-      globalRules: { ...(s.globalRules || {}), allWantedNextAdventure: true, noGritNextAdventure: true },
+      townStayEndsToday: true,
     });
-    const outcome = 'Outlaws have broken out of jail! Next Adventure will be a Town "Jailbreak". All Heroes are Wanted until the end of the next Adventure — no Grit allowed.';
-    log.push(outcome);
-    await showResult(ctx, 'JAILBREAK — Result', [outcome]);
-    ctx.toast?.('Jailbreak! Next Adventure: Town Jailbreak. All Wanted, no Grit.');
+    log.push('The Town Stay is over for all Heroes at the end of the current Day.');
+
+    // Give the party a choice: Jailbreak adventure or flee
+    const choice = await ctx.promptChoice?.(
+      `JAILBREAK\n\n${info.lore}\n\nThe Town Stay is over for all Heroes at the end of the current Day (you must still roll for Town Event).\n\nThe Heroes' next Adventure is automatically the Town Adventure "Jailbreak", unless ALL Heroes agree to flee before the shooting begins — but they start the next Adventure with NO Grit.\n\nWhat does the party decide?`,
+      [
+        { label: 'Town Adventure: Jailbreak' },
+        { label: 'All Heroes flee (next Adventure starts with no Grit)' },
+      ]
+    );
+
+    if (choice === 1) {
+      // All heroes flee — start next adventure with no Grit
+      const s2 = loadTownState();
+      saveTownState({
+        ...s2,
+        townStayEndsToday: true,
+        globalRules: { ...(s2.globalRules || {}), noGritNextAdventure: true },
+      });
+      // Set all heroes' Grit to 0 for next adventure
+      const allHeroes = ctx.listAllTownHeroes?.() || [];
+      for (const hid of allHeroes) {
+        const heroId = typeof hid === 'string' ? hid : hid?.id || hid?.localId;
+        if (heroId) {
+          ctx.updateHero?.(heroId, (h) => ({
+            ...h,
+            adventureDebuffs: { ...(h.adventureDebuffs || {}), noGrit: true },
+          }));
+        }
+      }
+      const outcome = 'All Heroes agree to flee before the shooting begins. The next Adventure will start with NO Grit for any Hero.';
+      log.push(outcome);
+      await showResult(ctx, 'JAILBREAK — Fled!', [outcome]);
+      ctx.toast?.('All Heroes fled! Next Adventure starts with no Grit.');
+    } else {
+      // Jailbreak adventure
+      const s2 = loadTownState();
+      saveTownState({
+        ...s2,
+        townStayEndsToday: true,
+        nextAdventure: 'Town:Jailbreak',
+      });
+      const outcome = 'Outlaws have broken out of jail! The next Adventure will be the Town Adventure "Jailbreak".';
+      log.push(outcome);
+      await showResult(ctx, 'JAILBREAK — Result', [outcome]);
+      ctx.toast?.('Jailbreak! Next Adventure: Town Jailbreak.');
+    }
     return { log };
   }
 
-  // 3: Corrupt Sheriff — Spirit 5+: +50 XP & D6×$50; Fail: Injury
+  // 3: Corrupt Sheriff — Law Heroes must Flee or challenge (Spirit 5+)
   if (roll === 3) {
+    const hero = ctx.getHeroById?.(id) || ctx.getActiveHero?.() || {};
+    const heroKeywords = Array.isArray(hero.keywords) ? hero.keywords : [];
+    const isLaw = heroKeywords.includes('Law');
+
     const lore3 = `CORRUPT SHERIFF\n${info.lore}\nThe sheriff has grown drunk on power, shaking down travelers and pocketing the town's gold.`;
+
+    if (!isLaw) {
+      // Non-Law heroes are not directly involved — but if no Law hero defeats him, all become Wanted
+      const outcome = 'You are not a Law Hero, so you cannot challenge the Corrupt Sheriff directly. If no Law Hero at the Sheriff\'s Office defeats him, all Heroes in Town become Wanted until the end of this Town Stay.';
+      log.push(outcome);
+      await showResult(ctx, 'CORRUPT SHERIFF — Not Law', [outcome]);
+      ctx.toast?.('You are not Law — cannot challenge the Corrupt Sheriff.');
+      return { log };
+    }
+
+    // Law hero: must Flee Town or challenge
     const testChoice = await ctx.promptChoice?.(
-      `${lore3}\n\nWhat do you do?`,
+      `${lore3}\n\nAs a Law Hero, you must either challenge the Corrupt Sheriff or Flee Town!\n\nWhat do you do?`,
       [
         { label: 'Challenge him (Spirit 5+ test)' },
-        { label: 'Flee and avoid the confrontation' },
+        { label: 'Flee Town' },
       ]
     );
     if (testChoice === 1) {
-      const outcome = 'You decide discretion is the better part of valor and slip away before things escalate.';
+      // Fled — sheriff not defeated; all heroes Wanted
+      const s = loadTownState();
+      saveTownState({
+        ...s,
+        globalRules: { ...(s.globalRules || {}), allWantedThisStay: true },
+      });
+      const outcome = 'You flee from the Corrupt Sheriff. Since no Law Hero defeated him, all Heroes in Town are considered Wanted until the end of this Town Stay!';
       log.push(outcome);
-      await showResult(ctx, 'CORRUPT SHERIFF — Result', [outcome]);
-      ctx.toast?.('You fled from the Corrupt Sheriff.');
+      await showResult(ctx, 'CORRUPT SHERIFF — Fled', [outcome]);
+      ctx.toast?.('You fled! All Heroes are Wanted this Town Stay.');
     } else {
       const result = await ctx.doSkillCheck(id, {
         stat: 'Spirit', target: 5, returnDetails: true,
@@ -133,69 +198,95 @@ async function apply(roll, ctx) {
         await showResult(ctx, 'CORRUPT SHERIFF — Result', [checkLine, goldLine, '', outcome]);
         ctx.toast?.(`Corrupt Sheriff defeated! +50 XP, +$${gold}.`);
       } else {
-        const outcome = 'The sheriff draws on you before you can react. Roll on the Injury Chart.';
+        // Failed — roll Injury AND all heroes Wanted
+        const s = loadTownState();
+        saveTownState({
+          ...s,
+          globalRules: { ...(s.globalRules || {}), allWantedThisStay: true },
+        });
+        const outcome = 'The sheriff draws on you before you can react. Roll on the Injury Chart. Since the Corrupt Sheriff was not defeated, all Heroes in Town are Wanted until the end of this Town Stay!';
         log.push(outcome);
         await showResult(ctx, 'CORRUPT SHERIFF — Result', [checkLine, '', outcome]);
-        ctx.toast?.('The sheriff guns you down — roll on the Injury Chart.');
+        ctx.toast?.('The sheriff guns you down — Injury Chart. All Heroes Wanted!');
         await ctx.enqueueChartRoll?.(id, 'injury');
       }
     }
     return { log };
   }
 
-  // 4: Insane Ramblings — 2D6 Horror Hits; on doubles advance Darkness by 2
+  // 4: Insane Ramblings — 2D6 Horror Hits (Willpower saves); doubles advance Darkness by 2
   if (roll === 4) {
     const die1 = d6();
     const die2 = d6();
-    const autoTotal = die1 + die2;
-    const autoDoubles = die1 === die2;
+    const horrorTotal = die1 + die2;
+    const isDoubles = die1 === die2;
 
     const lore4 = `INSANE RAMBLINGS\n${info.lore}\nA prisoner babbles about the Void and the insignificance of mankind, and the madness seeps into your mind.`;
 
-    const idx = await ctx.promptChoice?.(
-      `${lore4}\n\nTake 2D6 Horror Hits. If doubles, also advance Darkness Track by 2.\n\nAuto-roll: [${die1}, ${die2}] = ${autoTotal}${autoDoubles ? ' (DOUBLES!)' : ''}`,
-      [
-        { label: `Accept auto-roll (${autoTotal} Horror Hits${autoDoubles ? ', doubles' : ''})` },
-        { label: 'Enter manual roll' },
-      ]
-    );
-
-    let horrorTotal = autoTotal;
-    let isDoubles = autoDoubles;
-
-    if (idx === 1 && ctx.promptNumber) {
-      const n = await ctx.promptNumber?.('Enter 2D6 total for Horror Hits (2-12):', 'total');
-      horrorTotal = (Number.isFinite(Number(n)) && Number(n) >= 2 && Number(n) <= 12) ? Number(n) : autoTotal;
-      if (Number.isFinite(Number(n))) {
-        const doublesChoice = await ctx.promptChoice?.('Were the dice doubles?', [
-          { label: 'No' },
-          { label: 'Yes' },
-        ]);
-        isDoubles = doublesChoice === 1;
-      }
-    }
-
-    ctx.updateHero?.(id, (h) => {
-      const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
-      const nextSanity = Math.max(0, curSanity - horrorTotal);
-      return { ...h, currentSanity: nextSanity };
-    });
-
     const rollLine = `Rolled [${die1}, ${die2}] = ${horrorTotal} Horror Hits${isDoubles ? ' (DOUBLES!)' : ''}.`;
     log.push(rollLine);
+
+    // Show the Horror Hits result first
+    await showResult(ctx, 'INSANE RAMBLINGS — Horror Hits', [
+      rollLine,
+      '',
+      `You must now roll Willpower to resist each Horror Hit.`,
+    ]);
+
+    // Willpower saves — each success cancels 1 Horror Hit
+    const hero = ctx.getHeroById?.(id) || ctx.getActiveHero?.() || {};
+    // Read Willpower TN (target number) from hero — default 5+
+    const wpRaw = hero?.willpower ?? hero?.stats?.willpower ?? hero?.stats?.Willpower ?? hero?.Willpower;
+    let wpTN = 5;
+    if (typeof wpRaw === 'string') {
+      const m = wpRaw.match(/(\d)\s*\+/);
+      if (m) wpTN = Number(m[1]);
+    } else if (typeof wpRaw === 'number' && wpRaw > 0) {
+      wpTN = wpRaw;
+    }
+
+    // Read Spirit stat (number of dice to roll for Willpower saves)
+    const spiritVal = ctx.getEffectiveStat?.(id, 'Spirit') ?? Number(hero?.stats?.Spirit ?? hero?.Spirit ?? 1);
+    const wpDice = Math.max(1, spiritVal);
+
+    // Prompt for the Willpower roll
+    const wpResult = await ctx.doSkillCheck?.(id, {
+      stat: 'Spirit', target: wpTN, returnDetails: true,
+      message: `${lore4}\n\n${rollLine}\n\nRoll Willpower (Spirit ${wpTN}+) to resist ${horrorTotal} Horror Hits. Each success cancels 1 Hit.`,
+    });
+    const wpCheckLine = formatCheckResult(wpResult, 'Willpower', wpTN);
+    if (wpCheckLine) log.push(wpCheckLine);
+
+    const successes = wpResult?.successes ?? 0;
+    const hitsRemaining = Math.max(0, horrorTotal - successes);
+
+    // Apply remaining Horror Hits as Sanity damage
+    if (hitsRemaining > 0) {
+      ctx.updateHero?.(id, (h) => {
+        const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
+        const nextSanity = Math.max(0, curSanity - hitsRemaining);
+        return { ...h, currentSanity: nextSanity };
+      });
+    }
+
+    const saveLine = `Willpower saved ${successes} of ${horrorTotal} Horror Hits. ${hitsRemaining > 0 ? `${hitsRemaining} Sanity damage taken.` : 'All Horror Hits resisted!'}`;
+    log.push(saveLine);
+
     if (isDoubles) {
       const s = loadTownState();
       const darkness = Number(s.darknessTrack ?? 0) + 2;
       saveTownState({ ...s, darknessTrack: darkness });
-      const outcome = `The prisoner's mad ravings bore into your soul. You take ${horrorTotal} Horror Hits (doubles!) — the Darkness Track advances by 2.`;
+      const outcome = `The prisoner's mad ravings bore into your soul. ${hitsRemaining > 0 ? `You take ${hitsRemaining} Sanity damage` : 'You resist the madness'} (doubles!) — the Darkness Track advances by 2.`;
       log.push(outcome);
-      await showResult(ctx, 'INSANE RAMBLINGS — Result', [rollLine, '', outcome]);
-      ctx.toast?.(`Insane Ramblings: ${horrorTotal} Horror Hits (doubles — Darkness +2).`);
+      await showResult(ctx, 'INSANE RAMBLINGS — Result', [rollLine, wpCheckLine, saveLine, '', outcome]);
+      ctx.toast?.(`Insane Ramblings: ${hitsRemaining} Sanity damage (doubles — Darkness +2).`);
     } else {
-      const outcome = `The prisoner's mad ravings leave you shaken. You take ${horrorTotal} Horror Hits.`;
+      const outcome = hitsRemaining > 0
+        ? `The prisoner's mad ravings leave you shaken. You take ${hitsRemaining} Sanity damage.`
+        : `The prisoner's mad ravings wash over you, but you steel your mind against the madness.`;
       log.push(outcome);
-      await showResult(ctx, 'INSANE RAMBLINGS — Result', [rollLine, '', outcome]);
-      ctx.toast?.(`Insane Ramblings: ${horrorTotal} Horror Hits.`);
+      await showResult(ctx, 'INSANE RAMBLINGS — Result', [rollLine, wpCheckLine, saveLine, '', outcome]);
+      ctx.toast?.(`Insane Ramblings: ${hitsRemaining} Sanity damage.`);
     }
     return { log };
   }
@@ -252,15 +343,21 @@ async function apply(roll, ctx) {
 
   // 11: "We need Six Men!" — Non-Law/Holy become Deputized; Manhunt double rewards
   if (roll === 11) {
-    const here = ctx.getHeroesAtShop?.('sheriffsOffice') || [id];
+    const rawHere = ctx.getHeroesAtShop?.('sheriffsOffice') || [id];
+    // Normalize: getHeroesAtShop may return hero objects or IDs
+    const heroIds = rawHere.map(entry =>
+      typeof entry === 'string' ? entry : entry?.id || entry?.localId
+    ).filter(Boolean);
+
     const deputized = [];
-    for (const hid of here) {
+    for (const hid of heroIds) {
       const h = ctx.getHeroById?.(hid) || {};
-      const isLaw = (h.keywords || []).includes('Law');
-      const isHoly = (h.keywords || []).includes('Holy');
+      const heroKw = Array.isArray(h.keywords) ? h.keywords : [];
+      const isLaw = heroKw.includes('Law');
+      const isHoly = heroKw.includes('Holy');
       if (!isLaw && !isHoly) {
         // Grant full Become Deputized bonus: Law keyword + Cunning +1 condition
-        const kw = [...(h.keywords || [])];
+        const kw = [...heroKw];
         if (!kw.includes('Law')) kw.push('Law');
         const cond = h.conditions || {};
         const temporary = Array.isArray(cond.temporary) ? [...cond.temporary] : [];
@@ -283,17 +380,24 @@ async function apply(roll, ctx) {
         deputized.push(h.name || 'Unknown Hero');
       }
     }
+    // Set manhunt double rewards flag for today
     const s = loadTownState();
     saveTownState({ ...s, sheriffsOfficeFlags: { ...(s.sheriffsOfficeFlags || {}), manhuntDoubleRewardsToday: true } });
+
     let outcome;
     if (deputized.length > 0) {
-      outcome = `The sheriff pins a badge on every willing volunteer: ${deputized.join(', ')} are now Deputized. Manhunt awards double XP & Gold today.`;
+      outcome = `The sheriff pins a badge on every willing volunteer: ${deputized.join(', ')} are now Deputized (+1 Cunning, Law keyword). Any Hero that Joins a Manhunt today gains double XP & Gold!`;
     } else {
-      outcome = 'All heroes here are already Law or Holy. Manhunt awards double XP & Gold today.';
+      outcome = 'All heroes here are already Law or Holy — no one needs deputizing. Any Hero that Joins a Manhunt today gains double XP & Gold!';
     }
     log.push(outcome);
-    await showResult(ctx, '"WE NEED SIX MEN!" — Result', [outcome]);
-    ctx.toast?.('"We need Six Men!" — Non-Law/Holy Heroes become Deputized. Manhunt double XP & Gold today.');
+    await showResult(ctx, '"WE NEED SIX MEN!" — Result', [
+      `Heroes at the Sheriff's Office: ${heroIds.length}`,
+      deputized.length > 0 ? `Deputized: ${deputized.join(', ')}` : 'No heroes needed deputizing.',
+      '',
+      outcome,
+    ]);
+    ctx.toast?.('"We need Six Men!" — Manhunt double XP & Gold today.');
     return { log };
   }
 

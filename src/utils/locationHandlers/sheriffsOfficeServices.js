@@ -157,6 +157,12 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
   const log = [];
   let endsVisit = !!svc?.endsVisit;
 
+  // Result prompt helper (same pattern as handler showResult but uses ui)
+  const showResult = async (title, lines) => {
+    const body = Array.isArray(lines) ? lines.join('\n') : lines;
+    await ui.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+  };
+
   const addGold = (delta, why) => {
     if (!Number.isFinite(delta) || delta === 0) return;
     const now = Number(hero?.gold ?? 0);
@@ -368,11 +374,19 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const rewardMult = doubleRewards ? 2 : 1;
 
       const flavor = [
-        '<i>You ride with the Law through the badlands, tracking sign and asking questions at lonely ranches.</i>',
-        '<i>Rumors lead to a canyon hideout — the posse circles wide as the sun dips low…</i>',
+        'You ride with the Law through the badlands, tracking sign and asking questions at lonely ranches.',
+        'Rumors lead to a canyon hideout — the posse circles wide as the sun dips low…',
       ];
-      if (doubleRewards) flavor.push('<b>"We need Six Men!" — Double XP & Gold rewards today!</b>');
+      if (doubleRewards) flavor.push('"We need Six Men!" — Double XP & Gold rewards today!');
       log.push(...flavor);
+
+      // Show intro prompt
+      await showResult('JOIN A MANHUNT', [
+        ...flavor,
+        '',
+        `Make a Cunning 5+ test. For each 5+ rolled, gain 20 XP${doubleRewards ? ' (doubled!)' : ''}.`,
+        'If at least one 6 is rolled, you track down the Outlaw for a shootout!',
+      ]);
 
       const C = getStat(hero, 'Cunning', totals);
       const dice = Math.max(1, C);
@@ -380,6 +394,9 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const arr = Array.isArray(huntRolls) ? huntRolls : [huntRolls];
       const successes = arr.filter((n) => n >= 5).length;
       const hasSix = arr.some((n) => n === 6);
+
+      const rollLine = `Rolled [${arr.join(', ')}] — ${successes} success${successes !== 1 ? 'es' : ''} (5+).`;
+      log.push(rollLine);
 
       if (successes > 0) {
         const xp = successes * 20 * rewardMult;
@@ -390,13 +407,22 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       }
 
       if (!hasSix) {
-        log.push('No sign of the main outlaw himself this time — you return to town.');
+        const outcome = 'No sign of the main outlaw himself this time — you return to town.';
+        log.push(outcome);
+        await showResult('MANHUNT — Result', [rollLine, '', successes > 0 ? `+${successes * 20 * rewardMult} XP from tracking.` : 'No XP earned.', '', outcome]);
         endsVisit = true;
         return { actions, log, ui: { title: svc.name, outcome: log.slice() }, endsVisit };
       }
 
       // ---- SHOOTOUT TRIGGERED (rolled at least one 6) ----
-      log.push('<b>The outlaw springs the ambush!</b> A gunfight erupts among the rocks.');
+      await showResult('MANHUNT — Shootout!', [
+        rollLine,
+        '',
+        'You tracked the outlaw to his hideout — but he springs an ambush!',
+        'A gunfight erupts among the rocks.',
+      ]);
+
+      log.push('The outlaw springs the ambush! A gunfight erupts among the rocks.');
       const shootoutRolls = await ui.roll(2, 6, 'Manhunt Shootout — 2D6 hits');
       const total = Array.isArray(shootoutRolls)
         ? shootoutRolls.reduce((a, b) => a + b, 0)
@@ -408,10 +434,8 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const level = Number(hero?.level ?? 1);
       const perHit = level >= 5 ? 8 : 4;
 
-      log.push(
-        `Shootout: rolled ${Array.isArray(shootoutRolls) ? shootoutRolls.join(' + ') : shootoutRolls} = ${total}. ` +
-        `Subtract Initiative ${initiative} → <b>${hits} hit(s)</b>.`
-      );
+      const shootLine = `Shootout: rolled [${Array.isArray(shootoutRolls) ? shootoutRolls.join(', ') : shootoutRolls}] = ${total}. Subtract Initiative ${initiative} → ${hits} hit(s).`;
+      log.push(shootLine);
 
       let finalWounds = 0;
       if (hits > 0) {
@@ -425,12 +449,11 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         });
 
         if (finalWounds > 0) {
-          log.push(`<b>Damage taken:</b> ${finalWounds} Wounds after Defense/Armor.`);
-          // ✅ Apply to currentHealth so it shows up on the sheet
+          log.push(`Damage taken: ${finalWounds} Wounds after Defense/Armor.`);
           const hpNow = Number(hero?.currentHealth ?? 0);
           pushUpdate(actions, { currentHealth: Math.max(0, hpNow - finalWounds) });
         } else {
-          log.push('<b>No damage</b> after Defense/Armor — you shrug off the ambush!');
+          log.push('No damage after Defense/Armor — you shrug off the ambush!');
         }
       } else {
         log.push('You duck behind cover — no hits get through!');
@@ -445,9 +468,13 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         const captureXP = 25 * rewardMult;
         addXP(captureXP, `Captured the outlaw${doubleRewards ? ' (doubled)' : ''}`);
         addGold(bountyGold, `Outlaw bounty (${bountyRoll} × $100${doubleRewards ? ' × 2' : ''})`);
-        log.push(`<b>Captured!</b> +${captureXP} XP and $${bountyGold} (rolled [${bountyRoll}] × $100${doubleRewards ? ' × 2' : ''}) for bringing the outlaw in.${doubleRewards ? ' (Doubled!)' : ''}`);
+        const captureLine = `Captured! +${captureXP} XP and $${bountyGold} (rolled [${bountyRoll}] × $100${doubleRewards ? ' × 2' : ''}).${doubleRewards ? ' (Doubled!)' : ''}`;
+        log.push(captureLine);
+        await showResult('MANHUNT — Victory!', [shootLine, '', `Wounds taken: ${finalWounds}`, '', captureLine]);
       } else {
-        log.push('You were knocked out in the shootout — the outlaw escapes!');
+        const koLine = 'You were knocked out in the shootout — the outlaw escapes!';
+        log.push(koLine);
+        await showResult('MANHUNT — Knocked Out', [shootLine, '', `Wounds taken: ${finalWounds}`, '', koLine]);
       }
 
       endsVisit = true;
@@ -462,12 +489,25 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const escortTarget = legendaryBonus ? 6 : 5;
       const escortPayPerPip = legendaryBonus ? 100 : 25;
 
+      // Show intro prompt
+      await showResult('ESCORT PRISONER TRANSFER', [
+        legendaryBonus
+          ? 'Legendary Outlaw "Sparky" Scafford is your prisoner today! Lore 6+ test required, but the reward is D8×$100.'
+          : 'You are escorting a prisoner to the federal Marshals. Make a Lore 5+ test to follow the best roads.',
+        '',
+        `Lore ${escortTarget}+ test. Success: D8 × $${escortPayPerPip}. Failure: lose all Grit.`,
+        'For each 1 rolled, roll a Travel Hazard.',
+      ]);
+
       const L = getStat(hero, 'Lore', totals);
       const dice = Math.max(1, L);
       const rolls = await ui.roll(dice, 6, `Escort — Lore ${L} (roll ${dice}d6 vs ${escortTarget}+)${legendaryBonus ? ' [Legendary Outlaw!]' : ''}`);
       const arr = Array.isArray(rolls) ? rolls : [rolls];
       const successes = arr.filter(n => n >= escortTarget).length;
       const ones = arr.filter(n => n === 1).length;
+
+      const rollLine = `Rolled [${arr.join(', ')}] — ${successes} success${successes !== 1 ? 'es' : ''} (Lore ${escortTarget}+).`;
+      log.push(rollLine);
 
       if (successes > 0) {
         let d8 = D8();
@@ -481,18 +521,24 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         }
         const payout = d8 * escortPayPerPip;
         addGold(payout, `Escort payoff (${d8} × $${escortPayPerPip})`);
-        log.push(`You safely delivered the prisoner. Gained $${payout} (D8 [${d8}] × $${escortPayPerPip}).${legendaryBonus ? ' (Legendary Outlaw bonus!)' : ''}`);
+        const successLine = `You safely delivered the prisoner. Gained $${payout} (D8 [${d8}] × $${escortPayPerPip}).${legendaryBonus ? ' (Legendary Outlaw bonus!)' : ''}`;
+        log.push(successLine);
+        await showResult('ESCORT — Success!', [rollLine, '', successLine]);
       } else {
         // Failed: ambushed by the prisoner's gang. Lose all Grit.
         pushUpdate(actions, { currentGrit: 0 });
-        log.push('Ambushed by the prisoner\'s gang! Surrounded, you have no choice but to let him Escape and return to Town empty-handed. You lose all Grit you currently have.');
+        const failLine = 'Ambushed by the prisoner\'s gang! Surrounded, you have no choice but to let him Escape and return to Town empty-handed. You lose all Grit you currently have.';
+        log.push(failLine);
+        await showResult('ESCORT — Failed!', [rollLine, '', failLine]);
       }
 
       if (ones > 0) {
         for (let i = 0; i < ones; i++) {
-          if (typeof ui.promptYesNo === 'function') {
-            await ui.promptYesNo({ message: 'A die showed <b>1</b>. Roll a <b>Travel Hazard</b> now? (DM resolves)' });
-          }
+          await showResult('ESCORT — Travel Hazard', [
+            `A die showed 1 (${i + 1} of ${ones}).`,
+            '',
+            'Roll a Travel Hazard for the escort route.',
+          ]);
           log.push('DM: Roll a Travel Hazard for the escort route (due to a 1).');
         }
       }
