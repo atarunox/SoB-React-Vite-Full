@@ -2227,17 +2227,34 @@ const foWorldArtifactOffer =
                 ...artifact,
                 id: artifact.id || `art_${Date.now()}`,
                 name: artName,
+                slot: artifact.slot || 'Misc',
                 type: artifact.type || 'Artifact',
                 originWorld: chosenWorld,
                 source: 'High Stakes Bet',
               });
               updateHero({ id: heroId, inventory: inv });
 
+              // Format artifact details for display
+              const detailLines = [];
+              if (artifact.effects && typeof artifact.effects === 'object') {
+                const stats = Object.entries(artifact.effects)
+                  .map(([k, v]) => `${k}: ${v > 0 ? '+' : ''}${v}`)
+                  .join(', ');
+                if (stats) detailLines.push(`Stats: ${stats}`);
+              }
+              if (artifact.range != null) detailLines.push(`Range: ${artifact.range}`);
+              if (artifact.shots != null) detailLines.push(`Shots: ${artifact.shots}`);
+              if (Array.isArray(artifact.rules) && artifact.rules.length) detailLines.push(...artifact.rules);
+              if (artifact.weight != null) detailLines.push(`Weight: ${artifact.weight}`);
+              if (artifact.darkStone) detailLines.push('Contains Dark Stone');
+              if (artifact.upgradeSlots) detailLines.push(`Upgrade Slots: ${artifact.upgradeSlots}`);
+              const artDetails = detailLines.join('\n');
+
               if (res.log) res.log.push(`High Stakes Bet: Drew ${chosenWorld} Artifact — ${artName}.`);
               uiApi.toast?.(`High Stakes Bet: Drew ${artName} from ${chosenWorld}!`);
 
               await uiApi.promptChoice?.(
-                `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${artifact.effect || artifact.description || artifact.rules?.join?.('\n') || ''}`,
+                `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${artDetails}`,
                 [{ label: 'Continue' }]
               );
             }

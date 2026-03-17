@@ -30,9 +30,16 @@ export default function SidebagsTab() {
   }
 
   const persist = (next) => {
-    const nextHero = { ...hero, sidebags: next, updatedAt: Date.now() };
+    const nextHero = {
+      ...hero,
+      sidebags: next,
+      // Explicitly null legacy fields so they overwrite in PosseContext's merge
+      sideBag: null,
+      sideBagTokens: null,
+      updatedAt: Date.now(),
+    };
     setHero(nextHero);           // immediate UI
-    updateHero({ id: hero.id || hero.localId, sidebags: next, updatedAt: Date.now() }); // persisted
+    updateHero({ id: hero.id || hero.localId, sidebags: next, sideBag: null, sideBagTokens: null, updatedAt: Date.now() }); // persisted
   };
 
   const addItem = () => {

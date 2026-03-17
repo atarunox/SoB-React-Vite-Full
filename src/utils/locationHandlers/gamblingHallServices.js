@@ -10,6 +10,26 @@ import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
 // ---------- world artifact helpers (for High Stakes Bet event 12) ----------
 const randFrom = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
 
+/** Format an artifact's stats/rules into readable text for display prompts. */
+function formatArtifactDetails(artifact) {
+  const lines = [];
+  if (artifact.effects && typeof artifact.effects === 'object') {
+    const stats = Object.entries(artifact.effects)
+      .map(([k, v]) => `${k}: ${v > 0 ? '+' : ''}${v}`)
+      .join(', ');
+    if (stats) lines.push(`Stats: ${stats}`);
+  }
+  if (artifact.range != null) lines.push(`Range: ${artifact.range}`);
+  if (artifact.shots != null) lines.push(`Shots: ${artifact.shots}`);
+  if (Array.isArray(artifact.rules) && artifact.rules.length) {
+    lines.push(...artifact.rules);
+  }
+  if (artifact.weight != null) lines.push(`Weight: ${artifact.weight}`);
+  if (artifact.darkStone) lines.push('Contains Dark Stone');
+  if (artifact.upgradeSlots) lines.push(`Upgrade Slots: ${artifact.upgradeSlots}`);
+  return lines.join('\n');
+}
+
 function normalizeWorldArtifacts(db) {
   if (!db) return {};
   if (db && typeof db === 'object' && !Array.isArray(db)) {
@@ -184,23 +204,26 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
         if (artifact) {
           const artName = artifact.name || artifact.title || artifact.id || 'Artifact';
           // Add artifact to hero inventory
+          const artItem = {
+            ...artifact,
+            id: artifact.id || `art_${Date.now()}`,
+            name: artName,
+            slot: artifact.slot || 'Misc',
+            type: artifact.type || 'Artifact',
+            originWorld: chosenWorld,
+            source: 'High Stakes Bet',
+          };
           ctx.updateHero?.(id, (h) => {
             const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
-            inv.push({
-              ...artifact,
-              id: artifact.id || `art_${Date.now()}`,
-              name: artName,
-              type: artifact.type || 'Artifact',
-              originWorld: chosenWorld,
-              source: 'High Stakes Bet',
-            });
+            inv.push(artItem);
             return { ...h, inventory: inv };
           });
+          const details = formatArtifactDetails(artifact);
           toast?.(`High Stakes Bet: Drew ${artName} from ${chosenWorld}!`);
           log.push(`High Stakes Bet: Drew ${chosenWorld} Artifact — ${artName}.`);
 
           await ctx.promptChoice?.(
-            `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${artifact.effect || artifact.description || ''}`,
+            `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${details}`,
             [{ label: 'Continue' }]
           );
         } else {

@@ -565,10 +565,14 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
   const aggregated = aggregateGearMods(gear);
 
   const persistSidebags = (nextSB) => {
-    const nextHero = { ...viewHero, sidebags: nextSB, updatedAt: Date.now() };
-    // Clear legacy flat-format fields so they don't re-merge on next render
-    delete nextHero.sideBag;
-    delete nextHero.sideBagTokens;
+    const nextHero = {
+      ...viewHero,
+      sidebags: nextSB,
+      // Explicitly null legacy fields so they overwrite in PosseContext's merge
+      sideBag: null,
+      sideBagTokens: null,
+      updatedAt: Date.now(),
+    };
     saveHero(nextHero);
     try { setViewHero && setViewHero(nextHero); } catch {}
   };
