@@ -1,6 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { useHero } from "../context/HeroContext";
 import { usePosse } from "../context/PosseContext";
+import { flattenTokens } from "../data/SidebagLibrary";
+
+const TOKEN_DESC_MAP = new Map(
+  (flattenTokens?.() || []).map(t => [t.name.toLowerCase(), t.description])
+);
 
 // minimal shape:
 // hero.sidebags = { capacity: number, items: [{ id, name, qty }] }
@@ -120,10 +125,13 @@ export default function SidebagsTab() {
           <div className="text-sm text-gray-500">No tokens in sidebags.</div>
         )}
         {sb.items.map((it) => (
-          <div key={it.id} className="border rounded-xl p-2 flex items-center justify-between">
-            <div>
+          <div key={it.id} className="border rounded-xl p-2 flex items-start justify-between">
+            <div className="pr-2">
               <div className="font-medium">{it.name}</div>
-              <div className="text-xs text-gray-600">Qty: {it.qty ?? 1}</div>
+              {TOKEN_DESC_MAP.get((it.name || '').toLowerCase()) && (
+                <div className="text-xs text-gray-700 mt-0.5">{TOKEN_DESC_MAP.get((it.name || '').toLowerCase())}</div>
+              )}
+              <div className="text-xs text-gray-600 mt-1">Qty: {it.qty ?? 1}</div>
             </div>
             <div className="flex items-center gap-1">
               <button className="btn btn-xs" onClick={() => changeQty(it.id, -1)}>-</button>

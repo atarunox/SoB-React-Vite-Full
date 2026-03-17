@@ -222,6 +222,7 @@ const isArtifact = (it) =>
 
 // ---------------- Sidebag presets ----------------
 const PRESETS_ALL = Array.isArray(flattenTokens?.()) ? flattenTokens() : [];
+const TOKEN_DESC_MAP = new Map(PRESETS_ALL.map(t => [t.name.toLowerCase(), t.description]));
 
 export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) {
   const posseCtx = usePosse();
@@ -1026,8 +1027,8 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
               <div key={it.id} className="border rounded-xl p-2 flex items-start justify-between bg-white">
                 <div className="pr-2">
                   <div className="font-medium">{it.name}</div>
-                  {it.description && (
-                    <div className="text-xs text-gray-700 mt-0.5">{it.description}</div>
+                  {(it.description || TOKEN_DESC_MAP.get((it.name || '').toLowerCase())) && (
+                    <div className="text-xs text-gray-700 mt-0.5">{it.description || TOKEN_DESC_MAP.get((it.name || '').toLowerCase())}</div>
                   )}
                   <div className="text-xs text-gray-600 mt-1">Qty: {it.qty ?? 1}</div>
                 </div>
