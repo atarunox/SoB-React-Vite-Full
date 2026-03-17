@@ -239,8 +239,8 @@ async function apply(roll, ctx) {
       return {
         ...h,
         currentGrit: nextGrit,
-        health: newHp, currentHealth: newHp,
-        sanity: newSan, currentSanity: newSan,
+        currentHealth: newHp,
+        currentSanity: newSan,
       };
     });
     const outcome = `The telegraph brings urgent news that steels your resolve. Recover 1 Grit. Healed ${healthHeal} Health and ${sanityHeal} Sanity.`;

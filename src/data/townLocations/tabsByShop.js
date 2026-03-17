@@ -99,9 +99,11 @@ import frontierOutpostBank from './FrontierTown/FrontierOutpost/frontierOutpostB
 import frontierOutpostTraining from './FrontierTown/FrontierOutpost/frontierOutpostTraining.js';
 import frontierOutpostTradingPost from './FrontierTown/FrontierOutpost/frontierOutpostTradingPost.js';
 
-// ---------------- Sheriff’s Office ----------------
+// ---------------- Sheriff's Office ----------------
 import sheriffsOfficeServices from './FrontierTown/SheriffsOffice/sheriffsOfficeServices.js';
 import sheriffsOfficeItems from './FrontierTown/SheriffsOffice/sheriffsOfficeItems.js';
+import sheriffsOfficeBounties from './FrontierTown/SheriffsOffice/sheriffsOfficeBounties.js';
+import sheriffsOfficeLawOnly from './FrontierTown/SheriffsOffice/sheriffsOfficeLawOnly.js';
 
 // ---------------- Smuggler's Den ----------------
 import smugglersDenItems from './FrontierTown/SmugglersDen/smugglersDenItems.js';
@@ -194,6 +196,8 @@ export const makeTabsByShop = (ctx) => ({
 
   sheriffsOffice: catList(
     cat('so_services', 'Services', sheriffsOfficeServices, ctx),
+    cat('so_bounties', 'Bounties & Wanted Posters', sheriffsOfficeBounties, ctx),
+    cat('so_law', 'Law and Order', sheriffsOfficeLawOnly, ctx),
     cat('so_items', 'Clothing, Badges & Guns', sheriffsOfficeItems, ctx),
   ),
 

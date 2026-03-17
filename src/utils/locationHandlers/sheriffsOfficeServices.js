@@ -181,7 +181,7 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
   };
 
   switch (svc?.id) {
-    /* ---------------- Sheriff’s Bounty ---------------- */
+    /* ---------------- Sheriff's Bounty ---------------- */
     case 'so_sheriffs_bounty': {
       // Draw Low Threat enemy if your UI supports it
       let target = null;
@@ -362,10 +362,16 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
 
     /* ---------------- Join a Manhunt (verbatim + full shootout/defense/armor) ---------------- */
     case 'so_join_manhunt': {
+      // Check if "We need Six Men!" event doubled rewards today
+      const tsManhunt = loadTownState() || {};
+      const doubleRewards = !!(tsManhunt.sheriffsOfficeFlags?.manhuntDoubleRewardsToday);
+      const rewardMult = doubleRewards ? 2 : 1;
+
       const flavor = [
         '<i>You ride with the Law through the badlands, tracking sign and asking questions at lonely ranches.</i>',
         '<i>Rumors lead to a canyon hideout — the posse circles wide as the sun dips low…</i>',
       ];
+      if (doubleRewards) flavor.push('<b>"We need Six Men!" — Double XP & Gold rewards today!</b>');
       log.push(...flavor);
 
       const C = getStat(hero, 'Cunning', totals);
@@ -376,9 +382,9 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const hasSix = arr.some((n) => n === 6);
 
       if (successes > 0) {
-        const xp = successes * 20;
-        addXP(xp, 'Manhunt reward');
-        log.push(`You ran down ${successes} of the outlaw’s crew: +${xp} XP.`);
+        const xp = successes * 20 * rewardMult;
+        addXP(xp, `Manhunt reward${doubleRewards ? ' (doubled)' : ''}`);
+        log.push(`You ran down ${successes} of the outlaw's crew: +${xp} XP${doubleRewards ? ' (doubled!)' : ''}.`);
       } else {
         log.push('You comb the hills to no avail — the trail goes cold.');
       }
@@ -435,10 +441,11 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const knockedOut = hpAfter <= 0;
       if (!knockedOut) {
         const bountyRoll = D6();
-        const bountyGold = bountyRoll * 100;
-        addXP(25, 'Captured the outlaw');
-        addGold(bountyGold, `Outlaw bounty (${bountyRoll} × $100)`);
-        log.push(`<b>Captured!</b> +25 XP and $${bountyGold} (rolled [${bountyRoll}] × $100) for bringing the outlaw in.`);
+        const bountyGold = bountyRoll * 100 * rewardMult;
+        const captureXP = 25 * rewardMult;
+        addXP(captureXP, `Captured the outlaw${doubleRewards ? ' (doubled)' : ''}`);
+        addGold(bountyGold, `Outlaw bounty (${bountyRoll} × $100${doubleRewards ? ' × 2' : ''})`);
+        log.push(`<b>Captured!</b> +${captureXP} XP and $${bountyGold} (rolled [${bountyRoll}] × $100${doubleRewards ? ' × 2' : ''}) for bringing the outlaw in.${doubleRewards ? ' (Doubled!)' : ''}`);
       } else {
         log.push('You were knocked out in the shootout — the outlaw escapes!');
       }
