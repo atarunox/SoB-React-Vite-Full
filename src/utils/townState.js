@@ -24,8 +24,8 @@ function newState() {
 
     // Town stay management
     townStayActive: true,       // false when heroes have left town
-    darknessTrack: 0,           // 0–6, forced to leave at 6
-    darknessMax: 6,             // configurable max darkness
+    darknessTrack: 1,           // starts at 1; roll D6 ≤ track → Town Event + reset to 1
+    darknessMax: 6,             // track goes up to 6
     darknessLog: [],            // [{day, roll, advanced, reason}]
 
     // Debug mode: bypasses day limits, allows resetting location events
@@ -120,7 +120,7 @@ export function loadTownState() {
     if (!('outpostBounty' in s)) s.outpostBounty = null;
     if (!s.ejectedHeroes || typeof s.ejectedHeroes !== 'object') s.ejectedHeroes = {};
     if (!('townStayActive' in s)) s.townStayActive = true;
-    if (!Number.isFinite(s.darknessTrack)) s.darknessTrack = 0;
+    if (!Number.isFinite(s.darknessTrack) || s.darknessTrack < 1) s.darknessTrack = 1;
     if (!Number.isFinite(s.darknessMax)) s.darknessMax = 6;
     if (!Array.isArray(s.darknessLog)) s.darknessLog = [];
     if (!('debugMode' in s)) s.debugMode = false;
@@ -440,19 +440,34 @@ function commit(state) {
 // ---- Darkness Track -------------------------------------------------------
 
 /**
- * Roll for darkness advancement (D6, 3+ advances).
- * Returns { roll, advanced, newLevel }.
+ * End-of-day Town Event Track check (per rulebook):
+ * - Roll D6. If roll ≤ current track number → Town Event triggers, track resets to 1.
+ * - If roll > track number → no event, track advances +1.
+ * - No Grit may be used on this roll.
+ * Returns { roll, townEvent, newLevel, trackWas }.
  */
-export function rollDarknessAdvance(state) {
+export function rollTownEventCheck(state) {
+  const trackWas = state.darknessTrack || 1;
   const roll = Math.floor(Math.random() * 6) + 1;
-  const advanced = roll >= 3;
-  if (advanced) {
-    state.darknessTrack = Math.min((state.darknessTrack || 0) + 1, state.darknessMax || 6);
+  const townEvent = roll <= trackWas;
+
+  if (townEvent) {
+    // Town Event triggers — reset track to 1
+    state.darknessTrack = 1;
+  } else {
+    // No event — advance track by 1
+    state.darknessTrack = Math.min(trackWas + 1, state.darknessMax || 6);
   }
-  const entry = { day: state.day, roll, advanced, reason: 'daily' };
+
+  const entry = { day: state.day, roll, trackWas, townEvent, newLevel: state.darknessTrack, reason: 'daily' };
   state.darknessLog = [...(state.darknessLog || []), entry];
   commit(state);
-  return { roll, advanced, newLevel: state.darknessTrack };
+  return { roll, townEvent, newLevel: state.darknessTrack, trackWas };
+}
+
+// Legacy alias
+export function rollDarknessAdvance(state) {
+  return rollTownEventCheck(state);
 }
 
 /**
@@ -469,7 +484,7 @@ export function advanceDarkness(state, amount = 1, reason = 'manual') {
  * Reset darkness track to 0.
  */
 export function resetDarkness(state) {
-  state.darknessTrack = 0;
+  state.darknessTrack = 1;
   state.darknessLog = [];
   return commit(state);
 }

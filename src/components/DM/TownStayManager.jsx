@@ -2,7 +2,7 @@
 //
 // DM panel for managing the town stay lifecycle:
 // - Day counter & advancement
-// - Darkness tracker (D6 roll, 3+ advances)
+// - Town Event Track (D6 roll: ≤ track → event + reset, > track → advance)
 // - End Day flow (lodging, daily event reset)
 // - End Town Stay / Leave Town
 // - Debug mode for testing locations
@@ -12,7 +12,7 @@ import {
   loadTownState,
   saveTownState,
   startNewDay,
-  rollDarknessAdvance,
+  rollTownEventCheck,
   advanceDarkness,
   resetDarkness,
   isDarknessFull,
@@ -113,9 +113,9 @@ export default function TownStayManager({ posse = [], updateHero }) {
     refresh();
   };
 
-  const handleRollDarkness = () => {
+  const handleRollTownEvent = () => {
     const state = loadTownState();
-    const result = rollDarknessAdvance(state);
+    const result = rollTownEventCheck(state);
     setLastDarknessRoll(result);
     refresh();
   };
@@ -128,7 +128,7 @@ export default function TownStayManager({ posse = [], updateHero }) {
 
   const handleReduceDarkness = () => {
     const state = loadTownState();
-    state.darknessTrack = Math.max(0, (state.darknessTrack || 0) - 1);
+    state.darknessTrack = Math.max(1, (state.darknessTrack || 1) - 1);
     saveTownState(state);
     refresh();
   };
@@ -200,17 +200,21 @@ export default function TownStayManager({ posse = [], updateHero }) {
     refresh();
   };
 
-  // ---- Darkness Track Visual ----
+  // ---- Town Event Track Visual ----
   const darknessBoxes = [];
   const max = ts.darknessMax || 6;
+  const currentTrack = ts.darknessTrack || 1;
   for (let i = 1; i <= max; i++) {
-    const filled = i <= (ts.darknessTrack || 0);
+    const filled = i <= currentTrack;
+    const isCurrent = i === currentTrack;
     darknessBoxes.push(
       <div
         key={i}
         className={`w-8 h-8 rounded border-2 flex items-center justify-center text-sm font-bold transition-colors ${
-          filled
-            ? 'bg-purple-800 border-purple-900 text-white'
+          isCurrent
+            ? 'bg-purple-800 border-purple-900 text-white ring-2 ring-purple-400'
+            : filled
+            ? 'bg-purple-300 border-purple-400 text-purple-800'
             : 'bg-gray-100 border-gray-300 text-gray-400'
         }`}
       >
@@ -258,14 +262,18 @@ export default function TownStayManager({ posse = [], updateHero }) {
         </div>
       </div>
 
-      {/* ====== DARKNESS TRACKER ====== */}
+      {/* ====== TOWN EVENT TRACK ====== */}
       <div className="p-3 rounded border bg-white/80">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold text-base">Darkness Track</h3>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-bold text-base">Town Event Track</h3>
           <span className="text-sm text-gray-600">
-            {ts.darknessTrack || 0} / {max}
+            Level {currentTrack} / {max}
           </span>
         </div>
+        <p className="text-xs text-gray-500 mb-2">
+          End of day: roll D6. Roll ≤ {currentTrack} → Town Event triggers (track resets to 1).
+          Roll &gt; {currentTrack} → no event (track advances +1). No Grit allowed.
+        </p>
 
         <div className="flex gap-1 mb-3">
           {darknessBoxes}
@@ -275,43 +283,45 @@ export default function TownStayManager({ posse = [], updateHero }) {
           <div className="flex gap-2 flex-wrap items-center">
             <button
               className="btn btn-sm btn-primary"
-              onClick={handleRollDarkness}
-              title="Roll D6 — on 3+, darkness advances"
+              onClick={handleRollTownEvent}
+              title={`Roll D6 — ≤${currentTrack} triggers Town Event`}
             >
-              Roll Darkness (D6)
+              Roll Town Event Check (D6)
             </button>
             <button
               className="btn btn-sm btn-outline"
               onClick={handleAdvanceDarkness}
-              title="Manually advance darkness by 1"
+              title="Manually advance track by 1"
             >
-              +1 Darkness
+              +1 Track
             </button>
             <button
               className="btn btn-sm btn-outline"
               onClick={handleReduceDarkness}
-              title="Reduce darkness by 1"
-              disabled={(ts.darknessTrack || 0) === 0}
+              title="Reduce track by 1"
+              disabled={currentTrack <= 1}
             >
-              -1 Darkness
+              -1 Track
             </button>
           </div>
         )}
 
         {lastDarknessRoll && (
           <div className={`mt-2 p-2 rounded text-sm ${
-            lastDarknessRoll.advanced ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-700'
+            lastDarknessRoll.townEvent
+              ? 'bg-red-100 text-red-800 border border-red-300'
+              : 'bg-green-100 text-green-800'
           }`}>
-            Rolled <strong>[{lastDarknessRoll.roll}]</strong> —{' '}
-            {lastDarknessRoll.advanced
-              ? `Darkness advances to ${lastDarknessRoll.newLevel}!`
-              : 'No advance (needed 3+).'}
+            Rolled <strong>[{lastDarknessRoll.roll}]</strong> vs track level {lastDarknessRoll.trackWas} —{' '}
+            {lastDarknessRoll.townEvent
+              ? 'TOWN EVENT! Roll 2D6 on the Town Event Chart. Track resets to 1.'
+              : `Safe! Track advances to ${lastDarknessRoll.newLevel}.`}
           </div>
         )}
 
         {darknessFull && active && (
           <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-sm text-red-800 font-medium">
-            The Darkness has consumed the town! Heroes are forced to leave.
+            Track at maximum! Town Event is almost certain. Heroes should leave town.
           </div>
         )}
       </div>
@@ -335,8 +345,8 @@ export default function TownStayManager({ posse = [], updateHero }) {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            End Day: choose lodging (Hotel/Camp), advance to next day, roll for darkness.
-            Leave Town: ends the town stay entirely.
+            End Day: choose lodging (Hotel $10 / Camp free), advance to next day.
+            Use "Roll Town Event Check" at end of each day (after Day 1). Leave Town ends the stay.
           </p>
         </div>
       )}
@@ -394,7 +404,7 @@ export default function TownStayManager({ posse = [], updateHero }) {
       {(ts.darknessLog || []).length > 0 && (
         <details className="p-3 rounded border bg-white/80">
           <summary className="font-bold text-sm cursor-pointer">
-            Darkness Log ({ts.darknessLog.length} entries)
+            Town Event Log ({ts.darknessLog.length} entries)
           </summary>
           <div className="mt-2 space-y-1 text-xs max-h-40 overflow-y-auto">
             {[...ts.darknessLog].reverse().map((entry, i) => (
@@ -402,8 +412,8 @@ export default function TownStayManager({ posse = [], updateHero }) {
                 <span className="text-gray-400">Day {entry.day}</span>
                 {entry.roll != null && (
                   <span>
-                    Rolled [{entry.roll}] —{' '}
-                    {entry.advanced ? 'Advanced' : 'No advance'}
+                    Rolled [{entry.roll}] vs {entry.trackWas ?? '?'} —{' '}
+                    {entry.townEvent ? 'TOWN EVENT (reset to 1)' : `Safe (track → ${entry.newLevel})`}
                   </span>
                 )}
                 {entry.amount != null && (
@@ -504,9 +514,9 @@ export default function TownStayManager({ posse = [], updateHero }) {
                   refresh();
                 }}
               >
-                Reset Darkness Track
+                Reset Town Event Track
               </button>
-              <span className="text-xs text-gray-500">Sets darkness back to 0</span>
+              <span className="text-xs text-gray-500">Resets track back to 1</span>
             </div>
           </div>
         )}
@@ -520,8 +530,8 @@ export default function TownStayManager({ posse = [], updateHero }) {
               End of Day {ts.day || 1} — Choose Lodging
             </h3>
             <p className="text-sm text-gray-600 mb-3">
-              Hotel costs $25 per hero (heal 1 Wound and 1 Sanity).
-              Camp is free but heroes risk camp events.
+              Hotel costs $10 per hero (safe, no hazard roll).
+              Camp is free but each hero must roll 2D6 on the Camp Site Hazard Chart.
             </p>
             <div className="space-y-2">
               {posse.map(h => {
@@ -540,7 +550,7 @@ export default function TownStayManager({ posse = [], updateHero }) {
                           checked={(lodgingChoices[hid] || 'Hotel') === 'Hotel'}
                           onChange={() => setLodgingChoices(p => ({ ...p, [hid]: 'Hotel' }))}
                         />
-                        <span className="text-sm">Hotel ($25)</span>
+                        <span className="text-sm">Hotel ($10)</span>
                       </label>
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input
