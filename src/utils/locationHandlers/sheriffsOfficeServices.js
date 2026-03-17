@@ -407,10 +407,11 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         `Subtract Initiative ${initiative} → <b>${hits} hit(s)</b>.`
       );
 
+      let finalWounds = 0;
       if (hits > 0) {
         log.push(`Each hit deals ${perHit} Wounds (pre-Defense).`);
 
-        const finalWounds = await resolveDefensePerHitThenArmorPerWound({
+        finalWounds = await resolveDefensePerHitThenArmorPerWound({
           ui, hero,
           hits,
           woundsPerHit: perHit,
@@ -430,8 +431,7 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       }
 
       // Unless KO'd, you capture the Outlaw! Gain 25 XP and D6 × $100.
-      const hpAfter = Number(hero?.currentHealth ?? 0) -
-        (hits > 0 ? Math.max(0, hits * perHit) : 0); // rough check
+      const hpAfter = Number(hero?.currentHealth ?? 0) - finalWounds;
       const knockedOut = hpAfter <= 0;
       if (!knockedOut) {
         const bountyRoll = D6();
@@ -449,11 +449,17 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
 
     /* ---------------- Escort Prisoner Transfer ---------------- */
     case 'so_escort_prisoner': {
+      // Check if Legendary Outlaw event (roll 12) upgraded this service today
+      const tsEscort = loadTownState() || {};
+      const legendaryBonus = !!(tsEscort.sheriffsOfficeFlags?.escortLegendaryBonusToday);
+      const escortTarget = legendaryBonus ? 6 : 5;
+      const escortPayPerPip = legendaryBonus ? 100 : 25;
+
       const L = getStat(hero, 'Lore', totals);
       const dice = Math.max(1, L);
-      const rolls = await ui.roll(dice, 6, `Escort — Lore ${L} (roll ${dice}d6 vs 5+)`);
+      const rolls = await ui.roll(dice, 6, `Escort — Lore ${L} (roll ${dice}d6 vs ${escortTarget}+)${legendaryBonus ? ' [Legendary Outlaw!]' : ''}`);
       const arr = Array.isArray(rolls) ? rolls : [rolls];
-      const successes = arr.filter(n => n >= 5).length;
+      const successes = arr.filter(n => n >= escortTarget).length;
       const ones = arr.filter(n => n === 1).length;
 
       if (successes > 0) {
@@ -466,9 +472,9 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
           const n = Math.floor(Number(raw));
           if (Number.isFinite(n) && n >= 1 && n <= 8) d8 = n;
         }
-        const payout = d8 * 25;
-        addGold(payout, `Escort payoff (${d8} × $25)`);
-        log.push(`You safely delivered the prisoner. Gained $${payout} (D8 [${d8}] × $25).`);
+        const payout = d8 * escortPayPerPip;
+        addGold(payout, `Escort payoff (${d8} × $${escortPayPerPip})`);
+        log.push(`You safely delivered the prisoner. Gained $${payout} (D8 [${d8}] × $${escortPayPerPip}).${legendaryBonus ? ' (Legendary Outlaw bonus!)' : ''}`);
       } else {
         // Failed: ambushed by the prisoner's gang. Lose all Grit.
         pushUpdate(actions, { currentGrit: 0 });

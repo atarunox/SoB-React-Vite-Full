@@ -178,7 +178,7 @@ async function apply(roll, ctx) {
     ctx.updateHero?.(id, (h) => {
       const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
       const nextSanity = Math.max(0, curSanity - horrorTotal);
-      return { ...h, sanity: nextSanity, currentSanity: nextSanity };
+      return { ...h, currentSanity: nextSanity };
     });
 
     const rollLine = `Rolled [${die1}, ${die2}] = ${horrorTotal} Horror Hits${isDoubles ? ' (DOUBLES!)' : ''}.`;
@@ -259,7 +259,27 @@ async function apply(roll, ctx) {
       const isLaw = (h.keywords || []).includes('Law');
       const isHoly = (h.keywords || []).includes('Holy');
       if (!isLaw && !isHoly) {
-        ctx.addKeyword?.(hid, 'Deputized');
+        // Grant full Become Deputized bonus: Law keyword + Cunning +1 condition
+        const kw = [...(h.keywords || [])];
+        if (!kw.includes('Law')) kw.push('Law');
+        const cond = h.conditions || {};
+        const temporary = Array.isArray(cond.temporary) ? [...cond.temporary] : [];
+        temporary.push({
+          id: 'deputized_cunning_plus1',
+          name: 'Deputized',
+          type: 'temporary',
+          effect: '+1 Cunning and Keyword Law. At end of each Adventure, roll D6 — on 1-3 lose this bonus.',
+          statMods: { Cunning: +1 },
+          active: true,
+          expires: 'endOfAdventureCheck',
+          expiryRoll: { die: 6, loseOn: [1, 2, 3] },
+          addedAt: Date.now(),
+        });
+        ctx.updateHero?.(hid, (prev) => ({
+          ...prev,
+          keywords: kw,
+          conditions: { ...cond, temporary },
+        }));
         deputized.push(h.name || 'Unknown Hero');
       }
     }
