@@ -22,6 +22,15 @@ function newState() {
     startedAt: now,      // timestamp when this town stay began
     day: 1,              // starts at Day 1
 
+    // Town stay management
+    townStayActive: true,       // false when heroes have left town
+    darknessTrack: 0,           // 0–6, forced to leave at 6
+    darknessMax: 6,             // configurable max darkness
+    darknessLog: [],            // [{day, roll, advanced, reason}]
+
+    // Debug mode: bypasses day limits, allows resetting location events
+    debugMode: false,
+
     // Global rules used by handlers / reroll options, etc.
     globalRules: {
       rerollFlexPlusMinus1: true, // set to false if you want it opt-in instead
@@ -110,6 +119,11 @@ export function loadTownState() {
     if (!s.flags || typeof s.flags !== 'object') s.flags = {};
     if (!('outpostBounty' in s)) s.outpostBounty = null;
     if (!s.ejectedHeroes || typeof s.ejectedHeroes !== 'object') s.ejectedHeroes = {};
+    if (!('townStayActive' in s)) s.townStayActive = true;
+    if (!Number.isFinite(s.darknessTrack)) s.darknessTrack = 0;
+    if (!Number.isFinite(s.darknessMax)) s.darknessMax = 6;
+    if (!Array.isArray(s.darknessLog)) s.darknessLog = [];
+    if (!('debugMode' in s)) s.debugMode = false;
 
     return s;
   } catch (e) {
@@ -419,6 +433,120 @@ export function isLocationDestroyed(shopId) {
 // ---- Commit ---------------------------------------------------------------
 
 function commit(state) {
+  saveTownState(state);
+  return state;
+}
+
+// ---- Darkness Track -------------------------------------------------------
+
+/**
+ * Roll for darkness advancement (D6, 3+ advances).
+ * Returns { roll, advanced, newLevel }.
+ */
+export function rollDarknessAdvance(state) {
+  const roll = Math.floor(Math.random() * 6) + 1;
+  const advanced = roll >= 3;
+  if (advanced) {
+    state.darknessTrack = Math.min((state.darknessTrack || 0) + 1, state.darknessMax || 6);
+  }
+  const entry = { day: state.day, roll, advanced, reason: 'daily' };
+  state.darknessLog = [...(state.darknessLog || []), entry];
+  commit(state);
+  return { roll, advanced, newLevel: state.darknessTrack };
+}
+
+/**
+ * Manually advance darkness by a given amount (from events, cards, etc.).
+ */
+export function advanceDarkness(state, amount = 1, reason = 'manual') {
+  state.darknessTrack = Math.min((state.darknessTrack || 0) + amount, state.darknessMax || 6);
+  const entry = { day: state.day, amount, reason };
+  state.darknessLog = [...(state.darknessLog || []), entry];
+  return commit(state);
+}
+
+/**
+ * Reset darkness track to 0.
+ */
+export function resetDarkness(state) {
+  state.darknessTrack = 0;
+  state.darknessLog = [];
+  return commit(state);
+}
+
+/**
+ * Check if darkness has reached max (heroes forced to leave).
+ */
+export function isDarknessFull(state) {
+  return (state.darknessTrack || 0) >= (state.darknessMax || 6);
+}
+
+// ---- Town Stay Management -------------------------------------------------
+
+/**
+ * End the town stay. Heroes are leaving town.
+ */
+export function endTownStay(state) {
+  state.townStayActive = false;
+  return commit(state);
+}
+
+/**
+ * Start a fresh town stay (resets everything).
+ */
+export function startNewTownStay() {
+  const state = newState();
+  saveTownState(state);
+  return state;
+}
+
+/**
+ * Check if the town stay is still active.
+ */
+export function isTownStayActive(state) {
+  return state?.townStayActive !== false;
+}
+
+// ---- Debug Mode -----------------------------------------------------------
+
+export function setDebugMode(state, enabled) {
+  state.debugMode = !!enabled;
+  return commit(state);
+}
+
+export function isDebugMode(state) {
+  return !!state?.debugMode;
+}
+
+/**
+ * Reset a single location event (debug only).
+ */
+export function resetLocationEvent(shopId) {
+  const state = loadTownState();
+  if (state.locationEvents?.[shopId]) {
+    delete state.locationEvents[shopId];
+    saveTownState(state);
+  }
+  return state;
+}
+
+/**
+ * Reset ALL location events (debug only).
+ */
+export function resetAllLocationEvents() {
+  const state = loadTownState();
+  state.locationEvents = {};
+  saveTownState(state);
+  return state;
+}
+
+/**
+ * Reset visits for today (debug only — allows re-visiting).
+ */
+export function resetVisitsForToday() {
+  const state = loadTownState();
+  const day = state.day || 1;
+  state.visitByDay[day] = {};
   saveTownState(state);
   return state;
 }
