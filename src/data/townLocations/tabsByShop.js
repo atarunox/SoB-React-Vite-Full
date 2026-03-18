@@ -129,6 +129,9 @@ import desertMarketplaceBackAlleys from './BlastedWastesTown/DesertMarketplace/d
 import desertMarketplaceItems from './BlastedWastesTown/DesertMarketplace/desertMarketplaceItems.js';
 import desertMarketplaceTransports from './BlastedWastesTown/DesertMarketplace/desertMarketplaceTransports.js';
 
+// ---------------- Temple ----------------
+import templeServices from './BlastedWastesTown/Temple/templeServices.js';
+
 // ============================================================================
 // MAKE TABS BY SHOP (ctx aware)
 // ============================================================================
@@ -228,6 +231,10 @@ export const makeTabsByShop = (ctx) => ({
     cat('mo_items', 'Mining Gear & Explosives', miningOperationItems, ctx),
     cat('mo_fungus', 'Fungus Crops', miningOperationFungus, ctx),
     cat('mo_work', 'Work Down in the Tunnels', miningOperationServices, ctx),
+  ),
+
+  temple: catList(
+    cat('temple_services', 'Blessings, Items, and Services', templeServices, ctx),
   ),
 
   desertMarketplace: catList(
