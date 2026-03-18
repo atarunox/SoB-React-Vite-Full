@@ -17,6 +17,7 @@ import blacksmith from '../data/townLocations/blacksmith.js';
 import saloon from '../data/townLocations/saloon.js';
 import smugglersDen from '../data/townLocations/smugglersDen.js';
 import streetMarket from '../data/townLocations/streetMarket.js';
+import desertMarketplace from '../data/townLocations/desertMarketplace.js';
 
 // Normalizer so 'gamblingHall' → 'gambling', etc.
 import { resolveShopId } from './locationEventText';
@@ -37,6 +38,7 @@ import { handleBlacksmithEvent } from './locationHandlers/blacksmithHandler';
 import { handleSaloonEvent } from './locationHandlers/saloonHandler';
 import { handleSmugglersDenEvent } from './locationHandlers/smugglersDenHandler';
 import { handleStreetMarketEvent } from './locationHandlers/streetMarketHandler';
+import { handleDesertMarketplaceEvent } from './locationHandlers/desertMarketplaceHandler';
 
 import { calculateCurrentStats } from './calculateStats';
 import { withConditionAppended } from './mergeConditions';
@@ -136,6 +138,7 @@ const REGISTRY = {
   [saloon.id]:          { data: saloon,                    handler: handleSaloonEvent },
   [smugglersDen.id]:    { data: smugglersDen,              handler: handleSmugglersDenEvent },
   [streetMarket.id]:    { data: streetMarket,              handler: handleStreetMarketEvent },
+  [desertMarketplace.id]: { data: desertMarketplace,      handler: handleDesertMarketplaceEvent },
 };
 
 // ---------------------------------------------------------------------------
@@ -177,6 +180,7 @@ addAlias(blacksmith.id, 'blacksmith');
 addAlias(saloon.id, 'saloon');
 addAlias(smugglersDen.id, 'smugglersDen', "smuggler's den");
 addAlias(streetMarket.id, 'streetMarket', 'street market', 'market', 'street_market');
+addAlias(desertMarketplace.id, 'desertMarketplace', 'desert marketplace', 'desert_marketplace');
 
 // Normalize any incoming shop key to the canonical registry id.
 function normalizeShopKey(raw) {
