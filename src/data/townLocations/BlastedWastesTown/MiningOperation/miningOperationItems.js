@@ -73,7 +73,7 @@ export default [
     effects: [
       'Range: 10. Shots: 2. Damage +2.',
       'You must discard 1 Scrap Token for each Shot fired.',
-      'Every model adjacent to the target also takes 1 Hit that does D6+1 Damage.',
+      'Every model adjacent to the target also takes 1 Hit that does D6-1 Damage.',
     ],
     modifiers: { damageBonus: 2 },
   },

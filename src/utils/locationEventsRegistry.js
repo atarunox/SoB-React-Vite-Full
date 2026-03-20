@@ -17,6 +17,7 @@ import { handleSaloonEvent }              from './locationHandlers/saloonHandler
 import { handleSmugglersDenEvent }        from './locationHandlers/smugglersDenHandler';
 import { handleStreetMarketEvent }        from './locationHandlers/streetMarketHandler';
 import { handleScavengerDocEvent }       from './locationHandlers/scavengerDocHandler';
+import { handleMiningOperationEvent }    from './locationHandlers/miningOperationHandler';
 
 // Context + display helpers
 import { makeLocEventCtx } from './locationEventContext';
@@ -111,6 +112,7 @@ export const locationEventHandlers = {
   smugglersDen:     { apply: (roll, ctx) => runHandler('smugglersDen', handleSmugglersDenEvent, roll, ctx) },
   streetMarket:     { apply: (roll, ctx) => runHandler('streetMarket', handleStreetMarketEvent, roll, ctx) },
   scavengerDoc:     { apply: (roll, ctx) => runHandler('scavengerDoc', handleScavengerDocEvent, roll, ctx) },
+  miningOperation:  { apply: (roll, ctx) => runHandler('miningOperation', handleMiningOperationEvent, roll, ctx) },
 
   // Aliases
   gamblingHall:     { apply: (roll, ctx) => runHandler('gambling', handleGamblingHallEvent, roll, ctx) },
@@ -125,4 +127,5 @@ export const locationEventHandlers = {
   smith:            { apply: (roll, ctx) => runHandler('blacksmith', handleBlacksmithEvent, roll, ctx) },
   market:           { apply: (roll, ctx) => runHandler('streetMarket', handleStreetMarketEvent, roll, ctx) },
   smugglers:        { apply: (roll, ctx) => runHandler('smugglersDen', handleSmugglersDenEvent, roll, ctx) },
+  mining:           { apply: (roll, ctx) => runHandler('miningOperation', handleMiningOperationEvent, roll, ctx) },
 };

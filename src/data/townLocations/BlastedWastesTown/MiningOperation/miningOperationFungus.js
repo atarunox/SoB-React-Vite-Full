@@ -17,8 +17,8 @@ export default [
   },
 
   {
-    id: 'mo_balldo_stems',
-    name: 'Balldo Stems',
+    id: 'mo_bauldo_stems',
+    name: 'Bauldo Stems',
     type: 'gear',
     cost: { gold: 150 },
     slot: 'Fungus',
@@ -39,11 +39,11 @@ export default [
     tags: ['Gear', 'Fungus'],
     limit: '5 Fungus Total',
     effects: [
-      'Discard to consume. Until the end of the Adventure, you are +1 Health, +1 Strength, and +1 Move.',
+      'Discard to consume. Until the end of the Adventure, you are +5 Health, +1 Strength, and -1 Move.',
       'Limit 1 Fungus Effect at a time.',
     ],
     rules: { consumesOnUse: true, fungusEffect: true },
-    modifiers: { health: 1, strength: 1, move: 1 },
+    modifiers: { health: 5, strength: 1, move: -1 },
   },
 
   {
