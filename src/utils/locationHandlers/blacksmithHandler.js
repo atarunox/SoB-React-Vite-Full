@@ -3,24 +3,31 @@ import { loadTownState, saveTownState } from '../../utils/townState';
 import { getEventDisplay } from '../locationEventText';
 import blacksmithData from '../../data/townLocations/FrontierTown/Blacksmith/blacksmith.js';
 import { mineArtifacts } from '../../data/items/mineArtifacts';
-import { calculateCurrentStats } from '../calculateStats';
 
-// NEW: condition notes for permanent max stat changes
 import { makeMaxChangeNote, pushConditionNote } from '../../utils/conditionNotes';
-import { d6, roll2d6 as d2d6 } from '../../utils/diceHelpers';
+import { d6 as _d6, roll2d6 as d2d6 } from '../../utils/diceHelpers';
+
+// Use ctx.d6 when available (respects manual roll mode); fallback to auto-roll
+const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
+
 const shopId = blacksmithData?.id || 'blacksmith';
 
-// Resolve a hero's effective stat value (includes gear/skills/conditions)
-function getEffectiveStat(hero, statName) {
-  if (!hero) return 0;
-  try {
-    const { stats = {} } = calculateCurrentStats(hero);
-    const v = Number(stats[statName]) || 0;
-    if (v > 0) return v;
-  } catch {}
-  return Number(hero?.stats?.[statName] ?? hero?.[statName] ?? 0);
+// ---------- result formatting helpers ----------
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+  }
+  return null;
 }
 
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+}
+
+// ---------- townState helpers ----------
 function getShopMods() {
   const s = loadTownState();
   const cur =
@@ -32,7 +39,6 @@ function getShopMods() {
     const artifact = cur.rareFindCard || null;
     cur.rareFind = artifact ? { priceDS, artifact } : null;
 
-    // Clean legacy keys and persist migration
     delete cur.rareFindDSPrice;
     delete cur.rareFindCard;
 
@@ -50,13 +56,12 @@ function patchShopMods(patch) {
   const next = { ...cur, ...patch };
   const updated = { ...s, shopMods: { ...(s.shopMods || {}), [shopId]: next } };
   saveTownState(updated);
-  // Optional: nudge UI to refresh price banners, sale badges, etc.
   try {
     window.dispatchEvent(new CustomEvent('shopmods:changed', { detail: { shopId, mods: next } }));
   } catch {}
 }
 
-function display(roll) {
+export function display(roll) {
   return (
     getEventDisplay(shopId, roll) || {
       title: 'Blacksmith Event',
@@ -74,7 +79,6 @@ function drawMineArtifact() {
   const i = Math.floor(Math.random() * pool.length);
   const raw = pool[i] || {};
 
-  // Ensure a stable id
   const safeId =
     raw.id ||
     `mine_art_${i}_${String(raw.name || 'artifact')
@@ -82,7 +86,6 @@ function drawMineArtifact() {
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '')}`;
 
-  // Normalize cost (UI expects cost object)
   const cost =
     raw.cost && typeof raw.cost === 'object'
       ? { ...raw.cost }
@@ -90,7 +93,6 @@ function drawMineArtifact() {
       ? { gold: Number(raw.value) }
       : { gold: 0 };
 
-  // Normalize effects to array of strings
   const effects = Array.isArray(raw.effects)
     ? raw.effects
     : raw.effect
@@ -129,107 +131,101 @@ const FREE_ATTACK_UPGRADE = {
   tags: ['Blacksmith', 'Free Upgrade'],
 };
 
-// Roll Nd6 skill check inline so we can capture and display the dice results
-function rollStatCheck(statVal, target) {
-  const dice = Math.max(1, statVal);
-  const rolls = Array.from({ length: dice }, () => d6());
-  const passed = rolls.some((r) => r >= target);
-  const rollStr = rolls.join(', ');
-  return { passed, rolls, rollStr };
-}
+// ---------- mechanics (apply) ----------
+export async function apply(roll, ctx) {
+  const id = ctx.getActiveHeroId?.();
+  if (!id) return { log: [] };
 
-// --- mechanics -------------------------------------------------------------
-async function apply(roll, ctx) {
-  const lore = blacksmithData[roll] || {};
+  const info = display(roll);
+  const log = [];
 
-  // 2: Dark Stone Poisoning (perm Max Health loss on fail)
+  log.push(`[Blacksmith] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
+
+  // 2: Dark Stone Poisoning – choose Strength 5+ or Agility 5+; fail: perm Max Health loss
   if (roll === 2) {
-    const id = ctx.getActiveHeroId();
-    const hero = ctx.getHeroById?.(id);
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
     const heroName = hero?.name || 'Hero';
-    const strVal = getEffectiveStat(hero, 'Strength');
-    const agiVal = getEffectiveStat(hero, 'Agility');
+    const lore2 = `DARK STONE POISONING\n${info.lore}`;
 
-    // Flavor text + named choice prompt
-    const raw = window.prompt(
-      `DARK STONE POISONING\n\n` +
-      `${lore.effect}\n\n` +
-      `${heroName} must choose a test:\n\n` +
-      `  1  =  Strength 5+  (overpower him)  —  You have ${strVal} Strength (${strVal}d6)\n` +
-      `  2  =  Agility 5+  (dodge and trip him)  —  You have ${agiVal} Agility (${agiVal}d6)\n\n` +
-      `Enter 1 or 2:`,
-      '1'
+    const testChoice = await ctx.promptChoice?.(
+      `DARK STONE POISONING\n${info.lore}\n\n${heroName} must choose a test:`,
+      [
+        { label: 'Overpower him (Strength 5+ test)' },
+        { label: 'Dodge and trip him (Agility 5+ test)' },
+      ]
     );
-    const pick = String(raw).trim();
-    const stat = pick === '2' ? 'Agility' : 'Strength';
-    const statVal = pick === '2' ? agiVal : strVal;
-    const { passed, rollStr } = rollStatCheck(statVal, 5);
+
+    let result, checkLine;
+    if (testChoice === 1) {
+      result = await ctx.doSkillCheck(id, {
+        stat: 'Agility', target: 5, returnDetails: true,
+        message: `${lore2}\n${heroName} tries to dodge and trip the crazed blacksmith!`,
+      });
+      checkLine = formatCheckResult(result, 'Agility', 5);
+    } else {
+      result = await ctx.doSkillCheck(id, {
+        stat: 'Strength', target: 5, returnDetails: true,
+        message: `${lore2}\n${heroName} tries to overpower the crazed blacksmith!`,
+      });
+      checkLine = formatCheckResult(result, 'Strength', 5);
+    }
+    if (checkLine) log.push(checkLine);
+    const passed = result?.passed ?? result;
 
     if (!passed) {
-      const loss = d6();
-      ctx.updateHero(id, (h) => {
-        const prevMax =
-          Number(h.maxHealth ?? h.max_health ?? h.healthMax ?? 10);
+      const loss = await ctxD6(ctx, 'Dark Stone Poisoning — Roll 1d6 for Max Health loss');
+      const lossLine = `Rolled [${loss}] for Max Health loss.`;
+      log.push(lossLine);
+      ctx.updateHero?.(id, (h) => {
+        const prevMax = Number(h.maxHealth ?? h.max_health ?? h.healthMax ?? 10);
         const newMax = Math.max(1, prevMax - loss);
         const curHp = Number(h.currentHealth ?? h.health ?? prevMax);
         const cappedHp = Math.min(curHp, newMax);
         const next = { ...h, maxHealth: newMax, currentHealth: cappedHp, health: cappedHp };
         const note = makeMaxChangeNote({
-          stat: 'Max Health',
-          delta: -loss,
-          newMax,
-          source: 'Blacksmith Event 2',
-          reason: 'Dark Stone Poisoning',
+          stat: 'Max Health', delta: -loss, newMax,
+          source: 'Blacksmith Event 2', reason: 'Dark Stone Poisoning',
         });
         return pushConditionNote(next, note);
       });
-      window.alert(
-        `${stat} 5+ Test FAILED!\n` +
-        `Rolled ${statVal}d6: [${rollStr}] — needed a 5+\n\n` +
-        `The crazed blacksmith stabs ${heroName} with a hot poker, ` +
-        `searing a nasty Dark Stone Scar into your side.\n\n` +
-        `Damage Roll D6 = ${loss}\n` +
-        `${heroName} permanently loses ${loss} Max Health.\n\n` +
-        `The Blacksmith is closed until after the next Adventure.`
-      );
+      const outcome = `The crazed blacksmith stabs ${heroName} with a hot poker, searing a nasty Dark Stone Scar. Permanently lose ${loss} Max Health. The Blacksmith is closed until after the next Adventure.`;
+      log.push(outcome);
+      await showResult(ctx, 'DARK STONE POISONING — Result', [checkLine, lossLine, '', outcome]);
+      ctx.toast?.(`Dark Stone Poisoning: -${loss} Max Health. Blacksmith closed.`);
     } else {
-      window.alert(
-        `${stat} 5+ Test PASSED!\n` +
-        `Rolled ${statVal}d6: [${rollStr}] — needed a 5+\n\n` +
-        `${heroName} ${stat === 'Strength' ? 'overpowers' : 'dodges'} the crazed blacksmith!\n` +
-        `Either way, the blacksmith himself is shot dead.\n\n` +
-        `The Blacksmith is closed until after the next Adventure.`
-      );
+      const stat = testChoice === 1 ? 'dodges' : 'overpowers';
+      const outcome = `${heroName} ${stat} the crazed blacksmith! The blacksmith himself is shot dead. The Blacksmith is closed until after the next Adventure.`;
+      log.push(outcome);
+      await showResult(ctx, 'DARK STONE POISONING — Result', [checkLine, '', outcome]);
+      ctx.toast?.('Dark Stone Poisoning: escaped! Blacksmith closed.');
     }
     patchShopMods({ destroyed: true });
-    return;
+    return { log };
   }
 
-  // 3: Wild Horse incident (pass: +$100; fail: neighboring building destroyed + Injury checks)
+  // 3: Wild Horse – Strength 5+; pass: +$100; fail: random building destroyed + Agility 4+ checks
   if (roll === 3) {
-    const id = ctx.getActiveHeroId();
-    const hero = ctx.getHeroById?.(id);
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
     const heroName = hero?.name || 'Hero';
-    const strVal = getEffectiveStat(hero, 'Strength');
+    const lore3 = `WILD HORSE\n${info.lore}\n${heroName} must wrangle the horse!`;
 
-    window.alert(
-      `WILD HORSE\n\n` +
-      `${lore.effect}\n\n` +
-      `${heroName} must make a Strength 5+ test to wrangle the horse!\n` +
-      `You have ${strVal} Strength (${strVal}d6)`
-    );
+    const result = await ctx.doSkillCheck(id, {
+      stat: 'Strength', target: 5, returnDetails: true,
+      message: `${lore3}\nMake a Strength 5+ test to wrangle the wild horse.`,
+    });
+    const checkLine = formatCheckResult(result, 'Strength', 5);
+    if (checkLine) log.push(checkLine);
+    const passed = result?.passed ?? result;
 
-    const { passed, rollStr } = rollStatCheck(strVal, 5);
     if (passed) {
-      ctx.updateHero(id, (h) => ({ ...h, gold: (h.gold || 0) + 100 }));
-      window.alert(
-        `Strength 5+ Test PASSED!\n` +
-        `Rolled ${strVal}d6: [${rollStr}] — needed a 5+\n\n` +
-        `${heroName} wrestles the wild horse under control.\n` +
-        `The blacksmith pays you $100 for your trouble.`
-      );
+      ctx.updateHero?.(id, (h) => ({ ...h, gold: (h.gold || 0) + 100 }));
+      const outcome = `${heroName} wrestles the wild horse under control. The blacksmith pays you $100 for your trouble.`;
+      log.push(outcome);
+      await showResult(ctx, 'WILD HORSE — Result', [checkLine, '', outcome]);
+      ctx.toast?.('Wild Horse: +$100!');
     } else {
-      // Pick a random building to destroy (exclude the blacksmith itself and camp)
+      // Pick a random building to destroy
       const candidates = [
         'generalStore', 'church', 'docsOffice', 'saloon',
         'gamblingHall', 'sheriffsOffice', 'smugglersDen',
@@ -250,99 +246,98 @@ async function apply(roll, ctx) {
         frontierOutpost: 'Frontier Outpost',
       };
 
-      window.alert(
-        `Strength 5+ Test FAILED!\n` +
-        `Rolled ${strVal}d6: [${rollStr}] — needed a 5+\n\n` +
-        `The horse wreaks havoc through town and smashes into the ${names[pick] || pick}!\n` +
-        `The ${names[pick] || pick} is destroyed until after the next Adventure.\n\n` +
-        `All Heroes at the Blacksmith must now make an Agility 4+ test ` +
-        `or roll on the Injury Chart!`
-      );
+      const destroyOutcome = `The horse wreaks havoc and smashes into the ${names[pick] || pick}! It is destroyed until after the next Adventure.`;
+      log.push(destroyOutcome);
+      await showResult(ctx, 'WILD HORSE — Result', [
+        checkLine, '',
+        destroyOutcome, '',
+        'All Heroes at the Blacksmith must now make an Agility 4+ test or roll on the Injury Chart!',
+      ]);
 
       // All heroes at the blacksmith must pass Agility 4+
       const hereIds = getAllHeroesHere(ctx);
       for (const hid of hereIds) {
-        const h = ctx.getHeroById?.(hid);
+        const h = (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? null;
         const hName = h?.name || 'Hero';
-        const agiVal = getEffectiveStat(h, 'Agility');
-        const agiCheck = rollStatCheck(agiVal, 4);
-        if (!agiCheck.passed) {
+
+        const agiResult = await ctx.doSkillCheck(hid, {
+          stat: 'Agility', target: 4, returnDetails: true,
+          message: `WILD HORSE — Collapsing Building\n${hName} must dodge the debris!\nMake an Agility 4+ test.`,
+        });
+        const agiLine = formatCheckResult(agiResult, 'Agility', 4);
+        if (agiLine) log.push(`${hName}: ${agiLine}`);
+        const agiPassed = agiResult?.passed ?? agiResult;
+
+        if (!agiPassed) {
           await ctx.enqueueChartRoll(hid, 'injury');
-          window.alert(
-            `${hName}: Agility 4+ Test FAILED!\n` +
-            `Rolled ${agiVal}d6: [${agiCheck.rollStr}] — needed a 4+\n\n` +
-            `The building collapses on ${hName}!\n` +
-            `Roll on the Injury Chart.`
-          );
+          const agiOutcome = `${hName} is caught in the collapsing building! Roll on the Injury Chart.`;
+          log.push(agiOutcome);
+          await showResult(ctx, `WILD HORSE — ${hName}`, [agiLine, '', agiOutcome]);
+          ctx.toast?.(`${hName}: injured by collapsing building.`);
         } else {
-          window.alert(
-            `${hName}: Agility 4+ Test PASSED!\n` +
-            `Rolled ${agiVal}d6: [${agiCheck.rollStr}] — needed a 4+\n\n` +
-            `${hName} escapes the collapsing building safely!`
-          );
+          const agiOutcome = `${hName} escapes the collapsing building safely!`;
+          log.push(agiOutcome);
+          await showResult(ctx, `WILD HORSE — ${hName}`, [agiLine, '', agiOutcome]);
         }
       }
     }
-    return;
+    return { log };
   }
 
   // 4–5: Price hike (+$100), cancels sale
   if (roll === 4 || roll === 5) {
     patchShopMods({ priceDelta: 100, saleActive: false });
-    window.alert(
-      `COST INCREASE\n\n` +
-      `${lore.effect}`
-    );
-    return;
+    const outcome = `${info.effect}`;
+    log.push(outcome);
+    await showResult(ctx, 'COST INCREASE', [outcome]);
+    ctx.toast?.('Blacksmith: prices +$100 this visit.');
+    return { log };
   }
 
   // 6–8: No event
   if (roll >= 6 && roll <= 8) {
-    window.alert(
-      `BLACK SMOKE AND HORSE MANURE\n\n` +
-      `${lore.effect}`
-    );
-    return;
+    const outcome = `${info.effect}`;
+    log.push(outcome);
+    await showResult(ctx, 'BLACK SMOKE AND HORSE MANURE', [outcome]);
+    return { log };
   }
 
   // 9–10: Forging Sale –$50 (min $10)
   if (roll === 9 || roll === 10) {
     patchShopMods({ priceDelta: -50, saleActive: true });
-    window.alert(
-      `FORGING SALE!\n\n` +
-      `${lore.effect}`
-    );
-    return;
+    const outcome = `${info.effect}`;
+    log.push(outcome);
+    await showResult(ctx, 'FORGING SALE!', [outcome]);
+    ctx.toast?.('Blacksmith: Forging Sale! Prices -$50.');
+    return { log };
   }
 
   // 11: Rare Find (buy with Dark Stone)
   if (roll === 11) {
-    const priceDS = d6() + 1;
+    const priceDS = await ctxD6(ctx, 'Rare Find — Roll 1d6 for Dark Stone price') + 1;
     const card = drawMineArtifact();
     patchShopMods({ rareFind: card ? { priceDS, artifact: card } : null });
     const label = card?.name || 'an Artifact';
-    window.alert(
-      `RARE FIND\n\n` +
-      `${lore.effect}\n\n` +
-      `Drawn: ${label}\n` +
-      `Price: ${priceDS} Dark Stone\n\n` +
-      `You can purchase this artifact in the shop below.`
-    );
-    return;
+    const outcome = `Drawn: ${label}\nPrice: ${priceDS} Dark Stone\n\nYou can purchase this artifact in the shop below.`;
+    log.push(`Rare Find: ${label} for ${priceDS} Dark Stone.`);
+    await showResult(ctx, 'RARE FIND', [info.effect, '', outcome]);
+    ctx.toast?.(`Rare Find: ${label} for ${priceDS} Dark Stone.`);
+    return { log };
   }
 
   // 12: Unique Forging (Free Attack upgrade — applied via shopMods flag)
   if (roll === 12) {
     patchShopMods({ uniqueForging: true });
-    window.alert(
-      `UNIQUE FORGING\n\n` +
-      `${lore.effect}\n\n` +
-      `Choose one of your items with an empty Upgrade Slot below ` +
-      `to receive this free upgrade.`
-    );
-    return;
+    const outcome = `${info.effect}\n\nChoose one of your items with an empty Upgrade Slot below to receive this free upgrade.`;
+    log.push(outcome);
+    await showResult(ctx, 'UNIQUE FORGING', [outcome]);
+    ctx.toast?.('Unique Forging: choose an item for a free upgrade!');
+    return { log };
   }
+
+  return { log };
 }
+
 // ---------- Transport purchase helpers (drop-in) ----------
 
 function _isStageCoach(item) {
@@ -364,11 +359,6 @@ function _scanPosseForStageCoach(ctx) {
   return false;
 }
 
-/**
- * onBeforePurchaseBlacksmithTransport
- * Blocks purchase if Stage Coach already exists in the posse.
- * Return { ok: boolean, reason?: string }
- */
 export async function onBeforePurchaseBlacksmithTransport(item, ctx = {}) {
   if (String(item?.category).toLowerCase() !== 'transport') return { ok: true };
 
@@ -383,11 +373,6 @@ export async function onBeforePurchaseBlacksmithTransport(item, ctx = {}) {
   return { ok: true };
 }
 
-/**
- * onAfterPurchaseBlacksmithTransport
- * Adds the purchased Transport into the buyer's inventory.
- * Assumes gold/DS cost was already deducted by your generic shop flow.
- */
 export async function onAfterPurchaseBlacksmithTransport(item, ctx = {}) {
   if (String(item?.category).toLowerCase() !== 'transport') return;
 
@@ -396,7 +381,6 @@ export async function onAfterPurchaseBlacksmithTransport(item, ctx = {}) {
 
   ctx.updateHero?.(id, (h) => {
     const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
-    // store a concise item snapshot; keep your own fields intact
     inv.push({
       id: item.id || `transport_${Date.now()}`,
       name: item.name || 'Transport',
@@ -404,7 +388,6 @@ export async function onAfterPurchaseBlacksmithTransport(item, ctx = {}) {
       tags: Array.isArray(item.tags) ? item.tags : [],
       description: item.description || item.effect || '',
       source: 'Blacksmith',
-      // optionally keep weight/slots/etc if your item defines them
       weight: Number.isFinite(item.weight) ? item.weight : undefined,
       upgradeSlots: Number.isFinite(item.upgradeSlots) ? item.upgradeSlots : undefined,
     });
@@ -418,11 +401,11 @@ export { FREE_ATTACK_UPGRADE };
 
 export async function handleBlacksmithEvent(ctx = {}) {
   const roll = ctx.forcedRoll ?? d2d6();
-  await apply(roll, ctx);
+  const result = await apply(roll, ctx);
   return {
     actions: [],
     townState: ctx.townState,
-    log: [`Blacksmith Event Roll: ${roll}`],
+    log: result?.log || [`Blacksmith Event Roll: ${roll}`],
     eventRoll: roll,
     eventIndex: Math.max(0, roll - 2),
   };

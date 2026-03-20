@@ -1,32 +1,27 @@
 // src/utils/locationHandlers/streetMarketHandler.js
 import { loadTownState, saveTownState } from '../townState';
-import { calculateCurrentStats } from '../calculateStats';
 import { WORLD_CARDS } from '../../data/worldCards';
 import { mineArtifacts } from '../../data/items/mineArtifacts';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts';
 
-// Convenience money dice
-const rollD6 = () => Math.floor(Math.random() * 6) + 1;
-const roll2D6 = () => rollD6() + rollD6();
+import { d6 as _d6, roll2d6 as _roll2d6 } from '../../utils/diceHelpers';
 
-// Roll Nd6 skill check inline so we can capture and display the dice results
-function rollStatCheck(statVal, target) {
-  const dice = Math.max(1, statVal);
-  const rolls = Array.from({ length: dice }, () => rollD6());
-  const passed = rolls.some((r) => r >= target);
-  const rollStr = rolls.join(', ');
-  return { passed, rolls, rollStr };
+// Use ctx.d6 when available (respects manual roll mode); fallback to auto-roll
+const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
+
+// ---------- result formatting helpers ----------
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+  }
+  return null;
 }
 
-// Resolve a hero's effective stat value (includes gear/skills/conditions)
-function getEffectiveStat(hero, statName) {
-  if (!hero) return 0;
-  try {
-    const { stats = {} } = calculateCurrentStats(hero);
-    const v = Number(stats[statName]) || 0;
-    if (v > 0) return v;
-  } catch {}
-  return Number(hero?.stats?.[statName] ?? hero?.[statName] ?? 0);
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
 }
 
 // Helper to mutate shop mods
@@ -45,8 +40,7 @@ function setGlobalRule(key, val = true) {
   saveTownState(next);
 }
 
-function displayFor(roll) {
-  // Returns { title, lore, effect }
+export function display(roll) {
   switch (true) {
     case roll === 2: return {
       title: 'Blood Sacrifice',
@@ -101,295 +95,220 @@ function displayFor(roll) {
   }
 }
 
-/**
- * ctx methods used here:
- * - getActiveHeroId()
- * - getHeroById(id)
- * - getHeroesAtShop(shopId)
- * - updateHero(id, patchOrFn)
- * - addToken(id, tokenName)
- * - enqueueChartRoll(id, chartName)
- * - promptChoice(title, options[])   // returns selected index or key
- * - toast(msg)
- */
-async function apply(roll, ctx) {
+export async function apply(roll, ctx) {
   const shopId = 'streetMarket';
+  const id = ctx.getActiveHeroId?.();
+  if (!id) return { log: [] };
+
+  const info = display(roll);
+  const log = [];
+
+  log.push(`[Street Market] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
 
   // --- Roll 2: Blood Sacrifice ---
   if (roll === 2) {
-    const id = ctx.getActiveHeroId();
-    const hero = ctx.getHeroById?.(id) || {};
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? {};
     const heroName = hero?.name || 'Hero';
-    const spiritVal = getEffectiveStat(hero, 'Spirit');
 
     const choice = await ctx.promptChoice?.(
-      `BLOOD SACRIFICE\n\n` +
-      `You stumble into a hidden part of the Street Market where a bloody ritual sacrifice is taking place. They are not pleased to see you.\n\n` +
-      `Make a Spirit 6+ test. You have ${spiritVal} Spirit (${spiritVal}d6, need a 6+).\n\n` +
-      `Choose:`,
+      `BLOOD SACRIFICE\n\n${info.lore}\n\nChoose:`,
       [
-        'Leave immediately (your current Day in Town is over)',
-        `Make a Spirit 6+ test (You have ${spiritVal} Spirit)`,
+        { label: 'Leave immediately (your current Day in Town is over)' },
+        { label: 'Make a Spirit 6+ test' },
       ]
     );
-    const leave = choice === 0 || choice === '0';
-    if (leave) {
-      ctx.updateHero(id, h => ({ ...h, isDone: true }));
-      window.alert(
-        `BLOOD SACRIFICE\n\n` +
-        `You stumble into a hidden part of the Street Market where a bloody ritual sacrifice is taking place. They are not pleased to see you.\n\n` +
-        `${heroName} wisely backs away from the dark ritual.\n` +
-        `Your current Day in Town is over.`
-      );
-      return;
+    if (choice === 0) {
+      ctx.updateHero?.(id, h => ({ ...h, isDone: true }));
+      const outcome = `${heroName} wisely backs away from the dark ritual. Your current Day in Town is over.`;
+      log.push(outcome);
+      await showResult(ctx, 'BLOOD SACRIFICE — Result', [outcome]);
+      return { log };
     }
-    const { passed, rollStr } = rollStatCheck(spiritVal, 6);
+
+    const result = await ctx.doSkillCheck(id, {
+      stat: 'Spirit', target: 6, returnDetails: true,
+      message: `BLOOD SACRIFICE\n${info.lore}\n${heroName} confronts the dark ritual!`,
+    });
+    const checkLine = formatCheckResult(result, 'Spirit', 6);
+    if (checkLine) log.push(checkLine);
+    const passed = result?.passed ?? result;
+
     if (passed) {
-      const gold = rollD6() * 50;
-      ctx.updateHero(id, h => ({ ...h, xp: (h.xp || 0) + 25, gold: (h.gold || 0) + gold }));
-      window.alert(
-        `Spirit 6+ Test PASSED!\n` +
-        `Rolled ${spiritVal}d6: [${rollStr}] — needed a 6+\n\n` +
-        `${heroName} holds firm against the dark power of the ritual!\n\n` +
-        `Gain 25 XP and $${gold}.`
-      );
+      const gold = await ctxD6(ctx, 'Blood Sacrifice — Roll 1d6 for gold (\u00D7$50)') * 50;
+      ctx.updateHero?.(id, h => ({ ...h, xp: (h.xp || 0) + 25, gold: (h.gold || 0) + gold }));
+      const outcome = `${heroName} holds firm against the dark power! Gain 25 XP and $${gold}.`;
+      log.push(outcome);
+      await showResult(ctx, 'BLOOD SACRIFICE — Result', [checkLine, '', outcome]);
+      ctx.toast?.(`Blood Sacrifice: +25 XP, +$${gold}.`);
     } else {
-      await ctx.enqueueChartRoll(id, 'madness');
-      ctx.updateHero(id, h => ({ ...h, isDone: true }));
-      window.alert(
-        `Spirit 6+ Test FAILED!\n` +
-        `Rolled ${spiritVal}d6: [${rollStr}] — needed a 6+\n\n` +
-        `The dark ritual overwhelms ${heroName}'s mind!\n\n` +
-        `Your current Day in Town is over.\n` +
-        `Roll once on the Madness Chart.`
-      );
+      await ctx.enqueueChartRoll?.(id, 'madness');
+      ctx.updateHero?.(id, h => ({ ...h, isDone: true }));
+      const outcome = `The dark ritual overwhelms ${heroName}\u2019s mind! Your current Day in Town is over. Roll once on the Madness Chart.`;
+      log.push(outcome);
+      await showResult(ctx, 'BLOOD SACRIFICE — Result', [checkLine, '', outcome]);
+      ctx.toast?.('Blood Sacrifice failed! Roll on Madness Chart.');
     }
-    return;
+    return { log };
   }
 
   // --- Roll 3: Swamp Slug Stampede ---
   if (roll === 3) {
-    const heroIds = ctx.getHeroesAtShop?.(shopId) || [ctx.getActiveHeroId()];
+    const heroIds = ctx.getHeroesAtShop?.(shopId) || [id];
 
     for (const hid of heroIds) {
-      const hero = ctx.getHeroById?.(hid) || {};
+      const hero = (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? {};
       const heroName = hero?.name || 'Hero';
-      const loreVal = getEffectiveStat(hero, 'Lore');
-      const strVal = getEffectiveStat(hero, 'Strength');
 
-      // Let the player choose which test to take
       const testChoice = await ctx.promptChoice?.(
-        `SWAMP SLUG STAMPEDE\n\n` +
-        `A herd of slimy Swamp Slugs suddenly stampede through the Street Market, crashing through all the stalls and shops, flattening everything in their path.\n\n` +
-        `${heroName} must pass a Lore 5+ or Strength 6+ test or be trampled!\n\n` +
-        `You have ${loreVal} Lore (${loreVal}d6, need 5+) and ${strVal} Strength (${strVal}d6, need 6+).\n\n` +
-        `Choose which test to attempt:`,
+        `SWAMP SLUG STAMPEDE\n\n${info.lore}\n\n${heroName} must pass a Lore 5+ or Strength 6+ test or be trampled!\n\nChoose which test to attempt:`,
         [
-          `Lore 5+ test (You have ${loreVal} Lore)`,
-          `Strength 6+ test (You have ${strVal} Strength)`,
-          'Enter result manually',
+          { label: 'Lore 5+ test' },
+          { label: 'Strength 6+ test' },
         ]
       );
-      const tIdx = (testChoice === '0' ? 0 : testChoice === '1' ? 1 : testChoice === '2' ? 2 : testChoice);
 
-      // Manual entry path
-      if (tIdx === 2) {
-        const manualChoice = await ctx.promptChoice?.(
-          `SWAMP SLUG STAMPEDE — Manual Entry\n\n` +
-          `Did ${heroName} pass the Lore 5+ or Strength 6+ test?`,
-          ['Passed', 'Failed']
-        );
-        const manualPassed = manualChoice === 0 || manualChoice === '0';
-        if (manualPassed) {
-          window.alert(
-            `SWAMP SLUG STAMPEDE\n\n` +
-            `${heroName} passes the test and avoids the stampede!`
-          );
-          continue;
-        }
-        await ctx.enqueueChartRoll(hid, 'injury');
-        window.alert(
-          `SWAMP SLUG STAMPEDE\n\n` +
-          `${heroName} is trampled by the stampeding slugs!\n` +
-          `Roll once on the Injury Chart.`
-        );
-        continue;
+      let result, checkLine;
+      if (testChoice === 1) {
+        result = await ctx.doSkillCheck(hid, {
+          stat: 'Strength', target: 6, returnDetails: true,
+          message: `SWAMP SLUG STAMPEDE\n${heroName} braces against the stampeding slugs!`,
+        });
+        checkLine = formatCheckResult(result, 'Strength', 6);
+      } else {
+        result = await ctx.doSkillCheck(hid, {
+          stat: 'Lore', target: 5, returnDetails: true,
+          message: `SWAMP SLUG STAMPEDE\n${heroName} tries to read the slugs' path and dodge!`,
+        });
+        checkLine = formatCheckResult(result, 'Lore', 5);
       }
+      if (checkLine) log.push(`${heroName}: ${checkLine}`);
+      const passed = result?.passed ?? result;
 
-      // Auto-roll the chosen test
-      const isLore = tIdx === 0;
-      const statVal = isLore ? loreVal : strVal;
-      const statName = isLore ? 'Lore' : 'Strength';
-      const target = isLore ? 5 : 6;
-      const check = rollStatCheck(statVal, target);
-
-      if (check.passed) {
-        window.alert(
-          `${statName} ${target}+ Test PASSED!\n` +
-          `Rolled ${statVal}d6: [${check.rollStr}] — needed a ${target}+\n\n` +
-          (isLore
-            ? `${heroName} recognizes the slugs' path and dodges out of the way!`
-            : `${heroName} braces and shoves the slugs aside!`)
-        );
-        continue;
+      if (passed) {
+        const outcome = testChoice === 1
+          ? `${heroName} braces and shoves the slugs aside!`
+          : `${heroName} recognizes the slugs' path and dodges out of the way!`;
+        log.push(outcome);
+        await showResult(ctx, `SWAMP SLUG STAMPEDE — ${heroName}`, [checkLine, '', outcome]);
+      } else {
+        await ctx.enqueueChartRoll?.(hid, 'injury');
+        const outcome = `${heroName} is trampled by the stampeding slugs! Roll once on the Injury Chart.`;
+        log.push(outcome);
+        await showResult(ctx, `SWAMP SLUG STAMPEDE — ${heroName}`, [checkLine, '', outcome]);
       }
-
-      // Failed — trampled
-      await ctx.enqueueChartRoll(hid, 'injury');
-      window.alert(
-        `${statName} ${target}+ Test FAILED!\n` +
-        `Rolled ${statVal}d6: [${check.rollStr}] — needed a ${target}+\n\n` +
-        `${heroName} is trampled by the stampeding slugs!\n` +
-        `Roll once on the Injury Chart.`
-      );
     }
     patchShopMods(shopId, { destroyed: true });
-    window.alert(
-      `SWAMP SLUG STAMPEDE\n\n` +
-      `The Street Market is destroyed for the rest of this Town Stay!`
-    );
-    return;
+    log.push('The Street Market is destroyed for the rest of this Town Stay!');
+    await showResult(ctx, 'SWAMP SLUG STAMPEDE', ['The Street Market is destroyed for the rest of this Town Stay!']);
+    return { log };
   }
 
   // --- Roll 4: Held Up ---
   if (roll === 4) {
-    const id = ctx.getActiveHeroId();
-    const hero = ctx.getHeroById?.(id) || {};
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? {};
     const heroName = hero?.name || 'Hero';
-    const costGold = rollD6() * 100;
-    const costDS = rollD6();
-    const heroInit = getEffectiveStat(hero, 'Initiative');
+    const costGold = await ctxD6(ctx, 'Held Up — Roll 1d6 for gold cost (\u00D7$100)') * 100;
+    const costDS = await ctxD6(ctx, 'Held Up — Roll 1d6 for Dark Stone cost');
 
     const choice = await ctx.promptChoice?.(
-      `HELD UP\n\n` +
-      `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-      `Pay $${costGold} or ${costDS} Dark Stone to the robbers.\n` +
-      `Or take 'em on — roll 2D6 ≥ your Initiative (${heroInit}) to fight them off.\n\n` +
-      `Your Initiative is ${heroInit} (check your Stats tab to confirm).`,
+      `HELD UP\n\n${info.lore}\n\nPay $${costGold} or ${costDS} Dark Stone to the robbers.\nOr take \u2019em on — roll 2D6 \u2265 your Initiative to fight them off.\n\nChoose:`,
       [
-        `Pay $${costGold}`,
-        `Pay ${costDS} Dark Stone`,
-        `Fight them! (Roll 2D6 ≥ Initiative ${heroInit})`,
+        { label: `Pay $${costGold}` },
+        { label: `Pay ${costDS} Dark Stone` },
+        { label: 'Fight them!' },
       ]
     );
-    const idx = (choice === '0' ? 0 : choice === '1' ? 1 : choice === '2' ? 2 : choice);
 
-    if (idx === 0) {
-      ctx.updateHero(id, h => ({ ...h, gold: Math.max(0, (h.gold || 0) - costGold) }));
-      window.alert(
-        `HELD UP\n\n` +
-        `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `${heroName} pays $${costGold} to the robbers and they slink away.`
-      );
-      return;
+    if (choice === 0) {
+      ctx.updateHero?.(id, h => ({ ...h, gold: Math.max(0, (h.gold || 0) - costGold) }));
+      const outcome = `${heroName} pays $${costGold} to the robbers and they slink away.`;
+      log.push(outcome);
+      await showResult(ctx, 'HELD UP — Result', [outcome]);
+      ctx.toast?.(`Held Up: paid $${costGold}.`);
+      return { log };
     }
-    if (idx === 1) {
-      ctx.updateHero(id, h => ({ ...h, darkStone: Math.max(0, (h.darkStone || 0) - costDS) }));
-      window.alert(
-        `HELD UP\n\n` +
-        `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `${heroName} hands over ${costDS} Dark Stone and the robbers vanish into the crowd.`
-      );
-      return;
+    if (choice === 1) {
+      ctx.updateHero?.(id, h => ({ ...h, darkStone: Math.max(0, (h.darkStone || 0) - costDS) }));
+      const outcome = `${heroName} hands over ${costDS} Dark Stone and the robbers vanish into the crowd.`;
+      log.push(outcome);
+      await showResult(ctx, 'HELD UP — Result', [outcome]);
+      ctx.toast?.(`Held Up: paid ${costDS} Dark Stone.`);
+      return { log };
     }
 
-    // Manual 2D6 roll entry — prompt the player to enter their real dice roll
-    let you;
-    const rollInput = window.prompt(
-      `HELD UP — FIGHT!\n\n` +
-      `Roll 2D6 and enter the total (2–12).\n` +
-      `You need ≥ ${heroInit} (your Initiative) to fight them off.\n\n` +
-      `Enter your 2D6 total (leave blank for auto-roll):`,
-      ''
-    );
-    if (rollInput != null && rollInput.trim() !== '') {
-      const parsed = Number(rollInput);
-      if (Number.isFinite(parsed) && parsed >= 2 && parsed <= 12) {
-        you = parsed;
-      } else {
-        window.alert('Invalid entry. Auto-rolling 2D6.');
-        you = roll2D6();
-      }
-    } else {
-      you = roll2D6();
-    }
+    // Fight — roll 2D6 vs Initiative
+    const die1 = await ctxD6(ctx, 'Held Up — Fight! Roll first d6');
+    const die2 = await ctxD6(ctx, 'Held Up — Fight! Roll second d6');
+    const you = die1 + die2;
+    const heroInit = hero?.initiative ?? hero?.stats?.Initiative ?? 0;
+    const fightLine = `Rolled [${die1}, ${die2}] = ${you} vs Initiative ${heroInit}.`;
+    log.push(fightLine);
 
     if (you >= heroInit) {
-      ctx.updateHero(id, h => ({ ...h, xp: (h.xp || 0) + 50 }));
-      window.alert(
-        `HELD UP — FIGHT RESULT\n\n` +
-        `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `2D6 = ${you} ≥ Initiative ${heroInit} — SUCCESS!\n\n` +
-        `${heroName} fights them off!\n` +
-        `Gain 50 XP.`
-      );
+      ctx.updateHero?.(id, h => ({ ...h, xp: (h.xp || 0) + 50 }));
+      const outcome = `2D6 = ${you} \u2265 Initiative ${heroInit} \u2014 SUCCESS! ${heroName} fights them off! +50 XP.`;
+      log.push(outcome);
+      await showResult(ctx, 'HELD UP — Fight Result', [fightLine, '', outcome]);
+      ctx.toast?.('Held Up: fought them off! +50 XP.');
     } else {
-      const wounds = roll2D6();
-      ctx.updateHero(id, h => ({ ...h, wounds: (h.wounds || 0) + wounds }));
-      window.alert(
-        `HELD UP — FIGHT RESULT\n\n` +
-        `A couple of gunmen jump out from behind a stall to rob you!\n\n` +
-        `2D6 = ${you} < Initiative ${heroInit} — FAILED!\n\n` +
-        `They beat ${heroName} down!\n` +
-        `Take ${wounds} Wounds, ignoring Defense.`
-      );
+      const w1 = await ctxD6(ctx, 'Held Up — Roll first d6 for Wounds');
+      const w2 = await ctxD6(ctx, 'Held Up — Roll second d6 for Wounds');
+      const wounds = w1 + w2;
+      ctx.updateHero?.(id, h => ({ ...h, wounds: (h.wounds || 0) + wounds }));
+      const woundLine = `Rolled [${w1}, ${w2}] = ${wounds} Wounds (ignoring Defense).`;
+      log.push(woundLine);
+      const outcome = `2D6 = ${you} < Initiative ${heroInit} \u2014 FAILED! They beat ${heroName} down! Take ${wounds} Wounds, ignoring Defense.`;
+      log.push(outcome);
+      await showResult(ctx, 'HELD UP — Fight Result', [fightLine, woundLine, '', outcome]);
+      ctx.toast?.(`Held Up: beaten down! ${wounds} Wounds.`);
     }
-    return;
+    return { log };
   }
 
   // --- Roll 5: Market Prices Up ---
   if (roll === 5) {
     const cur = loadTownState().shopMods?.[shopId] || { priceDelta: 0, destroyed: false };
     patchShopMods(shopId, { priceDelta: (cur.priceDelta || 0) + 50 });
-    window.alert(
-      `MARKET PRICES UP\n\n` +
-      `Supplies are running low and some of the merchants have raised their prices today.\n\n` +
-      `All items at the Street Market are $50 more expensive (this Town Stay).`
-    );
-    return;
+    const outcome = 'All items at the Street Market are $50 more expensive (this Town Stay).';
+    log.push(outcome);
+    await showResult(ctx, 'MARKET PRICES UP', [info.lore, '', outcome]);
+    ctx.toast?.('Street Market: prices +$50.');
+    return { log };
   }
 
   // --- Roll 6-8: Hogs and Horse Thieves ---
   if (roll >= 6 && roll <= 8) {
-    window.alert(
-      `HOGS AND HORSE THIEVES\n\n` +
-      `Hogs are running loose and a horse trader has been accused of stealing his wares. There is a commotion going on, but it\u2019s not really any of your concern.\n\n` +
-      `No Event.`
-    );
-    return;
+    log.push('Hogs and Horse Thieves — No Event.');
+    await showResult(ctx, 'HOGS AND HORSE THIEVES', [info.lore, '', 'No Event.']);
+    return { log };
   }
 
   // --- Roll 9: Market Prices Down ---
   if (roll === 9) {
     const cur = loadTownState().shopMods?.[shopId] || { priceDelta: 0, destroyed: false };
     patchShopMods(shopId, { priceDelta: (cur.priceDelta || 0) - 50 });
-    window.alert(
-      `MARKET PRICES DOWN\n\n` +
-      `A caravan of goods has recently arrived and the merchants are eager to do business.\n\n` +
-      `All items at the Street Market are $50 less expensive (to a minimum of $25) (this Town Stay).`
-    );
-    return;
+    const outcome = 'All items at the Street Market are $50 less expensive (to a minimum of $25) (this Town Stay).';
+    log.push(outcome);
+    await showResult(ctx, 'MARKET PRICES DOWN', [info.lore, '', outcome]);
+    ctx.toast?.('Street Market: prices -$50.');
+    return { log };
   }
 
   // --- Roll 10: Fortune Teller ---
   if (roll === 10) {
-    const id = ctx.getActiveHeroId();
-    const hero = ctx.getHeroById?.(id) || {};
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? {};
     const heroName = hero?.name || 'Hero';
     const choice = await ctx.promptChoice?.(
-      `FORTUNE TELLER\n\n` +
-      `A Fortune Teller has set up shop in the market today. She reads your future in cards and bones, offering either glory or risky riches.\n\n` +
-      `Choose one path for your next Adventure:`,
+      `FORTUNE TELLER\n\n${info.lore}\n\nChoose one path for your next Adventure:`,
       [
-        'Path of Glory \u2013 Re-roll one Defense roll per turn for the entire Adventure',
-        'Path of Fortune \u2013 Start at half Max Health (round up), but gain a personal Revive Token. If you still have it at the end, gain D6\u00D7$100 and D6\u00D750 XP',
+        { label: 'Path of Glory \u2013 Re-roll one Defense roll per turn for the entire Adventure' },
+        { label: 'Path of Fortune \u2013 Start at half Max Health (round up), but gain a personal Revive Token. If still held at end of Adventure, gain D6\u00D7$100 and D6\u00D750 XP' },
       ]
     );
-    const idx = (choice === '0' ? 0 : choice === '1' ? 1 : choice);
 
-    if (idx === 0) {
-      // Path of Glory: add temporary condition for next adventure
-      ctx.updateHero(id, h => {
+    if (choice === 0) {
+      ctx.updateHero?.(id, h => {
         const conds = h.conditions && typeof h.conditions === 'object' && !Array.isArray(h.conditions)
           ? h.conditions : {};
         const tempList = Array.isArray(conds.temporary) ? [...conds.temporary] : [];
@@ -408,18 +327,15 @@ async function apply(roll, ctx) {
           conditions: { ...conds, temporary: tempList },
         };
       });
-      window.alert(
-        `FORTUNE TELLER\n\n` +
-        `Path of Glory chosen!\n` +
-        `${heroName} may re-roll one Defense roll per turn during the next Adventure.\n\n` +
-        `This has been added to your Temporary Conditions.`
-      );
+      const outcome = `Path of Glory chosen! ${heroName} may re-roll one Defense roll per turn during the next Adventure. Added to Temporary Conditions.`;
+      log.push(outcome);
+      await showResult(ctx, 'FORTUNE TELLER — Result', [outcome]);
+      ctx.toast?.('Fortune Teller: Path of Glory chosen!');
     } else {
-      // Path of Fortune: reduce health to half max (round up), add revive token, add condition
       const maxHealth = hero?.health?.max ?? hero?.maxHealth ?? hero?.stats?.Health ?? 12;
       const halfHealth = Math.ceil(maxHealth / 2);
 
-      ctx.updateHero(id, h => {
+      ctx.updateHero?.(id, h => {
         const conds = h.conditions && typeof h.conditions === 'object' && !Array.isArray(h.conditions)
           ? h.conditions : {};
         const tempList = Array.isArray(conds.temporary) ? [...conds.temporary] : [];
@@ -442,8 +358,6 @@ async function apply(roll, ctx) {
           source: 'Fortune Teller (Street Market)',
         });
 
-        // Set current health to half max (round up)
-        // Update both health.current and currentHealth so StatsTab reflects the change
         const health = h.health ? { ...h.health } : { current: maxHealth, max: maxHealth };
         health.current = halfHealth;
 
@@ -456,25 +370,20 @@ async function apply(roll, ctx) {
           currentHealth: halfHealth,
         };
       });
-      window.alert(
-        `FORTUNE TELLER\n\n` +
-        `Path of Fortune chosen!\n` +
-        `${heroName}'s Health reduced to ${halfHealth}/${maxHealth} (half of Max, rounded up).\n\n` +
-        `You gain a personal Revive Token \u2014 only you can use it if you die.\n` +
-        `If you still have the Revive Token at the end of the Adventure, gain D6\u00D7$100 and D6\u00D750 XP!\n\n` +
-        `Both conditions have been added to your Temporary Conditions tab.`
-      );
+      const outcome = `Path of Fortune chosen!\n${heroName}\u2019s Health reduced to ${halfHealth}/${maxHealth}.\nYou gain a personal Revive Token.\nIf you still have it at the end of the Adventure, gain D6\u00D7$100 and D6\u00D750 XP!\nBoth conditions added to Temporary Conditions.`;
+      log.push(outcome);
+      await showResult(ctx, 'FORTUNE TELLER — Result', [outcome]);
+      ctx.toast?.('Fortune Teller: Path of Fortune chosen!');
     }
-    return;
+    return { log };
   }
 
   // --- Roll 11: Lucky Streak ---
   if (roll === 11) {
     setGlobalRule('streetGamblingLuckyStreak', true);
-    const id = ctx.getActiveHeroId();
-    const hero = ctx.getHeroById?.(id) || {};
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? {};
     const heroName = hero?.name || 'Hero';
-    ctx.updateHero(id, h => {
+    ctx.updateHero?.(id, h => {
       const conds = h.conditions && typeof h.conditions === 'object' && !Array.isArray(h.conditions)
         ? h.conditions : {};
       const tempList = Array.isArray(conds.temporary) ? [...conds.temporary] : [];
@@ -487,35 +396,32 @@ async function apply(roll, ctx) {
         effectText: 'Street Gambling: after all re-rolls, you may adjust one die by \u00B11.',
         source: 'Lucky Streak (Street Market Event #11)',
       });
+      const maxGrit = h.maxGrit ?? h.stats?.Grit ?? 2;
+      const curGrit = h.currentGrit ?? h.grit ?? 0;
       return {
         ...h,
-        grit: Math.min((h.maxGrit || 2), (h.grit || 0) + 1),
+        currentGrit: Math.min(maxGrit, curGrit + 1),
+        grit: Math.min(maxGrit, curGrit + 1),
         conditions: { ...conds, temporary: tempList },
       };
     });
-    window.alert(
-      `LUCKY STREAK\n\n` +
-      `Lady Luck seems to be smiling on ${heroName} today!\n\n` +
-      `When Street Gambling during this Town Stay, after all re-rolls are complete, you may add or subtract 1 from any one die.\n\n` +
-      `Recovered 1 Grit.\n\n` +
-      `Lucky Streak has been added to your Temporary Conditions.`
-    );
-    return;
+    const outcome = `Lady Luck smiles on ${heroName}!\nWhen Street Gambling this Town Stay, after all re-rolls, you may adjust one die by \u00B11.\nRecovered 1 Grit.\nLucky Streak added to Temporary Conditions.`;
+    log.push(outcome);
+    await showResult(ctx, 'LUCKY STREAK', [outcome]);
+    ctx.toast?.('Lucky Streak: +1 Grit and gambling bonus!');
+    return { log };
   }
 
   // --- Roll 12: Rare Deal ---
   if (roll === 12) {
-    const id = ctx.getActiveHeroId();
-    const hero = ctx.getHeroById?.(id) || {};
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? {};
     const heroName = hero?.name || 'Hero';
 
     // Build a mapping of world names to their artifact pools
     const worldArtifactMap = {};
-    // Mine artifacts (the core world)
     if (Array.isArray(mineArtifacts) && mineArtifacts.length > 0) {
       worldArtifactMap['Mines'] = mineArtifacts;
     }
-    // Other world artifacts (grouped by world property)
     if (Array.isArray(otherWorldArtifacts)) {
       for (const art of otherWorldArtifacts) {
         const w = art?.world || 'Unknown';
@@ -524,25 +430,22 @@ async function apply(roll, ctx) {
       }
     }
 
-    // Draw a random world card
     const availableWorlds = Array.isArray(WORLD_CARDS) && WORLD_CARDS.length > 0
       ? WORLD_CARDS
       : Object.keys(worldArtifactMap).map(w => ({ name: w }));
 
     if (!availableWorlds.length) {
-      window.alert(
-        `RARE DEAL\n\nNo world cards available. Draw a World card manually, then draw an Artifact from that World.\nYou may buy it for half price (round up to nearest $5).`
-      );
+      const outcome = 'No world cards available. Draw a World card manually, then draw an Artifact from that World. You may buy it for half price (round up to nearest $5).';
+      log.push(outcome);
+      await showResult(ctx, 'RARE DEAL', [outcome]);
       patchShopMods(shopId, { rareDealHalfPriceArtifact: true });
-      return;
+      return { log };
     }
 
     const worldCard = availableWorlds[Math.floor(Math.random() * availableWorlds.length)];
     const worldName = worldCard.name || 'Unknown World';
 
-    // Find artifacts for this world
     let pool = worldArtifactMap[worldName] || [];
-    // If no exact match, try loose matching
     if (!pool.length) {
       const looseKey = Object.keys(worldArtifactMap).find(
         k => k.toLowerCase().includes(worldName.toLowerCase()) ||
@@ -551,54 +454,41 @@ async function apply(roll, ctx) {
       if (looseKey) pool = worldArtifactMap[looseKey];
     }
 
-    // Filter to artifacts with a listed price (value > 0), re-draw if needed
     const pricedPool = pool.filter(a => Number(a?.value) > 0);
 
     if (!pricedPool.length) {
-      window.alert(
-        `RARE DEAL\n\n` +
-        `World Card drawn: ${worldName}\n\n` +
-        `No priced Artifacts found for ${worldName}.\n` +
-        `Draw a physical Artifact card from that World.\n` +
-        `You may buy it for half its listed price (round up to nearest $5).\n` +
-        `If it doesn\u2019t have a listed price, re-draw.`
-      );
+      const outcome = `World Card drawn: ${worldName}\n\nNo priced Artifacts found for ${worldName}.\nDraw a physical Artifact card from that World.\nYou may buy it for half its listed price (round up to nearest $5).\nIf it doesn\u2019t have a listed price, re-draw.`;
+      log.push(outcome);
+      await showResult(ctx, 'RARE DEAL', [outcome]);
       patchShopMods(shopId, { rareDealHalfPriceArtifact: true });
-      return;
+      return { log };
     }
 
     const artifact = pricedPool[Math.floor(Math.random() * pricedPool.length)];
     const fullPrice = Number(artifact.value) || 0;
-    const halfPrice = Math.ceil(fullPrice / 2 / 5) * 5; // round up to nearest $5
+    const halfPrice = Math.ceil(fullPrice / 2 / 5) * 5;
+
+    const effectsStr = artifact.effects
+      ? (Array.isArray(artifact.effects) ? artifact.effects.join(' ') : JSON.stringify(artifact.effects))
+      : '';
 
     const buyChoice = await ctx.promptChoice?.(
-      `RARE DEAL\n\n` +
-      `World Card: ${worldName}\n` +
-      `Artifact: ${artifact.name}\n` +
-      `Type: ${artifact.type || 'Artifact'}\n` +
-      `Full Price: $${fullPrice}\n` +
-      `Half Price (yours): $${halfPrice}\n\n` +
-      (artifact.effects
-        ? `Effects: ${Array.isArray(artifact.effects) ? artifact.effects.join(' ') : JSON.stringify(artifact.effects)}\n\n`
-        : '') +
-      `Would you like to buy ${artifact.name} for $${halfPrice}?`,
+      `RARE DEAL\n\nWorld Card: ${worldName}\nArtifact: ${artifact.name}\nType: ${artifact.type || 'Artifact'}\nFull Price: $${fullPrice}\nHalf Price (yours): $${halfPrice}${effectsStr ? `\nEffects: ${effectsStr}` : ''}\n\nWould you like to buy ${artifact.name} for $${halfPrice}?`,
       [
-        `Buy ${artifact.name} for $${halfPrice}`,
-        'Pass on this deal',
+        { label: `Buy ${artifact.name} for $${halfPrice}` },
+        { label: 'Pass on this deal' },
       ]
     );
-    const buyIdx = (buyChoice === '0' ? 0 : buyChoice === '1' ? 1 : buyChoice);
 
-    if (buyIdx === 0) {
+    if (buyChoice === 0) {
       const heroGold = hero?.gold ?? 0;
       if (heroGold < halfPrice) {
-        window.alert(
-          `RARE DEAL\n\n` +
-          `${heroName} doesn't have enough gold! Need $${halfPrice}, have $${heroGold}.`
-        );
-        return;
+        const outcome = `${heroName} doesn\u2019t have enough gold! Need $${halfPrice}, have $${heroGold}.`;
+        log.push(outcome);
+        await showResult(ctx, 'RARE DEAL — Result', [outcome]);
+        return { log };
       }
-      ctx.updateHero(id, h => {
+      ctx.updateHero?.(id, h => {
         const items = Array.isArray(h.items) ? [...h.items] : [];
         items.push({
           ...artifact,
@@ -612,40 +502,32 @@ async function apply(roll, ctx) {
           items,
         };
       });
-      window.alert(
-        `RARE DEAL\n\n` +
-        `${heroName} purchases ${artifact.name} for $${halfPrice} (half of $${fullPrice})!\n\n` +
-        `The artifact has been added to your inventory.`
-      );
+      const outcome = `${heroName} purchases ${artifact.name} for $${halfPrice} (half of $${fullPrice})! The artifact has been added to your inventory.`;
+      log.push(outcome);
+      await showResult(ctx, 'RARE DEAL — Result', [outcome]);
+      ctx.toast?.(`Rare Deal: bought ${artifact.name} for $${halfPrice}!`);
     } else {
-      window.alert(
-        `RARE DEAL\n\n` +
-        `${heroName} passes on ${artifact.name}. Perhaps next time.`
-      );
+      const outcome = `${heroName} passes on ${artifact.name}. Perhaps next time.`;
+      log.push(outcome);
+      await showResult(ctx, 'RARE DEAL — Result', [outcome]);
     }
-    return;
+    return { log };
   }
+
+  return { log };
 }
 
 // ---- Named wrapper so the registry can call it like others ----------------
 export async function handleStreetMarketEvent(ctx = {}) {
-  const roll = ctx.forcedRoll ?? roll2D6();
-  const disp = displayFor(roll); // provide title/lore/effect for UI
-  await apply(roll, ctx);
+  const roll = ctx.forcedRoll ?? _roll2d6();
+  const result = await apply(roll, ctx);
   return {
     actions: [],
     townState: ctx.townState,
-    log: [`Street Market Event Roll: ${roll}`],
+    log: result?.log || [`Street Market Event Roll: ${roll}`],
     eventRoll: roll,
     eventIndex: Math.max(0, roll - 2),
-    title: disp.title,
-    lore: disp.lore,
-    effect: disp.effect,
   };
 }
 
-// Expose object (if anything else imports it)
-export const streetMarketHandler = {
-  display: (roll) => displayFor(roll),
-  apply,
-};
+export const streetMarketHandler = { display, apply };

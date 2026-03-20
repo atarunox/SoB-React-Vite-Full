@@ -6,64 +6,35 @@ import churchData from '../../data/townLocations/FrontierTown/Church/church.js';
 import { mineArtifacts } from '../../data/items/mineArtifacts';
 import churchBlessedAuras from '../../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
-import { d6, roll2d6, rollND } from '../../utils/diceHelpers';
-import { getStat as readStat } from '../../utils/statReaders';
+import { d6 as _d6, roll2d6 } from '../../utils/diceHelpers';
+
+// Use ctx.d6/ctx.d3 when available (respects manual roll mode); fallback to auto-roll
+const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
+const ctxD3 = async (ctx, label) => (typeof ctx?.d3 === 'function') ? ctx.d3(label) : Math.ceil(_d6() / 2);
+
 const shopId = churchData?.id || 'church';
 
-// ----------------------------- UI helpers ---------------------------------
-
-// Prefer a provided number-prompt; fall back to window.prompt
-async function promptNumber(ctx, message, { min = -Infinity, max = Infinity, def = 0 } = {}) {
-  const fn = ctx?.promptNumber || ctx?.uiApi?.promptNumber;
-  if (typeof fn === 'function') {
-    const val = await Promise.resolve(fn(message, { min, max, defaultValue: def }));
-    const n = Number(val);
-    return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def;
+// ---------- result formatting helpers ----------
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
   }
-  // Basic fallback
-  // eslint-disable-next-line no-alert
-  const raw = window.prompt?.(`${message} (${min}–${max})`, String(def));
-  const n = Number(raw);
-  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def;
+  return null;
 }
 
-// Prefer a provided choice-prompt; fall back to window.prompt (index)
-async function promptChoice(ctx, message, options = []) {
-  const fn = ctx?.promptChoice || ctx?.uiApi?.promptChoice;
-  if (typeof fn === 'function') {
-    return await Promise.resolve(fn(message, options));
-  }
-  // eslint-disable-next-line no-alert
-  const raw = window.prompt?.(
-    `${message}\n\n${options.map((o, i) => `${i}: ${o}`).join('\n')}\n\nEnter number:`,
-    '0'
-  );
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
 }
 
-// Light “bus” notifier for UI panels that want to react to state changes.
+// Light "bus" notifier for UI panels that want to react to state changes.
 function dispatchUI(name, detail) {
   try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch {}
 }
 
 // ----------------------------- small helpers ------------------------------
-
-function summarizeItem(it = {}) {
-  const parts = [];
-  const type = it.type || 'Item';
-  const w = Number.isFinite(it.weight) ? it.weight : undefined;
-  const up = Number.isFinite(it.upgradeSlots) ? it.upgradeSlots : undefined;
-  const value =
-    typeof it.cost === 'object' && Number.isFinite(it.cost.gold) ? it.cost.gold : undefined;
-  const fx = Array.isArray(it.effects) ? it.effects : [];
-  parts.push(`Type: ${type}`);
-  if (w !== undefined) parts.push(`Wt ${w}`);
-  if (up !== undefined) parts.push(`Upg ${up}`);
-  if (value !== undefined) parts.push(`$${value}`);
-  if (fx.length) parts.push(`Effects: ${fx.join('; ')}`);
-  return parts.join(' | ');
-}
 
 function patchStayMods(patch) {
   const s = loadTownState();
@@ -73,7 +44,7 @@ function patchStayMods(patch) {
   dispatchUI('townstate:changed', updated);
 }
 
-function display(roll) {
+export function display(roll) {
   return (
     getEventDisplay(shopId, roll) || { title: 'Church Event', lore: '', effect: 'No Event.' }
   );
@@ -116,14 +87,12 @@ function isArtifact(it) {
   if (!it) return false;
   const t = String(it?.type || '').toLowerCase();
   const hasTag = Array.isArray(it?.tags) && it.tags.includes('Artifact');
-  // Match type "Artifact", "Artifact - Scroll - Magik", etc. but NOT "Gear"
   return hasTag || t === 'artifact' || t.startsWith('artifact ');
 }
 
 function collectArtifactsFromHero(hero) {
   const results = [];
 
-  // inventory
   const inv = Array.isArray(hero?.inventory) ? hero.inventory : [];
   inv.forEach((it, idx) => {
     if (isArtifact(it)) {
@@ -141,7 +110,6 @@ function collectArtifactsFromHero(hero) {
     });
   };
 
-  // equipped shapes
   if (hero?.equipped && typeof hero.equipped === 'object') {
     Object.entries(hero.equipped).forEach(([k, it]) => pushEquipped(k, it));
   }
@@ -170,182 +138,144 @@ function collectArtifactsFromHero(hero) {
 // ------------------------------- core apply -------------------------------
 
 async function apply(roll, ctx) {
-  const activeId = ctx.getActiveHeroId?.() ?? ctx.posseApi?.getActiveHeroId?.();
-  const _updateHero = ctx.updateHero || ctx.posseApi?.updateHero;
-  const updateHero = (id, patchOrFn) => _updateHero?.(id, patchOrFn);
-  const _getHero = ctx.getHero || ctx.getHeroById || ctx.posseApi?.getHero || ctx.posseApi?.getHeroById;
-  const getHero = (id) => _getHero?.(id) || null;
-  const toast = (m) => (ctx.toast || ctx.uiApi?.toast)?.(m);
-  const doTest = (id, spec) => (ctx.doSkillCheck || ctx.posseApi?.doSkillCheck)?.(id, spec);
-  const _getHeroesAtShop = ctx.getHeroesAtShop || ctx.posseApi?.getHeroesAtShop;
+  const activeId = ctx.getActiveHeroId?.();
+  if (!activeId) return { log: [] };
+
+  const getHero = ctx.getHero || ctx.getHeroById;
+  const updateHero = ctx.updateHero;
+  const toast = ctx.toast;
+  const _getHeroesAtShop = ctx.getHeroesAtShop;
+
+  const info = display(roll);
+  const log = [];
+
+  log.push(`[Church] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
 
   switch (roll) {
     // 2: Cult Worshippers — STR 6+; pass: draw Mine Artifact. Fail: choose an Artifact to discard. Church closes.
     case 2: {
-      if (activeId) {
-        const hero = getHero(activeId);
-        const heroName = hero?.name || 'Hero';
+      const hero = getHero?.(activeId);
+      const heroName = hero?.name || 'Hero';
+      const lore2 = `CULT WORSHIPPERS\n"The Order here is not the Sacred Order, but the Order of the Crimson Hand! You struggle with the Inquisitor as he tries to use an artifact on you."`;
 
-        // Roll dice equal to hero's Strength stat for a 6+ test
-        const strStat = Math.max(1, readStat(hero, 'Strength') || 1);
-        const strRaw = window.prompt(
-          `Cult Worshippers\n\n` +
-          `"The Order here is not the Sacred Order, but the Order of the ` +
-          `Crimson Hand! You struggle with the Inquisitor as he tries to ` +
-          `use an artifact on you."\n\n` +
-          `Make a Strength 6+ test (rolling ${strStat}d6, Strength: ${strStat}).\n` +
-          `  Pass: Draw a Mine Artifact\n` +
-          `  Fail: Lose one Artifact\n\n` +
-          `Enter ${strStat} roll result(s) comma-separated (1-6 each), or leave blank to auto-roll:`,
-          ''
-        );
-        let strRolls;
-        if (strRaw == null || strRaw.trim() === '') {
-          strRolls = rollND(strStat, 6);
+      const result = await ctx.doSkillCheck(activeId, {
+        stat: 'Strength', target: 6, returnDetails: true,
+        message: `${lore2}\n${heroName} struggles with the Inquisitor!\nPass: Draw a Mine Artifact. Fail: Lose one Artifact.`,
+      });
+      const checkLine = formatCheckResult(result, 'Strength', 6);
+      if (checkLine) log.push(checkLine);
+      const passed = result?.passed ?? result;
+
+      if (passed) {
+        const card = drawMineArtifact();
+        if (card) {
+          updateHero?.(activeId, (h) => {
+            const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
+            inv.push(card);
+            return { ...h, inventory: inv };
+          });
+          const lines = [`${heroName} seized a Mine Artifact: ${card.name}`];
+          if (card.type) lines.push(`Type: ${card.type}`);
+          const fx = Array.isArray(card.effects) ? card.effects : [];
+          if (fx.length) lines.push(`Effects: ${fx.join('; ')}`);
+          const outcome = lines.join('\n');
+          log.push(outcome);
+          await showResult(ctx, 'CULT WORSHIPPERS — Result', [checkLine, '', outcome]);
+          toast?.(`Cult Worshippers — ${heroName} passed! Drew ${card.name}.`);
+          dispatchUI('inventory:received', { heroId: activeId, item: card });
         } else {
-          const parts = strRaw.split(',').map((s) => Number(s.trim()));
-          if (parts.every((n) => Number.isFinite(n) && n >= 1 && n <= 6)) {
-            strRolls = parts;
-          } else {
-            strRolls = rollND(strStat, 6);
-          }
+          const outcome = 'No artifact deck available.';
+          log.push(outcome);
+          await showResult(ctx, 'CULT WORSHIPPERS — Result', [checkLine, '', 'Pass! ' + outcome]);
+          toast?.('Cult Worshippers — success! (No artifact deck available.)');
         }
-        const strRoll = Math.max(...strRolls);
-        const passed = strRolls.some((r) => r >= 6);
-
-        if (passed) {
-          const card = drawMineArtifact();
-          if (card) {
-            updateHero(activeId, (h) => {
-              const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
-              inv.push(card);
-              return { ...h, inventory: inv };
-            });
-            // Build full stats summary for the drawn artifact
-            const lines = [`You rolled [${strRolls.join(', ')}] — Pass!`, '', `You seize a Mine Artifact:`, `  ${card.name}`];
-            if (card.type) lines.push(`  Type: ${card.type}`);
-            if (card.slot && card.slot !== 'None') lines.push(`  Slot: ${card.slot}`);
-            const val = typeof card.cost === 'object' && Number.isFinite(card.cost.gold) ? card.cost.gold : (Number.isFinite(card.value) ? card.value : null);
-            if (val != null) lines.push(`  Value: $${val}`);
-            if (Number.isFinite(card.weight)) lines.push(`  Weight: ${card.weight}`);
-            if (Number.isFinite(card.upgradeSlots)) lines.push(`  Upgrade Slots: ${card.upgradeSlots}`);
-            if (card.requires) lines.push(`  Requires: ${card.requires}`);
-            const fx = Array.isArray(card.effects) ? card.effects : [];
-            if (fx.length) {
-              lines.push(`  Effects:`);
-              fx.forEach((e) => lines.push(`    - ${e}`));
-            }
-            if (Array.isArray(card.tags) && card.tags.length) lines.push(`  Tags: ${card.tags.join(', ')}`);
-            window.alert(lines.join('\n'));
-            toast?.(`Cult Worshippers — ${heroName} passed (rolled [${strRolls.join(', ')}]). Drew ${card.name}.`);
-            dispatchUI('inventory:received', { heroId: activeId, item: card });
-          } else {
-            window.alert(`You rolled [${strRolls.join(', ')}] — Pass!\n\nNo artifact deck available.`);
-            toast?.('Cult Worshippers — success! (No artifact deck available.)');
-          }
+      } else {
+        // Failed — choose an Artifact to discard
+        const arts = collectArtifactsFromHero(hero);
+        if (!arts.length) {
+          const outcome = 'Failed, but you have no Artifacts to lose.';
+          log.push(outcome);
+          await showResult(ctx, 'CULT WORSHIPPERS — Result', [checkLine, '', outcome]);
+          toast?.('Cult Worshippers — failed, but no Artifacts to lose.');
         } else {
-          // Failed — choose an Artifact (not Gear) to discard
-          const arts = collectArtifactsFromHero(hero);
-          if (!arts.length) {
-            window.alert(`You rolled [${strRolls.join(', ')}] — Fail!\n\nBut you have no Artifacts to lose.`);
-            toast?.('Cult Worshippers — failed, but you have no Artifacts to lose.');
-          } else {
-            const listing = arts.map((a, i) => {
-              const it = a.it || {};
-              const parts = [`${i + 1}. ${a.label}`];
-              if (it.type) parts.push(`     Type: ${it.type}`);
-              const val = typeof it.cost === 'object' && Number.isFinite(it.cost.gold) ? it.cost.gold : (Number.isFinite(it.value) ? it.value : null);
-              if (val != null) parts.push(`     Value: $${val}`);
-              const fx = Array.isArray(it.effects) ? it.effects : [];
-              if (fx.length) parts.push(`     Effects: ${fx.join('; ')}`);
-              return parts.join('\n');
-            }).join('\n\n');
+          const options = arts.map((a) => {
+            const it = a.it || {};
+            const fx = Array.isArray(it.effects) ? it.effects : [];
+            let desc = a.label;
+            if (it.type) desc += ` (${it.type})`;
+            if (fx.length) desc += ` — ${fx.join('; ')}`;
+            return { label: desc };
+          });
 
-            const pickRaw = window.prompt(
-              `You rolled [${strRolls.join(', ')}] — Fail!\n\n` +
-              `The Inquisitor steals one of your Artifacts.\n` +
-              `Choose which Artifact to lose:\n\n` +
-              listing + `\n\nEnter a number (1-${arts.length}):`,
-              '1'
-            );
-            const pickIdx = pickRaw == null ? 0 : Math.max(0, Math.min(arts.length - 1, (Number(pickRaw) | 0) - 1));
-            const sel = arts[pickIdx];
-            if (sel) {
-              updateHero(activeId, (h) => {
-                if (sel.source === 'inventory') {
-                  const inv2 = Array.isArray(h.inventory) ? [...h.inventory] : [];
-                  if (sel.idx >= 0 && sel.idx < inv2.length) inv2.splice(sel.idx, 1);
-                  return { ...h, inventory: inv2 };
+          const pickIdx = await ctx.promptChoice?.(
+            `CULT WORSHIPPERS — Failed!\n${checkLine}\n\nThe Inquisitor steals one of your Artifacts.\nChoose which Artifact to lose:`,
+            options
+          );
+          const sel = arts[pickIdx ?? 0];
+          if (sel) {
+            updateHero?.(activeId, (h) => {
+              if (sel.source === 'inventory') {
+                const inv2 = Array.isArray(h.inventory) ? [...h.inventory] : [];
+                if (sel.idx >= 0 && sel.idx < inv2.length) inv2.splice(sel.idx, 1);
+                return { ...h, inventory: inv2 };
+              }
+              const next = { ...h };
+              if (next.equipped && typeof next.equipped === 'object' && sel.slot in next.equipped) {
+                next.equipped = { ...next.equipped, [sel.slot]: null };
+              }
+              if (next.gear && typeof next.gear === 'object' && sel.slot in next.gear) {
+                next.gear = { ...next.gear, [sel.slot]: null };
+              }
+              if (next.gearSlots && typeof next.gearSlots === 'object' && sel.slot in next.gearSlots) {
+                next.gearSlots = { ...next.gearSlots, [sel.slot]: null };
+              }
+              if (Array.isArray(next.slots)) {
+                next.slots = next.slots.map((entry) => {
+                  const slotKey = entry?.slot || entry?.name;
+                  if (slotKey === sel.slot) return { ...entry, item: null, equipped: null };
+                  return entry;
+                });
+              }
+              if (next.slots && typeof next.slots === 'object' && !Array.isArray(next.slots)) {
+                const cur = next.slots[sel.slot];
+                if (cur && typeof cur === 'object' && 'item' in cur) {
+                  next.slots = { ...next.slots, [sel.slot]: { ...cur, item: null } };
+                } else if (sel.slot in next.slots) {
+                  next.slots = { ...next.slots, [sel.slot]: null };
                 }
-                const next = { ...h };
-                if (next.equipped && typeof next.equipped === 'object' && sel.slot in next.equipped) {
-                  next.equipped = { ...next.equipped, [sel.slot]: null };
-                }
-                if (next.gear && typeof next.gear === 'object' && sel.slot in next.gear) {
-                  next.gear = { ...next.gear, [sel.slot]: null };
-                }
-                if (next.gearSlots && typeof next.gearSlots === 'object' && sel.slot in next.gearSlots) {
-                  next.gearSlots = { ...next.gearSlots, [sel.slot]: null };
-                }
-                if (Array.isArray(next.slots)) {
-                  next.slots = next.slots.map((entry) => {
-                    const slotKey = entry?.slot || entry?.name;
-                    if (slotKey === sel.slot) return { ...entry, item: null, equipped: null };
-                    return entry;
-                  });
-                }
-                if (next.slots && typeof next.slots === 'object' && !Array.isArray(next.slots)) {
-                  const cur = next.slots[sel.slot];
-                  if (cur && typeof cur === 'object' && 'item' in cur) {
-                    next.slots = { ...next.slots, [sel.slot]: { ...cur, item: null } };
-                  } else if (sel.slot in next.slots) {
-                    next.slots = { ...next.slots, [sel.slot]: null };
-                  }
-                }
-                return next;
-              });
-              window.alert(`You lost: ${sel.it?.name || 'an Artifact'}`);
-              toast?.(`Cult Worshippers — ${heroName} failed (rolled ${strRoll}). Lost ${sel.it?.name || 'an Artifact'}.`);
-            }
+              }
+              return next;
+            });
+            const lostName = sel.it?.name || 'an Artifact';
+            const outcome = `You lost: ${lostName}`;
+            log.push(outcome);
+            await showResult(ctx, 'CULT WORSHIPPERS — Result', [checkLine, '', outcome]);
+            toast?.(`Cult Worshippers — ${heroName} lost ${lostName}.`);
           }
         }
       }
       patchStayMods({ churchClosed: true });
+      log.push('The Church is closed until after the next Adventure.');
       toast?.('The Church is closed until after the next Adventure.');
-      return;
+      return { log };
     }
 
-    // 3: Possession — D6 Horror Hits; any Sanity lost is permanent (reduce Max Sanity). Church closes.
+    // 3: Possession — D6 Horror Hits; any Sanity lost is permanent. Church closes.
     case 3: {
-      if (!activeId) return;
-      const hero = getHero(activeId);
+      const hero = getHero?.(activeId);
       const heroName = hero?.name || 'Hero';
 
-      const raw = window.prompt(
-        `Possession\n\n` +
-        `"A Preacher collapses as a demonic force overwhelms him. ` +
-        `Rising once more, he stares into your soul."\n\n` +
-        `Take D6 Horror Hits. Any Sanity lost is permanent ` +
-        `(your Max Sanity is reduced by the amount lost).\n\n` +
-        `Enter your D6 Horror Hits roll (1-6), or leave blank to auto-roll:`,
-        ''
-      );
-      let horrorHits;
-      if (raw == null || raw.trim() === '') {
-        horrorHits = d6();
-      } else {
-        const n = Number(raw);
-        horrorHits = (Number.isFinite(n) && n >= 1 && n <= 6) ? n : d6();
-      }
+      const horrorHits = await ctxD6(ctx, 'Possession — Roll 1d6 for Horror Hits');
+      const hitsLine = `Rolled [${horrorHits}] for Horror Hits.`;
+      log.push(hitsLine);
 
       let sanityLost = 0;
-      updateHero(activeId, (h) => {
+      updateHero?.(activeId, (h) => {
         const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
         const prevMax = Number(h.maxSanity ?? h.SanityMax ?? 0);
-        // Sanity lost = however much current sanity actually drops (can't go below 0)
         sanityLost = Math.min(horrorHits, curSanity);
         const nextCur = Math.max(0, curSanity - horrorHits);
-        // Max Sanity is permanently reduced by the amount of Sanity actually lost
         const newMax = Math.max(0, prevMax - sanityLost);
         const next = { ...h, sanity: nextCur, currentSanity: nextCur, maxSanity: newMax };
         const note = makeMaxChangeNote({
@@ -358,63 +288,63 @@ async function apply(roll, ctx) {
         return pushConditionNote(next, note);
       });
 
-      window.alert(
-        `Possession — ${heroName} took ${horrorHits} Horror Hits.\n\n` +
-        `Sanity lost: ${sanityLost}\n` +
-        `Max Sanity permanently reduced by ${sanityLost}.`
-      );
+      const outcome = `${heroName} took ${horrorHits} Horror Hits.\nSanity lost: ${sanityLost}\nMax Sanity permanently reduced by ${sanityLost}.`;
+      log.push(outcome);
+      await showResult(ctx, 'POSSESSION — Result', [
+        '"A Preacher collapses as a demonic force overwhelms him. Rising once more, he stares into your soul."',
+        '', hitsLine, '', outcome,
+      ]);
       toast?.(`Possession — ${heroName} took ${horrorHits} Horror Hits, lost ${sanityLost} Sanity permanently.`);
       patchStayMods({ churchClosed: true });
+      log.push('The Church is closed until after the next Adventure.');
       toast?.('The Church is closed until after the next Adventure.');
-      return;
+      return { log };
     }
 
     // 4–5: Dark Stone Altar — all Rituals cost +1 Dark Stone (whole Stay).
     case 4:
-case 5: {
-  patchStayMods({ churchRitualExtraDarkStone: 1 });
-  toast?.('Dark Stone Altar — all Church Rituals cost +1 Dark Stone this Town Stay.');
-  // let the Rituals tab reactively show the surcharge
-  try { window.dispatchEvent(new CustomEvent('rituals:costOverride', { detail: { extraDarkStone: 1, scope: 'church' } })); } catch {}
-  return;
-}
+    case 5: {
+      patchStayMods({ churchRitualExtraDarkStone: 1 });
+      const outcome = 'Dark Stone Altar — all Church Rituals cost +1 Dark Stone this Town Stay.';
+      log.push(outcome);
+      await showResult(ctx, 'DARK STONE ALTAR', [info.effect]);
+      toast?.(outcome);
+      try { window.dispatchEvent(new CustomEvent('rituals:costOverride', { detail: { extraDarkStone: 1, scope: 'church' } })); } catch {}
+      return { log };
+    }
 
     // 6–8: No event
     case 6:
     case 7:
     case 8: {
+      log.push('Faith to the Forsaken — No event.');
+      await showResult(ctx, 'FAITH TO THE FORSAKEN', ['No event.']);
       toast?.('Faith to the Forsaken — No event.');
-      return;
+      return { log };
     }
 
     // 9–10: Gift of Blessing — choose any Blessed Aura for free (no test).
     case 9:
     case 10: {
-      if (!activeId) return;
       const catalog = Array.isArray(churchBlessedAuras) ? churchBlessedAuras : [];
       if (!catalog.length) {
+        log.push('A Gift of Blessing — no auras are available.');
         toast?.('A Gift of Blessing — no auras are available.');
-        return;
+        return { log };
       }
 
-      const listing = catalog.map((a, i) => {
+      const options = catalog.map((a) => {
         const name = a.name.replace(/\s*\(.*\)$/, '');
-        return `${i + 1}. ${name} — ${a.effect}`;
-      }).join('\n');
+        return { label: `${name} — ${a.effect}` };
+      });
 
-      const pickRaw = window.prompt(
-        `A Gift of Blessing\n\n` +
-        `"Recognized as a champion of light, the Preacher bestows a blessing."\n\n` +
-        `Choose any Blessed Aura to gain for free (no test required):\n\n` +
-        listing + `\n\nEnter a number (1-${catalog.length}):`,
-        '1'
+      const pickIdx = await ctx.promptChoice?.(
+        `A GIFT OF BLESSING\n\n"Recognized as a champion of light, the Preacher bestows a blessing."\n\nChoose any Blessed Aura to gain for free (no test required):`,
+        options
       );
 
-      const pickIdx = pickRaw == null
-        ? 0
-        : Math.max(0, Math.min(catalog.length - 1, (Number(pickRaw) | 0) - 1));
-      const sel = catalog[pickIdx];
-      if (!sel) return;
+      const sel = catalog[pickIdx ?? 0];
+      if (!sel) return { log };
 
       const auraName = sel.name.replace(/\s*\(.*\)$/, '');
       const auraItem = {
@@ -430,14 +360,11 @@ case 5: {
         scope: 'nextAdventure',
       };
 
-      updateHero(activeId, (h) => {
-        // Place aura in inventory so it can be equipped to the Blessed Aura gear slot
+      updateHero?.(activeId, (h) => {
         const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
         inv.push(auraItem);
-        // Also equip it to the Blessed Aura gear slot directly
         const gear = { ...(h.gear || {}) };
         gear['Blessed Aura'] = auraItem;
-        // Add to oncePerAdventure buffs so it shows on the Buffs tab
         const buffs = Array.isArray(h.oncePerAdventure) ? [...h.oncePerAdventure] : [];
         buffs.push({
           id: `${sel.id}_${Date.now()}`,
@@ -448,19 +375,20 @@ case 5: {
         return { ...h, inventory: inv, gear, oncePerAdventure: buffs };
       });
 
+      const outcome = `${auraName} equipped to Blessed Aura slot and added to Buffs.`;
+      log.push(outcome);
+      await showResult(ctx, 'A GIFT OF BLESSING — Result', [outcome]);
       toast?.(`A Gift of Blessing — ${auraName} equipped to Blessed Aura slot and added to Buffs.`);
       dispatchUI('inventory:received', { heroId: activeId, item: auraItem });
-      return;
+      return { log };
     }
-
 
     // 11: Protective Shield — add to Buffs tab (oncePerAdventure).
     case 11: {
       const hereIds = _getHeroesAtShop?.(shopId) || (activeId ? [activeId] : []);
-      for (const id of hereIds) {
-        const buffId = `protective_shield_${Date.now()}_${id}`;
-        updateHero(id, (h) => {
-          // Add to oncePerAdventure so it shows on the Buffs tab in GearTab
+      for (const hid of hereIds) {
+        const buffId = `protective_shield_${Date.now()}_${hid}`;
+        updateHero?.(hid, (h) => {
           const buffs = Array.isArray(h.oncePerAdventure) ? [...h.oncePerAdventure] : [];
           buffs.push({
             id: buffId,
@@ -470,33 +398,26 @@ case 5: {
           });
           return { ...h, oncePerAdventure: buffs };
         });
-        const heroName = getHero(id)?.name || 'A hero';
+        const heroName = getHero?.(hid)?.name || 'A hero';
+        log.push(`Protective Shield — ${heroName} gains a buff.`);
         toast?.(`Protective Shield — ${heroName} gains a buff (check Buffs tab on Gear).`);
       }
-      return;
+      await showResult(ctx, 'PROTECTIVE SHIELD', [
+        'Next Adventure: cancel one Darkness or one Growing Dread card.',
+        '', 'Buff added to all heroes at the Church.',
+      ]);
+      return { log };
     }
 
     // 12: Divine Fortitude — Gain D3 Sanity (permanent).
     case 12: {
-      if (!activeId) return;
-      const heroName = getHero(activeId)?.name || 'Hero';
+      const heroName = getHero?.(activeId)?.name || 'Hero';
 
-      const raw = window.prompt(
-        `Divine Fortitude\n\n` +
-        `"Your soul is fortified through divine reflection."\n\n` +
-        `Gain D3 Sanity (permanent Max Sanity increase).\n\n` +
-        `Enter your D3 roll (1-3), or leave blank to auto-roll:`,
-        ''
-      );
-      let gain;
-      if (raw == null || raw.trim() === '') {
-        gain = Math.ceil(d6() / 2); // D3
-      } else {
-        const n = Number(raw);
-        gain = (Number.isFinite(n) && n >= 1 && n <= 3) ? n : Math.ceil(d6() / 2);
-      }
+      const gain = await ctxD3(ctx, 'Divine Fortitude — Roll D3 for Sanity gain');
+      const gainLine = `Rolled [${gain}] for Sanity gain (D3).`;
+      log.push(gainLine);
 
-      updateHero(activeId, (h) => {
+      updateHero?.(activeId, (h) => {
         const max = Number(h.maxSanity ?? h.SanityMax ?? 0);
         const cur = Number(h.currentSanity ?? h.sanity ?? 0);
         const newMax = max + gain;
@@ -511,26 +432,32 @@ case 5: {
         });
         return pushConditionNote(next, note);
       });
-      window.alert(`Divine Fortitude — ${heroName} gains +${gain} Max Sanity (and heals ${gain}).`);
-      toast?.(`Divine Fortitude — ${heroName} gains +${gain} Max Sanity (and heals ${gain}).`);
-      return;
+
+      const outcome = `${heroName} gains +${gain} Max Sanity (and heals ${gain}).`;
+      log.push(outcome);
+      await showResult(ctx, 'DIVINE FORTITUDE — Result', [
+        '"Your soul is fortified through divine reflection."',
+        '', gainLine, '', outcome,
+      ]);
+      toast?.(`Divine Fortitude — ${heroName} gains +${gain} Max Sanity.`);
+      return { log };
     }
 
     default:
       toast?.('Church: No matching event branch.');
+      return { log };
   }
 }
 
 export async function handleChurchEvent(ctx = {}) {
   const roll = ctx.forcedRoll ?? roll2d6();
-  await apply(roll, ctx);
+  const result = await apply(roll, ctx);
   return {
     actions: [],
     townState: ctx.townState,
-    log: [`Church Event Roll: ${roll}`],
+    log: result?.log || [`Church Event Roll: ${roll}`],
     eventRoll: roll,
     eventIndex: Math.max(0, roll - 2),
-    ui: display(roll),
   };
 }
 
