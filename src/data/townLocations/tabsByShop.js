@@ -129,6 +129,11 @@ import desertMarketplaceBackAlleys from './BlastedWastesTown/DesertMarketplace/d
 import desertMarketplaceItems from './BlastedWastesTown/DesertMarketplace/desertMarketplaceItems.js';
 import desertMarketplaceTransports from './BlastedWastesTown/DesertMarketplace/desertMarketplaceTransports.js';
 
+// ---------------- Scavenger Doc ----------------
+import scavengerDocItems from './BlastedWastesTown/ScavengerDoc/scavengerDocItems.js';
+import scavengerDocServices from './BlastedWastesTown/ScavengerDoc/scavengerDocServices.js';
+import scavengerDocResearch from './BlastedWastesTown/ScavengerDoc/scavengerDocResearch.js';
+
 // ---------------- Temple ----------------
 import templeServices from './BlastedWastesTown/Temple/templeServices.js';
 
@@ -235,6 +240,12 @@ export const makeTabsByShop = (ctx) => ({
 
   temple: catList(
     cat('temple_services', 'Blessings, Items, and Services', templeServices, ctx),
+  ),
+
+  scavengerDoc: catList(
+    cat('scav_items', 'Medical Supplies', scavengerDocItems, ctx),
+    cat('scav_services', 'Doc Services — Healing', scavengerDocServices, ctx),
+    cat('scav_research', 'Scientific Research', scavengerDocResearch, ctx),
   ),
 
   desertMarketplace: catList(
