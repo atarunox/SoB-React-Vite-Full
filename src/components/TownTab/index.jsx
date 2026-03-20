@@ -11,7 +11,8 @@ import {
 } from '../../utils/townState';
 import { usePosse } from '../../context/PosseContext';
 import { calculateCurrentStats } from '../../utils/calculateStats';
-import { shopDataById } from '../../data/shopDataByID';
+import { shopDataById, BLASTED_WASTES_TOWN_IDS, FRONTIER_TOWN_IDS } from '../../data/shopDataByID';
+import { useWorld } from '../../context/WorldContext';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
 import { tabsByShop } from '../../data/townLocations/tabsByShop.js';
 import { makeLocEventCtx } from '../../utils/locationEventContext';
@@ -532,7 +533,13 @@ function FrontierOutpostArtifactOfferPanel({ townStateApi, posseApi, uiApi }) {
 
 export default function TownTab({ heroId }) {
   const { posse, activeHeroId, updateHero } = usePosse();
+  const { world } = useWorld();
   const resolvedHeroId = heroId ?? activeHeroId;
+
+  // Determine which town to show based on the current world
+  const isBlastedWastesTown = world === 'Blasted Wastes' || world === 'Canyons';
+  const activeTownIds = isBlastedWastesTown ? BLASTED_WASTES_TOWN_IDS : FRONTIER_TOWN_IDS;
+  const townLabel = isBlastedWastesTown ? 'Blasted Wastes Town' : 'Frontier Town';
 
   // Roll mode: 'auto' (digital dice) or 'manual' (physical dice, enter results)
   // Persisted in localStorage so the player's preference sticks across sessions.
@@ -2708,10 +2715,18 @@ const foWorldArtifactOffer =
     );
   };
 
-  // allowed shops by lodging (Camp limitation only — Smuggler's Den always visible)
-  const allowedShops = Object.entries(shopDataById).filter(([id]) =>
-    hero.lodging === 'Camp' ? CAMP_SHOPS.includes(id) : true
-  );
+  // allowed shops: filter by current town (world), then by lodging (Camp limitation)
+  const allowedShops = Object.entries(shopDataById).filter(([id, s]) => {
+    // Camp Site is always available if staying at Camp
+    if (id === 'campSiteTents') {
+      return hero.lodging === 'Camp';
+    }
+    // Only show locations belonging to the active town
+    if (!activeTownIds.includes(id)) return false;
+    // Camp lodging restricts to camp only
+    if (hero.lodging === 'Camp') return CAMP_SHOPS.includes(id);
+    return true;
+  });
 
   // derive subshop + categories
   const shop = openLocationId
@@ -2770,7 +2785,7 @@ const foWorldArtifactOffer =
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">
-          Town Visit
+          {townLabel}
         </h2>
         {debugMode && (
           <button
