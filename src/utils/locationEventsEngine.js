@@ -19,6 +19,7 @@ import smugglersDen from '../data/townLocations/smugglersDen.js';
 import streetMarket from '../data/townLocations/streetMarket.js';
 import desertMarketplace from '../data/townLocations/desertMarketplace.js';
 import temple from '../data/townLocations/temple.js';
+import gladiatorArena from '../data/townLocations/gladiatorArena.js';
 
 // Normalizer so 'gamblingHall' → 'gambling', etc.
 import { resolveShopId } from './locationEventText';
@@ -41,6 +42,7 @@ import { handleSmugglersDenEvent } from './locationHandlers/smugglersDenHandler'
 import { handleStreetMarketEvent } from './locationHandlers/streetMarketHandler';
 import { handleDesertMarketplaceEvent } from './locationHandlers/desertMarketplaceHandler';
 import { handleTempleEvent } from './locationHandlers/templeHandler';
+import { handleGladiatorArenaEvent } from './locationHandlers/gladiatorArenaHandler';
 
 import { calculateCurrentStats } from './calculateStats';
 import { withConditionAppended } from './mergeConditions';
@@ -142,6 +144,7 @@ const REGISTRY = {
   [streetMarket.id]:    { data: streetMarket,              handler: handleStreetMarketEvent },
   [desertMarketplace.id]: { data: desertMarketplace,      handler: handleDesertMarketplaceEvent },
   [temple.id]:            { data: temple,                  handler: handleTempleEvent },
+  [gladiatorArena.id]:    { data: gladiatorArena,          handler: handleGladiatorArenaEvent },
 };
 
 // ---------------------------------------------------------------------------

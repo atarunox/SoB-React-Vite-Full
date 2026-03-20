@@ -17,6 +17,7 @@ import sheriffsOffice from './sheriffsOffice';
 import miningOperation from './miningOperation';
 import desertMarketplace from './desertMarketplace';
 import temple from './temple';
+import gladiatorArena from './gladiatorArena';
 
 export const townLocations = [
   // Frontier Town
@@ -36,6 +37,7 @@ export const townLocations = [
   miningOperation,
   desertMarketplace,
   temple,
+  gladiatorArena,
 ];
 
 export const townLocationById = townLocations.reduce((map, loc) => {
