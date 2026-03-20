@@ -134,6 +134,11 @@ import scavengerDocItems from './BlastedWastesTown/ScavengerDoc/scavengerDocItem
 import scavengerDocServices from './BlastedWastesTown/ScavengerDoc/scavengerDocServices.js';
 import scavengerDocResearch from './BlastedWastesTown/ScavengerDoc/scavengerDocResearch.js';
 
+// ---------------- Wasteland Workshop ----------------
+import wastelandWorkshopItems from './BlastedWastesTown/WastelandWorkshop/wastelandWorkshopItems.js';
+import wastelandWorkshopArmor from './BlastedWastesTown/WastelandWorkshop/wastelandWorkshopArmor.js';
+import wastelandWorkshopUpgrades from './BlastedWastesTown/WastelandWorkshop/wastelandWorkshopUpgrades.js';
+
 // ---------------- Temple ----------------
 import templeServices from './BlastedWastesTown/Temple/templeServices.js';
 
@@ -246,6 +251,12 @@ export const makeTabsByShop = (ctx) => ({
     cat('scav_items', 'Medical Supplies', scavengerDocItems, ctx),
     cat('scav_services', 'Doc Services — Healing', scavengerDocServices, ctx),
     cat('scav_research', 'Scientific Research', scavengerDocResearch, ctx),
+  ),
+
+  wastelandWorkshop: catList(
+    cat('ww_items', 'Rust Items & Equipment', wastelandWorkshopItems, ctx),
+    cat('ww_armor', 'Wasteland Scrap Armor', wastelandWorkshopArmor, ctx),
+    cat('ww_upgrades', 'Wasteland Rust Forge — Upgrades', wastelandWorkshopUpgrades, ctx),
   ),
 
   desertMarketplace: catList(

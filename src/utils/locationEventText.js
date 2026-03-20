@@ -17,6 +17,14 @@ import saloon             from '../data/townLocations/saloon.js';
 import smugglersDen       from '../data/townLocations/smugglersDen.js';
 import streetMarket       from '../data/townLocations/streetMarket.js';
 
+// Blasted Wastes Town
+import miningOperation   from '../data/townLocations/miningOperation.js';
+import wastelandWorkshop from '../data/townLocations/wastelandWorkshop.js';
+import desertMarketplace from '../data/townLocations/desertMarketplace.js';
+import temple            from '../data/townLocations/temple.js';
+import gladiatorArena    from '../data/townLocations/gladiatorArena.js';
+import scavengerDoc      from '../data/townLocations/scavengerDoc.js';
+
 // Map by id so getEventDisplay(shopId, roll) can find events easily
 const DATA = {
   [campSite.id]: campSite,
@@ -33,6 +41,13 @@ const DATA = {
   [saloon.id]: saloon,
   [smugglersDen.id]: smugglersDen,
   [streetMarket.id]: streetMarket,
+  // Blasted Wastes Town
+  [miningOperation.id]: miningOperation,
+  [wastelandWorkshop.id]: wastelandWorkshop,
+  [desertMarketplace.id]: desertMarketplace,
+  [temple.id]: temple,
+  [gladiatorArena.id]: gladiatorArena,
+  [scavengerDoc.id]: scavengerDoc,
 };
 
 // Common UI ↔ data id mismatches (extend as needed)
@@ -48,6 +63,9 @@ const ALIASES = {
   smith: 'blacksmith',
   market: 'streetMarket',
   smugglers: 'smugglersDen',
+  // Blasted Wastes aliases
+  mining: 'miningOperation',
+  workshop: 'wastelandWorkshop',
 };
 
 function _resolveShopIdInternal(id) {

@@ -29,7 +29,7 @@ export function display(roll) {
         title: 'Alien Assassin',
         lore: 'Walking through a side street, you are pulled into the shadows and thrown to the ground! Standing over you, a masked assassin brandishes a rusty, serrated blade and a contract for your life!',
         effect:
-          'Make a Luck 6+ test to break free and escape! If failed, roll once on the Injury Table, using only a single D6+1.',
+          'Make a Luck 5+ test to break free and escape! If failed, roll once on the Injury Table, using only a single D6+1.',
       };
     case 3:
       return {
@@ -43,7 +43,7 @@ export function display(roll) {
         title: 'Market Chase',
         lore: "A gang of angry looking alien thugs has decided that they don't like the way you look, and begins chasing you through the market streets, with hate in their eyes!",
         effect:
-          'Make an Agility 6+ test to outrun the thugs or a Cunning 5+ test to outwit them. If successful, gain 25 XP. If failed, take 2D6 Wounds ignoring Defense, and your Location Visit is over.',
+          'Make an Agility 4+ test to outrun the thugs or a Cunning 5+ test to outwit them. If successful, gain 25 XP. If failed, take 2D6 Wounds ignoring Defense, and your Location Visit is over.',
       };
     case 5:
       return {
@@ -107,16 +107,16 @@ export async function apply(roll, ctx) {
   log.push(`[Desert Marketplace] (${roll}) ${info.title} — ${info.lore}`);
   log.push(`Effect: ${info.effect}`);
 
-  // 2: Alien Assassin — Luck 6+ to escape, else Injury Table (D6+1)
+  // 2: Alien Assassin — Luck 5+ to escape, else Injury Table (D6+1)
   if (roll === 2) {
     const lore2 = `ALIEN ASSASSIN\n${info.lore}`;
     const result = await ctx.doSkillCheck(id, {
       stat: 'Luck',
-      target: 6,
+      target: 5,
       returnDetails: true,
       message: `${lore2}\nYou struggle to break free from the assassin's grip!`,
     });
-    const checkLine = formatCheckResult(result, 'Luck', 6);
+    const checkLine = formatCheckResult(result, 'Luck', 5);
     if (checkLine) log.push(checkLine);
     const passed = result?.passed ?? result;
     if (passed) {
@@ -158,13 +158,13 @@ export async function apply(roll, ctx) {
     return { log };
   }
 
-  // 4: Market Chase — Agility 6+ OR Cunning 5+
+  // 4: Market Chase — Agility 4+ OR Cunning 5+
   if (roll === 4) {
     const lore4 = `MARKET CHASE\n${info.lore}`;
     const testChoice = await ctx.promptChoice?.(
       `MARKET CHASE\n${info.lore}\n\nThe thugs close in! Choose how to escape:`,
       [
-        { label: 'Outrun them (Agility 6+ test)' },
+        { label: 'Outrun them (Agility 4+ test)' },
         { label: 'Outwit them (Cunning 5+ test)' },
       ]
     );
@@ -173,11 +173,11 @@ export async function apply(roll, ctx) {
     if (testChoice === 0) {
       result = await ctx.doSkillCheck(id, {
         stat: 'Agility',
-        target: 6,
+        target: 4,
         returnDetails: true,
         message: `${lore4}\nYou sprint through the market stalls, dodging alien merchants and overturning carts!`,
       });
-      checkLine = formatCheckResult(result, 'Agility', 6);
+      checkLine = formatCheckResult(result, 'Agility', 4);
     } else {
       result = await ctx.doSkillCheck(id, {
         stat: 'Cunning',

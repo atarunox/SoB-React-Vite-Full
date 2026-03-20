@@ -19,6 +19,7 @@ import desertMarketplace from './desertMarketplace';
 import temple from './temple';
 import gladiatorArena from './gladiatorArena';
 import scavengerDoc from './scavengerDoc';
+import wastelandWorkshop from './wastelandWorkshop';
 
 export const townLocations = [
   // Frontier Town
@@ -40,6 +41,7 @@ export const townLocations = [
   temple,
   gladiatorArena,
   scavengerDoc,
+  wastelandWorkshop,
 ];
 
 export const townLocationById = townLocations.reduce((map, loc) => {

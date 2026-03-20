@@ -149,6 +149,14 @@ async function applyIdolEvent4(idolRoll, ctx, id, log) {
       const rollLine = `Rolled [${roll1}, ${roll2}] + Strength ${str} = ${total}`;
       log.push(rollLine);
       if (total >= 13) {
+        // Apply 3 Corruption Hits to every Hero
+        const allHeroes = ctx.getHeroesAtShop?.('temple') || [id];
+        for (const hid of allHeroes) {
+          ctx.updateHero?.(hid, (h) => ({
+            ...h,
+            corruption: (h.corruption ?? 0) + 3,
+          }));
+        }
         const outcome = `${rollLine}\nTotal is 13 or higher — the countdown sequence triggers! This is the last day in Town for all Heroes. Every Hero takes 3 Corruption Hits from the ensuing fallout.`;
         log.push(outcome);
         await showResult(ctx, 'THE HAMMER OF DEVOTION — DETONATION!', [rollLine, '', outcome]);

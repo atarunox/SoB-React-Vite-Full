@@ -142,7 +142,10 @@ export async function apply(roll, ctx) {
       const d8Roll = Math.floor(Math.random() * 8) + 1;
       const woundLine = `Rolled [${d8Roll}] for D8 Wounds (ignoring Defense).`;
       log.push(woundLine);
-      ctx.updateHero?.(id, (h) => ({ ...h, wounds: (h.wounds || 0) + d8Roll }));
+      ctx.updateHero?.(id, (h) => ({
+        ...h,
+        currentHealth: Math.max(0, (h.currentHealth ?? h.health ?? h.maxHealth ?? 10) - d8Roll),
+      }));
       const outcome = `A shock prod strikes you! Take ${d8Roll} Wounds (ignoring Defense).`;
       log.push(outcome);
       await showResult(ctx, 'WARDEN RAID — Result', [checkLine, woundLine, '', outcome, '', 'The Gladiator Arena is shut down for the rest of this Town Stay.']);
@@ -191,7 +194,10 @@ export async function apply(roll, ctx) {
       ctx.toast?.('Fight in the Stands: pushed through safely!');
     } else {
       const woundRoll = await ctxD6(ctx, 'Fight in the Stands — Roll 1d6 for Wounds');
-      ctx.updateHero?.(id, (h) => ({ ...h, wounds: (h.wounds || 0) + woundRoll }));
+      ctx.updateHero?.(id, (h) => ({
+        ...h,
+        currentHealth: Math.max(0, (h.currentHealth ?? h.health ?? h.maxHealth ?? 10) - woundRoll),
+      }));
       const woundLine = `Rolled [${woundRoll}] for Wounds (ignoring Defense).`;
       log.push(woundLine);
       const outcome = `The brawl catches you. Take ${woundRoll} Wounds (ignoring Defense) from the bumps and bruises.`;
