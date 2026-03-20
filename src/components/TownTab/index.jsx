@@ -5,6 +5,9 @@ import {
   resetTownState,
   saveTownState,
   isLocationDestroyed,
+  isDebugMode,
+  resetAllLocationEvents,
+  resetVisitsForToday,
 } from '../../utils/townState';
 import { usePosse } from '../../context/PosseContext';
 import { calculateCurrentStats } from '../../utils/calculateStats';
@@ -50,6 +53,7 @@ import {
   getEventState as _getLocEventState,
   resolveEvent as resolveLocEvent,
   setEventRoll as setLocEventRoll,
+  resetAllEvents as resetAllEngineEvents,
 } from '../../utils/locationEventsEngine';
 
 import {
@@ -2739,11 +2743,44 @@ const foWorldArtifactOffer =
     categories[0];
   const entries = activeCat?.entries || [];
 
+  const debugMode = isDebugMode(state);
+
+  const handleDebugResetDay = () => {
+    const s = loadTownState();
+    const day = s.day || 1;
+    s.visitByDay[day] = {};
+    s.dailyEventByDay[day] = { drawn: false, card: null, drawerId: null, at: null };
+    s.dayMods = {};
+    saveTownState(s);
+    resetAllLocationEvents();
+    resetAllEngineEvents();
+    posse.forEach((h) => {
+      const id = h.id || h.localId;
+      if (id) updateHero({ id, chosenLocation: '', isDone: false, lodging: '' });
+    });
+    setOpenLocationId(null);
+    setOpenSubshopId(null);
+    setOpenSubcatId(null);
+    setServiceUi(null);
+    setVisitPurchases({});
+    setState(loadTownState());
+  };
+
   return (
     <div className="p-4 space-y-4">
-      <h2 className="text-xl font-bold">
-        Town Visit
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">
+          Town Visit
+        </h2>
+        {debugMode && (
+          <button
+            onClick={handleDebugResetDay}
+            className="px-3 py-1 text-xs font-bold rounded bg-red-600 text-white hover:bg-red-700 border border-red-800"
+          >
+            Reset Day (Debug)
+          </button>
+        )}
+      </div>
       <p className="italic text-sm mb-2">
         {hero.name
           ? `Welcome, ${hero.name}. `
