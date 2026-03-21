@@ -120,6 +120,8 @@ All location event handlers in `src/utils/locationHandlers/` **must** follow the
 
 7. **Player choices for OR-tests** — When the rulebook says "Stat1 X+ OR Stat2 Y+", use `promptChoice` to let the player pick which test to attempt (don't auto-chain them).
 
+8. **Manual vs Auto rolls** — If the roll is something the player can influence (skill checks, willpower, defense, armor saves, tests), use a manual input pre-filled with an auto-roll result. The player can accept the default by hitting Continue, or change the value if they rolled physical dice or spent grit. This avoids an extra "auto or manual?" prompt — the input field serves both purposes. For rolls the player cannot control (damage amounts, item values, gold costs, wound rolls), auto-roll with `d6()` and just display the result.
+
 ### Hero data field names
 
 - **Grit:** Use `currentGrit` (not `grit`). Read: `h.currentGrit ?? h.grit ?? 0`. Write: `{ currentGrit: newVal }`.
