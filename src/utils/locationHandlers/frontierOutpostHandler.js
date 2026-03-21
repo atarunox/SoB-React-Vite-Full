@@ -205,7 +205,8 @@ async function rollDice(uiApi, io, count, sides = 6, label = '') {
   return Array.from({ length: n }, () => Math.floor(Math.random() * sides) + 1);
 }
 
-// Generic “stat test with autoroll” helper: returns { passed, rolls? }
+// Generic “stat test with pre-filled autoroll” helper: returns { passed, rolls? }
+// Auto-rolls dice and shows result, letting the player accept or override.
 async function promptTestWithAutoRoll({
   uiApi,
   io,
@@ -225,30 +226,7 @@ async function promptTestWithAutoRoll({
     return { passed: false, rolls: [] };
   }
 
-  const choice = await chooseOption(uiApi, io, {
-    title: title || `${statLabel} Test`,
-    message:
-      `${heroName} (${statLabel} ${dice}) must roll ${dice}d6, succeeding on any ${target}+.\n\n` +
-      'Did they pass, fail, or let the app roll?',
-    options: [
-      { id: 'pass', label: 'I rolled and passed' },
-      { id: 'fail', label: 'I rolled and failed' },
-      { id: 'auto', label: `Auto-roll ${dice}d6 now` },
-    ],
-  });
-
-  const mode = choice?.id || 'auto';
-
-  if (mode === 'pass') {
-    note(`${heroName} passed the ${statLabel} test (player-rolled).`);
-    return { passed: true, rolls: [] };
-  }
-  if (mode === 'fail') {
-    note(`${heroName} failed the ${statLabel} test (player-rolled).`);
-    return { passed: false, rolls: [] };
-  }
-
-  // Autoroll branch
+  // Auto-roll the dice
   const rolls = await rollDice(
     uiApi,
     io,
@@ -256,13 +234,28 @@ async function promptTestWithAutoRoll({
     6,
     `${statLabel} Test (${target}+)`
   );
-  const success = rolls.some((r) => r >= target);
+  const successes = rolls.filter((r) => r >= target).length;
+  const autoResult = successes > 0 ? 'Passed' : 'Failed';
+
+  // Show result pre-filled — player can accept or override (e.g. physical dice / grit)
+  const choice = await chooseOption(uiApi, io, {
+    title: title || `${statLabel} Test`,
+    message:
+      `${heroName} — ${statLabel} ${target}+ (${dice}d6)\n\n` +
+      `Rolled [${rolls.join(', ')}] → ${successes} success(es) — ${autoResult}\n\n` +
+      `Accept this result, or override if you rolled physical dice or spent Grit:`,
+    options: [
+      { id: autoResult === 'Passed' ? 'pass' : 'fail', label: `Accept: ${autoResult}` },
+      { id: 'pass', label: 'Override: I Passed' },
+      { id: 'fail', label: 'Override: I Failed' },
+    ],
+  });
+
+  const passed = (choice?.id || (successes > 0 ? 'pass' : 'fail')) === 'pass';
   note(
-    `${heroName} auto-rolls ${statLabel}: [${rolls.join(', ')}] → ${
-      success ? 'Success' : 'Fail'
-    }.`
+    `${heroName} ${statLabel} test: [${rolls.join(', ')}] → ${passed ? 'Passed' : 'Failed'}${choice?.id !== (successes > 0 ? 'pass' : 'fail') ? ' (player override)' : ''}.`
   );
-  return { passed: success, rolls };
+  return { passed, rolls };
 }
 
 /* ------------------------------- main handler ------------------------------- */

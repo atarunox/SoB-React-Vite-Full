@@ -218,43 +218,30 @@ async function resolveMedicalMiracleForTargets(api, targets) {
       const merged = getMergedStats?.(hero) || {};
       const luckDice = Number(merged.stats?.Luck ?? hero.Luck ?? 0) || 0;
 
-      const choice = await uiChoice(api,
-        `Plague Tent — Luck test for ${hero.name || 'Hero'} (5+ on any die).`,
-        [
-          { label: 'Passed (manual)', value: 'pass' },
-          { label: 'Failed (manual)', value: 'fail' },
-          { label: `Auto-roll (${luckDice || 0} dice)`, value: 'auto' },
-        ]
-      );
-
-      let success = false;
-      if (choice === 'pass') {
-        success = true;
-      } else if (choice === 'fail') {
-        success = false;
-      } else {
-        // Auto-roll path (allow override)
-        const diceCount = await uiAskNumber(api, {
-          title: 'Plague Tent — Auto-roll Luck Test (5+)',
-          message: `Enter number of dice to roll (Default = current Luck: ${luckDice})`,
-          min: 0,
-          max: 12,
-          def: luckDice
-        });
-
-        let rolls = [];
-        if (diceCount > 0) {
-          if (typeof api.roll === 'function') {
-            rolls = await api.roll(diceCount, 6, 'Luck Test (5+)');
-          } else {
-            rolls = Array.from({ length: diceCount }, () => d6());
-          }
+      // Auto-roll the Luck test, pre-fill result for player override
+      let rolls = [];
+      if (luckDice > 0) {
+        if (typeof api.roll === 'function') {
+          rolls = await api.roll(luckDice, 6, 'Luck Test (5+)');
+        } else {
+          rolls = Array.from({ length: luckDice }, () => d6());
         }
-        success = (rolls || []).some(x => Number(x) >= 5);
-        toast?.(
-          `[Doc's #3] ${hero.name || 'Hero'} Luck rolls: [${(rolls||[]).join(', ')}] → ${success ? 'Success' : 'Fail'}`
-        );
       }
+      const autoSuccesses = (rolls || []).filter(x => Number(x) >= 5).length;
+
+      // Show rolls and let player confirm or override the success count
+      const overridden = await uiAskNumber(api, {
+        title: `Plague Tent — Luck 5+ (${hero.name || 'Hero'})`,
+        message: `Rolled [${(rolls||[]).join(', ')}] → ${autoSuccesses} success(es).\n` +
+          `Accept or change the number of successes (e.g. if using physical dice or Grit):`,
+        min: 0,
+        max: 12,
+        def: autoSuccesses,
+      });
+      const success = overridden > 0;
+      toast?.(
+        `[Doc's #3] ${hero.name || 'Hero'} Luck rolls: [${(rolls||[]).join(', ')}] → ${overridden} success(es) — ${success ? 'Passed' : 'Failed'}`
+      );
 
       if (!success) {
         const add = d3();

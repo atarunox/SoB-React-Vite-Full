@@ -1,6 +1,6 @@
 // src/utils/locationHandlers/gamblingHallServices.js
 // Executors for Gambling Hall services (Entertainment + Cashier + Specials)
-// Keep prompts for dice/choices; no autoroll unless user leaves blank.
+// Player-controlled rolls use pre-filled auto-roll; uncontrollable rolls auto-roll directly.
 
 import { loadTownState, saveTownState } from '../townState.js';
 
@@ -175,9 +175,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     }
 
     // Winnings: D6×$25 + 2×Extra Bet, then multiplied by Saloon(12) if active
-    const die =
-      (await ctx.promptNumber?.('Poker payout roll (D6) [leave blank to auto-roll]', 'die')) ??
-      D6();
+    const die = D6();
+    toast?.(`Poker payout roll: [${die}]`);
 
     const basePayout = die * 25 + (extra ? extra * 2 : 0);
     const payout = basePayout * mult;
@@ -312,11 +311,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     if (jackpot) {
       const here = ctx.getHeroesAtShop?.('gamblingHall') || [id];
       const others = here.filter((hid) => hid !== id);
-      const die =
-        (await ctx.promptNumber?.(
-          'Jackpot payout roll for others (D6) [leave blank to auto-roll]',
-          'die',
-        )) ?? D6();
+      const die = D6();
+      toast?.(`Jackpot payout roll: [${die}]`);
       const gift = die * 25;
 
       for (const hid of others) addGold(ctx, hid, gift);
@@ -401,11 +397,7 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     );
 
     for (let i = 0; i < sixes; i++) {
-      const die =
-        (await ctx.promptNumber?.(
-          'Payout roll (D6) for each 6 [leave blank to auto-roll]',
-          'die',
-        )) ?? D6();
+      const die = D6();
       const payout = die * 100;
       addGold(ctx, id, payout);
       addUA(ctx, id, 1);
@@ -413,11 +405,7 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     }
 
     for (let i = 0; i < ones; i++) {
-      const hits =
-        (await ctx.promptNumber?.(
-          'Shootout Hits (D6) for each 1 [leave blank to auto-roll]',
-          'die',
-        )) ?? D6();
+      const hits = D6();
       ctx.updateHero?.(id, (h) => ({
         ...h,
         wounds: (h.wounds || 0) + hits,

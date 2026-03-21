@@ -74,36 +74,28 @@ export async function resolveDefensePerHitThenArmorPerWound({
       parsePlusTarget(hero?.stats?.Defense) ||
       NaN;
 
-    const doAutoDef = await ui.promptYesNo?.({
-      message:
-        `Defense (per Hit): ${incomingHits} incoming hit${incomingHits === 1 ? '' : 's'}.\n` +
-        `Auto-roll Defense now${Number.isFinite(defTargetGuess) ? ` (target ${defTargetGuess}+)` : ''}?`,
-    });
+    const target = Number.isFinite(defTargetGuess)
+      ? defTargetGuess
+      : (Number(await ui.promptNumber?.({
+          title: 'Defense Target',
+          message: 'Enter your Defense target number (e.g., 4 for 4+):',
+          min: 2, max: 6, defaultValue: 4,
+        })) || 4);
 
-    if (doAutoDef) {
-      const target = Number.isFinite(defTargetGuess)
-        ? defTargetGuess
-        : (Number(await ui.promptNumber?.({
-            title: 'Defense Target',
-            message: 'Enter your Defense target number (e.g., 4 for 4+):',
-            min: 2, max: 6, defaultValue: 4,
-          })) || 4);
+    // Auto-roll Defense, pre-fill result for player override
+    const rolls = await ui.roll(incomingHits, 6, `Defense — ${incomingHits}d6 vs ${target}+ (1 success ignores 1 hit)`);
+    const arr = Array.isArray(rolls) ? rolls : [rolls];
+    const autoBlocks = arr.filter(n => n >= target).length;
 
-      const rolls = await ui.roll(incomingHits, 6, `Defense — ${incomingHits}d6 vs ${target}+ (1 success ignores 1 hit)`);
-      const arr = Array.isArray(rolls) ? rolls : [rolls];
-      const blocks = arr.filter(n => n >= target).length;
-      incomingHits = Math.max(0, incomingHits - blocks);
-      await ui.toast?.(`Defense blocked ${blocks} hit(s). Hits getting through: ${incomingHits}.`);
-    } else {
-      // Manual: ask how many Defense FAILED (i.e., hits that still get through)
-      const fails = Number(await ui.promptNumber?.({
-        title: 'Manual Defense',
-        message: `How many Defense rolls FAILED (of ${incomingHits})?`,
-        min: 0, max: incomingHits, defaultValue: incomingHits,
-      })) || incomingHits;
-      incomingHits = Math.max(0, Math.min(incomingHits, fails));
-      await ui.toast?.(`Manual Defense: Hits getting through = ${incomingHits}.`);
-    }
+    // Show result and let player accept or change (physical dice / grit)
+    const blocks = Number(await ui.promptNumber?.({
+      title: 'Defense Result',
+      message: `Defense ${target}+: Rolled [${arr.join(', ')}] → ${autoBlocks} block(s).\n` +
+        `Accept or change (e.g. if using physical dice or Grit):`,
+      min: 0, max: incomingHits, defaultValue: autoBlocks,
+    }) ?? autoBlocks);
+    incomingHits = Math.max(0, incomingHits - blocks);
+    await ui.toast?.(`Defense blocked ${blocks} hit(s). Hits getting through: ${incomingHits}.`);
   }
 
   // Convert remaining hits into wounds
@@ -119,25 +111,20 @@ export async function resolveDefensePerHitThenArmorPerWound({
       NaN;
 
     if (Number.isFinite(armorTargetGuess)) {
-      const doAutoArmor = await ui.promptYesNo?.({
-        message: `Armor detected (${armorTargetGuess}+). Auto-roll Armor for ${pendingWounds} wound(s)?`,
-      });
+      // Auto-roll Armor, pre-fill result for player override
+      const rolls = await ui.roll(pendingWounds, 6, `Armor — ${pendingWounds}d6 vs ${armorTargetGuess}+ (each success ignores 1 wound)`);
+      const arr = Array.isArray(rolls) ? rolls : [rolls];
+      const autoIgnores = arr.filter(n => n >= armorTargetGuess).length;
 
-      if (doAutoArmor) {
-        const rolls = await ui.roll(pendingWounds, 6, `Armor — ${pendingWounds}d6 vs ${armorTargetGuess}+ (each success ignores 1 wound)`);
-        const arr = Array.isArray(rolls) ? rolls : [rolls];
-        const ignores = arr.filter(n => n >= armorTargetGuess).length;
-        pendingWounds = Math.max(0, pendingWounds - ignores);
-        await ui.toast?.(`Armor ignored ${ignores} wound(s). Final Wounds: ${pendingWounds}.`);
-      } else {
-        const armorBlocks = Number(await ui.promptNumber?.({
-          title: 'Manual Armor',
-          message: `How many Armor rolls SUCCEEDED (of ${pendingWounds})?`,
-          min: 0, max: pendingWounds, defaultValue: 0,
-        })) || 0;
-        pendingWounds = Math.max(0, pendingWounds - armorBlocks);
-        await ui.toast?.(`Manual Armor: Final Wounds = ${pendingWounds}.`);
-      }
+      // Show result and let player accept or change (physical dice / grit)
+      const ignores = Number(await ui.promptNumber?.({
+        title: 'Armor Result',
+        message: `Armor ${armorTargetGuess}+: Rolled [${arr.join(', ')}] → ${autoIgnores} save(s).\n` +
+          `Accept or change (e.g. if using physical dice or Grit):`,
+        min: 0, max: pendingWounds, defaultValue: autoIgnores,
+      }) ?? autoIgnores);
+      pendingWounds = Math.max(0, pendingWounds - ignores);
+      await ui.toast?.(`Armor ignored ${ignores} wound(s). Final Wounds: ${pendingWounds}.`);
     } else {
       // No Armor detected; continue without asking.
       await ui.toast?.('No Armor detected on your sheet. Skipping Armor rolls.');
@@ -510,15 +497,7 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       log.push(rollLine);
 
       if (successes > 0) {
-        let d8 = D8();
-        if (typeof ui.promptText === 'function') {
-          const raw = await ui.promptText({
-            message: `Escort success! Enter your D8 roll for payout (blank for auto = ${d8}).`,
-            defaultValue: '',
-          });
-          const n = Math.floor(Number(raw));
-          if (Number.isFinite(n) && n >= 1 && n <= 8) d8 = n;
-        }
+        const d8 = D8();
         const payout = d8 * escortPayPerPip;
         addGold(payout, `Escort payoff (${d8} × $${escortPayPerPip})`);
         const successLine = `You safely delivered the prisoner. Gained $${payout} (D8 [${d8}] × $${escortPayPerPip}).${legendaryBonus ? ' (Legendary Outlaw bonus!)' : ''}`;
