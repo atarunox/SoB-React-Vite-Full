@@ -112,6 +112,80 @@ import {
 } from './townTabHelpers';
 
 // Apply shopMods (priceDelta / saleActive) to a cost object for any location
+// ---- Town Status Tracker (visible banner for active town flags) ----
+function TownStatusTracker({ state }) {
+  if (!state) return null;
+
+  const track = state.darknessTrack || 1;
+  const max = state.darknessMax || 6;
+  const endsToday = state.townStayEndsToday;
+  const nextAdv = state.nextAdventure;
+  const noGrit = state.globalRules?.noGritNextAdventure;
+  const allWanted = state.globalRules?.allWantedThisStay;
+  const hasAlerts = endsToday || nextAdv || noGrit || allWanted;
+
+  // Darkness track pips
+  const pips = [];
+  for (let i = 1; i <= max; i++) {
+    const isCurrent = i <= track;
+    pips.push(
+      <div
+        key={i}
+        className={`w-6 h-6 rounded border flex items-center justify-center text-xs font-bold ${
+          i === track
+            ? 'bg-purple-700 border-purple-900 text-white'
+            : isCurrent
+            ? 'bg-purple-200 border-purple-400 text-purple-700'
+            : 'bg-gray-100 border-gray-300 text-gray-400'
+        }`}
+      >
+        {i}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded p-2 mb-2 bg-gray-50 space-y-1.5">
+      {/* Darkness / Town Event Track */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-bold text-gray-700">Town Event Track:</span>
+        <div className="flex gap-0.5">{pips}</div>
+        <span className="text-xs text-gray-500">
+          (D6 ≤ {track} = Town Event)
+        </span>
+      </div>
+
+      {/* Active alerts */}
+      {hasAlerts && (
+        <div className="space-y-1">
+          {endsToday && (
+            <div className="text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">
+              TOWN STAY ENDS TODAY — Heroes must leave at end of current day.
+              {nextAdv === 'Town:Jailbreak' && ' Next Adventure: Jailbreak.'}
+              {noGrit && ' All Heroes start next Adventure with NO Grit.'}
+            </div>
+          )}
+          {!endsToday && noGrit && (
+            <div className="text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">
+              NO GRIT — All Heroes start next Adventure with 0 Grit.
+            </div>
+          )}
+          {allWanted && (
+            <div className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-300 rounded px-2 py-1">
+              ALL HEROES WANTED — Until end of this Town Stay.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Day info */}
+      <div className="text-xs text-gray-500">
+        Day {state.day || 1} — Town Stay {state.townStayActive === false ? 'Ended' : 'Active'}
+      </div>
+    </div>
+  );
+}
+
 const SHOPS_WITH_PRICE_MODS = {
   blacksmith:        { saleFloor: 10 },
   streetMarket:      { saleFloor: 25 },
@@ -2842,6 +2916,9 @@ const foWorldArtifactOffer =
           </span>
         )}
       </p>
+
+      {/* ====== TOWN STATUS TRACKER ====== */}
+      <TownStatusTracker state={state} />
 
       {/* Lodging selection */}
       {!hero.lodging && (

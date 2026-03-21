@@ -73,6 +73,12 @@ export default function TownStayManager({ posse = [], updateHero }) {
   // ---- Day Management ----
 
   const handleEndDay = () => {
+    // If townStayEndsToday is set (e.g. Jailbreak), end the stay instead of advancing
+    const cur = loadTownState();
+    if (cur.townStayEndsToday) {
+      setShowEndConfirm(true);
+      return;
+    }
     setShowLodging(true);
     // Pre-fill lodging choices with Hotel
     const choices = {};
@@ -261,6 +267,33 @@ export default function TownStayManager({ posse = [], updateHero }) {
           </div>
         </div>
       </div>
+
+      {/* ====== ACTIVE ALERTS ====== */}
+      {active && (ts.townStayEndsToday || ts.globalRules?.allWantedThisStay || ts.globalRules?.noGritNextAdventure || ts.nextAdventure) && (
+        <div className="p-3 rounded border-2 border-red-400 bg-red-50 space-y-1">
+          <h3 className="font-bold text-sm text-red-800">Active Town Alerts</h3>
+          {ts.townStayEndsToday && (
+            <div className="text-sm text-red-700 flex items-center gap-1">
+              <span className="font-bold">TOWN STAY ENDS TODAY</span> — Heroes must leave at end of day.
+            </div>
+          )}
+          {ts.nextAdventure === 'Town:Jailbreak' && (
+            <div className="text-sm text-red-700">
+              <span className="font-bold">Next Adventure:</span> Town Jailbreak
+            </div>
+          )}
+          {ts.globalRules?.noGritNextAdventure && (
+            <div className="text-sm text-red-700">
+              <span className="font-bold">NO GRIT</span> — All Heroes start next Adventure with 0 Grit.
+            </div>
+          )}
+          {ts.globalRules?.allWantedThisStay && (
+            <div className="text-sm text-orange-700">
+              <span className="font-bold">ALL HEROES WANTED</span> — Until end of this Town Stay.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ====== TOWN EVENT TRACK ====== */}
       <div className="p-3 rounded border bg-white/80">
@@ -583,18 +616,30 @@ export default function TownStayManager({ posse = [], updateHero }) {
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm shadow-xl">
-            <h3 className="font-bold text-lg mb-2">Leave Town?</h3>
+            <h3 className="font-bold text-lg mb-2">
+              {ts.townStayEndsToday ? 'Town Stay Ends Today!' : 'Leave Town?'}
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
-              This will end the current town stay. Heroes will leave town
-              and the town stay state will be marked as inactive.
+              {ts.townStayEndsToday ? (
+                <>
+                  The Town Stay was forced to end today
+                  {ts.nextAdventure === 'Town:Jailbreak' && ' — Jailbreak adventure is next'}
+                  {ts.globalRules?.noGritNextAdventure && ' — all Heroes start the next Adventure with NO Grit'}
+                  . You must still roll for Town Event before leaving.
+                </>
+              ) : (
+                'This will end the current town stay. Heroes will leave town and the town stay state will be marked as inactive.'
+              )}
             </p>
             <div className="flex gap-2">
               <button className="btn btn-sm btn-error" onClick={handleEndTownStay}>
                 Leave Town
               </button>
-              <button className="btn btn-sm btn-ghost" onClick={() => setShowEndConfirm(false)}>
-                Cancel
-              </button>
+              {!ts.townStayEndsToday && (
+                <button className="btn btn-sm btn-ghost" onClick={() => setShowEndConfirm(false)}>
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
         </div>
