@@ -10,6 +10,10 @@ const ctxD3 = async (ctx, label) => (typeof ctx?.d3 === 'function') ? ctx.d3(lab
 const shopId = 'mutantQuarter';
 
 // ---------- result formatting helper ----------
+/**
+ * Formats a doSkillCheck result (from returnDetails: true) into a readable string.
+ * Shows the dice rolled, pass/fail, and success count.
+ */
 function formatCheckResult(result, stat, target) {
   if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
     const diceStr = result.rolls.join(', ');
@@ -19,6 +23,10 @@ function formatCheckResult(result, stat, target) {
   return null;
 }
 
+/**
+ * Shows a result prompt to the player so they can see the outcome before continuing.
+ * Uses promptChoice with a single "Continue" button as an acknowledgement dialog.
+ */
 async function showResult(ctx, title, lines) {
   const body = Array.isArray(lines) ? lines.join('\n') : lines;
   await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
@@ -30,6 +38,17 @@ export function display(roll) {
 }
 
 // ---------- mechanics (Resolve) ----------
+/**
+ * ctx methods:
+ * - getActiveHeroId()
+ * - getHeroById(id) / getHero(id)
+ * - updateHero(id, patchOrFn)
+ * - addToken(id, tokenName)
+ * - enqueueChartRoll(id, chartName)
+ * - doSkillCheck(id, { stat, target, message, returnDetails })
+ * - promptChoice(title, options[])   // {label}
+ * - toast(msg)
+ */
 export async function apply(roll, ctx) {
   const id = ctx.getActiveHeroId?.();
   if (!id) return { log: [] };
@@ -37,10 +56,11 @@ export async function apply(roll, ctx) {
   const info = display(roll);
   const log = [];
 
+  // Every event starts with its title and lore/flavor text
   log.push(`[Mutant Quarter] (${roll}) ${info.title} — ${info.lore}`);
   log.push(`Effect: ${info.effect}`);
 
-  // 2: Writhing Mass of Flesh
+  // 2: Writhing Mass of Flesh — Lore 6+ test; each 6+ = 20 XP; D6 per building 1-2 destroyed
   if (roll === 2) {
     const lore2 = `WRITHING MASS OF FLESH\n${info.lore}`;
     const result = await ctx.doSkillCheck(id, {
@@ -65,18 +85,17 @@ export async function apply(roll, ctx) {
       log.push(`${successes} success${successes !== 1 ? 'es' : ''} on Lore 6+ — +${xp} XP.`);
     }
 
-    // Building destruction — log for manual resolution
-    const buildingNote = 'At end of day, roll a D6 for every unprotected building in Town. On a 1–2, that building is Destroyed. Resolve this manually.';
+    const buildingNote = 'At end of day, roll a D6 for every unprotected building in Town. On a 1-2, that building is Destroyed. Resolve this manually.';
     log.push(buildingNote);
     const outcome = xp > 0
       ? `You manage to shield some buildings from the destruction. +${xp} XP.\n\n${buildingNote}`
       : `The writhing mass tears through the Quarter unchecked.\n\n${buildingNote}`;
     await showResult(ctx, 'WRITHING MASS OF FLESH — Result', [checkLine, '', outcome]);
-    ctx.toast?.(`Writhing Mass of Flesh: Roll D6 per building at end of day (1–2 Destroyed).`);
+    ctx.toast?.('Writhing Mass of Flesh: Roll D6 per building at end of day (1-2 Destroyed).');
     return { log };
   }
 
-  // 3: "One of us! One of us!!"
+  // 3: "One of us! One of us!!" — 3+ mutations = safe; else Strength 6+; fail = D3 mutations + lose D3 Dark Stone
   if (roll === 3) {
     const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
     const mutations = Array.isArray(hero?.mutations) ? hero.mutations : [];
@@ -128,7 +147,7 @@ export async function apply(roll, ctx) {
     return { log };
   }
 
-  // 4: Railworkers' Strike
+  // 4: Railworkers' Strike — D6 vs mutation count; if > mutations, take D6 Wounds ignoring Defense; 2 random buildings also affected
   if (roll === 4) {
     const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
     const mutations = Array.isArray(hero?.mutations) ? hero.mutations : [];
@@ -158,14 +177,13 @@ export async function apply(roll, ctx) {
       ctx.toast?.('Railworkers\' Strike: no damage, your mutations protected you.');
     }
 
-    // Building destruction — log for manual resolution
     const buildingNote = 'Additionally, 2 other random Town Locations are affected. All Heroes there must also roll. Resolve this manually.';
     log.push(buildingNote);
     ctx.toast?.('Railworkers\' Strike also affects 2 other random buildings — resolve manually.');
     return { log };
   }
 
-  // 5: Little Thief
+  // 5: Little Thief — Agility 5+; pass = +20 XP; fail = lose 3 Side Bag Tokens OR D3 Dark Stone
   if (roll === 5) {
     const lore5 = `LITTLE THIEF\n${info.lore}`;
     const result = await ctx.doSkillCheck(id, {
@@ -214,11 +232,11 @@ export async function apply(roll, ctx) {
     return { log };
   }
 
-  // 6: Street Beggars
+  // 6: Street Beggars — Pay D6x$10, Recover 1 Grit
   if (roll === 6) {
-    const costRoll = await ctxD6(ctx, 'Street Beggars — Roll D6 for cost (×$10)');
+    const costRoll = await ctxD6(ctx, 'Street Beggars — Roll D6 for cost (x$10)');
     const cost = costRoll * 10;
-    const costLine = `Rolled [${costRoll}] × $10 = $${cost} to help the family.`;
+    const costLine = `Rolled [${costRoll}] x $10 = $${cost} to help the family.`;
     log.push(costLine);
 
     ctx.updateHero?.(id, (h) => {
@@ -247,9 +265,8 @@ export async function apply(roll, ctx) {
     return { log };
   }
 
-  // 8: Mutant Saloon
+  // 8: Mutant Saloon — Gain 1 Tequila; optionally pay $25 for +15 XP, then D6 3+: +1 Grit & +1 Corruption Hit
   if (roll === 8) {
-    // Gain 1 Tequila token
     await ctx.addToken?.(id, 'Tequila');
     const tokenLine = 'Gained 1 Tequila Token.';
     log.push(tokenLine);
@@ -285,7 +302,7 @@ export async function apply(roll, ctx) {
             corruptionHits: (h.corruptionHits || 0) + 1,
           };
         });
-        const outcome = `The show is wild! Recover 1 Grit and take 1 Corruption Hit.`;
+        const outcome = 'The show is wild! Recover 1 Grit and take 1 Corruption Hit.';
         log.push(outcome);
         await showResult(ctx, 'MUTANT SALOON — Result', [tokenLine, showLine, '', outcome]);
         ctx.toast?.('Mutant Saloon: +1 Tequila, +15 XP, +1 Grit, +1 Corruption Hit.');
@@ -304,7 +321,7 @@ export async function apply(roll, ctx) {
     return { log };
   }
 
-  // 9: Party in the Streets
+  // 9: Party in the Streets — Luck 4+; pass = heal D6 Health & D6 Sanity; if any 6, +1 Sanity (once per stay)
   if (roll === 9) {
     const lore9 = `PARTY IN THE STREETS\n${info.lore}`;
     const result = await ctx.doSkillCheck(id, {
@@ -364,55 +381,77 @@ export async function apply(roll, ctx) {
     return { log };
   }
 
-  // 10: Street Vendor
+  // 10: Street Vendor — Heal D6 Health & D6 Sanity, +25 XP, +1 token per Mutation
   if (roll === 10) {
     const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
     const mutations = Array.isArray(hero?.mutations) ? hero.mutations : [];
     const mutCount = mutations.length;
 
-    ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + 25 }));
+    const healthRoll = await ctxD6(ctx, 'Street Vendor — Roll D6 for Health healed');
+    const sanityRoll = await ctxD6(ctx, 'Street Vendor — Roll D6 for Sanity healed');
+    const healthLine = `Rolled [${healthRoll}] for Health healed.`;
+    const sanityLine = `Rolled [${sanityRoll}] for Sanity healed.`;
+    log.push(healthLine);
+    log.push(sanityLine);
+
+    ctx.updateHero?.(id, (h) => {
+      const maxHp = h.maxHealth ?? h.max_health ?? 10;
+      const curHp = h.currentHealth ?? h.health ?? maxHp;
+      const maxSan = h.maxSanity ?? h.SanityMax ?? 0;
+      const curSan = h.currentSanity ?? h.sanity ?? maxSan;
+      return {
+        ...h,
+        currentHealth: Math.min(maxHp, curHp + healthRoll),
+        currentSanity: Math.min(maxSan, curSan + sanityRoll),
+        xp: (h.xp || 0) + 25,
+      };
+    });
     log.push('+25 XP from the grateful vendor.');
 
     if (mutCount > 0) {
       const tokenNote = `You have ${mutCount} Mutation${mutCount !== 1 ? 's' : ''} — gain ${mutCount} free token${mutCount !== 1 ? 's' : ''} (Bandages, Whiskey, or Dynamite each). Select your tokens manually.`;
       log.push(tokenNote);
-      const outcome = `The vendor presses supplies into your hands. +25 XP and ${mutCount} free token${mutCount !== 1 ? 's' : ''} (choose Bandages, Whiskey, or Dynamite for each).`;
-      await showResult(ctx, 'STREET VENDOR — Result', [outcome]);
-      ctx.toast?.(`Street Vendor: +25 XP, ${mutCount} free token(s). Choose your tokens.`);
+      const outcome = `The vendor presses supplies into your hands. Heal ${healthRoll} Health and ${sanityRoll} Sanity, +25 XP, and ${mutCount} free token${mutCount !== 1 ? 's' : ''} (choose Bandages, Whiskey, or Dynamite for each).`;
+      await showResult(ctx, 'STREET VENDOR — Result', [healthLine, sanityLine, '', outcome]);
+      ctx.toast?.(`Street Vendor: heal ${healthRoll} HP, ${sanityRoll} Sanity, +25 XP, ${mutCount} free token(s).`);
     } else {
-      const outcome = 'The vendor recognizes your efforts. +25 XP. (No Mutations, so no bonus tokens.)';
+      const outcome = `The vendor recognizes your efforts. Heal ${healthRoll} Health and ${sanityRoll} Sanity, +25 XP. (No Mutations, so no bonus tokens.)`;
       log.push(outcome);
-      await showResult(ctx, 'STREET VENDOR — Result', [outcome]);
-      ctx.toast?.('Street Vendor: +25 XP.');
+      await showResult(ctx, 'STREET VENDOR — Result', [healthLine, sanityLine, '', outcome]);
+      ctx.toast?.(`Street Vendor: heal ${healthRoll} HP, ${sanityRoll} Sanity, +25 XP.`);
     }
     return { log };
   }
 
-  // 11: Preaching the Faith
+  // 11: Preaching the Faith — +1 Spirit next Adventure, remove 2 Corruption Hits
   if (roll === 11) {
-    ctx.updateHero?.(id, (h) => ({
-      ...h,
-      adventureBuffs: {
-        ...(h.adventureBuffs || {}),
-        mutantHolyBlessing: true,
-        source: 'Preaching the Faith (Mutant Quarter)',
-      },
-    }));
+    ctx.updateHero?.(id, (h) => {
+      const corr = Math.max(0, (h.corruptionHits || 0) - 2);
+      return {
+        ...h,
+        corruptionHits: corr,
+        adventureBuffs: {
+          ...(h.adventureBuffs || {}),
+          Spirit: ((h.adventureBuffs?.Spirit) || 0) + 1,
+          source: 'Preaching the Faith (Mutant Quarter)',
+        },
+      };
+    });
 
-    const outcome = 'A heavily mutated preacher cloaks you in a powerful blessing. Until end of next Adventure: gain Mutant and Holy keywords, Spirit Armor 5+, Immune to Corruption Hits/Corruption Points.';
-    const buff = 'Buff applied: Mutant + Holy keywords, Spirit Armor 5+, Corruption Immunity (next Adventure).';
+    const outcome = 'A heavily mutated preacher delivers a blazing sermon, cloaking you in a powerful blessing.';
+    const effects = '+1 Spirit for next Adventure. 2 Corruption Hits removed.';
     log.push(outcome);
-    log.push(buff);
-    await showResult(ctx, 'PREACHING THE FAITH — Result', [outcome, '', buff]);
-    ctx.toast?.('Preaching the Faith: Holy blessing applied for next Adventure!');
+    log.push(effects);
+    await showResult(ctx, 'PREACHING THE FAITH — Result', [outcome, '', effects]);
+    ctx.toast?.('Preaching the Faith: +1 Spirit next Adventure, -2 Corruption Hits.');
     return { log };
   }
 
-  // 12: A Few New Tricks
+  // 12: A Few New Tricks — D6x25 XP; if Tentacle/Tail mutation, +1 Extra Use
   if (roll === 12) {
-    const xpRoll = await ctxD6(ctx, 'A Few New Tricks — Roll D6 for XP (×25)');
+    const xpRoll = await ctxD6(ctx, 'A Few New Tricks — Roll D6 for XP (x25)');
     const xp = xpRoll * 25;
-    const xpLine = `Rolled [${xpRoll}] × 25 = ${xp} XP.`;
+    const xpLine = `Rolled [${xpRoll}] x 25 = ${xp} XP.`;
     log.push(xpLine);
 
     ctx.updateHero?.(id, (h) => ({ ...h, xp: (h.xp || 0) + xp }));
