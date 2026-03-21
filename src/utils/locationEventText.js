@@ -59,6 +59,7 @@ const ALIASES = {
   doc: 'docsOffice',
   outpost: 'frontierOutpost',
   tradingPost: 'indianTradingPost',
+  generalStore: 'general_store',
   // convenience
   smith: 'blacksmith',
   market: 'streetMarket',

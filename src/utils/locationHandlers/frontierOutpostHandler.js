@@ -1,703 +1,343 @@
 // src/utils/locationHandlers/frontierOutpostHandler.js
 //
 // Frontier Outpost – Location Event handler (2d6 table)
-//
-// Matches effects from src/data/townLocations/frontierOutpost.js:
-//  2  Mad with Power        – daily Agility/Cunning 5+ gate; on fail pay D6×$50 or leave
-//  3  Dark Stone Explosion  – Strength 5+; pass: +20 XP; fail: lose D6 Dark Stone; Outpost destroyed
-//  4  Ambushed Caravan      – -1 to Town Event & Camp Site Hazard rolls
-//  5  Dark Stone Glut       – Dark Stone sold worth D6×$10 per shard (auto-roll, ask to sell now)
-//  6  Hanging               – lose 1 Grit (current)
-//  7  Trading Post          – auto “World Card” + Artifact; D6×$100 offer stored in stayMods
-//  8  The Banners Yet Wave  – fully heal Health/Sanity +1 Grit
-//  9  Dark Stone Shortage   – Dark Stone sold worth D6×$50 per shard (auto-roll, ask to sell now)
-// 10  The Sound of Bugles   – skip next Town Event
-// 11  War Stories           – add a Buff entry for one Damage reroll next Adventure
-// 12  Deputized             – Gain Law; if Outlaw, choose which to keep
-//
-// NOTE: flags for disabling Training with Soldiers (#2) and destroying the Outpost (#3)
-//       are still handled by locationEventsEngine.applyFrontierOutpostEventSideEffects.
-//       Here we handle tests, XP, Dark Stone, gold, grit, healing, buffs, etc.
+// Canonical ctx-pattern implementation.
 
-import { calculateCurrentStats } from '../calculateStats';
+import { loadTownState, saveTownState } from '../../utils/townState';
+import { d6 as _d6 } from '../../utils/diceHelpers';
+import { getEventDisplay } from '../locationEventText';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
-import { d6 } from '../../utils/diceHelpers';
 
-/* ------------------------------ small helpers ------------------------------ */
+const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
 
-const safeNumber = (v, def = 0) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : def;
-};
+const shopId = 'frontierOutpost';
 
-function updateStayMods(townStateApi, mutate) {
-  if (!townStateApi || typeof townStateApi.get !== 'function' || typeof townStateApi.set !== 'function') return;
+// ---------- formatting helpers ----------
 
-  const state = townStateApi.get() || {};
-  const stayMods = { ...(state.stayMods || {}) };
-
-  mutate(stayMods);
-
-  townStateApi.set({ ...state, stayMods });
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+  }
+  return null;
 }
 
-function getActiveHero(ctx) {
-  if (ctx.hero) return ctx.hero;
-
-  const posseApi = ctx.posseApi || ctx.io?.posseApi;
-  const id = posseApi?.getActiveHeroId?.() || posseApi?.getCurrentHeroId?.();
-  if (!id || !posseApi?.getHero) return null;
-  return posseApi.getHero(id) || null;
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
 }
 
-// Patch-style helper – prefers posseApi helpers but falls back to updateHero
-function addGold(posseApi, hero, amount) {
-  const hid = hero?.id || hero?.localId;
-  const delta = Number(amount) || 0;
-  if (!hid || !delta) return;
+// ---------- townState helpers ----------
 
-  if (typeof posseApi?.addGold === 'function') {
-    posseApi.addGold(hid, delta);
-    return;
-  }
-
-  const cur = safeNumber(hero.gold ?? hero.Gold ?? 0, 0);
-  posseApi?.updateHero?.(hid, { gold: cur + delta });
+function patchShopMods(patch) {
+  const s = loadTownState();
+  const cur = s.shopMods?.[shopId] || {};
+  const next = { ...cur, ...patch };
+  const updated = { ...s, shopMods: { ...(s.shopMods || {}), [shopId]: next } };
+  saveTownState(updated);
 }
 
-function spendGold(posseApi, hero, amount) {
-  const cost = Math.abs(Number(amount) || 0);
-  if (!cost) return;
-  addGold(posseApi, hero, -cost);
+function patchStayMods(patch) {
+  const s = loadTownState();
+  const cur = s.stayMods || {};
+  const next = { ...cur, ...patch };
+  saveTownState({ ...s, stayMods: next });
 }
 
-function spendDarkStone(posseApi, hero, amount) {
-  const hid = hero?.id || hero?.localId;
-  const loss = Math.abs(Number(amount) || 0);
-  if (!hid || !loss) return;
+// ---------- display ----------
 
-  if (typeof posseApi?.spendDarkStone === 'function') {
-    posseApi.spendDarkStone(hid, loss);
-    return;
-  }
-
-  const cur =
-    safeNumber(hero.darkStone, null) ??
-    safeNumber(hero.darkstone, null) ??
-    safeNumber(hero.DarkStone, 0);
-  const next = Math.max(0, cur - loss);
-  const patch = {};
-
-  if (Object.prototype.hasOwnProperty.call(hero, 'darkStone')) patch.darkStone = next;
-  else if (Object.prototype.hasOwnProperty.call(hero, 'darkstone')) patch.darkstone = next;
-  else patch.DarkStone = next;
-
-  posseApi?.updateHero?.(hid, patch);
+export function display(roll) {
+  return getEventDisplay(shopId, roll) || { title: 'Frontier Outpost Event', lore: '', effect: 'No Event.' };
 }
 
-function sellAllDarkStone(posseApi, hero, ratePerShard, noteFn) {
-  const hid = hero?.id || hero?.localId;
-  if (!hid) return;
+// ---------- Dark Stone sell helper ----------
 
-  const cur =
-    safeNumber(hero.darkStone, null) ??
-    safeNumber(hero.darkstone, null) ??
-    safeNumber(hero.DarkStone, 0);
-
-  if (cur <= 0) {
-    noteFn?.(`${hero.name || 'Hero'} has no Dark Stone to sell.`);
-    return;
-  }
-
-  const totalGold = cur * ratePerShard;
-
-  // Zero out Dark Stone
-  const patch = {};
-  if (Object.prototype.hasOwnProperty.call(hero, 'darkStone')) patch.darkStone = 0;
-  else if (Object.prototype.hasOwnProperty.call(hero, 'darkstone')) patch.darkstone = 0;
-  else patch.DarkStone = 0;
-
-  // Apply Dark Stone removal
-  posseApi?.updateHero?.(hid, patch);
-
-  // Add gold
-  addGold(posseApi, hero, totalGold);
-  noteFn?.(
-    `${hero.name || 'Hero'} sells ${cur} Dark Stone shard(s) for $${totalGold} ($${ratePerShard} each).`
-  );
+function sellAllDarkStone(ctx, id, rate, log) {
+  const hero = (ctx.getHeroById ?? ctx.getHero)?.(id);
+  const cur = Number(hero?.darkStone ?? hero?.darkstone ?? hero?.DarkStone ?? 0);
+  if (cur <= 0) { log.push('No Dark Stone to sell.'); return; }
+  const total = cur * rate;
+  ctx.updateHero?.(id, h => ({ ...h, darkStone: 0, gold: (h.gold || 0) + total }));
+  log.push(`Sold ${cur} Dark Stone for $${total} ($${rate} each).`);
 }
 
-// Prefer uiApi.choose (buttons), then io.promptChoice, then window.prompt.
-async function chooseOption(uiApi, io, { title, message, options }) {
-  // 1) Modern button modal
-  if (uiApi && typeof uiApi.choose === 'function') {
-    try {
-      const res = await uiApi.choose({ title, message, options });
-      if (res?.id) {
-        const found = options.find((o) => o.id === res.id);
-        if (found) return found;
-      }
-    } catch (e) {
-      console.warn('FrontierOutpost uiApi.choose error:', e);
-    }
-  }
+// ---------- mechanics (apply) ----------
 
-  // 2) Legacy promptChoice
-  if (io && typeof io.promptChoice === 'function') {
-    try {
-      const idx = await io.promptChoice(title, options);
-      if (Number.isInteger(idx) && idx >= 0 && idx < options.length) {
-        return options[idx];
-      }
-    } catch (e) {
-      console.warn('FrontierOutpost io.promptChoice error:', e);
-    }
-  }
+export async function apply(roll, ctx) {
+  const id = ctx.getActiveHeroId?.();
+  if (!id) return { log: [] };
 
-  // 3) Fallback: window.prompt with numbered options
-  if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
-    const lines = [
-      title || 'Choose an option',
-      '',
-      message || '',
-      '',
-      ...options.map((opt, i) => `${i + 1}. ${opt.label}`),
-      '',
-      'Enter the number of your choice:',
-    ].join('\n');
-
-    const raw = window.prompt(lines, '1');
-    if (raw == null) return options[0];
-    const n = Number(raw);
-    if (Number.isInteger(n) && n >= 1 && n <= options.length) {
-      return options[n - 1];
-    }
-    return options[0];
-  }
-
-  // 4) Absolute last resort
-  return options[0];
-}
-
-// Use uiApi.roll if available, otherwise io.roll, otherwise Math.random.
-async function rollDice(uiApi, io, count, sides = 6, label = '') {
-  const n = Math.max(0, Number(count || 0));
-  if (n <= 0) return [];
-
-  if (uiApi && typeof uiApi.roll === 'function') {
-    try {
-      const out = await uiApi.roll(n, sides, label);
-      if (Array.isArray(out) && out.length === n) return out;
-    } catch (e) {
-      console.warn('FrontierOutpost uiApi.roll error:', e);
-    }
-  }
-
-  if (io && typeof io.roll === 'function') {
-    try {
-      const out = await io.roll(n, sides, label);
-      if (Array.isArray(out) && out.length === n) return out;
-    } catch (e) {
-      console.warn('FrontierOutpost io.roll error:', e);
-    }
-  }
-
-  return Array.from({ length: n }, () => Math.floor(Math.random() * sides) + 1);
-}
-
-// Generic “stat test with pre-filled autoroll” helper: returns { passed, rolls? }
-// Auto-rolls dice and shows result, letting the player accept or override.
-async function promptTestWithAutoRoll({
-  uiApi,
-  io,
-  note,
-  heroName,
-  statLabel,
-  diceCount,
-  target = 5,
-  title,
-}) {
-  const dice = Math.max(0, Number(diceCount || 0));
-
-  if (dice <= 0) {
-    note(
-      `${heroName} has ${statLabel} 0 and automatically fails the ${statLabel} test (needs ${target}+).`
-    );
-    return { passed: false, rolls: [] };
-  }
-
-  // Auto-roll the dice
-  const rolls = await rollDice(
-    uiApi,
-    io,
-    dice,
-    6,
-    `${statLabel} Test (${target}+)`
-  );
-  const successes = rolls.filter((r) => r >= target).length;
-  const autoResult = successes > 0 ? 'Passed' : 'Failed';
-
-  // Show result pre-filled — player can accept or override (e.g. physical dice / grit)
-  const choice = await chooseOption(uiApi, io, {
-    title: title || `${statLabel} Test`,
-    message:
-      `${heroName} — ${statLabel} ${target}+ (${dice}d6)\n\n` +
-      `Rolled [${rolls.join(', ')}] → ${successes} success(es) — ${autoResult}\n\n` +
-      `Accept this result, or override if you rolled physical dice or spent Grit:`,
-    options: [
-      { id: autoResult === 'Passed' ? 'pass' : 'fail', label: `Accept: ${autoResult}` },
-      { id: 'pass', label: 'Override: I Passed' },
-      { id: 'fail', label: 'Override: I Failed' },
-    ],
-  });
-
-  const passed = (choice?.id || (successes > 0 ? 'pass' : 'fail')) === 'pass';
-  note(
-    `${heroName} ${statLabel} test: [${rolls.join(', ')}] → ${passed ? 'Passed' : 'Failed'}${choice?.id !== (successes > 0 ? 'pass' : 'fail') ? ' (player override)' : ''}.`
-  );
-  return { passed, rolls };
-}
-
-/* ------------------------------- main handler ------------------------------- */
-
-export async function handleFrontierOutpostEvent(ctx = {}) {
-  const io = ctx.io || {};
-  const posseApi = ctx.posseApi || io.posseApi || {};
-  const townStateApi = ctx.townStateApi || io.townStateApi;
-  const uiApi = ctx.uiApi || io.uiApi || io;
-
-  const toastFn =
-    (uiApi && typeof uiApi.toast === 'function'
-      ? uiApi.toast.bind(uiApi)
-      : typeof io.toast === 'function'
-      ? io.toast.bind(io)
-      : null);
-
+  const info = display(roll);
   const log = [];
-  const actions = [];
 
-  const note = (msg) => {
-    log.push(msg);
-    if (toastFn) toastFn(msg);
-  };
+  log.push(`[Frontier Outpost] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
 
-  const roll = ctx.forcedRoll ?? (d6() + d6());
-
-  const hero = getActiveHero(ctx);
-  const heroId = hero?.id || hero?.localId;
-
-  // --------------------------------------------------------------------------
-  // 2 – Mad with Power
-  // --------------------------------------------------------------------------
+  // ---- 2: Mad with Power ----
   if (roll === 2) {
-    // Engine already flags: fo_training_disabled = true
-    updateStayMods(townStateApi, (mods) => {
-      mods.foDailyGateTest = true; // so your start-of-day code can enforce it later if desired
-    });
+    patchShopMods({ trainingDisabled: true });
+    patchStayMods({ foDailyGateTest: true });
 
-    const allHeroes =
-      posseApi.listHeroes?.() ||
-      posseApi.getAllHeroes?.() ||
-      (hero ? [hero] : []) ||
-      [];
+    log.push('Training with Soldiers is disabled for the rest of this Town Stay.');
 
-    if (!allHeroes.length) {
-      note('Frontier Outpost (#2): No heroes in the posse to test.');
-    } else {
-      note(
-        'Frontier Outpost (#2): Mad with Power – Training with Soldiers is disabled, and at the start of each day each hero must pass an Agility/Cunning gate test or pay/leave.'
-      );
-    }
-
+    // Test each hero in the posse
+    const allHeroes = ctx.getAllHeroes?.() || ctx.listHeroes?.() || [];
     for (const h of allHeroes) {
       const hid = h.id || h.localId;
       if (!hid) continue;
+      const heroName = h.name || 'Hero';
 
-      const merged = calculateCurrentStats ? calculateCurrentStats(h || {}) : null;
-      const stats = merged?.stats || {};
-
-      const agi =
-        safeNumber(stats['Agility'] ?? h.stats?.Agility ?? h.Agility ?? 0, 0);
-      const cun =
-        safeNumber(stats['Cunning'] ?? h.stats?.Cunning ?? h.Cunning ?? 0, 0);
-
-      // Step 1: choose Agility or Cunning via buttons
-      const statChoice = await chooseOption(uiApi, io, {
-        title: 'Frontier Outpost (#2) — Gate Test',
-        message:
-          `${h.name || 'Hero'} must take a gate test at the start of the day.\n\n` +
-          `Agility: ${agi}\n` +
-          `Cunning: ${cun}\n\n` +
-          'Choose which stat to roll (5+ on any die succeeds).',
-        options: [
-          { id: 'agi', label: `Use Agility (${agi}d6, 5+)` },
-          { id: 'cun', label: `Use Cunning (${cun}d6, 5+)` },
-        ],
-      });
-
-      const which = statChoice?.id === 'cun' ? 'cun' : 'agi';
-      const statLabel = which === 'cun' ? 'Cunning' : 'Agility';
-      const diceCount = which === 'cun' ? cun : agi;
-
-      // Step 2: Pass / Fail / Autoroll
-      const { passed } = await promptTestWithAutoRoll({
-        uiApi,
-        io,
-        note,
-        heroName: h.name || 'Hero',
-        statLabel,
-        diceCount,
-        target: 5,
-        title: `Frontier Outpost (#2) — ${statLabel} 5+`,
-      });
-
-      if (passed) {
-        note(
-          `Frontier Outpost (#2): ${h.name || 'Hero'} passes and may continue the day as normal.`
-        );
-        continue;
-      }
-
-      // Step 3: failed → auto D6×$50 then Pay vs Leave
-      const cost = d6() * 50;
-
-      const payChoice = await chooseOption(uiApi, io, {
-        title: 'Frontier Outpost (#2) — Pay or Leave',
-        message:
-          `${h.name || 'Hero'} failed the gate test.\n\n` +
-          `They must either:\n` +
-          `• Leave town immediately\n` +
-          `• Or pay $${cost} (D6 × $50) to stay.`,
-        options: [
-          { id: 'pay', label: `Pay $${cost} and stay in town` },
-          { id: 'leave', label: 'Leave town immediately' },
-        ],
-      });
-
-      if (payChoice?.id === 'pay') {
-        spendGold(posseApi, h, cost);
-        note(
-          `Frontier Outpost (#2): ${h.name || 'Hero'} pays $${cost} and may remain in town.`
-        );
-      } else {
-        note(
-          `Frontier Outpost (#2): ${h.name || 'Hero'} leaves town immediately. ` +
-            'Move them out of town using your usual campaign controls.'
-        );
-      }
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // 3 – Dark Stone Explosion
-  // --------------------------------------------------------------------------
-  if (roll === 3) {
-    // Engine already flags: fo_closed = true
-    if (!hero) {
-      note(
-        'Frontier Outpost (#3): Dark Stone Explosion – no active hero, resolve effects manually.'
+      // Player chooses Agility or Cunning
+      const statIdx = await ctx.promptChoice?.(
+        `MAD WITH POWER — Gate Test\n\n${heroName} must pass an Agility 5+ or Cunning 5+ test to avoid the corrupt soldiers.\n\nChoose which stat to test:`,
+        [
+          { label: 'Agility 5+ test' },
+          { label: 'Cunning 5+ test' },
+        ]
       );
-    } else {
-      const merged = calculateCurrentStats ? calculateCurrentStats(hero || {}) : null;
-      const stats = merged?.stats || {};
-      const str =
-        safeNumber(
-          stats['Strength'] ?? hero.stats?.Strength ?? hero.Strength ?? 0,
-          0
-        );
 
-      const { passed } = await promptTestWithAutoRoll({
-        uiApi,
-        io,
-        note,
-        heroName: hero.name || 'Hero',
-        statLabel: 'Strength',
-        diceCount: str,
-        target: 5,
-        title: 'Frontier Outpost (#3) — Strength 5+ vs Tentacles',
+      const stat = statIdx === 1 ? 'Cunning' : 'Agility';
+      const result = await ctx.doSkillCheck(hid, {
+        stat, target: 5, returnDetails: true,
+        message: `MAD WITH POWER\n${info.lore}\n${heroName} tries to out-maneuver the corrupt soldiers.`,
       });
+      const checkLine = formatCheckResult(result, stat, 5);
+      if (checkLine) log.push(checkLine);
+      const passed = result?.passed ?? result;
 
       if (passed) {
-        // +20 XP – helper if present; else patch
-        if (typeof posseApi.addXP === 'function') {
-          posseApi.addXP(heroId, 20);
+        const outcome = `${heroName} passes the ${stat} test and may continue the day as normal.`;
+        log.push(outcome);
+        await showResult(ctx, `MAD WITH POWER — ${heroName}`, [checkLine, '', outcome]);
+      } else {
+        // Failed: pay D6×$50 or leave
+        const costRoll = await ctxD6(ctx, 'Mad with Power — Roll D6 for cost (×$50)');
+        const cost = costRoll * 50;
+        const costLine = `Rolled [${costRoll}] × $50 = $${cost}.`;
+        log.push(costLine);
+
+        const payIdx = await ctx.promptChoice?.(
+          `MAD WITH POWER — ${heroName} Failed\n\n${checkLine}\n${costLine}\n\n${heroName} failed the gate test. Choose:`,
+          [
+            { label: `Pay $${cost} to stay in town` },
+            { label: 'Leave town immediately' },
+          ]
+        );
+
+        if (payIdx === 0) {
+          ctx.updateHero?.(hid, prev => ({ ...prev, gold: Math.max(0, (prev.gold || 0) - cost) }));
+          const outcome = `${heroName} pays $${cost} and may remain in town.`;
+          log.push(outcome);
+          await showResult(ctx, `MAD WITH POWER — ${heroName}`, [checkLine, costLine, '', outcome]);
         } else {
-          const curXP = safeNumber(hero.xp ?? hero.XP ?? 0, 0);
-          posseApi.updateHero?.(heroId, { xp: curXP + 20 });
+          const outcome = `${heroName} leaves town immediately.`;
+          log.push(outcome);
+          await showResult(ctx, `MAD WITH POWER — ${heroName}`, [checkLine, costLine, '', outcome]);
         }
-        note(
-          `Frontier Outpost (#3): ${hero.name || 'Hero'} passes and gains 20 XP, escaping with their life!`
-        );
-      } else {
-        const loss = d6();
-        spendDarkStone(posseApi, hero, loss);
-        note(
-          `Frontier Outpost (#3): ${hero.name || 'Hero'} fails – the tentacles steal D6 Dark Stone (rolled ${loss}).`
-        );
       }
     }
-
-    note(
-      'Frontier Outpost (#3): The Outpost is destroyed and may no longer be visited for the rest of this Town Stay.'
-    );
+    return { log };
   }
 
-  // --------------------------------------------------------------------------
-  // 4 – Ambushed Caravan
-  // --------------------------------------------------------------------------
-  if (roll === 4) {
-    updateStayMods(townStateApi, (mods) => {
-      const cur = safeNumber(mods.hazardRollMod || 0, 0);
-      mods.hazardRollMod = Math.min(cur, -1);
+  // ---- 3: Dark Stone Explosion ----
+  if (roll === 3) {
+    const lore3 = `DARK STONE EXPLOSION\n${info.lore}\nYou must fight off the tentacles!`;
+    const result = await ctx.doSkillCheck(id, {
+      stat: 'Strength', target: 5, returnDetails: true,
+      message: `${lore3}\nMake a Strength 5+ test to fight off the tentacles.`,
     });
-    note(
-      'Frontier Outpost (#4): Ambushed Caravan – All Town Event and Camp Site Hazard rolls are –1 for the rest of this Town Stay.'
-    );
-  }
+    const checkLine = formatCheckResult(result, 'Strength', 5);
+    if (checkLine) log.push(checkLine);
+    const passed = result?.passed ?? result;
 
-  // --------------------------------------------------------------------------
-  // 5 – Dark Stone Glut (auto D6, then ask if hero wants to sell now)
-  // --------------------------------------------------------------------------
-  if (roll === 5) {
-    const rate = d6() * 10;
-
-    updateStayMods(townStateApi, (mods) => {
-      mods.foDarkStoneRate = {
-        rate,
-        mode: 'glut',
-        source: 'FrontierOutpost#5',
-      };
-    });
-
-    note(
-      `Frontier Outpost (#5): Dark Stone Glut – Dark Stone sold to the Outpost Bank is worth $${rate} per shard today.`
-    );
-
-    if (hero) {
-      const choice = await chooseOption(uiApi, io, {
-        title: 'Dark Stone Glut — Sell Now?',
-        message:
-          `${hero.name || 'Hero'} may immediately sell all their Dark Stone for ` +
-          `$${rate} per shard.\n\nDo you want to sell now or keep it?`,
-        options: [
-          { id: 'sell', label: `Sell all Dark Stone at $${rate} each` },
-          { id: 'keep', label: 'Keep it for later' },
-        ],
-      });
-
-      if (choice?.id === 'sell') {
-        sellAllDarkStone(posseApi, hero, rate, note);
-      } else {
-        note(
-          `${hero.name || 'Hero'} keeps their Dark Stone but may still use the $${rate}/shard rate today when visiting the Outpost Bank.`
-        );
-      }
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // 6 – Hanging (lose 1 Grit from current pool)
-  // --------------------------------------------------------------------------
-  if (roll === 6) {
-    if (!heroId) {
-      note(
-        'Frontier Outpost (#6): Hanging – the visiting hero loses 1 Grit (no active hero found; adjust manually).'
-      );
+    if (passed) {
+      ctx.updateHero?.(id, h => ({ ...h, xp: (h.xp || 0) + 20 }));
+      const outcome = 'You fight off the tentacles and escape with your life! +20 XP.';
+      log.push(outcome);
+      await showResult(ctx, 'DARK STONE EXPLOSION — Result', [checkLine, '', outcome]);
+      ctx.toast?.('Dark Stone Explosion: Passed! +20 XP.');
     } else {
-      const curGrit =
-        safeNumber(hero.currentGrit, null) ??
-        safeNumber(hero.grit, null) ??
-        safeNumber(hero.Grit, 0);
-
-      const next = Math.max(0, curGrit - 1);
-      const patch = {};
-
-      if (Object.prototype.hasOwnProperty.call(hero, 'currentGrit')) patch.currentGrit = next;
-      else if (Object.prototype.hasOwnProperty.call(hero, 'grit')) patch.grit = next;
-      else patch.currentGrit = next;
-
-      posseApi.updateHero?.(heroId, patch);
-
-      note(
-        `Frontier Outpost (#6): Hanging – ${hero?.name || 'Hero'} loses 1 Grit (now ${next}).`
-      );
+      const lossRoll = await ctxD6(ctx, 'Dark Stone Explosion — Roll D6 for Dark Stone lost');
+      const lossLine = `Rolled [${lossRoll}] for Dark Stone lost.`;
+      log.push(lossLine);
+      ctx.updateHero?.(id, h => {
+        const cur = Number(h.darkStone ?? h.darkstone ?? h.DarkStone ?? 0);
+        return { ...h, darkStone: Math.max(0, cur - lossRoll) };
+      });
+      const outcome = `The tentacles wrap around your Dark Stone and pull it through the gate. Lose ${lossRoll} Dark Stone.`;
+      log.push(outcome);
+      await showResult(ctx, 'DARK STONE EXPLOSION — Result', [checkLine, lossLine, '', outcome]);
+      ctx.toast?.(`Dark Stone Explosion: Failed — lose ${lossRoll} Dark Stone.`);
     }
+
+    // Outpost destroyed either way
+    patchShopMods({ destroyed: true });
+    const destroyed = 'The Frontier Outpost is destroyed and may no longer be visited for the rest of this Town Stay.';
+    log.push(destroyed);
+    return { log };
   }
 
-  // --------------------------------------------------------------------------
-  // 7 – Trading Post (auto World Card + Artifact, D6×$100 offer)
-  // --------------------------------------------------------------------------
-  // 7 – Trading Post (auto World Card + Artifact, D6×$150 offer)
-if (roll === 7) {
-  // Group artifacts by world
-  const byWorld = otherWorldArtifacts.reduce((acc, art) => {
-    const w = art.world || 'Unknown';
-    if (!acc[w]) acc[w] = [];
-    acc[w].push(art);
-    return acc;
-  }, {});
+  // ---- 4: Ambushed Caravan ----
+  if (roll === 4) {
+    patchStayMods({ hazardRollMod: -1 });
+    const outcome = 'Few survivors remain to protect the Town. All Town Event and Camp Site Hazard rolls are -1 for the rest of this Town Stay.';
+    log.push(outcome);
+    await showResult(ctx, 'AMBUSHED CARAVAN — Result', [outcome]);
+    ctx.toast?.('Ambushed Caravan: Town Event & Hazard rolls -1.');
+    return { log };
+  }
 
-  const worlds = Object.keys(byWorld);
-  if (!worlds.length) {
-    note(
-      'Frontier Outpost (#7): Trading Post – No OtherWorld Artifacts found in data; resolve manually.'
+  // ---- 5: Dark Stone Glut ----
+  if (roll === 5) {
+    const rateRoll = await ctxD6(ctx, 'Dark Stone Glut — Roll D6 for rate (×$10)');
+    const rate = rateRoll * 10;
+    const rateLine = `Rolled [${rateRoll}] × $10 = $${rate} per shard.`;
+    log.push(rateLine);
+
+    patchShopMods({ darkStoneRate: rate, darkStoneRateMode: 'glut' });
+
+    const sellIdx = await ctx.promptChoice?.(
+      `DARK STONE GLUT\n\n${rateLine}\n\nDark Stone sold to the Outpost Bank is only worth $${rate} per shard today.\n\nSell all your Dark Stone now?`,
+      [
+        { label: `Sell all Dark Stone at $${rate} each` },
+        { label: 'Keep it for later' },
+      ]
     );
-  } else {
+
+    if (sellIdx === 0) {
+      sellAllDarkStone(ctx, id, rate, log);
+    } else {
+      log.push(`Keeping Dark Stone. The $${rate}/shard rate is available at the Outpost Bank today.`);
+    }
+    await showResult(ctx, 'DARK STONE GLUT — Result', [rateLine, '', log[log.length - 1]]);
+    ctx.toast?.(`Dark Stone Glut: $${rate}/shard today.`);
+    return { log };
+  }
+
+  // ---- 6: Hanging ----
+  if (roll === 6) {
+    ctx.updateHero?.(id, h => {
+      const curGrit = h.currentGrit ?? h.grit ?? 0;
+      return { ...h, currentGrit: Math.max(0, curGrit - 1) };
+    });
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id);
+    const newGrit = hero?.currentGrit ?? '?';
+    const outcome = `Shaken by the sight, you lose 1 Grit (now ${newGrit}).`;
+    log.push(outcome);
+    await showResult(ctx, 'HANGING — Result', [outcome]);
+    ctx.toast?.('Hanging: -1 Grit.');
+    return { log };
+  }
+
+  // ---- 7: Trading Post ----
+  if (roll === 7) {
+    // Draw random world + artifact
+    const byWorld = otherWorldArtifacts.reduce((acc, art) => {
+      const w = art.world || 'Unknown';
+      if (!acc[w]) acc[w] = [];
+      acc[w].push(art);
+      return acc;
+    }, {});
+
+    const worlds = Object.keys(byWorld);
+    if (!worlds.length) {
+      const outcome = 'No OtherWorld Artifacts found in data. Resolve manually.';
+      log.push(outcome);
+      await showResult(ctx, 'TRADING POST — Result', [outcome]);
+      return { log };
+    }
+
     const world = worlds[Math.floor(Math.random() * worlds.length)];
     const pool = byWorld[world] || [];
-    const artifact =
-      pool[Math.floor(Math.random() * pool.length)] || pool[0];
+    const artifact = pool[Math.floor(Math.random() * pool.length)] || pool[0];
 
-    // ⭐ Correct price: D6 × $150
-    const price = d6() * 150;
+    const priceRoll = await ctxD6(ctx, 'Trading Post — Roll D6 for price (×$150)');
+    const price = priceRoll * 150;
+    const priceLine = `Rolled [${priceRoll}] × $150 = $${price}.`;
+    log.push(priceLine);
 
-    updateStayMods(townStateApi, (mods) => {
-      mods.foWorldArtifactOffer = {
-        id: 'fo_world_artifact',
+    patchShopMods({
+      worldArtifactOffer: {
         world,
         artifactId: artifact.id,
         artifactName: artifact.name,
         price,
-        purchasedBy: mods.foWorldArtifactOffer?.purchasedBy || null,
-        locationId: 'frontierOutpost',
-      };
+      },
     });
 
-    note(
-      `Frontier Outpost (#7): Trading Post – World Card drawn: ${world}. Artifact: ${artifact.name}. ` +
-        `The party may purchase it for $${price} (D6 × $150).`
-    );
+    const outcome = `World Card drawn: ${world}. Artifact: ${artifact.name}. The party may purchase it for $${price}.`;
+    log.push(outcome);
+    await showResult(ctx, 'TRADING POST — Result', [priceLine, '', outcome]);
+    ctx.toast?.(`Trading Post: ${artifact.name} from ${world} — $${price}.`);
+    return { log };
   }
-}
 
-
-  // --------------------------------------------------------------------------
-  // 8 – The Banners Yet Wave (heal +1 Grit)
-  // --------------------------------------------------------------------------
+  // ---- 8: The Banners Yet Wave ----
   if (roll === 8) {
-    if (!heroId) {
-      note(
-        'Frontier Outpost (#8): The Banners Yet Wave – the visiting hero fully heals Health/Sanity and gains +1 Grit (no active hero found; adjust manually).'
-      );
-    } else {
-      const merged = calculateCurrentStats ? calculateCurrentStats(hero || {}) : null;
-      const stats = merged?.stats || {};
-
-      const maxHealth =
-        safeNumber(
-          stats['Health'] ?? hero.stats?.Health ?? hero.maxHealth ?? hero.health,
-          0
-        );
-      const maxSanity =
-        safeNumber(
-          stats['Sanity'] ?? hero.stats?.Sanity ?? hero.maxSanity ?? hero.sanity,
-          0
-        );
-
-      // Heal to full
-      const patch = {
+    ctx.updateHero?.(id, h => {
+      const maxHealth = h.maxHealth ?? h.max_health ?? 10;
+      const maxSanity = h.maxSanity ?? h.SanityMax ?? 0;
+      const curGrit = h.currentGrit ?? h.grit ?? 0;
+      return {
+        ...h,
         currentHealth: maxHealth,
         currentSanity: maxSanity,
+        currentGrit: curGrit + 1,
       };
-
-      // +1 Grit
-      const curGrit =
-        safeNumber(hero.currentGrit, null) ??
-        safeNumber(hero.grit, null) ??
-        safeNumber(hero.Grit, 0);
-      const nextGrit = curGrit + 1;
-
-      if (Object.prototype.hasOwnProperty.call(hero, 'currentGrit')) patch.currentGrit = nextGrit;
-      else if (Object.prototype.hasOwnProperty.call(hero, 'grit')) patch.grit = nextGrit;
-      else patch.currentGrit = nextGrit;
-
-      posseApi.updateHero?.(heroId, patch);
-
-      note(
-        `Frontier Outpost (#8): ${hero?.name || 'Hero'} fully heals Health (${maxHealth}) and Sanity (${maxSanity}) and gains +1 Grit (now ${nextGrit}).`
-      );
-    }
+    });
+    const outcome = 'Seeing the flags fly high fills your spirit with hope. Fully heal Health and Sanity, and recover 1 Grit.';
+    log.push(outcome);
+    await showResult(ctx, 'THE BANNERS YET WAVE — Result', [outcome]);
+    ctx.toast?.('The Banners Yet Wave: Full heal + 1 Grit!');
+    return { log };
   }
 
-  // --------------------------------------------------------------------------
-  // 9 – Dark Stone Shortage (auto D6, then ask if hero wants to sell now)
-  // --------------------------------------------------------------------------
+  // ---- 9: Dark Stone Shortage ----
   if (roll === 9) {
-    const rate = d6() * 50;
+    const rateRoll = await ctxD6(ctx, 'Dark Stone Shortage — Roll D6 for rate (×$50)');
+    const rate = rateRoll * 50;
+    const rateLine = `Rolled [${rateRoll}] × $50 = $${rate} per shard.`;
+    log.push(rateLine);
 
-    updateStayMods(townStateApi, (mods) => {
-      mods.foDarkStoneRate = {
-        rate,
-        mode: 'shortage',
-        source: 'FrontierOutpost#9',
-      };
-    });
+    patchShopMods({ darkStoneRate: rate, darkStoneRateMode: 'shortage' });
 
-    note(
-      `Frontier Outpost (#9): Dark Stone Shortage – you may sell Dark Stone shards for $${rate} each today.`
+    const sellIdx = await ctx.promptChoice?.(
+      `DARK STONE SHORTAGE\n\n${rateLine}\n\nThe Outpost Bank is willing to pay top dollar — $${rate} per shard today.\n\nSell all your Dark Stone now?`,
+      [
+        { label: `Sell all Dark Stone at $${rate} each` },
+        { label: 'Keep it for later' },
+      ]
     );
 
-    if (hero) {
-      const choice = await chooseOption(uiApi, io, {
-        title: 'Dark Stone Shortage — Sell Now?',
-        message:
-          `${hero.name || 'Hero'} may immediately sell all their Dark Stone for ` +
-          `$${rate} per shard.\n\nDo you want to sell now or keep it?`,
-        options: [
-          { id: 'sell', label: `Sell all Dark Stone at $${rate} each` },
-          { id: 'keep', label: 'Keep it for later' },
-        ],
-      });
-
-      if (choice?.id === 'sell') {
-        sellAllDarkStone(posseApi, hero, rate, note);
-      } else {
-        note(
-          `${hero.name || 'Hero'} keeps their Dark Stone but may still use the $${rate}/shard rate today when visiting the Outpost Bank.`
-        );
-      }
+    if (sellIdx === 0) {
+      sellAllDarkStone(ctx, id, rate, log);
+    } else {
+      log.push(`Keeping Dark Stone. The $${rate}/shard rate is available at the Outpost Bank today.`);
     }
+    await showResult(ctx, 'DARK STONE SHORTAGE — Result', [rateLine, '', log[log.length - 1]]);
+    ctx.toast?.(`Dark Stone Shortage: $${rate}/shard today.`);
+    return { log };
   }
 
-  // --------------------------------------------------------------------------
-  // 10 – The Sound of Bugles (skip next Town Event)
-  // --------------------------------------------------------------------------
+  // ---- 10: The Sound of Bugles ----
   if (roll === 10) {
-    updateStayMods(townStateApi, (mods) => {
-      mods.skipNextTownEvent = true;
-    });
-    note(
-      'Frontier Outpost (#10): The Sound of Bugles – Do not roll for a Town Event at the end of this day in Town.'
-    );
+    patchStayMods({ skipNextTownEvent: true });
+    const outcome = 'The soldiers are running drills. Do not roll for a Town Event at the end of this day in Town.';
+    log.push(outcome);
+    await showResult(ctx, 'THE SOUND OF BUGLES — Result', [outcome]);
+    ctx.toast?.('Sound of Bugles: Skip next Town Event.');
+    return { log };
   }
 
-  // --------------------------------------------------------------------------
-  // 11 – War Stories (add Buff for Damage reroll)
-  // --------------------------------------------------------------------------
- if (roll === 11) {
-  // However your engine exposes the current hero:
-  const hero =
-    ctx.hero ||
-    ctx.getActiveHero?.() ||
-    (ctx.getActiveHeroId && ctx.getHero?.(ctx.getActiveHeroId())) ||
-    null;
-
-  if (hero) {
-    const heroId = hero.id || hero.localId;
-    const updateHero = ctx.posseApi?.updateHero || ctx.updateHero;
-
-    if (updateHero && heroId) {
-      updateHero(heroId, (prev) => {
-        const prevBuffs = Array.isArray(prev.oncePerAdventure)
-          ? prev.oncePerAdventure
-          : [];
-
-        // Avoid duplicate entries if it somehow fires twice for same hero
-        if (prevBuffs.some(b => b.id === 'war_stories_damage_reroll')) {
-          return prev;
-        }
-
-        const nextBuffs = [
+  // ---- 11: War Stories ----
+  if (roll === 11) {
+    ctx.updateHero?.(id, h => {
+      const prevBuffs = Array.isArray(h.oncePerAdventure) ? h.oncePerAdventure : [];
+      if (prevBuffs.some(b => b.id === 'war_stories_damage_reroll')) return h;
+      return {
+        ...h,
+        oncePerAdventure: [
           ...prevBuffs,
           {
             id: 'war_stories_damage_reroll',
@@ -705,85 +345,71 @@ if (roll === 7) {
             used: false,
             notes: 'Once during the next Adventure, you may reroll a Damage roll.',
             source: 'Frontier Outpost (#11)',
-            usesRemaining: 1, // optional, your Buffs tab will just ignore this for now
+            usesRemaining: 1,
           },
-        ];
-
-        return {
-          ...prev,
-          oncePerAdventure: nextBuffs,
-          updatedAt: Date.now(),
-        };
-      });
-
-      const heroName = hero.name || 'the hero';
-      ctx.note?.(
-        `Frontier Outpost (#11): ${heroName} gains a Buff – "War Stories (Damage Reroll)" (1 use, next Adventure).`
-      );
-    }
+        ],
+      };
+    });
+    const outcome = 'You exchange stories with the soldiers. Buff applied: once during the next Adventure, you may reroll a Damage roll.';
+    log.push(outcome);
+    await showResult(ctx, 'WAR STORIES — Result', [outcome]);
+    ctx.toast?.('War Stories: Damage reroll buff added!');
+    return { log };
   }
+
+  // ---- 12: Deputized ----
+  if (roll === 12) {
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id);
+    const kws = Array.isArray(hero?.keywords) ? [...hero.keywords] : [];
+    const hasLaw = kws.includes('Law');
+    const hasOutlaw = kws.includes('Outlaw');
+
+    if (hasLaw) {
+      const outcome = `${hero?.name || 'Hero'} already has Law. No change.`;
+      log.push(outcome);
+      await showResult(ctx, 'DEPUTIZED — Result', [outcome]);
+    } else if (hasOutlaw) {
+      const keepIdx = await ctx.promptChoice?.(
+        `DEPUTIZED\n\n${hero?.name || 'Hero'} already has the Outlaw keyword.\n\nYou have been deputized! Choose which keyword to keep:`,
+        [
+          { label: 'Keep Law (remove Outlaw)' },
+          { label: 'Keep Outlaw (decline Law)' },
+        ]
+      );
+      const keep = keepIdx === 1 ? 'Outlaw' : 'Law';
+      const next = kws.filter(kw => kw !== 'Law' && kw !== 'Outlaw');
+      next.push(keep);
+      ctx.updateHero?.(id, h => ({ ...h, keywords: next }));
+      const outcome = `${hero?.name || 'Hero'} keeps the ${keep} keyword.`;
+      log.push(outcome);
+      await showResult(ctx, 'DEPUTIZED — Result', [outcome]);
+    } else {
+      const next = [...kws, 'Law'];
+      ctx.updateHero?.(id, h => ({ ...h, keywords: next }));
+      const outcome = `${hero?.name || 'Hero'} gains the Law keyword.`;
+      log.push(outcome);
+      await showResult(ctx, 'DEPUTIZED — Result', [outcome]);
+    }
+    ctx.toast?.('Deputized!');
+    return { log };
+  }
+
+  return { log };
 }
 
+// --------- Dispatcher compatible with locationEventsEngine ---------------
 
-
-  // --------------------------------------------------------------------------
-  // 12 – Deputized (Law / Outlaw keyword choice)
-  // --------------------------------------------------------------------------
-  if (roll === 12) {
-    if (!heroId) {
-      note(
-        'Frontier Outpost (#12): Deputized – Gain Law. If the hero already has Outlaw, choose which to keep. Adjust keywords manually.'
-      );
-    } else {
-      const kws = Array.isArray(hero.keywords) ? [...hero.keywords] : [];
-      const hasLaw = kws.includes('Law');
-      const hasOutlaw = kws.includes('Outlaw');
-
-      if (!hasLaw && !hasOutlaw) {
-        const next = [...kws, 'Law'];
-        posseApi?.updateHero?.(heroId, { keywords: next });
-        note(
-          `Frontier Outpost (#12): ${hero.name || 'Hero'} gains the Law keyword.`
-        );
-      } else if (hasLaw && !hasOutlaw) {
-        note(
-          `Frontier Outpost (#12): ${hero.name || 'Hero'} already has Law. No change.`
-        );
-      } else if (!hasLaw && hasOutlaw) {
-        const keepChoice = await chooseOption(uiApi, io, {
-          title: 'Frontier Outpost (#12) — Law vs Outlaw',
-          message:
-            `${hero.name || 'Hero'} already has Outlaw.\n` +
-            'Choose which keyword to keep:',
-          options: [
-            { id: 'law', label: 'Keep Law (remove Outlaw)' },
-            { id: 'outlaw', label: 'Keep Outlaw (no Law)' },
-          ],
-        });
-
-        const keep = keepChoice?.id === 'outlaw' ? 'Outlaw' : 'Law';
-
-        let next = kws.filter((kw) => kw !== 'Law' && kw !== 'Outlaw');
-        next.push(keep);
-
-        posseApi?.updateHero?.(heroId, { keywords: next });
-        note(
-          `Frontier Outpost (#12): ${hero.name || 'Hero'} keeps the ${keep} keyword.`
-        );
-      } else {
-        // Already somehow has both
-        note(
-          `Frontier Outpost (#12): ${hero.name || 'Hero'} already has both Law and Outlaw; no keyword change.`
-        );
-      }
-    }
-  }
-
+export async function handleFrontierOutpostEvent(ctx = {}) {
+  const roll = ctx.forcedRoll ?? (_d6() + _d6());
+  const result = await apply(roll, ctx);
   return {
-    log,
-    actions,
+    actions: [],
     townState: ctx.townState,
+    log: result?.log || [`Frontier Outpost Event Roll: ${roll}`],
     eventRoll: roll,
     eventIndex: Math.max(0, roll - 2),
   };
 }
+
+export const frontierOutpostHandler = { display, apply };
+export default frontierOutpostHandler;

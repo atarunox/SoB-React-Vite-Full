@@ -9,12 +9,11 @@ import {
 } from '../locationEventsEngine';
 
 /* -------------------- small UI helpers (non-breaking) -------------------- */
-// Use uiApi when present; otherwise fall back to window.* or params.
+// Use uiApi when present; otherwise fall back to params or sensible defaults.
 
 async function promptYesNo(ui, message, def = false, paramsKey, params = {}) {
   if (ui?.promptYesNo) return !!(await ui.promptYesNo({ message, defaultValue: def }));
-  if (typeof window !== 'undefined' && window.confirm) return !!window.confirm(message);
-  if (paramsKey in (params || {})) return !!params[paramsKey];
+  if (paramsKey && paramsKey in (params || {})) return !!params[paramsKey];
   return def;
 }
 
@@ -30,14 +29,7 @@ async function promptNumber(
     if (v == null || Number.isNaN(Number(v))) return def;
     return Math.max(min, Math.min(max, Math.round(Number(v) / step) * step));
   }
-  if (typeof window !== 'undefined' && window.prompt) {
-    const raw = window.prompt(message, String(def));
-    if (raw == null) return def;
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return def;
-    return Math.max(min, Math.min(max, Math.round(n / step) * step));
-  }
-  if (paramsKey in (params || {})) {
+  if (paramsKey && paramsKey in (params || {})) {
     const v = Number(params[paramsKey]);
     if (!Number.isFinite(v)) return def;
     return Math.max(min, Math.min(max, Math.round(v / step) * step));
@@ -50,11 +42,7 @@ async function promptText(ui, message, def = '', paramsKey, params = {}) {
     const v = await ui.promptText({ message, defaultValue: def });
     return (v ?? def).trim();
   }
-  if (typeof window !== 'undefined' && window.prompt) {
-    const raw = window.prompt(message, def);
-    return (raw ?? def).trim();
-  }
-  if (paramsKey in (params || {})) return String(params[paramsKey]).trim();
+  if (paramsKey && paramsKey in (params || {})) return String(params[paramsKey]).trim();
   return def;
 }
 
@@ -246,7 +234,7 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
       (costInfo ? `Cost: ${costInfo}\n\n` : '') +
       `Enter which dice to RE-ROLL (1-4, comma-separated).\n` +
       `Leave blank to keep all dice as they are.`;
-    const raw = window.prompt(msg, '');
+    const raw = await promptText(ui, msg, '');
     if (raw == null || raw.trim() === '') return [];
     return raw.split(',')
       .map(s => Number(s.trim()))
@@ -298,17 +286,10 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
   let dice = rollND(4, 6);
   log.push(`Initial roll: ${fmtDiceInline(dice)}`);
 
-  // Show initial dice and first hold/reroll
-  window.alert(
-    `STREET GAMBLING\n\n` +
-    `Entry fee: $25 paid.\n` +
-    `Gold remaining: $${gold}\n\n` +
-    `Initial roll:\n${fmtDice(dice)}\n\n` +
-    `Goal: Get a Straight (4 in a row) or Set (4 of a kind).\n` +
-    `Payouts:\n  Straight: $300\n  Set: $100 × the number rolled\n\n` +
-    (hasLuckyEvent ? `★ LUCKY STREAK ACTIVE — After all re-rolls, you may add or subtract 1 from one die!\n\n` : '') +
-    `Next: Choose which dice to re-roll.`
-  );
+  // Show initial dice and rules in log
+  log.push(`Entry fee: $25 paid. Gold remaining: $${gold}`);
+  log.push(`Goal: Straight (4 in a row) = $300, Set (4 of a kind) = $100 × face value.`);
+  if (hasLuckyEvent) log.push('★ LUCKY STREAK ACTIVE — After all re-rolls, you may add or subtract 1 from one die!');
 
   // First re-roll opportunity (free — part of the initial roll)
   let rerollIdxs = await selectRerollIndexes(dice, 'Initial Re-roll (free)', 'Free');
@@ -322,19 +303,22 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
   if (keepGoing) {
     const canGrit = grit > 0;
     const costLabel = canGrit ? '$25 or 1 Grit' : '$25';
-    const wantMore = window.confirm(
+    const wantMore = await promptYesNo(
+      ui,
       `STREET GAMBLING\n\n` +
       `Current dice:\n${fmtDice(dice)}\n\n` +
       (checkNearWin(dice) ? `${checkNearWin(dice)}\n\n` : '') +
       `Re-roll again? (Cost: ${costLabel})\n` +
-      `Gold: $${gold} | Grit: ${grit}\n\n` +
-      `OK = Re-roll, Cancel = Done rolling`
+      `Gold: $${gold} | Grit: ${grit}`,
+      false
     );
     if (wantMore) {
       let useGrit = false;
       if (canGrit) {
-        useGrit = window.confirm(
-          `Pay with Grit instead of Gold?\n\nOK = Spend 1 Grit\nCancel = Pay $25 Gold`
+        useGrit = await promptYesNo(
+          ui,
+          `Pay with Grit instead of Gold?\n\nSpend 1 Grit instead of $25 Gold?`,
+          false
         );
       }
       if (useGrit) {
@@ -358,20 +342,23 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
   for (let r = 2; r <= 4 && keepGoing; r++) {
     const canGrit = grit > 0;
     const costLabel = canGrit ? '$50 or 1 Grit' : '$50';
-    const wantMore = window.confirm(
+    const wantMore = await promptYesNo(
+      ui,
       `STREET GAMBLING\n\n` +
       `Current dice:\n${fmtDice(dice)}\n\n` +
       (checkNearWin(dice) ? `${checkNearWin(dice)}\n\n` : '') +
       `Re-roll #${r}? (${r - 1}/3 extra re-rolls used)\nCost: ${costLabel}\n` +
-      `Gold: $${gold} | Grit: ${grit}\n\n` +
-      `OK = Re-roll, Cancel = Done rolling`
+      `Gold: $${gold} | Grit: ${grit}`,
+      false
     );
     if (!wantMore) break;
 
     let useGrit = false;
     if (canGrit) {
-      useGrit = window.confirm(
-        `Pay with Grit instead of Gold?\n\nOK = Spend 1 Grit\nCancel = Pay $50 Gold`
+      useGrit = await promptYesNo(
+        ui,
+        `Pay with Grit instead of Gold?\n\nSpend 1 Grit instead of $50 Gold?`,
+        false
       );
     }
     if (useGrit) {
@@ -395,7 +382,7 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
       `Current dice:\n${fmtDice(dice)}\n\n` +
       `You may add or subtract 1 from ANY one die.\n\n` +
       `Enter which die to adjust (1-4), or leave blank to skip:`;
-    const dieChoice = window.prompt(luckyMsg, '');
+    const dieChoice = await promptText(ui, luckyMsg, '');
     if (dieChoice && dieChoice.trim() !== '') {
       const dieIdx = Number(dieChoice.trim()) - 1;
       if (dieIdx >= 0 && dieIdx < 4) {
@@ -407,7 +394,7 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
             : curVal === 1
             ? `Enter "+" to make it 2:`
             : `Enter "-" to make it 5:`);
-        const dir = window.prompt(dirMsg, '+');
+        const dir = await promptText(ui, dirMsg, '+');
         if (dir != null) {
           const delta = dir.trim().startsWith('-') ? -1 : 1;
           const newVal = curVal + delta;
@@ -415,7 +402,8 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
             dice[dieIdx] = newVal;
             log.push(`[Lucky Streak] Die ${dieIdx + 1}: ${curVal} → ${newVal}`);
           } else {
-            window.alert(`Can't adjust Die ${dieIdx + 1} (${curVal}) by ${delta > 0 ? '+1' : '-1'} — would go out of range.`);
+            log.push(`[Lucky Streak] Can't adjust Die ${dieIdx + 1} (${curVal}) by ${delta > 0 ? '+1' : '-1'} — out of range.`);
+            ui.toast?.(`Can't adjust Die ${dieIdx + 1} (${curVal}) by ${delta > 0 ? '+1' : '-1'} — out of range.`);
           }
         }
       }
@@ -444,12 +432,9 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
   }
 
   const finalGold = Math.max(0, gold + goldDelta);
-  window.alert(
-    `STREET GAMBLING — RESULT\n\n` +
-    `Final dice:\n${fmtDice(dice)}\n\n` +
-    `${resultMsg}\n\n` +
-    `Gold: $${finalGold} | Grit: ${grit}`
-  );
+  log.push(`Result: ${resultMsg}`);
+  log.push(`Gold: $${finalGold} | Grit: ${grit}`);
+  ui.toast?.(`Street Gambling — ${resultMsg}`);
 
   // Single 'update' action
   actions.push({
