@@ -65,7 +65,7 @@ export default function DrawnMapTilesRow({ tiles, encounters }) {
       <div className="flex overflow-x-auto gap-3 px-2 pb-2 hide-scrollbar">
         {tiles.map((t, i) => (
           <div
-            key={t.id}
+            key={`${t.id}-${i}`}
             className="flex flex-col items-center min-w-[110px] max-w-[110px] cursor-pointer"
             onClick={() => setEnlargedIdx(i)}
           >
