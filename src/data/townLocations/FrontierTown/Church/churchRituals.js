@@ -1,4 +1,5 @@
 // src/data/townLocations/churchRituals.js
+import { loadTownState } from '../../../../utils/townState.js';
 
 // ----------------------------- tiny utils ---------------------------------
 const isObj = (v) => v && typeof v === 'object';
@@ -186,7 +187,6 @@ export async function applyChurchRitual(ctx, ritualId) {
   // If event 4-5 fired, all rituals cost +1 Dark Stone this Town Stay.
   let extraDS = 0;
   try {
-    const { loadTownState } = await import('../../../../utils/townState.js');
     const ts = loadTownState() || {};
     extraDS = Number(ts.stayMods?.churchRitualExtraDarkStone) || 0;
   } catch {}

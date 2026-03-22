@@ -27,53 +27,19 @@ function timestampOf(h) {
   return Number(h.updatedAt || h.createdAt || h.timestamp || 0);
 }
 
-// --- NEW: Firestore delete (best-effort; safe if Firebase isn't present) ---
+// --- Firestore delete (best-effort; safe if Firebase isn't present) ---
+import { db, localMode } from '../firebase/firebaseConfig';
+import { doc as fsDoc, deleteDoc } from 'firebase/firestore';
+
 async function deleteHeroFromCloud(id) {
-  if (!id) return false;
+  if (!id || localMode || !db) return false;
 
-  // Try v9 modular
   try {
-    const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
-    let db;
-    try {
-      const { getApp } = await import('firebase/app');
-      db = getFirestore(getApp());
-    } catch {
-      db = getFirestore();
-    }
-
-    // Try top-level heroes/<id> and per-user users/<uid>/heroes/<id>
-    const paths = [];
-    paths.push(['heroes', id]);
-    try {
-      const { getAuth } = await import('firebase/auth');
-      const uid = getAuth()?.currentUser?.uid;
-      if (uid) paths.push(['users', uid, 'heroes', id]);
-    } catch {}
-
-    let deleted = false;
-    for (const segs of paths) {
-      try { await deleteDoc(doc(db, ...segs)); deleted = true; } catch {}
-    }
-    return deleted;
-  } catch (_) {
-    // Fallback: compat API
-    try {
-      const compatApp = (await import('firebase/compat/app')).default;
-      await import('firebase/compat/firestore');
-      await import('firebase/compat/auth');
-      const db = compatApp.firestore();
-      const user = compatApp.auth?.()?.currentUser;
-      const batch = db.batch();
-      batch.delete(db.collection('heroes').doc(id));
-      if (user?.uid) {
-        batch.delete(db.collection('users').doc(user.uid).collection('heroes').doc(id));
-      }
-      await batch.commit();
-      return true;
-    } catch {}
+    await deleteDoc(fsDoc(db, 'heroes', id));
+    return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 // --- NEW (keys): strictly-unique, stable key factory ---

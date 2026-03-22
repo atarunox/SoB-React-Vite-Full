@@ -48,6 +48,8 @@ export function HeroProvider({ children }) {
   });
 
   const [hero, setHero] = useState(null);
+  const heroRef = useRef(hero);
+  heroRef.current = hero;
 
   // Prevent “echo” writes when we’re loading/swapping heroes
   const skipNextFirestoreUpdate = useRef(false);
@@ -119,7 +121,7 @@ export function HeroProvider({ children }) {
       // Apply if meaningfully different, and make sure we don’t echo-write it back
       if (loaded) {
         const nextJson = safeStringify(loaded);
-        const prevJson = safeStringify(hero);
+        const prevJson = safeStringify(heroRef.current);
         if (nextJson !== prevJson) {
           skipNextFirestoreUpdate.current = true; // don’t immediately write this back
           setHero(loaded);
@@ -129,7 +131,7 @@ export function HeroProvider({ children }) {
         setHero({ id }); // at least have an object with id
       }
     },
-    [hero]
+    []
   );
 
   useEffect(() => {

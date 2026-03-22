@@ -9,6 +9,7 @@ import { DeckRegistryProvider } from './context/DeckRegistryContext';
 import { HeroProvider, useHero } from './context/HeroContext'; // ⬅️ use HeroContext for active hero
 import { UIScaleProvider, useUIScale } from './context/UIScaleContext';
 
+import ErrorBoundary from './components/ErrorBoundary';
 import PossePanel from './components/PossePanel';
 import HeroScreen from './screens/HeroScreen';
 import DMTab from './components/DM/DMTab';
@@ -52,20 +53,22 @@ function AppShell() {
 
 export default function App() {
   return (
-    <Router>
-      <DeckRegistryProvider>
-        <WorldProvider>
-          <CombatProvider>
-            <PosseProvider>
-              <HeroProvider>
-                <UIScaleProvider>
-                  <AppShell />
-                </UIScaleProvider>
-              </HeroProvider>
-            </PosseProvider>
-          </CombatProvider>
-        </WorldProvider>
-      </DeckRegistryProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <DeckRegistryProvider>
+          <WorldProvider>
+            <CombatProvider>
+              <PosseProvider>
+                <HeroProvider>
+                  <UIScaleProvider>
+                    <AppShell />
+                  </UIScaleProvider>
+                </HeroProvider>
+              </PosseProvider>
+            </CombatProvider>
+          </WorldProvider>
+        </DeckRegistryProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
