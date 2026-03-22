@@ -130,27 +130,19 @@ export function DeckRegistryProvider({ children }) {
     if (!meta) return false;
 
     if (meta.deck === "GEAR") {
-      // don’t double-add
-      if (![...gearAvailRef.current].includes(id)) {
-        gearAvailRef.current.add(id);
-      }
+      gearAvailRef.current.add(id);
       return true;
     }
 
     if (meta.deck === "MINE") {
-      if (![...mineAvailRef.current].includes(id)) {
-        mineAvailRef.current.add(id);
-      }
+      mineAvailRef.current.add(id);
       return true;
     }
 
     if (meta.deck === "OW") {
       const key = meta.tag || "__ANY__";
       if (!owAvailRef.current.has(key)) owAvailRef.current.set(key, new Set());
-      const pool = owAvailRef.current.get(key);
-      if (![...pool].includes(id)) {
-        pool.add(id);
-      }
+      owAvailRef.current.get(key).add(id);
       return true;
     }
 

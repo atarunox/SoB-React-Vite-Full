@@ -22,8 +22,9 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
       case 'ADD_GRIT': {
         const h = getHero(a.heroId);
         if (!h) break;
-        const grit = Math.max(0, (h.grit ?? 0) + (a.amount ?? 0));
-        updateHero?.(a.heroId, { grit });
+        const curGrit = h.currentGrit ?? h.grit ?? 0;
+        const newGrit = Math.max(0, curGrit + (a.amount ?? 0));
+        updateHero?.(a.heroId, { currentGrit: newGrit });
         break;
       }
 

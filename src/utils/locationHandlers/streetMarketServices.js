@@ -120,7 +120,7 @@ export async function performBathHouse({ hero, ui = {}, params = {} }) {
   );
   let gritDelta = 0;
   if (tryParasites) {
-    const grit0 = Number(hero?.grit ?? 0);
+    const grit0 = Number(hero?.currentGrit ?? hero?.grit ?? 0);
     const maxAttempts = grit0; // 1 grit each
     const attempts = await promptNumber(
       ui,
@@ -143,7 +143,7 @@ export async function performBathHouse({ hero, ui = {}, params = {} }) {
   actions.push({
     type: 'update',
     gold,
-    grit: Math.max(0, (hero?.grit ?? 0) + gritDelta),
+    currentGrit: Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0) + gritDelta),
     health: { ...(hero?.health || {}), current: newHCur, max: hero?.health?.max ?? hero?.maxHealth },
     sanity: { ...(hero?.sanity || {}), current: newSCur, max: hero?.sanity?.max ?? hero?.maxSanity },
   });
@@ -217,7 +217,7 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
 
   // Entry fee ($25)
   let gold = Math.max(0, (hero?.gold ?? 0) - 25);
-  let grit = Math.max(0, (hero?.grit ?? 0));
+  let grit = Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0));
 
   // Format dice for display
   const fmtDice = (d) => d.map((v, i) => `  Die ${i + 1}: [${v}]`).join('\n');
@@ -440,7 +440,7 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
   actions.push({
     type: 'update',
     gold: finalGold,
-    grit: Math.max(0, grit),
+    currentGrit: Math.max(0, grit),
   });
 
   return {

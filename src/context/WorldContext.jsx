@@ -7,15 +7,17 @@ const WorldContext = createContext();
 export function WorldProvider({ children }) {
   const [world, setWorld] = useState('City of the Ancients');
   const skipNextWrite = useRef(false);
+  const worldRef_ = useRef(world);
+  worldRef_.current = world;
 
   // Firestore listener
   useEffect(() => {
     if (!db?.localMode) {
-      const worldRef = doc(db, 'shared', 'world');
-      return onSnapshot(worldRef, (snap) => {
+      const worldDocRef = doc(db, 'shared', 'world');
+      return onSnapshot(worldDocRef, (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          if (data?.name && data.name !== world) {
+          if (data?.name && data.name !== worldRef_.current) {
             skipNextWrite.current = true;
             setWorld(data.name);
           }

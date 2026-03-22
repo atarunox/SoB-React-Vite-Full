@@ -1217,7 +1217,7 @@ const foWorldArtifactOffer =
           const lose = Number.isFinite(a.amount) ? a.amount : 1;
           updateHero({
             id: heroId,
-            grit: Math.max(0, (hero?.grit ?? 0) - lose),
+            currentGrit: Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0) - lose),
           });
           break;
         }
@@ -1226,7 +1226,7 @@ const foWorldArtifactOffer =
           const add = Number.isFinite(a.amount) ? a.amount : 1;
           updateHero({
             id: heroId,
-            grit: Math.max(0, (hero?.grit ?? 0) + add),
+            currentGrit: Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0) + add),
           });
           break;
         }

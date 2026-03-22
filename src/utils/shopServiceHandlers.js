@@ -37,10 +37,11 @@ export const shopServiceHandlers = {
   },
 
   restoreGrit: (hero) => {
-    const grit = Math.min((hero.grit ?? 0) + 1, hero.maxGrit ?? 2);
+    const curGrit = hero.currentGrit ?? hero.grit ?? 0;
+    const newGrit = Math.min(curGrit + 1, hero.maxGrit ?? 2);
     return {
       message: 'Restored 1 Grit.',
-      changes: { grit }
+      changes: { currentGrit: newGrit }
     };
   }
 };
