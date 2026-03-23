@@ -765,7 +765,7 @@ export default function StatsTab({
         <div className="flex items-center gap-1 ml-auto">
           <button
             className="btn btn-sm px-2"
-            onClick={() => setStatsScale(Math.round((statsScale - 0.1) * 100) / 100)}
+            onClick={() => setStatsScale(Math.round((statsScale - 0.01) * 100) / 100)}
             disabled={statsScale <= 0.5}
             title="Shrink stat tiles"
           >
@@ -774,7 +774,7 @@ export default function StatsTab({
           <span className="text-xs font-medium w-10 text-center">{Math.round(statsScale * 100)}%</span>
           <button
             className="btn btn-sm px-2"
-            onClick={() => setStatsScale(Math.round((statsScale + 0.1) * 100) / 100)}
+            onClick={() => setStatsScale(Math.round((statsScale + 0.01) * 100) / 100)}
             disabled={statsScale >= 1.5}
             title="Enlarge stat tiles"
           >
