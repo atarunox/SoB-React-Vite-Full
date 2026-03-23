@@ -37,7 +37,7 @@ function AppShell() {
     <div className="min-h-screen bg-[url('/assets/Parchment.jpg')] bg-cover bg-fixed bg-center text-black">
       <div
         className="bg-[#fdf6e3]/40 min-h-screen px-2 py-4 border-[3px] border-[#5C3A21] shadow-lg rounded-lg w-full max-w-4xl mx-auto origin-top"
-        style={{ zoom: scale }}
+        style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
       >
         <Routes>
           <Route path="/" element={<Home />} />
