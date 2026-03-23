@@ -316,7 +316,7 @@ export default function StatsTab({
 }) {
   const { hero: activeHero, updateHero } = useHero();
   const { updateHero: updateHeroPosse } = usePosse();
-  const { statsScale } = useUIScale();
+  const { statsScale, setStatsScale } = useUIScale();
 
   // ---- Undo / Redo history for stat changes ----
   const MAX_UNDO = 30;
@@ -506,6 +506,7 @@ export default function StatsTab({
   const handlePointerDown = (e, label) => {
     if (dragLocked) return;
     const { left, top } = e.currentTarget.getBoundingClientRect();
+    // Store offset in screen space — we'll convert when moving
     setDraggingLabel(label);
     setDragStart({ x: e.clientX - left, y: e.clientY - top });
   };
@@ -513,8 +514,10 @@ export default function StatsTab({
   const handlePointerMove = (e) => {
     if (!draggingLabel || !dragStart) return;
     const rect = dragAreaRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - dragStart.x;
-    const y = e.clientY - rect.top - dragStart.y;
+    // Convert screen-space coordinates to local (unscaled) coordinates
+    const s = statsScale || 1;
+    const x = (e.clientX - rect.left - dragStart.x) / s;
+    const y = (e.clientY - rect.top - dragStart.y) / s;
     setLocalPositions((pos) => ({ ...pos, [draggingLabel]: { x, y } }));
   };
 
@@ -758,6 +761,26 @@ export default function StatsTab({
         <button className="btn btn-sm" onClick={() => setShowDetails((v) => !v)}>
           {showDetails ? 'Hide Details' : 'Detailed Stats'}
         </button>
+        {/* Tile scale controls */}
+        <div className="flex items-center gap-1 ml-auto">
+          <button
+            className="btn btn-sm px-2"
+            onClick={() => setStatsScale(Math.round((statsScale - 0.1) * 100) / 100)}
+            disabled={statsScale <= 0.5}
+            title="Shrink stat tiles"
+          >
+            -
+          </button>
+          <span className="text-xs font-medium w-10 text-center">{Math.round(statsScale * 100)}%</span>
+          <button
+            className="btn btn-sm px-2"
+            onClick={() => setStatsScale(Math.round((statsScale + 0.1) * 100) / 100)}
+            disabled={statsScale >= 1.5}
+            title="Enlarge stat tiles"
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {/* Top panel: Detailed Breakdown (Base / Gear / Skills / Conditions / Total) */}
