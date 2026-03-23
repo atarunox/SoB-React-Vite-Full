@@ -959,9 +959,6 @@ export default function StatsTab({
         ref={dragAreaRef}
         style={{
           minHeight: `${(gridLayout.rowH * Math.ceil(statOrder.length / gridLayout.cols) + TILE_GAP * 2) * statsScale}px`,
-          transform: `scale(${statsScale})`,
-          transformOrigin: 'top left',
-          width: statsScale !== 1 ? `${100 / statsScale}%` : undefined,
         }}
       >
         {statOrder.map((label) => {
@@ -975,18 +972,18 @@ export default function StatsTab({
               key={label}
               className="absolute rounded-2xl bg-gradient-to-b from-[#ede2c6] to-[#d4c3a1] p-1 border border-[#8b6b46] text-center cursor-grab flex flex-col justify-center items-center transition-transform duration-200 ease-in-out shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
               style={{
-                left: pos.x,
-                top: pos.y,
-                width: `${gridLayout.tileW}px`,
-                height: `${gridLayout.tileH}px`,
+                left: pos.x * statsScale,
+                top: pos.y * statsScale,
+                width: `${gridLayout.tileW * statsScale}px`,
+                height: `${gridLayout.tileH * statsScale}px`,
                 touchAction: 'none',
               }}
               onPointerDown={(e) => handlePointerDown(e, label)}
             >
-              <div className="font-bold text-[#3b2f1d] tracking-tight drop-shadow-sm leading-snug" style={{ fontSize: `${Math.max(9, gridLayout.tileW * 0.12)}px` }}>
+              <div className="font-bold text-[#3b2f1d] tracking-tight drop-shadow-sm leading-snug" style={{ fontSize: `${Math.max(9, gridLayout.tileW * 0.12) * statsScale}px` }}>
                 {displayLabel}
               </div>
-              <div className="font-black text-[#1f1f1f] leading-tight drop-shadow" style={{ fontSize: `${Math.max(14, gridLayout.tileW * 0.22)}px` }}>
+              <div className="font-black text-[#1f1f1f] leading-tight drop-shadow" style={{ fontSize: `${Math.max(14, gridLayout.tileW * 0.22) * statsScale}px` }}>
                 {displayVal(value)}
               </div>
             </div>
