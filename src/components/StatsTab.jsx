@@ -1,5 +1,5 @@
 // src/components/StatsTab.jsx
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import formatStatLabel from '../utils/formatStatLabel';
 import { useHero } from '../context/HeroContext';
 import { usePosse } from '../context/PosseContext';
@@ -266,20 +266,42 @@ const deriveKeywords = (hero) => {
   return Array.from(out);
 };
 
-/* ---------------------- default tile positions (5-col grid) ---------------------- */
+/* ---------------------- default tile positions (responsive grid) ---------------------- */
 
-const COL_W = 140; // 128px tile + 12px gap
-const ROW_H = 108; // 96px tile  + 12px gap
-const COLS  = 5;
+const STAT_ORDER_FOR_GRID = [
+  'Agility', 'Cunning', 'Spirit', 'Strength', 'Lore',
+  'Luck', 'Initiative', 'Melee', 'Ranged', 'Defense',
+  'Willpower', 'Armor', 'Spirit Armor', 'Health', 'Sanity',
+  'Grit', 'Corruption', 'Special', 'Move', 'Combat',
+];
 
-const DEFAULT_STAT_POSITIONS = Object.fromEntries(
-  [
-    'Agility', 'Cunning', 'Spirit', 'Strength', 'Lore',
-    'Luck', 'Initiative', 'Melee', 'Ranged', 'Defense',
-    'Willpower', 'Armor', 'Spirit Armor', 'Health', 'Sanity',
-    'Grit', 'Corruption', 'Special', 'Move', 'Combat',
-  ].map((label, i) => [label, { x: (i % COLS) * COL_W, y: Math.floor(i / COLS) * ROW_H }])
-);
+const TILE_GAP = 8;
+
+function computeGridLayout(containerWidth) {
+  if (!containerWidth || containerWidth <= 0) {
+    // Fallback for SSR / initial render
+    return { cols: 5, tileW: 128, tileH: 96, colW: 140, rowH: 108 };
+  }
+  let cols;
+  if (containerWidth < 360) cols = 3;
+  else if (containerWidth < 500) cols = 4;
+  else cols = 5;
+
+  const tileW = Math.floor((containerWidth - TILE_GAP * (cols + 1)) / cols);
+  const tileH = Math.floor(tileW * 0.72);
+  const colW = tileW + TILE_GAP;
+  const rowH = tileH + TILE_GAP;
+  return { cols, tileW, tileH, colW, rowH };
+}
+
+function buildDefaultPositions(cols, colW, rowH) {
+  return Object.fromEntries(
+    STAT_ORDER_FOR_GRID.map((label, i) => [
+      label,
+      { x: TILE_GAP + (i % cols) * colW, y: TILE_GAP + Math.floor(i / cols) * rowH },
+    ])
+  );
+}
 
 /* -------------------------------- component -------------------------------- */
 
@@ -349,9 +371,33 @@ export default function StatsTab({
   );
 
   const dragAreaRef = useRef();
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = dragAreaRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const gridLayout = useMemo(
+    () => computeGridLayout(containerWidth),
+    [containerWidth]
+  );
+
+  const defaultPositions = useMemo(
+    () => buildDefaultPositions(gridLayout.cols, gridLayout.colW, gridLayout.rowH),
+    [gridLayout.cols, gridLayout.colW, gridLayout.rowH]
+  );
+
   const [localPositions, setLocalPositions] = useState(() => {
     const saved = activeHero?.statPositions;
-    return saved && Object.keys(saved).length > 0 ? saved : { ...DEFAULT_STAT_POSITIONS };
+    return saved && Object.keys(saved).length > 0 ? saved : {};
   });
   const [draggingLabel, setDraggingLabel] = useState(null);
   const [dragStart, setDragStart] = useState(null);
@@ -374,7 +420,7 @@ export default function StatsTab({
 
   useEffect(() => {
     const saved = activeHero?.statPositions;
-    setLocalPositions(saved && Object.keys(saved).length > 0 ? saved : { ...DEFAULT_STAT_POSITIONS });
+    setLocalPositions(saved && Object.keys(saved).length > 0 ? saved : {});
   }, [activeHero?.statPositions, activeHero?.id, activeHero?.localId]);
 
   // Persist details toggle per hero
@@ -450,8 +496,8 @@ export default function StatsTab({
   if (!activeHero) return <div>No hero loaded</div>;
 
   const handleResetLayout = () => {
-    setLocalPositions({ ...DEFAULT_STAT_POSITIONS });
-    updateHeroFunc({ statPositions: { ...DEFAULT_STAT_POSITIONS } });
+    setLocalPositions({});
+    updateHeroFunc({ statPositions: {} });
     if (resetLayout) resetLayout();
   };
 
@@ -886,25 +932,31 @@ export default function StatsTab({
       <div
         className="relative border-2 border-[#5C3A21] rounded-xl shadow-inner touch-none"
         ref={dragAreaRef}
-        style={{ minHeight: `${ROW_H * 4 + 16}px` }}
+        style={{ minHeight: `${gridLayout.rowH * Math.ceil(statOrder.length / gridLayout.cols) + TILE_GAP * 2}px` }}
       >
         {statOrder.map((label) => {
           const value = getStatValue(label);
-          const pos = localPositions[label] || DEFAULT_STAT_POSITIONS[label] || { x: 0, y: 0 };
+          const pos = localPositions[label] || defaultPositions[label] || { x: 0, y: 0 };
           const displayLabel =
             label === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(label);
 
           return (
             <div
               key={label}
-              className="absolute w-28 h-20 sm:w-32 sm:h-24 rounded-2xl bg-gradient-to-b from-[#ede2c6] to-[#d4c3a1] p-2 border border-[#8b6b46] text-center cursor-grab flex flex-col justify-center items-center transition-transform duration-200 ease-in-out shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
-              style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
+              className="absolute rounded-2xl bg-gradient-to-b from-[#ede2c6] to-[#d4c3a1] p-1 border border-[#8b6b46] text-center cursor-grab flex flex-col justify-center items-center transition-transform duration-200 ease-in-out shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
+              style={{
+                left: pos.x,
+                top: pos.y,
+                width: `${gridLayout.tileW}px`,
+                height: `${gridLayout.tileH}px`,
+                touchAction: 'none',
+              }}
               onPointerDown={(e) => handlePointerDown(e, label)}
             >
-              <div className="font-bold text-xs sm:text-sm text-[#3b2f1d] tracking-tight drop-shadow-sm">
+              <div className="font-bold text-[#3b2f1d] tracking-tight drop-shadow-sm" style={{ fontSize: `${Math.max(10, gridLayout.tileW * 0.1)}px` }}>
                 {displayLabel}
               </div>
-              <div className="text-xl sm:text-2xl font-black text-[#1f1f1f] leading-tight drop-shadow">
+              <div className="font-black text-[#1f1f1f] leading-tight drop-shadow" style={{ fontSize: `${Math.max(16, gridLayout.tileW * 0.19)}px` }}>
                 {displayVal(value)}
               </div>
             </div>
