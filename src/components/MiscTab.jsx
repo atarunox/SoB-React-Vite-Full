@@ -58,7 +58,7 @@ export default function MiscTab() {
   const { hero, setHero } = useHero();
   const { posse, addHero, removeHero } = usePosse();
   const { darkness, growingDread } = useCombatState();
-  const { scale, setScale, buttonSize, setButtonSize } = useUIScale();
+  const { scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale } = useUIScale();
 
   // UI state
   const [heroList, setHeroList] = useState([]);            // [{...hero, _lsKey}]
@@ -441,6 +441,68 @@ export default function MiscTab() {
             ))}
           </div>
           <p className="text-xs text-gray-500">Changes the size of all buttons throughout the app.</p>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[#5c3a1e]/20" />
+
+        {/* --- Stats Scale --- */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-sm">Stats Box Scale</span>
+            <span className="text-sm font-medium text-gray-700">{Math.round(statsScale * 100)}%</span>
+          </div>
+
+          {/* Preset buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { label: '75%', value: 0.75 },
+              { label: '90%', value: 0.9 },
+              { label: '100%', value: 1 },
+              { label: '110%', value: 1.1 },
+              { label: '125%', value: 1.25 },
+            ].map((preset) => (
+              <button
+                key={preset.value}
+                className={`px-3 py-1 rounded-md border text-sm font-medium transition-colors ${
+                  Math.round(statsScale * 100) === Math.round(preset.value * 100)
+                    ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                    : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+                }`}
+                onClick={() => setStatsScale(preset.value)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Slider with - / + buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-[#5c3a1e]/40 bg-[#f5f0da] text-[#5c3a1e] font-bold text-lg hover:bg-[#f6e7c1]"
+              onClick={() => setStatsScale(Math.round((statsScale - 0.05) * 100) / 100)}
+              disabled={statsScale <= 0.5}
+            >
+              &minus;
+            </button>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.05"
+              value={statsScale}
+              onChange={(e) => setStatsScale(Number(e.target.value))}
+              className="flex-1 accent-[#5c3a1e]"
+            />
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-[#5c3a1e]/40 bg-[#f5f0da] text-[#5c3a1e] font-bold text-lg hover:bg-[#f6e7c1]"
+              onClick={() => setStatsScale(Math.round((statsScale + 0.05) * 100) / 100)}
+              disabled={statsScale >= 1.5}
+            >
+              +
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">Scales the stat boxes on the Stats tab.</p>
         </div>
       </div>
 

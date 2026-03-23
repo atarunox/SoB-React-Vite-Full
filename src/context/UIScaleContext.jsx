@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'sob:uiScale';
 const BTN_STORAGE_KEY = 'sob:buttonSize';
+const STATS_SCALE_KEY = 'sob:statsScale';
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 1.5;
 
@@ -21,6 +22,7 @@ function validButtonSize(v) {
 const UIScaleContext = createContext({
   scale: 1, setScale: () => {},
   buttonSize: 'md', setButtonSize: () => {},
+  statsScale: 1, setStatsScale: () => {},
 });
 
 export { BUTTON_SIZES };
@@ -43,8 +45,18 @@ export function UIScaleProvider({ children }) {
     }
   });
 
+  const [statsScale, setStatsScaleRaw] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STATS_SCALE_KEY);
+      return saved ? clampScale(saved) : 1;
+    } catch {
+      return 1;
+    }
+  });
+
   const setScale = React.useCallback((v) => setScaleRaw(clampScale(v)), []);
   const setButtonSize = React.useCallback((v) => setButtonSizeRaw(validButtonSize(v)), []);
+  const setStatsScale = React.useCallback((v) => setStatsScaleRaw(clampScale(v)), []);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, String(scale)); } catch {}
@@ -54,13 +66,17 @@ export function UIScaleProvider({ children }) {
     try { localStorage.setItem(BTN_STORAGE_KEY, buttonSize); } catch {}
   }, [buttonSize]);
 
+  useEffect(() => {
+    try { localStorage.setItem(STATS_SCALE_KEY, String(statsScale)); } catch {}
+  }, [statsScale]);
+
   // Apply button size as a data attribute on <html> so CSS can target it
   useEffect(() => {
     document.documentElement.setAttribute('data-btn-size', buttonSize);
   }, [buttonSize]);
 
   return (
-    <UIScaleContext.Provider value={{ scale, setScale, buttonSize, setButtonSize }}>
+    <UIScaleContext.Provider value={{ scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale }}>
       {children}
     </UIScaleContext.Provider>
   );

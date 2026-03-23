@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import formatStatLabel from '../utils/formatStatLabel';
 import { useHero } from '../context/HeroContext';
 import { usePosse } from '../context/PosseContext';
+import { useUIScale } from '../context/UIScaleContext';
 import { calculateCurrentStats } from '../utils/calculateStats';
 
 /* ------------------------------- helpers -------------------------------- */
@@ -315,6 +316,7 @@ export default function StatsTab({
 }) {
   const { hero: activeHero, updateHero } = useHero();
   const { updateHero: updateHeroPosse } = usePosse();
+  const { statsScale } = useUIScale();
 
   // ---- Undo / Redo history for stat changes ----
   const MAX_UNDO = 30;
@@ -932,7 +934,12 @@ export default function StatsTab({
       <div
         className="relative border-2 border-[#5C3A21] rounded-xl shadow-inner touch-none"
         ref={dragAreaRef}
-        style={{ minHeight: `${gridLayout.rowH * Math.ceil(statOrder.length / gridLayout.cols) + TILE_GAP * 2}px` }}
+        style={{
+          minHeight: `${(gridLayout.rowH * Math.ceil(statOrder.length / gridLayout.cols) + TILE_GAP * 2) * statsScale}px`,
+          transform: `scale(${statsScale})`,
+          transformOrigin: 'top left',
+          width: statsScale !== 1 ? `${100 / statsScale}%` : undefined,
+        }}
       >
         {statOrder.map((label) => {
           const value = getStatValue(label);
