@@ -28,7 +28,7 @@ import { rollD6 } from './diceHelpers';
 // EVENT CHART IMPORTS
 // =======================
 import { rollLocationEvent } from './locationHandlers/locationEventHandler';     // unified location events
-import { dailyEventDeck } from '../data/townLocations/townDailyEvents';         // daily event card deck
+import { dailyEventDeck } from '../data/townLocations/townDailyEvents.js';         // daily event card deck
 
 // =======================
 // SERVICE EXECUTORS
