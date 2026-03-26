@@ -2,13 +2,35 @@ import React from "react";
 import { DARKNESS_CARDS } from "../../data/darknessCards";
 import { useCombatState } from "../../hooks/useCombatState";
 
-function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
+function shuffleFY(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 function extractEnemyModifiers(card) {
-  // ... (same as your function)
-  return {};
+  if (!card || !card.tags || !card.effect) return {};
+  const mods = {};
+  // Parse "Boost" cards that target a keyword with stat changes
+  if (card.tags.includes("Boost")) {
+    // Find the keyword target (e.g., "Soldier", "Undead", "Construct", "Void", "Fanatic")
+    const keyword = card.tags.find(t => t !== "Darkness" && t !== "Boost");
+    if (!keyword) return mods;
+    const effect = card.effect;
+    // Match patterns like "+1 Initiative", "+2 Health", "+1 Combat", "+1 Defense"
+    const statPattern = /[+-](\d+)\s+(Initiative|Health|Combat|Defense|Damage|Move|Shots)/gi;
+    let match;
+    while ((match = statPattern.exec(effect)) !== null) {
+      const val = parseInt(match[1]);
+      const stat = match[2].toLowerCase();
+      if (!mods[keyword]) mods[keyword] = {};
+      mods[keyword][stat] = (mods[keyword][stat] || 0) + val;
+    }
+  }
+  return mods;
 }
 
 export default function DMDarknessDrawer({ world = "Mines" }) {
@@ -50,25 +72,30 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
     }
   };
 
+  const reshuffle = () => {
+    setDarknessDeck(shuffleFY([...DARKNESS_CARDS]));
+    setCurrent(null);
+  };
+
   const clearAll = () => {
     setDarknessActive([]);
     setDarknessHeld([]);
     setCurrent(null);
-    alert("All Darkness cards cleared.");
   };
 
   return (
     <div className="p-4 bg-white rounded shadow-md space-y-4">
       <h2 className="text-xl font-bold">Darkness Deck</h2>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <button onClick={drawCard} className="btn btn-primary">Draw Darkness Card</button>
-        <button onClick={clearAll} className="btn btn-secondary">Clear All</button>
+        <button onClick={reshuffle} className="btn btn-secondary">Reshuffle Deck</button>
+        <button onClick={clearAll} className="btn btn-warning">Clear All</button>
+        <span className="text-sm text-gray-600">Deck: {darknessDeck.length}</span>
       </div>
 
       {current && (
         <div className="border p-3 rounded bg-black text-white">
           <h3 className="text-lg font-bold">{current.name}</h3>
-          <p className="italic">{current.flavorText}</p>
           <p><strong>Effect:</strong> {current.effect}</p>
           {current.remainsInPlay && (
             <p className="text-xs text-blue-400 mt-1">Remains in Play</p>

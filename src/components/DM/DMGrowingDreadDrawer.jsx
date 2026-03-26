@@ -17,7 +17,7 @@ function filterByWorld(cards, world) {
   if (!cards?.length) return [];
   // Accept if no tags OR tags include this world
   return cards.filter(c => {
-    const tags = Array.isArray(c.tags) ? c.tags.map(String.toLowerCase) : [];
+    const tags = Array.isArray(c.tags) ? c.tags.map(t => t.toLowerCase()) : [];
     if (tags.length === 0) return true;
     return tags.includes(String(world).toLowerCase());
   });

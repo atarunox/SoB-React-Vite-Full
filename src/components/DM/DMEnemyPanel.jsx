@@ -1,58 +1,59 @@
 import React, { useState } from 'react';
 import { useWorld } from '../../context/WorldContext';
-// RIGHT:
+import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from "../../hooks/useCombatState";
 
 import { ENEMY_CARDS } from '../../data/enemyCards';
 import { THREAT_DECKS, getThreatDeck } from '../../data/enemies/threatDecks';
 
-
 import { DARKNESS_CARDS } from '../../data/darknessCards';
 import { GROWING_DREAD_CARDS } from '../../data/growingDreadCards';
 import EnemyGroupCard from './EnemyGroupCard';
 
+const THREAT_LEVELS = ['low', 'medium', 'high', 'epic'];
+
 export default function DMEnemyPanel() {
   const { world } = useWorld();
+  const { posse } = usePosse();
   const { combatGroups, setCombatGroups } = useCombatState();
   const [drawnCard, setDrawnCard] = useState(null);
   const [globalModifiers, setGlobalModifiers] = useState([]);
+  const [threatLevel, setThreatLevel] = useState('low');
 
   // Draw threat card and generate groups
   const drawThreatCard = () => {
-  const deck = getThreatDeck(world); // <- use helper!
-  if (!Array.isArray(deck) || deck.length === 0) {
-    alert(`No threat deck for world "${world}" or deck is empty.`);
-    return;
-  }
-  const idx = Math.floor(Math.random() * deck.length);
-  const card = deck[idx];
-  setDrawnCard(card);
+    const deck = getThreatDeck(world, threatLevel);
+    if (!Array.isArray(deck) || deck.length === 0) {
+      alert(`No threat deck for world "${world}" (${threatLevel}) or deck is empty.`);
+      return;
+    }
+    const idx = Math.floor(Math.random() * deck.length);
+    const card = deck[idx];
+    setDrawnCard(card);
 
-  if (!card || !Array.isArray(card.enemies)) {
-    alert(`Threat card missing or has no enemies array!`);
-    setCombatGroups([]);
-    return;
-  }
+    if (!card || !Array.isArray(card.enemies)) {
+      alert(`Threat card missing or has no enemies array!`);
+      setCombatGroups([]);
+      return;
+    }
 
-  const groups = card.enemies.map((eg, i) => {
-    const enemyData = ENEMY_CARDS[world]?.find(e => e.name === eg.name) || {};
-    return {
-      id: `${card.name}-grp${i}`,
-      name: eg.name,
-      count: eg.count,
-      baseStats: { ...enemyData, world },
-      modifiers: [],
-      modifiedStats: { ...enemyData },
-      eliteAbilityList: [],
-      traits: [],
-      keywords: [...(enemyData.keywords || [])],
-      threatCard: card
-    };
-  });
-  setCombatGroups(groups);
-};
-
-
+    const groups = card.enemies.map((eg, i) => {
+      const enemyData = ENEMY_CARDS[world]?.find(e => e.name === eg.name) || {};
+      return {
+        id: `${card.name}-grp${i}`,
+        name: eg.name,
+        count: eg.count,
+        baseStats: { ...enemyData, world },
+        modifiers: [],
+        modifiedStats: { ...enemyData },
+        eliteAbilityList: [],
+        traits: [],
+        keywords: [...(enemyData.keywords || [])],
+        threatCard: card
+      };
+    });
+    setCombatGroups(groups);
+  };
 
   // Global modifiers
   function addGlobalModifier(type) {
@@ -105,9 +106,20 @@ export default function DMEnemyPanel() {
 
       {/* THREAT DRAWER */}
       <div className="mb-4 flex flex-col sm:flex-row items-start gap-2">
-        <button className="btn btn-primary" onClick={drawThreatCard}>
-          Draw Threat Card ({world})
-        </button>
+        <div className="flex gap-2 items-center">
+          <select
+            className="select select-bordered select-sm"
+            value={threatLevel}
+            onChange={e => setThreatLevel(e.target.value)}
+          >
+            {THREAT_LEVELS.map(lvl => (
+              <option key={lvl} value={lvl}>{lvl.charAt(0).toUpperCase() + lvl.slice(1)}</option>
+            ))}
+          </select>
+          <button className="btn btn-primary" onClick={drawThreatCard}>
+            Draw Threat Card ({world})
+          </button>
+        </div>
         {drawnCard && (
           <div className="mt-2 sm:mt-0">
             <div className="font-bold">{drawnCard.name}</div>
@@ -127,6 +139,7 @@ export default function DMEnemyPanel() {
             groupIdx={idx}
             setCombatGroups={setCombatGroups}
             allGroups={combatGroups}
+            posse={posse}
             globalModifiers={globalModifiers}
           />
         ))}

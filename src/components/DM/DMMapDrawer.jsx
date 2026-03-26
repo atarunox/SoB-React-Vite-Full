@@ -6,8 +6,12 @@ import { blastedWastesCards } from '../../data/maps/blastedWastesCards';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
 
 function shuffle(arr) {
-  // non-mutating wrapper (we clone before sorting)
-  return [...arr].sort(() => Math.random() - 0.5);
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 const WORLD_TO_MAP_CARDS = {

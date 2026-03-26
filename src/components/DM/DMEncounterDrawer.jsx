@@ -3,7 +3,12 @@ import { mineEncounters } from '../../data/encounters/mineEncounters';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
 
 function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
+  const a = [...array];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 const WORLD_TO_ENCOUNTER_CARDS = {
