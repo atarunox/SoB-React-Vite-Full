@@ -12,6 +12,7 @@ import TownPhaseTab from './TownPhaseTab';
 import DMLootPoolPanel from './DMLootPoolPanel';
 import DMTradePanel from './DMTradePanel';
 import DMItemGenerator from './DMItemGenerator';
+import DMHandPanel from './DMHandPanel';
 
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
@@ -313,6 +314,9 @@ export default function DMTab({ showEndOfDayButton = false }) {
           );
         })()}
       </div>
+
+      {/* DM Hand - always visible when cards are held */}
+      <DMHandPanel globalModifiers={getActiveModifiers(combat)?.list || []} />
 
       {/* Tabs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 justify-center mb-4 border-b pb-2">

@@ -40,6 +40,11 @@ export function CombatProvider({ children }) {
     try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadActive : []; } catch { return []; }
   });
 
+  // --- DM Hand (persistent card tray) ---
+  const [dmHand, setDmHand] = useState(() => {
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).dmHand : []; } catch { return []; }
+  });
+
   // --- Darkness persistent state ---
   const [darknessDeck, setDarknessDeck] = useState(() => {
     try {
@@ -67,14 +72,25 @@ export function CombatProvider({ children }) {
         growingDreadActive,
         darknessDeck,
         darknessHeld,
-        darknessActive
+        darknessActive,
+        dmHand,
       })
     );
   }, [
     combatGroups, darkness, growingDread,
     growingDreadDeck, growingDreadHand, growingDreadActive,
-    darknessDeck, darknessHeld, darknessActive
+    darknessDeck, darknessHeld, darknessActive, dmHand
   ]);
+
+  // --- DM Hand utilities ---
+  const addToHand = (card) => setDmHand((prev) => [
+    ...prev, { ...card, _handId: Date.now().toString() + Math.random().toString(36).slice(2, 6) }
+  ]);
+  const removeFromHand = (handId) => setDmHand((prev) => prev.filter((c) => c._handId !== handId));
+  const updateHandCard = (handId, updates) => setDmHand((prev) =>
+    prev.map((c) => c._handId === handId ? { ...c, ...updates } : c)
+  );
+  const clearHand = () => setDmHand([]);
 
   // --- Utilities for groups, modifiers, etc. (as before) ---
   const addGroup = (group) => setCombatGroups((prev) => [
@@ -96,6 +112,8 @@ export function CombatProvider({ children }) {
       darknessDeck, setDarknessDeck,
       darknessHeld, setDarknessHeld,
       darknessActive, setDarknessActive,
+      // DM Hand
+      dmHand, setDmHand, addToHand, removeFromHand, updateHandCard, clearHand,
     }}>
       {children}
     </CombatContext.Provider>
