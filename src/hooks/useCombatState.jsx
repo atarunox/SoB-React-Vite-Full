@@ -34,15 +34,15 @@ export function CombatProvider({ children }) {
     } catch { return shuffle([...GROWING_DREAD_CARDS]); }
   });
   const [growingDreadHand, setGrowingDreadHand] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadHand : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadHand ?? [] : []; } catch { return []; }
   });
   const [growingDreadActive, setGrowingDreadActive] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadActive : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadActive ?? [] : []; } catch { return []; }
   });
 
   // --- DM Hand (persistent card tray) ---
   const [dmHand, setDmHand] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).dmHand : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).dmHand ?? [] : []; } catch { return []; }
   });
 
   // --- Darkness persistent state ---
@@ -53,10 +53,10 @@ export function CombatProvider({ children }) {
     } catch { return shuffle([...DARKNESS_CARDS]); }
   });
   const [darknessHeld, setDarknessHeld] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessHeld : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessHeld ?? [] : []; } catch { return []; }
   });
   const [darknessActive, setDarknessActive] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessActive : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessActive ?? [] : []; } catch { return []; }
   });
 
   // --- Persist all relevant state ---

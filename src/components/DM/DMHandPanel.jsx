@@ -172,13 +172,14 @@ export default function DMHandPanel({ globalModifiers = [] }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
 
-  const handSize = dmHand.length;
+  const hand = dmHand ?? [];
+  const handSize = hand.length;
 
   // Keep focus in bounds
   const safeFocus = Math.min(focusIndex, Math.max(0, handSize - 1));
   if (safeFocus !== focusIndex && handSize > 0) setFocusIndex(safeFocus);
 
-  const focusedCard = handSize > 0 ? dmHand[safeFocus] : null;
+  const focusedCard = handSize > 0 ? hand[safeFocus] : null;
 
   const goPrev = () => setFocusIndex((i) => (i > 0 ? i - 1 : handSize - 1));
   const goNext = () => setFocusIndex((i) => (i < handSize - 1 ? i + 1 : 0));
@@ -210,7 +211,7 @@ export default function DMHandPanel({ globalModifiers = [] }) {
           <span className="text-xs opacity-80">({handSize} card{handSize !== 1 ? 's' : ''})</span>
           {/* Mini card type indicators */}
           <div className="flex gap-1 ml-2">
-            {dmHand.map((c, i) => {
+            {hand.map((c, i) => {
               const s = getStyle(c.type);
               return (
                 <button
