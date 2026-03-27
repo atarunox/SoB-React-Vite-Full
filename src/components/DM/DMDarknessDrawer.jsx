@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { DARKNESS_CARDS } from "../../data/darknessCards";
 import { useCombatState } from "../../hooks/useCombatState";
 
@@ -39,8 +39,11 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
   } = useCombatState();
 
   // Queue for drawing multiple cards and resolving them 1 by 1
-  const [drawQueue, setDrawQueue] = React.useState([]);
-  const [current, setCurrent] = React.useState(null);
+  const [drawQueue, setDrawQueue] = useState([]);
+  const [current, setCurrent] = useState(null);
+
+  // Index for cycling held cards
+  const [heldIndex, setHeldIndex] = useState(0);
 
   // Draw a single card (or add to queue if one is already showing)
   const drawCard = () => {
@@ -48,7 +51,6 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
     const card = darknessDeck[0];
     setDarknessDeck(darknessDeck.slice(1));
     if (current) {
-      // Already viewing a card - queue this one
       setDrawQueue(prev => [...prev, card]);
     } else {
       setCurrent(card);
@@ -79,6 +81,7 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
     }
   };
 
+  // Play immediately (applies effect)
   const playCard = () => {
     if (!current) return;
     const modifiers = extractEnemyModifiers(current);
@@ -87,31 +90,29 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
     advanceQueue();
   };
 
+  // Add to hand (held until played or cleared)
   const holdCard = () => {
     if (!current) return;
     setDarknessHeld(prev => [...prev, current]);
-    advanceQueue();
-  };
-
-  const sendToHand = () => {
-    if (!current) return;
     addToHand({ type: 'darkness', ...current });
     advanceQueue();
   };
 
   const discardCard = () => advanceQueue();
 
-  const releaseHeldCard = (card, action) => {
-    setDarknessHeld(prev => prev.filter(c => c.name !== card.name));
-    if (action === 'play') {
-      const cardWithModifiers = { ...card, enemyModifiers: extractEnemyModifiers(card) };
-      setDarknessActive(prev => [...prev, cardWithModifiers]);
-    }
+  // Play a held card from hand
+  const playHeldCard = (idx) => {
+    const card = darknessHeld[idx];
+    if (!card) return;
+    setDarknessHeld(prev => prev.filter((_, i) => i !== idx));
+    const modifiers = extractEnemyModifiers(card);
+    setDarknessActive(prev => [...prev, { ...card, enemyModifiers: modifiers }]);
+    if (heldIndex >= darknessHeld.length - 1) setHeldIndex(Math.max(0, heldIndex - 1));
   };
 
-  const sendHeldToHand = (card) => {
-    setDarknessHeld(prev => prev.filter(c => c.name !== card.name));
-    addToHand({ type: 'darkness', ...card });
+  const discardHeldCard = (idx) => {
+    setDarknessHeld(prev => prev.filter((_, i) => i !== idx));
+    if (heldIndex >= darknessHeld.length - 1) setHeldIndex(Math.max(0, heldIndex - 1));
   };
 
   const reshuffle = () => {
@@ -128,6 +129,8 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
   };
 
   const queueSize = drawQueue.length;
+  const safeHeldIndex = Math.min(heldIndex, Math.max(0, darknessHeld.length - 1));
+  const focusedHeld = darknessHeld.length > 0 ? darknessHeld[safeHeldIndex] : null;
 
   return (
     <div className="p-4 bg-white rounded shadow-md space-y-4">
@@ -151,15 +154,80 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
       {current && (
         <div className="border p-3 rounded bg-black text-white">
           <h3 className="text-lg font-bold">{current.name}</h3>
-          <p><strong>Effect:</strong> {current.effect}</p>
+          {current.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {current.tags.map((t, i) => (
+                <span key={i} className="px-1.5 py-0.5 text-[10px] rounded bg-purple-800 border border-purple-600">{t}</span>
+              ))}
+            </div>
+          )}
+          <p className="mt-2"><strong>Effect:</strong> {current.effect}</p>
           {current.remainsInPlay && (
             <p className="text-xs text-blue-400 mt-1">Remains in Play</p>
           )}
-          <div className="flex flex-wrap gap-2 mt-2">
-            <button onClick={playCard} className="btn btn-success btn-sm">Play</button>
-            <button onClick={holdCard} className="btn btn-warning btn-sm">Hold</button>
-            <button onClick={sendToHand} className="btn btn-info btn-sm">Add to Hand</button>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button onClick={playCard} className="btn btn-success btn-sm">Play Now</button>
+            <button onClick={holdCard} className="btn btn-info btn-sm">Add to Hand</button>
             <button onClick={discardCard} className="btn btn-secondary btn-sm">Discard</button>
+          </div>
+        </div>
+      )}
+
+      {/* Held hand — cycle through */}
+      {darknessHeld.length > 0 && (
+        <div className="border-2 border-purple-400 rounded-lg overflow-hidden bg-purple-950 text-purple-100">
+          <div className="px-3 py-2 bg-purple-900/80 flex items-center justify-between">
+            <span className="font-bold text-sm">
+              Held Darkness Cards ({darknessHeld.length})
+            </span>
+            <span className="text-xs opacity-80">Retained until played or cleared</span>
+          </div>
+
+          <div className="p-3">
+            {/* Navigation */}
+            {darknessHeld.length > 1 && (
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setHeldIndex(i => i > 0 ? i - 1 : darknessHeld.length - 1)}
+                  className="btn btn-xs btn-ghost text-purple-200"
+                >
+                  &larr; Prev
+                </button>
+                <span className="text-xs opacity-80">
+                  {safeHeldIndex + 1} / {darknessHeld.length}
+                </span>
+                <button
+                  onClick={() => setHeldIndex(i => i < darknessHeld.length - 1 ? i + 1 : 0)}
+                  className="btn btn-xs btn-ghost text-purple-200"
+                >
+                  Next &rarr;
+                </button>
+              </div>
+            )}
+
+            {focusedHeld && (
+              <div className="rounded p-3 bg-black/30 border border-white/10">
+                <div className="font-bold text-lg">{focusedHeld.name}</div>
+                {focusedHeld.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {focusedHeld.tags.map((t, i) => (
+                      <span key={i} className="px-1.5 py-0.5 text-[10px] rounded bg-purple-800 border border-purple-600">{t}</span>
+                    ))}
+                  </div>
+                )}
+                <p className="text-sm mt-2"><b>Effect:</b> {focusedHeld.effect}</p>
+                {focusedHeld.remainsInPlay && <p className="text-xs text-blue-400 italic mt-1">Remains in Play</p>}
+
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button className="btn btn-xs btn-success" onClick={() => playHeldCard(safeHeldIndex)}>
+                    Play
+                  </button>
+                  <button className="btn btn-xs btn-error" onClick={() => discardHeldCard(safeHeldIndex)}>
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -171,41 +239,6 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
             {darknessActive.map((card, idx) => (
               <li key={idx}>
                 <strong>{card.name}</strong>: {card.effect}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {darknessHeld.length > 0 && (
-        <div className="mt-4">
-          <h4 className="font-bold">Held Darkness Cards:</h4>
-          <ul className="space-y-2">
-            {darknessHeld.map((card, idx) => (
-              <li key={idx} className="flex flex-wrap gap-2 items-center">
-                <span>
-                  <strong>{card.name}</strong>
-                  {': '}
-                  {card.effect}
-                </span>
-                <button
-                  className="btn btn-success btn-xs"
-                  onClick={() => releaseHeldCard(card, 'play')}
-                >
-                  Play
-                </button>
-                <button
-                  className="btn btn-info btn-xs"
-                  onClick={() => sendHeldToHand(card)}
-                >
-                  To Hand
-                </button>
-                <button
-                  className="btn btn-secondary btn-xs"
-                  onClick={() => releaseHeldCard(card, 'discard')}
-                >
-                  Discard
-                </button>
               </li>
             ))}
           </ul>

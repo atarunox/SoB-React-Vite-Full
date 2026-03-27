@@ -1,5 +1,5 @@
 // src/components/DM/DMActiveEnemiesPanel.jsx
-import React from "react";
+import React, { useState } from "react";
 import { getAllStatsWithBreakdown } from "../../utils/enemyModifiers";
 
 // ---------- helpers ----------
@@ -122,15 +122,68 @@ export default function DMActiveEnemiesPanel({
   globalModifiers = [],
   setCombatGroups,
 }) {
+  const [focusIndex, setFocusIndex] = useState(0);
+  const [viewMode, setViewMode] = useState("cycle"); // "cycle" or "all"
+
+  const total = combatGroups.length;
+  const safeFocus = Math.min(focusIndex, Math.max(0, total - 1));
+
+  const goPrev = () => setFocusIndex(i => i > 0 ? i - 1 : total - 1);
+  const goNext = () => setFocusIndex(i => i < total - 1 ? i + 1 : 0);
+
+  const groupsToShow = viewMode === "cycle" && total > 0
+    ? [{ group: combatGroups[safeFocus], idx: safeFocus }]
+    : combatGroups.map((group, idx) => ({ group, idx }));
+
   return (
     <div className="space-y-6">
-      <h2 className="font-bold text-lg">Active Enemies (All Groups)</h2>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="font-bold text-lg">Active Enemies ({total} group{total !== 1 ? 's' : ''})</h2>
+        {total > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              className={`btn btn-xs ${viewMode === 'cycle' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setViewMode('cycle')}
+            >
+              Cycle View
+            </button>
+            <button
+              className={`btn btn-xs ${viewMode === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setViewMode('all')}
+            >
+              Show All
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cycling navigation */}
+      {viewMode === "cycle" && total > 1 && (
+        <div className="flex items-center justify-between">
+          <button onClick={goPrev} className="btn btn-sm btn-ghost">&larr; Prev</button>
+          <div className="flex gap-1">
+            {combatGroups.map((g, i) => (
+              <button
+                key={g.id || i}
+                onClick={() => setFocusIndex(i)}
+                className={`w-7 h-7 rounded text-xs font-bold flex items-center justify-center border ${
+                  i === safeFocus ? 'bg-red-700 border-red-500 text-white ring-2 ring-amber-400' : 'bg-stone-700 border-stone-600 text-stone-300'
+                }`}
+                title={g.name}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+          <button onClick={goNext} className="btn btn-sm btn-ghost">Next &rarr;</button>
+        </div>
+      )}
 
       {combatGroups.length === 0 && (
         <div className="italic text-gray-400">No active enemy groups. Draw a threat to begin.</div>
       )}
 
-      {combatGroups.map((group, idx) => {
+      {groupsToShow.map(({ group, idx }) => {
         const stats = getAllStatsWithBreakdown(
           group,
           globalModifiers,

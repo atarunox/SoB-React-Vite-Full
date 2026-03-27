@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { mineEncounters } from '../../data/encounters/mineEncounters';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
+import { useCombatState } from '../../hooks/useCombatState';
 
 function shuffle(array) {
   const a = [...array];
@@ -37,6 +38,7 @@ function classifyTarget(enc = {}) {
 }
 
 export default function DMEncounterDrawer({ world = 'Mines' }) {
+  const { addToHand } = useCombatState();
   const [deck, setDeck] = useState([]);
   const [current, setCurrent] = useState(null);
   const [discard, setDiscard] = useState([]);
@@ -52,6 +54,12 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
     if (deck.length === 0) return;
     setCurrent(deck[0]);
     setDeck(deck.slice(1));
+  };
+
+  const addCurrentToHand = () => {
+    if (!current) return;
+    addToHand({ type: 'encounter', ...current });
+    setCurrent(null);
   };
 
   const discardCard = () => {
@@ -72,9 +80,10 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
   return (
     <div className="p-4 bg-white rounded shadow space-y-4">
       <h2 className="text-xl font-bold">Encounter Drawer ({world})</h2>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button className="btn btn-primary" onClick={drawCard}>Draw Encounter</button>
         <button className="btn btn-secondary" onClick={reset}>Reset Deck</button>
+        <span className="text-sm text-gray-600 self-center">Deck: {deck.length}</span>
       </div>
 
       {current && (
@@ -91,7 +100,10 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
           {current.remainsInPlay && (
             <p className="text-sm text-blue-500 mt-1 italic">Remains in Play</p>
           )}
-          <button className="btn btn-secondary mt-2" onClick={discardCard}>Discard</button>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button className="btn btn-info btn-sm" onClick={addCurrentToHand}>Add to Hand</button>
+            <button className="btn btn-secondary btn-sm" onClick={discardCard}>Discard</button>
+          </div>
         </div>
       )}
 
