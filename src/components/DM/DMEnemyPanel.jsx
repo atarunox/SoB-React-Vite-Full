@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useWorld } from '../../context/WorldContext';
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from "../../hooks/useCombatState";
@@ -13,6 +13,50 @@ import DMActiveEnemiesPanel from './DMActiveEnemiesPanel';
 
 const THREAT_LEVELS = ['low', 'medium', 'high', 'epic'];
 
+// Roll N unique abilities from an elite chart (D6 table, indices 0-5).
+// If the chart has fewer entries than needed, allow repeats.
+function rollEliteAbilities(eliteChart, count) {
+  if (!Array.isArray(eliteChart) || eliteChart.length === 0 || count <= 0) return [];
+  const results = [];
+  const available = eliteChart.map((text, i) => ({ roll: i + 1, text }));
+
+  for (let n = 0; n < count; n++) {
+    // Pick from remaining if possible, otherwise allow repeats
+    const pool = available.filter(a => !results.some(r => r.roll === a.roll));
+    const source = pool.length > 0 ? pool : available;
+    const pick = source[Math.floor(Math.random() * source.length)];
+    results.push({ ...pick });
+  }
+  return results;
+}
+
+// Calculate how many elite abilities enemies get based on the SoB rules.
+// Level 1-2: 0, Level 3-4: 1, Level 5-6: 2, Level 7+: 3
+// +1 if a Drifter is in the posse
+// + any modifier bonuses from darkness/growing dread
+function getEliteCount(posse, globalModifiers = []) {
+  const highestLevel = Math.max(
+    ...(posse.map(h => Number(h.level || h.Level || 1) || 1)),
+    1
+  );
+  let count = 0;
+  if (highestLevel >= 7) count = 3;
+  else if (highestLevel >= 5) count = 2;
+  else if (highestLevel >= 3) count = 1;
+
+  // Drifter bonus
+  if (posse.some(h => /drifter/i.test(h?.class || h?.heroClass || ''))) {
+    count += 1;
+  }
+
+  // Darkness / Growing Dread modifiers that add elite abilities
+  for (const mod of globalModifiers) {
+    if (mod.eliteModifier) count += Number(mod.eliteModifier) || 0;
+  }
+
+  return Math.max(0, count);
+}
+
 export default function DMEnemyPanel() {
   const { world } = useWorld();
   const { posse } = usePosse();
@@ -20,6 +64,12 @@ export default function DMEnemyPanel() {
   const [drawnCard, setDrawnCard] = useState(null);
   const [globalModifiers, setGlobalModifiers] = useState([]);
   const [threatLevel, setThreatLevel] = useState('low');
+
+  // Compute current elite count so it can be shown and used
+  const eliteCount = useMemo(
+    () => getEliteCount(posse, globalModifiers),
+    [posse, globalModifiers]
+  );
 
   // Draw threat card and generate groups
   const drawThreatCard = () => {
@@ -40,6 +90,9 @@ export default function DMEnemyPanel() {
 
     const newGroups = card.enemies.map((eg, i) => {
       const enemyData = ENEMY_CARDS[world]?.find(e => e.name === eg.name) || {};
+      const chart = enemyData.eliteChart || [];
+      const rolled = rollEliteAbilities(chart, eliteCount);
+
       return {
         id: `${Date.now()}-${card.name}-grp${i}`,
         name: eg.name,
@@ -47,7 +100,9 @@ export default function DMEnemyPanel() {
         baseStats: { ...enemyData, world },
         modifiers: [],
         modifiedStats: { ...enemyData },
-        eliteAbilityList: [],
+        eliteAbilityList: rolled,
+        eliteChart: chart,
+        manualExtraElite: 0,
         traits: [],
         keywords: [...(enemyData.keywords || [])],
         threatCard: card
@@ -75,7 +130,8 @@ export default function DMEnemyPanel() {
         name: card.name,
         effect: card.effect || {},
         addKeywords: card.keywords || [],
-        description: card.description || ''
+        description: card.description || '',
+        eliteModifier: card.eliteModifier || 0,
       }
     ]);
   }
@@ -84,8 +140,22 @@ export default function DMEnemyPanel() {
     setGlobalModifiers(prev => prev.filter((_, i) => i !== idx));
   }
 
+  // Check for Drifter presence for display
+  const hasDrifter = posse.some(h => /drifter/i.test(h?.class || h?.heroClass || ''));
+  const highestLevel = Math.max(...(posse.map(h => Number(h.level || h.Level || 1) || 1)), 1);
+
   return (
     <div>
+      {/* Elite info banner */}
+      <div className="mb-3 p-2 rounded-lg bg-amber-900/20 border border-amber-700/40 text-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="font-bold text-amber-200">Elite Abilities: {eliteCount}</span>
+          <span className="text-xs text-amber-300/80">
+            (Highest Lvl: {highestLevel}{hasDrifter ? ' • Drifter +1' : ''})
+          </span>
+        </div>
+      </div>
+
       {/* GLOBAL MODIFIERS */}
       <div className="mb-2">
         <b>Global Modifiers:</b>
@@ -142,6 +212,7 @@ export default function DMEnemyPanel() {
         combatGroups={combatGroups}
         globalModifiers={globalModifiers}
         setCombatGroups={setCombatGroups}
+        eliteCount={eliteCount}
       />
     </div>
   );

@@ -145,10 +145,25 @@ const safeTitle = (obj) => {
 };
 // --------------------------------------------
 
+// Roll N unique abilities from an elite chart
+function rollEliteAbilities(eliteChart, count) {
+  if (!Array.isArray(eliteChart) || eliteChart.length === 0 || count <= 0) return [];
+  const results = [];
+  const available = eliteChart.map((text, i) => ({ roll: i + 1, text }));
+  for (let n = 0; n < count; n++) {
+    const pool = available.filter(a => !results.some(r => r.roll === a.roll));
+    const source = pool.length > 0 ? pool : available;
+    const pick = source[Math.floor(Math.random() * source.length)];
+    results.push({ ...pick });
+  }
+  return results;
+}
+
 export default function DMActiveEnemiesPanel({
   combatGroups = [],
   globalModifiers = [],
   setCombatGroups,
+  eliteCount = 0,
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const [viewMode, setViewMode] = useState("cycle"); // "cycle" or "all"
@@ -490,7 +505,7 @@ export default function DMActiveEnemiesPanel({
               )}
             </div>
 
-            {/* Abilities / Elite Chart (unchanged) */}
+            {/* Abilities */}
             {abilities.length > 0 && (
               <div className="mt-4 text-xs space-y-1">
                 <div className="font-semibold">Abilities</div>
@@ -501,16 +516,127 @@ export default function DMActiveEnemiesPanel({
                 </ul>
               </div>
             )}
-            {eliteChart.length > 0 && (
-              <div className="mt-3 text-xs space-y-1">
-                <div className="font-semibold">Elite Chart</div>
-                <ul className="list-disc list-inside space-y-0.5">
-                  {eliteChart.map((line, i) => (
-                    <li key={i}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+
+            {/* Active Elite Abilities */}
+            {(() => {
+              const activeElites = group.eliteAbilityList || [];
+              const chart = group.eliteChart || group.baseStats?.eliteChart || [];
+              const totalElites = eliteCount + (group.manualExtraElite || 0);
+
+              const rerollAll = () => {
+                const rolled = rollEliteAbilities(chart, totalElites);
+                setCombatGroups((groups) =>
+                  groups.map((g, i) => (i === idx ? { ...g, eliteAbilityList: rolled } : g))
+                );
+              };
+
+              const addOneElite = () => {
+                const newExtra = (group.manualExtraElite || 0) + 1;
+                const rolled = rollEliteAbilities(chart, totalElites + 1);
+                setCombatGroups((groups) =>
+                  groups.map((g, i) => (i === idx ? { ...g, manualExtraElite: newExtra, eliteAbilityList: rolled } : g))
+                );
+              };
+
+              const removeOneElite = () => {
+                if (activeElites.length <= 0) return;
+                const newExtra = Math.max(0, (group.manualExtraElite || 0) - 1);
+                // Remove the last elite ability
+                const trimmed = activeElites.slice(0, -1);
+                setCombatGroups((groups) =>
+                  groups.map((g, i) => (i === idx ? { ...g, manualExtraElite: newExtra, eliteAbilityList: trimmed } : g))
+                );
+              };
+
+              const removeSpecific = (eliteIdx) => {
+                const updated = activeElites.filter((_, ei) => ei !== eliteIdx);
+                setCombatGroups((groups) =>
+                  groups.map((g, i) => (i === idx ? { ...g, eliteAbilityList: updated } : g))
+                );
+              };
+
+              return (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="font-semibold text-sm flex items-center gap-2">
+                      <span>Elite Abilities</span>
+                      {activeElites.length > 0 && (
+                        <span className="px-2 py-0.5 rounded text-xs bg-amber-600 text-white font-bold">
+                          {activeElites.length}
+                        </span>
+                      )}
+                    </div>
+                    {chart.length > 0 && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={addOneElite}
+                          className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-700 text-white border border-amber-600 hover:bg-amber-600"
+                          title="Add one more elite ability"
+                        >
+                          +1 Elite
+                        </button>
+                        <button
+                          onClick={removeOneElite}
+                          disabled={activeElites.length === 0}
+                          className="px-2 py-0.5 rounded text-xs font-semibold bg-stone-700 text-stone-200 border border-stone-600 hover:bg-stone-600 disabled:opacity-40"
+                          title="Remove last elite ability"
+                        >
+                          −1 Elite
+                        </button>
+                        <button
+                          onClick={rerollAll}
+                          className="px-2 py-0.5 rounded text-xs font-semibold bg-red-800 text-white border border-red-700 hover:bg-red-700"
+                          title="Re-roll all elite abilities"
+                        >
+                          Re-roll
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {activeElites.length > 0 ? (
+                    <ul className="space-y-1">
+                      {activeElites.map((elite, ei) => (
+                        <li key={ei} className="flex items-start gap-2 text-xs rounded-md p-1.5 bg-amber-900/40 border border-amber-700/50">
+                          <span className="shrink-0 w-5 h-5 rounded-full bg-amber-700 text-white flex items-center justify-center text-[10px] font-bold mt-0.5">
+                            {elite.roll}
+                          </span>
+                          <span className="flex-1">{elite.text}</span>
+                          <button
+                            onClick={() => removeSpecific(ei)}
+                            className="shrink-0 text-red-400 hover:text-red-300 text-xs font-bold"
+                            title="Remove this elite ability"
+                          >
+                            ✕
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-xs opacity-60 italic">
+                      {chart.length > 0
+                        ? "No elite abilities active. Use +1 Elite or Re-roll to add."
+                        : "No elite chart for this enemy."
+                      }
+                    </div>
+                  )}
+
+                  {/* Collapsible full elite chart reference */}
+                  {chart.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="text-xs cursor-pointer opacity-70 hover:opacity-100">
+                        Full Elite Chart (reference)
+                      </summary>
+                      <ol className="list-decimal list-inside text-xs mt-1 space-y-0.5 opacity-80">
+                        {chart.map((line, ci) => (
+                          <li key={ci}>{line}</li>
+                        ))}
+                      </ol>
+                    </details>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* DM note + remove */}
             <div className="mt-4">
