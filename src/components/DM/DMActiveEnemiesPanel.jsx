@@ -166,19 +166,20 @@ export default function DMActiveEnemiesPanel({
     : combatGroups.map((group, idx) => ({ group, idx }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="font-bold text-lg">Active Enemies ({total} group{total !== 1 ? 's' : ''})</h2>
         {total > 1 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
-              className={`btn btn-xs ${viewMode === 'cycle' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`px-3 py-1 rounded text-xs font-semibold border ${viewMode === 'cycle' ? 'bg-[#5C3A21] text-white border-[#5C3A21]' : 'bg-white text-stone-700 border-stone-300'}`}
               onClick={() => setViewMode('cycle')}
             >
-              Cycle View
+              Cycle
             </button>
             <button
-              className={`btn btn-xs ${viewMode === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+              className={`px-3 py-1 rounded text-xs font-semibold border ${viewMode === 'all' ? 'bg-[#5C3A21] text-white border-[#5C3A21]' : 'bg-white text-stone-700 border-stone-300'}`}
               onClick={() => setViewMode('all')}
             >
               Show All
@@ -187,25 +188,42 @@ export default function DMActiveEnemiesPanel({
         )}
       </div>
 
-      {/* Cycling navigation */}
+      {/* Cycling navigation — always visible when enemies exist */}
       {viewMode === "cycle" && total > 1 && (
-        <div className="flex items-center justify-between">
-          <button onClick={goPrev} className="btn btn-sm btn-ghost">&larr; Prev</button>
-          <div className="flex gap-1">
-            {combatGroups.map((g, i) => (
-              <button
-                key={g.id || i}
-                onClick={() => setFocusIndex(i)}
-                className={`w-7 h-7 rounded text-xs font-bold flex items-center justify-center border ${
-                  i === safeFocus ? 'bg-red-700 border-red-500 text-white ring-2 ring-amber-400' : 'bg-stone-700 border-stone-600 text-stone-300'
-                }`}
-                title={g.name}
-              >
-                {i + 1}
-              </button>
-            ))}
+        <div className="flex items-center justify-between gap-2 rounded-lg bg-stone-100 border border-stone-300 p-2">
+          <button
+            onClick={goPrev}
+            className="px-3 py-2 rounded-md bg-[#5C3A21] text-white font-bold text-sm active:bg-[#4a2f1a] min-w-[70px]"
+          >
+            &larr; Prev
+          </button>
+          <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+            <div className="text-xs font-semibold text-stone-500">
+              {safeFocus + 1} / {total}
+            </div>
+            <div className="flex gap-1 flex-wrap justify-center">
+              {combatGroups.map((g, i) => (
+                <button
+                  key={g.id || i}
+                  onClick={() => setFocusIndex(i)}
+                  className={`px-2 py-1 rounded text-xs font-bold border transition-colors ${
+                    i === safeFocus
+                      ? 'bg-red-700 border-red-500 text-white ring-2 ring-amber-400'
+                      : 'bg-stone-200 border-stone-400 text-stone-700 hover:bg-stone-300'
+                  }`}
+                  title={g.name}
+                >
+                  {g.name} x{g.count}
+                </button>
+              ))}
+            </div>
           </div>
-          <button onClick={goNext} className="btn btn-sm btn-ghost">Next &rarr;</button>
+          <button
+            onClick={goNext}
+            className="px-3 py-2 rounded-md bg-[#5C3A21] text-white font-bold text-sm active:bg-[#4a2f1a] min-w-[70px]"
+          >
+            Next &rarr;
+          </button>
         </div>
       )}
 
