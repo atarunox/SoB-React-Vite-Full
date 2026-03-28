@@ -9,6 +9,7 @@ import { THREAT_DECKS, getThreatDeck } from '../../data/enemies/threatDecks';
 import { DARKNESS_CARDS } from '../../data/darknessCards';
 import { GROWING_DREAD_CARDS } from '../../data/growingDreadCards';
 import EnemyGroupCard from './EnemyGroupCard';
+import DMActiveEnemiesPanel from './DMActiveEnemiesPanel';
 
 const THREAT_LEVELS = ['low', 'medium', 'high', 'epic'];
 
@@ -128,22 +129,12 @@ export default function DMEnemyPanel() {
         )}
       </div>
 
-      <div className="space-y-4">
-        {combatGroups.length === 0 && (
-          <div className="text-center text-gray-600 italic">No enemy groups. Draw a threat card to start.</div>
-        )}
-        {combatGroups.map((group, idx) => (
-          <EnemyGroupCard
-            key={group.id}
-            group={group}
-            groupIdx={idx}
-            setCombatGroups={setCombatGroups}
-            allGroups={combatGroups}
-            posse={posse}
-            globalModifiers={globalModifiers}
-          />
-        ))}
-      </div>
+      {/* Active enemies display with cycling/show-all view */}
+      <DMActiveEnemiesPanel
+        combatGroups={combatGroups}
+        globalModifiers={globalModifiers}
+        setCombatGroups={setCombatGroups}
+      />
     </div>
   );
 }
