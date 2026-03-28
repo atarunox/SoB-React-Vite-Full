@@ -11,6 +11,7 @@ import ConditionsTab from '../components/ConditionsTab';
 import DMTab from '../components/DM/DMTab';
 import MiscTab from '../components/MiscTab';
 import PosseTab from '../components/PosseTab';
+import EnemiesTab from '../components/EnemiesTab';
 import HeroSelector from '../components/HeroSelector';
 
 export default function HeroScreen({
@@ -32,7 +33,7 @@ export default function HeroScreen({
     activeHero?.id || activeHero?.localId || posseActiveHeroId || '';
 
   // ---------------- Tabs ----------------
-  const TABS = ['Stats', 'Gear', 'Town', 'Upgrade', 'Conditions', 'Posse', 'Misc', 'DM'];
+  const TABS = ['Stats', 'Gear', 'Town', 'Upgrade', 'Conditions', 'Enemies', 'Posse', 'Misc', 'DM'];
   const tabKey = resolvedHeroId ? `sob:lastTab:${resolvedHeroId}` : 'sob:lastTab';
 
   const [selectedTab, setSelectedTab] = useState(() => {
@@ -129,6 +130,8 @@ export default function HeroScreen({
         {selectedTab === 'Conditions' && (
           <ConditionsTab hero={activeHero} />
         )}
+
+        {selectedTab === 'Enemies' && <EnemiesTab />}
 
         {selectedTab === 'Posse' && <PosseTab />}
 
