@@ -1,6 +1,34 @@
 // src/components/DM/DMActiveEnemiesPanel.jsx
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { getAllStatsWithBreakdown } from "../../utils/enemyModifiers";
+
+// Swipe hook: detect horizontal swipe gestures for cycling
+function useSwipe({ onLeft, onRight }) {
+  const startX = useRef(null);
+  const startY = useRef(null);
+
+  const onTouchStart = useCallback((e) => {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+  }, []);
+
+  const onTouchEnd = useCallback((e) => {
+    if (startX.current == null || startY.current == null) return;
+    const dx = e.changedTouches[0].clientX - startX.current;
+    const dy = e.changedTouches[0].clientY - startY.current;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (absDx > 60 && absDx > absDy) {
+      dx > 0 ? onRight() : onLeft();
+    }
+
+    startX.current = null;
+    startY.current = null;
+  }, [onLeft, onRight]);
+
+  return { onTouchStart, onTouchEnd };
+}
 
 // ---------- helpers ----------
 function fmtThreshold(x) {
@@ -128,8 +156,10 @@ export default function DMActiveEnemiesPanel({
   const total = combatGroups.length;
   const safeFocus = Math.min(focusIndex, Math.max(0, total - 1));
 
-  const goPrev = () => setFocusIndex(i => i > 0 ? i - 1 : total - 1);
-  const goNext = () => setFocusIndex(i => i < total - 1 ? i + 1 : 0);
+  const goPrev = useCallback(() => setFocusIndex(i => i > 0 ? i - 1 : total - 1), [total]);
+  const goNext = useCallback(() => setFocusIndex(i => i < total - 1 ? i + 1 : 0), [total]);
+
+  const swipeHandlers = useSwipe({ onLeft: goNext, onRight: goPrev });
 
   const groupsToShow = viewMode === "cycle" && total > 0
     ? [{ group: combatGroups[safeFocus], idx: safeFocus }]
@@ -183,6 +213,10 @@ export default function DMActiveEnemiesPanel({
         <div className="italic text-gray-400">No active enemy groups. Draw a threat to begin.</div>
       )}
 
+      <div
+        {...(viewMode === "cycle" && total > 1 ? swipeHandlers : {})}
+        style={viewMode === "cycle" && total > 1 ? { touchAction: "pan-y" } : undefined}
+      >
       {groupsToShow.map(({ group, idx }) => {
         const stats = getAllStatsWithBreakdown(
           group,
@@ -478,6 +512,7 @@ export default function DMActiveEnemiesPanel({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
