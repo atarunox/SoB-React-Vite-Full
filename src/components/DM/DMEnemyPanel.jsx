@@ -30,31 +30,41 @@ function rollEliteAbilities(eliteChart, count) {
   return results;
 }
 
-// Calculate how many elite abilities enemies get based on the SoB rules.
-// Level 1-2: 0, Level 3-4: 1, Level 5-6: 2, Level 7+: 3
-// +1 if a Drifter is in the posse
-// + any modifier bonuses from darkness/growing dread
-function getEliteCount(posse, globalModifiers = []) {
+// Official SoB Enemy Bonus by Hero Posse Level:
+//   Level 1-2: No bonus
+//   Level 3:   1 Elite Ability
+//   Level 4:   2 Elite Abilities
+//   Level 5-6: Brutal (no elite abilities from level alone)
+//   Level 7:   Brutal + 1 Elite Ability
+//   Level 8+:  Brutal + 2 Elite Abilities
+// Drifter in posse: +1 Elite Ability (Danger Magnet)
+// Darkness/Growing Dread modifiers can add more
+function getEliteAndBrutal(posse, globalModifiers = []) {
   const highestLevel = Math.max(
     ...(posse.map(h => Number(h.level || h.Level || 1) || 1)),
     1
   );
-  let count = 0;
-  if (highestLevel >= 7) count = 3;
-  else if (highestLevel >= 5) count = 2;
-  else if (highestLevel >= 3) count = 1;
 
-  // Drifter bonus
+  let elite = 0;
+  let brutal = false;
+
+  if (highestLevel >= 8)      { elite = 2; brutal = true; }
+  else if (highestLevel === 7) { elite = 1; brutal = true; }
+  else if (highestLevel >= 5)  { elite = 0; brutal = true; }
+  else if (highestLevel === 4) { elite = 2; }
+  else if (highestLevel === 3) { elite = 1; }
+
+  // Drifter bonus — "Danger Magnet" grants enemies +1 Elite Ability
   if (posse.some(h => /drifter/i.test(h?.class || h?.heroClass || ''))) {
-    count += 1;
+    elite += 1;
   }
 
   // Darkness / Growing Dread modifiers that add elite abilities
   for (const mod of globalModifiers) {
-    if (mod.eliteModifier) count += Number(mod.eliteModifier) || 0;
+    if (mod.eliteModifier) elite += Number(mod.eliteModifier) || 0;
   }
 
-  return Math.max(0, count);
+  return { elite: Math.max(0, elite), brutal };
 }
 
 export default function DMEnemyPanel() {
@@ -65,9 +75,9 @@ export default function DMEnemyPanel() {
   const [globalModifiers, setGlobalModifiers] = useState([]);
   const [threatLevel, setThreatLevel] = useState('low');
 
-  // Compute current elite count so it can be shown and used
-  const eliteCount = useMemo(
-    () => getEliteCount(posse, globalModifiers),
+  // Compute current elite count and brutal flag
+  const { elite: eliteCount, brutal: isBrutal } = useMemo(
+    () => getEliteAndBrutal(posse, globalModifiers),
     [posse, globalModifiers]
   );
 
@@ -146,10 +156,11 @@ export default function DMEnemyPanel() {
 
   return (
     <div>
-      {/* Elite info banner */}
+      {/* Elite / Brutal info banner */}
       <div className="mb-3 p-2 rounded-lg bg-amber-900/20 border border-amber-700/40 text-sm">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="font-bold text-amber-200">Elite Abilities: {eliteCount}</span>
+          {isBrutal && <span className="font-bold text-red-400 px-2 py-0.5 rounded bg-red-900/40 border border-red-700/50">BRUTAL</span>}
           <span className="text-xs text-amber-300/80">
             (Highest Lvl: {highestLevel}{hasDrifter ? ' • Drifter +1' : ''})
           </span>
@@ -213,6 +224,7 @@ export default function DMEnemyPanel() {
         globalModifiers={globalModifiers}
         setCombatGroups={setCombatGroups}
         eliteCount={eliteCount}
+        isBrutal={isBrutal}
       />
     </div>
   );

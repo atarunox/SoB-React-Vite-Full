@@ -164,6 +164,7 @@ export default function DMActiveEnemiesPanel({
   globalModifiers = [],
   setCombatGroups,
   eliteCount = 0,
+  isBrutal = false,
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const [viewMode, setViewMode] = useState("cycle"); // "cycle" or "all"
