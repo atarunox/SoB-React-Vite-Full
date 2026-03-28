@@ -38,10 +38,10 @@ export default function DMEnemyPanel() {
       return;
     }
 
-    const groups = card.enemies.map((eg, i) => {
+    const newGroups = card.enemies.map((eg, i) => {
       const enemyData = ENEMY_CARDS[world]?.find(e => e.name === eg.name) || {};
       return {
-        id: `${card.name}-grp${i}`,
+        id: `${Date.now()}-${card.name}-grp${i}`,
         name: eg.name,
         count: eg.count,
         baseStats: { ...enemyData, world },
@@ -53,7 +53,7 @@ export default function DMEnemyPanel() {
         threatCard: card
       };
     });
-    setCombatGroups(groups);
+    setCombatGroups(prev => [...(prev || []), ...newGroups]);
   };
 
   // Global modifiers
@@ -120,6 +120,14 @@ export default function DMEnemyPanel() {
           <button className="btn btn-primary" onClick={drawThreatCard}>
             Draw Threat Card ({world})
           </button>
+          {combatGroups.length > 0 && (
+            <button
+              className="btn btn-sm btn-error btn-outline"
+              onClick={() => { setCombatGroups([]); setDrawnCard(null); }}
+            >
+              Clear All
+            </button>
+          )}
         </div>
         {drawnCard && (
           <div className="mt-2 sm:mt-0">

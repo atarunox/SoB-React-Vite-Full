@@ -1,5 +1,5 @@
 // src/components/DM/DMActiveEnemiesPanel.jsx
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { getAllStatsWithBreakdown } from "../../utils/enemyModifiers";
 
 // Swipe hook: detect horizontal swipe gestures for cycling
@@ -152,9 +152,18 @@ export default function DMActiveEnemiesPanel({
 }) {
   const [focusIndex, setFocusIndex] = useState(0);
   const [viewMode, setViewMode] = useState("cycle"); // "cycle" or "all"
+  const prevTotal = useRef(0);
 
   const total = combatGroups.length;
   const safeFocus = Math.min(focusIndex, Math.max(0, total - 1));
+
+  // Auto-jump to the newest group when enemies are added
+  useEffect(() => {
+    if (total > prevTotal.current && prevTotal.current > 0) {
+      setFocusIndex(total - 1);
+    }
+    prevTotal.current = total;
+  }, [total]);
 
   const goPrev = useCallback(() => setFocusIndex(i => i > 0 ? i - 1 : total - 1), [total]);
   const goNext = useCallback(() => setFocusIndex(i => i < total - 1 ? i + 1 : 0), [total]);
