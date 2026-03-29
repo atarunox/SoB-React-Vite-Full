@@ -148,6 +148,83 @@ return {
 
 Use the structured ctx methods instead: `ctx.promptChoice`, `ctx.promptNumber`, `ctx.promptYesNo`, `ctx.doSkillCheck`.
 
+## SoB Combat Rules Reference
+
+### Hero Attacks vs Enemies
+
+1. **Roll To-Hit**: Roll dice equal to Combat (melee) or Shots (ranged) stat. Max 8 dice per attack. Each die ≥ weapon's To-Hit value = 1 Hit. Dual-wielding off-hand needs 1 higher to hit and neither weapon can crit.
+2. **Assign Hits**: Melee hits to adjacent enemies only. Ranged must target adjacent enemies first; overflow to others only after adjacent are dead.
+3. **Roll Damage**: Each Hit deals D6 damage.
+4. **Enemy Defense (flat reduction)**: Subtract enemy's Defense value from each damage roll. Remainder = wounds to enemy Health. Defense 0 or less = no damage from that hit.
+5. **Critical Hits**: Ignore enemy Defense entirely. If enemy is immune to crits ("Tough"), treat as normal hit (Defense applies).
+6. **Enemy Armor (saving throw, if any)**: Per wound, roll D6 ≥ Armor target to negate that wound.
+
+### Enemy Attacks vs Heroes
+
+1. **Enemy generates Hits**: Based on Combat/Shots values and To-Hit target.
+2. **Hero Defense (saving throw)**: Roll D6 per incoming Hit. Each roll ≥ Defense target blocks that entire Hit. Roll all Defense dice together (Grit can reroll all failed dice at once).
+3. **Wounds**: Each unblocked Hit = wounds equal to enemy's Damage value.
+4. **Hero Armor (saving throw)**: Roll D6 per wound. Each roll ≥ Armor target negates 1 wound. Only one Armor save applies (use best). Armor saves do NOT stack.
+5. **KO'd**: Health reaches 0 = KO'd. No further wounds applied.
+
+### Horror/Sanity Track
+
+Same structure but with different stats:
+- **Horror Hits** defended by Willpower (saving throw per hit).
+- Unblocked Horror Hits cause Sanity Damage (usually 1 per hit unless stated otherwise).
+- **Spirit Armor** saves per point of Sanity Damage (like Armor for wounds).
+- Neither Armor nor Spirit Armor prevents Corruption.
+
+### Hit Types
+
+| Type | Causes | Defended By |
+|------|--------|-------------|
+| Hits | Wounds | Defense (hero) / flat reduction (enemy) |
+| Horror Hits | Sanity Damage | Willpower |
+| Corruption Hits | Corruption Points | Willpower |
+| Hex Hits | Wounds | Willpower |
+| Toxin Hits | Poison tokens | Defense |
+
+### Special Mechanics
+
+- **Endurance (X)**: Caps wounds from a single Hit to X. Applied before Armor saves.
+- **Damage Reduction**: "Reduce all damage by X (min 1)" — flat subtraction before converting to wounds. Some are type-specific (Fire, Ranged, etc.).
+- **Tough**: Immune to Critical Hits only (not damage reduction).
+- **Cover X+**: Situational saving throw against specific damage types (e.g., "Cover 4+ vs Explosives"). Separate from Defense/Armor.
+
+### Enemy vs Hero Defense — Key Difference
+
+**Enemy Defense = flat number** (higher = better for enemy). Stored as plain int (e.g., `defense: 5`). Subtracted from each D6 damage roll. Modifiers add/subtract directly: `+1 Defense` → `defense + 1`.
+
+**Hero Defense = threshold** (lower = better for hero). Stored as string (e.g., `"4+"`). Roll D6 ≥ target to block. In `calculateStats.js`, a positive delta improves the threshold: `+1` makes `5+` → `4+`.
+
+### Combat Resolution Order (Full)
+
+```
+Hero Attack → Roll To-Hit → Assign Hits → Roll D6 Damage per Hit
+  → Subtract Enemy Defense (flat) → Apply Endurance cap
+  → Roll Enemy Armor saves (per wound) → Apply wounds to Health
+
+Enemy Attack → Generate Hits → Hero rolls Defense (per hit, saving throw)
+  → Failed hits × Damage value = pending Wounds
+  → Hero rolls Armor (per wound, saving throw) → Apply wounds to Health
+```
+
+### After a Fight
+
+Fight ends immediately when all enemies defeated. Each hero heals D3 (any mix of Wounds/Sanity).
+
+### Stat Modifier Sign Conventions
+
+For **enemy stats** (flat numbers — combat, initiative, health, move, damage, defense):
+- Positive modifier = better for enemy (e.g., `combat: 1` means +1 Combat)
+- `defense: 1` = +1 Defense = harder to wound
+- `defense: -1` = -1 Defense = easier to wound
+
+For **hero threshold stats** (Defense, Armor, Willpower, Spirit Armor — "X+" format):
+- In `calculateStats.js` `applyDeltas`: positive delta = improvement (lower threshold)
+- `+1` makes `5+` → `4+`
+
 ## Don'ts
 
 - Don't add TypeScript — project is JS-only by design.
