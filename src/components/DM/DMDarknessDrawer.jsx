@@ -12,17 +12,27 @@ function shuffleFY(arr) {
 }
 
 function extractEnemyModifiers(card) {
-  if (!card || !card.tags || !card.effect) return {};
+  if (!card) return {};
+  // Use structured statModifiers when available (handles sign correctly for thresholds)
+  if (card.statModifiers) {
+    const { keywordFilter, effects } = card.statModifiers;
+    if (keywordFilter && effects) {
+      return { [keywordFilter]: { ...effects } };
+    }
+  }
+  // Fallback: regex parse from effect text (for cards without statModifiers)
+  if (!card.tags || !card.effect) return {};
   const mods = {};
   if (card.tags.includes("Boost")) {
     const keyword = card.tags.find(t => t !== "Darkness" && t !== "Boost");
     if (!keyword) return mods;
     const effect = card.effect;
-    const statPattern = /[+-](\d+)\s+(Initiative|Health|Combat|Defense|Damage|Move|Shots)/gi;
+    const statPattern = /([+-])(\d+)\s+(Initiative|Health|Combat|Defense|Damage|Move|Shots)/gi;
     let match;
     while ((match = statPattern.exec(effect)) !== null) {
-      const val = parseInt(match[1]);
-      const stat = match[2].toLowerCase();
+      const sign = match[1] === '-' ? -1 : 1;
+      const val = parseInt(match[2]) * sign;
+      const stat = match[3].toLowerCase();
       if (!mods[keyword]) mods[keyword] = {};
       mods[keyword][stat] = (mods[keyword][stat] || 0) + val;
     }
