@@ -341,9 +341,8 @@ export async function performBuyRoundOfShots({ hero, posseApi, ui }) {
   const actions = [{
     type: 'update',
     gold: nextGold,
-    grit: nextGrit,
+    currentGrit: nextGrit,
     currentHealth: nextHP,
-    health: { ...(hero?.health || {}), current: nextHP, max: maxHP },
   }];
 
   ui?.notify?.(`Buy a Round of Shots: You buy a round of Brimstone Sunrise shots for the rowdy group of bandits. With a roaring cheer, you toss one back and feel the burn. Paid $${cost} (D6=${costRoll} \u00D7 $5). Recover 1 Grit (now ${nextGrit}/${maxGrit}). Took ${wounds} Wounds, ignoring Defense.`);

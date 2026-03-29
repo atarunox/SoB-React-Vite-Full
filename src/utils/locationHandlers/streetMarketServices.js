@@ -144,8 +144,8 @@ export async function performBathHouse({ hero, ui = {}, params = {} }) {
     type: 'update',
     gold,
     currentGrit: Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0) + gritDelta),
-    health: { ...(hero?.health || {}), current: newHCur, max: hero?.health?.max ?? hero?.maxHealth },
-    sanity: { ...(hero?.sanity || {}), current: newSCur, max: hero?.sanity?.max ?? hero?.maxSanity },
+    currentHealth: newHCur,
+    currentSanity: newSCur,
   });
 
   return {

@@ -305,7 +305,6 @@ export async function performXantharLeechTreatment({ hero, io = {}, ctx = {} }) 
       gold: nextGold,
       currentCorruption: nextCorruption,
       currentHealth: nextHealth,
-      health: nextHealth,
     },
   ];
 

@@ -394,7 +394,6 @@ export async function performTreatCorruption({ hero, io }) {
       gold: nextGold,
       currentCorruption: nextCor,
       currentHealth: nextHealth,
-      health: nextHealth, // keep both in sync
     },
   ];
 

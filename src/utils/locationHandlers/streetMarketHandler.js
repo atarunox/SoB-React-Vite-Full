@@ -401,7 +401,6 @@ export async function apply(roll, ctx) {
       return {
         ...h,
         currentGrit: Math.min(maxGrit, curGrit + 1),
-        grit: Math.min(maxGrit, curGrit + 1),
         conditions: { ...conds, temporary: tempList },
       };
     });

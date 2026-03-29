@@ -131,7 +131,7 @@ async function apply(roll, ctx) {
       ctx.updateHero(hid, h => {
         const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
         const nextSanity = Math.max(0, curSanity - horrorHits);
-        return { ...h, sanity: nextSanity, currentSanity: nextSanity };
+        return { ...h, currentSanity: nextSanity };
       });
       const hero = ctx.getHeroById?.(hid) || {};
       const hitLine = `${hero.name || 'Hero'}: Rolled [${die1}, ${die2}] = ${horrorHits} Horror Hits.`;
@@ -185,7 +185,7 @@ async function apply(roll, ctx) {
         ctx.updateHero(id, h => {
           const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
           const nextSanity = Math.max(0, curSanity - horrorRoll);
-          return { ...h, sanity: nextSanity, currentSanity: nextSanity };
+          return { ...h, currentSanity: nextSanity };
         });
         const horrorLine = `Rolled [${horrorRoll}] for Horror Hits (D6).`;
         log.push(horrorLine);
@@ -285,7 +285,6 @@ async function apply(roll, ctx) {
         ctx.updateHero(id, h => ({
           ...h,
           currentSanity: (Number(h.currentSanity ?? h.sanity ?? 0)) + 1,
-          sanity: (Number(h.currentSanity ?? h.sanity ?? 0)) + 1,
           maxSanity: (h.maxSanity || h.sanity || 4) + 1,
         }));
         const outcome = `${hero.name || 'Hero'} communes with the spirits and gains deeper understanding. +1 Sanity!`;

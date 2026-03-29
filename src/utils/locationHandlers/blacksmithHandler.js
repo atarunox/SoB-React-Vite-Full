@@ -182,7 +182,7 @@ export async function apply(roll, ctx) {
         const newMax = Math.max(1, prevMax - loss);
         const curHp = Number(h.currentHealth ?? h.health ?? prevMax);
         const cappedHp = Math.min(curHp, newMax);
-        const next = { ...h, maxHealth: newMax, currentHealth: cappedHp, health: cappedHp };
+        const next = { ...h, maxHealth: newMax, currentHealth: cappedHp };
         const note = makeMaxChangeNote({
           stat: 'Max Health', delta: -loss, newMax,
           source: 'Blacksmith Event 2', reason: 'Dark Stone Poisoning',

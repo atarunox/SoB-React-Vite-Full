@@ -344,7 +344,6 @@ async function applyIdolEvent10(idolRoll, ctx, id, log) {
           return {
             ...h,
             currentSanity: newSanity,
-            sanity: newSanity,
             currentGrit: newGrit,
             adventureDebuffs: {
               ...(h.adventureDebuffs || {}),
@@ -381,7 +380,6 @@ async function applyIdolEvent10(idolRoll, ctx, id, log) {
           return {
             ...h,
             currentSanity: Math.max(0, curSanity - 3),
-            sanity: Math.max(0, curSanity - 3),
             adventureBuffs: {
               ...(h.adventureBuffs || {}),
               bonusLore: ((h.adventureBuffs?.bonusLore) || 0) + 1,
@@ -434,7 +432,6 @@ async function applyIdolEvent10(idolRoll, ctx, id, log) {
         return {
           ...h,
           currentSanity: maxSanity,
-          sanity: maxSanity,
           corruption,
         };
       });

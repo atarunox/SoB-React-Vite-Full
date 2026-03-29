@@ -181,7 +181,7 @@ export async function apply(roll, ctx) {
         ctx.updateHero?.(id, h => {
           const wanted = addWanted(h);
           const curGrit = h.currentGrit ?? h.grit ?? 0;
-          return { ...wanted, currentGrit: Math.max(0, curGrit - 1), grit: Math.max(0, curGrit - 1) };
+          return { ...wanted, currentGrit: Math.max(0, curGrit - 1) };
         });
         const outcome = 'You spend 1 Grit and flee Town. You are now Wanted!';
         log.push(outcome);
@@ -283,7 +283,7 @@ export async function apply(roll, ctx) {
     if (curGrit > 0) {
       ctx.updateHero?.(id, h => {
         const g = h.currentGrit ?? h.grit ?? 0;
-        return { ...h, currentGrit: Math.max(0, g - 1), grit: Math.max(0, g - 1) };
+        return { ...h, currentGrit: Math.max(0, g - 1) };
       });
       const outcome = 'A large, nasty-looking thug turns his attention to you. Lose 1 Grit as you stare down the thug.';
       log.push(outcome);

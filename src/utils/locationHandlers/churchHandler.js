@@ -277,7 +277,7 @@ async function apply(roll, ctx) {
         sanityLost = Math.min(horrorHits, curSanity);
         const nextCur = Math.max(0, curSanity - horrorHits);
         const newMax = Math.max(0, prevMax - sanityLost);
-        const next = { ...h, sanity: nextCur, currentSanity: nextCur, maxSanity: newMax };
+        const next = { ...h, currentSanity: nextCur, maxSanity: newMax };
         const note = makeMaxChangeNote({
           stat: 'Max Sanity',
           delta: newMax - prevMax,
@@ -422,7 +422,7 @@ async function apply(roll, ctx) {
         const cur = Number(h.currentSanity ?? h.sanity ?? 0);
         const newMax = max + gain;
         const newCur = Math.min(newMax, cur + gain);
-        const next = { ...h, maxSanity: newMax, sanity: newCur, currentSanity: newCur };
+        const next = { ...h, maxSanity: newMax, currentSanity: newCur };
         const note = makeMaxChangeNote({
           stat: 'Max Sanity',
           delta: gain,

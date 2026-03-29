@@ -413,7 +413,7 @@ export async function apply(roll, ctx) {
         const max = h.maxHealth ?? h.max_health ?? 10;
         const cur = h.currentHealth ?? h.health ?? max;
         const hp = Math.min(max, cur + healRoll);
-        return { ...h, health: hp, currentHealth: hp };
+        return { ...h, currentHealth: hp };
       });
       const healLine = `Rolled [${healRoll}] for healing (D3).`;
       log.push(healLine);

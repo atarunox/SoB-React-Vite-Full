@@ -165,7 +165,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       }));
     } else if (ctx.doSkillCheck) {
       // fallback: simple Cunning 5+ test
-      success = !!(await ctx.doSkillCheck(id, { stat: 'Cunning', target: 5, prompt: true }));
+      const result = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 5, returnDetails: true, message: 'Poker — Fallback Cunning test' });
+      success = !!(result?.passed ?? result);
     }
 
     if (!success) {
@@ -266,8 +267,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       );
       successes = Math.max(0, Number(n || 0));
     } else if (ctx.doSkillCheck) {
-      const ok = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5, prompt: true });
-      successes = ok ? 1 : 0;
+      const result = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5, returnDetails: true, message: 'Dice Games — Fallback Luck test' });
+      successes = (result?.passed ?? result) ? 1 : 0;
     }
 
     const mult = getGamblingMultiplier();
@@ -361,11 +362,13 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
 
     if (!passed) {
       // Arrested at dawn — Lore 4+ to escape and flee Town (end visit), +20 XP, become Wanted
-      const escaped = !!(await ctx.doSkillCheck?.(id, {
+      const escapeResult = await ctx.doSkillCheck?.(id, {
         stat: 'Lore',
         target: 4,
-        prompt: true,
-      }));
+        returnDetails: true,
+        message: 'Rob the Cashier — Arrested!\nYou attempt to talk your way out of jail.',
+      });
+      const escaped = !!(escapeResult?.passed ?? escapeResult);
 
       addXP(ctx, id, 20);
       ctx.updateHero?.(id, (h) => ({

@@ -157,7 +157,7 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
           hero?.currentGrit ?? hero?.grit ?? 0
         );
         const next = Math.min(maxGrit, cur + 1);
-        pushUpdate({ currentGrit: next, grit: next });
+        pushUpdate({ currentGrit: next });
         log.push('Recovered <b>+1 Grit</b> for use in Town.');
       } else {
         log.push('Applause… but no Grit this time.');
