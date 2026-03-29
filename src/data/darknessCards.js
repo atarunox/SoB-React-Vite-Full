@@ -36,7 +36,7 @@ export const DARKNESS_CARDS = [
     tags: ["Darkness", "Boost", "Construct"],
     effect: "All Construct Enemies are +1 Combat and +1 Defense. All Enemies on the next Threat Card drawn gain the Keyword Construct.",
     remainsInPlay: true,
-    statModifiers: { keywordFilter: "Construct", effects: { combat: 1, defense: -1 } }
+    statModifiers: { keywordFilter: "Construct", effects: { combat: 1, defense: 1 } }
   },
   {
     name: "Chill of the Grave",
@@ -63,7 +63,7 @@ export const DARKNESS_CARDS = [
     tags: ["Darkness"],
     effect: "During the next Fight, all Enemies are -1 Defense but gain +2 Combat/Shots for their Attacks. If drawn during a Fight, this goes into effect immediately.",
     remainsInPlay: true,
-    statModifiers: { keywordFilter: "__ALL__", effects: { defense: 1, combat: 2 } }
+    statModifiers: { keywordFilter: "__ALL__", effects: { defense: -1, combat: 2 } }
   },
   {
     name: "Lost in the Cosmos",
@@ -237,7 +237,7 @@ export const DARKNESS_CARDS = [
     tags: ["Darkness", "Boost", "Void"],
     effect: "All Void Enemies are now +1 Defense.",
     remainsInPlay: true,
-    statModifiers: { keywordFilter: "Void", effects: { defense: -1 } }
+    statModifiers: { keywordFilter: "Void", effects: { defense: 1 } }
   },
   {
     name: "Always Watching",

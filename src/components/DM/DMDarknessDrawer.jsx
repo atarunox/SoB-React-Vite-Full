@@ -13,7 +13,7 @@ function shuffleFY(arr) {
 
 function extractEnemyModifiers(card) {
   if (!card) return {};
-  // Use structured statModifiers when available (handles sign correctly for thresholds)
+  // Use structured statModifiers when available (signs pre-validated)
   if (card.statModifiers) {
     const { keywordFilter, effects } = card.statModifiers;
     if (keywordFilter && effects) {
