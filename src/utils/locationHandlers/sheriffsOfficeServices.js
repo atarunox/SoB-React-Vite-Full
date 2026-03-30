@@ -1,6 +1,7 @@
 // src/utils/locationHandlers/sheriffsOfficeServices.js
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { calculateCurrentStats } from '../../utils/calculateStats';
+import { resolveDefensePerHitThenArmorPerWound } from '../../utils/combatResolution';
 
 import { d6 as D6, rollND } from '../../utils/diceHelpers';
 const D8 = () => rollND(1, 8)[0];
@@ -44,96 +45,6 @@ function getStat(hero, statName, totalsLike) {
 function pushUpdate(actions, patch) {
   actions.push({ type: 'update', ...patch });
 }
-
-/* ---------- Defense-per-hit, Armor-per-wound resolver (auto-detect Armor) ---------- */
-function parsePlusTarget(v) {
-  if (v == null) return NaN;
-  if (typeof v === 'string') {
-    const m = v.match(/\d+/);
-    return m ? Number(m[0]) : NaN;
-  }
-  if (typeof v === 'number') return v;
-  return NaN;
-}
-
-/**
- * Resolve damage when Defense is rolled per Hit (each success ignores 1 hit),
- * and Armor is rolled per Wound (each success ignores 1 wound).
- * - Auto-detects Armor target from totals (no "Do you have Armor?" prompt)
- */
-export async function resolveDefensePerHitThenArmorPerWound({
-  ui, hero, hits, woundsPerHit, getStat,
-}) {
-  let incomingHits = Math.max(0, Math.floor(hits));
-
-  // ----- DEFENSE (per hit) -----
-  if (incomingHits > 0) {
-    const defTargetGuess =
-      parsePlusTarget(getStat(hero, 'Defense')) ||
-      parsePlusTarget(hero?.defense) ||
-      parsePlusTarget(hero?.stats?.Defense) ||
-      NaN;
-
-    const target = Number.isFinite(defTargetGuess)
-      ? defTargetGuess
-      : (Number(await ui.promptNumber?.({
-          title: 'Defense Target',
-          message: 'Enter your Defense target number (e.g., 4 for 4+):',
-          min: 2, max: 6, defaultValue: 4,
-        })) || 4);
-
-    // Auto-roll Defense, pre-fill result for player override
-    const rolls = await ui.roll(incomingHits, 6, `Defense — ${incomingHits}d6 vs ${target}+ (1 success ignores 1 hit)`);
-    const arr = Array.isArray(rolls) ? rolls : [rolls];
-    const autoBlocks = arr.filter(n => n >= target).length;
-
-    // Show result and let player accept or change (physical dice / grit)
-    const blocks = Number(await ui.promptNumber?.({
-      title: 'Defense Result',
-      message: `Defense ${target}+: Rolled [${arr.join(', ')}] → ${autoBlocks} block(s).\n` +
-        `Accept or change (e.g. if using physical dice or Grit):`,
-      min: 0, max: incomingHits, defaultValue: autoBlocks,
-    }) ?? autoBlocks);
-    incomingHits = Math.max(0, incomingHits - blocks);
-    await ui.toast?.(`Defense blocked ${blocks} hit(s). Hits getting through: ${incomingHits}.`);
-  }
-
-  // Convert remaining hits into wounds
-  let pendingWounds = incomingHits * Math.max(0, Math.floor(woundsPerHit));
-
-  // ----- ARMOR (per wound) — auto-detect presence/target -----
-  if (pendingWounds > 0) {
-    // Pull Armor from derived totals first (e.g., "5+"); fall back to hero fields.
-    const armorTargetGuess =
-      parsePlusTarget(getStat(hero, 'Armor')) ||
-      parsePlusTarget(hero?.armor) ||
-      parsePlusTarget(hero?.stats?.Armor) ||
-      NaN;
-
-    if (Number.isFinite(armorTargetGuess)) {
-      // Auto-roll Armor, pre-fill result for player override
-      const rolls = await ui.roll(pendingWounds, 6, `Armor — ${pendingWounds}d6 vs ${armorTargetGuess}+ (each success ignores 1 wound)`);
-      const arr = Array.isArray(rolls) ? rolls : [rolls];
-      const autoIgnores = arr.filter(n => n >= armorTargetGuess).length;
-
-      // Show result and let player accept or change (physical dice / grit)
-      const ignores = Number(await ui.promptNumber?.({
-        title: 'Armor Result',
-        message: `Armor ${armorTargetGuess}+: Rolled [${arr.join(', ')}] → ${autoIgnores} save(s).\n` +
-          `Accept or change (e.g. if using physical dice or Grit):`,
-        min: 0, max: pendingWounds, defaultValue: autoIgnores,
-      }) ?? autoIgnores);
-      pendingWounds = Math.max(0, pendingWounds - ignores);
-      await ui.toast?.(`Armor ignored ${ignores} wound(s). Final Wounds: ${pendingWounds}.`);
-    } else {
-      // No Armor detected; continue without asking.
-      await ui.toast?.('No Armor detected on your sheet. Skipping Armor rolls.');
-    }
-  }
-
-  return pendingWounds;
-}
-
 
 /* -------------------------------- main executor -------------------------------- */
 export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) {
@@ -428,12 +339,13 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       if (hits > 0) {
         log.push(`Each hit deals ${perHit} Wounds (pre-Defense).`);
 
-        finalWounds = await resolveDefensePerHitThenArmorPerWound({
+        const defResult = await resolveDefensePerHitThenArmorPerWound({
           ui, hero,
           hits,
           woundsPerHit: perHit,
           getStat: (h, s) => getStat(h, s, totals),
         });
+        finalWounds = defResult?.wounds ?? defResult ?? 0;
 
         if (finalWounds > 0) {
           log.push(`Damage taken: ${finalWounds} Wounds after Defense/Armor.`);
