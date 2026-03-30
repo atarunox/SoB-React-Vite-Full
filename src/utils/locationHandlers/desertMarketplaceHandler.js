@@ -1,6 +1,18 @@
 // src/utils/locationHandlers/desertMarketplaceHandler.js
 
 import { d6 as _d6 } from '../../utils/diceHelpers';
+import { loadTownState, saveTownState } from '../../utils/townState';
+import { drawWorldCardAndArtifact, offerArtifactForSale } from './worldCardDraw.js';
+
+const shopId = 'desertMarketplace';
+
+function patchShopMods(patch) {
+  const s = loadTownState() || {};
+  const cur = s.shopMods?.[shopId] || {};
+  const next = { ...cur, ...patch };
+  const updated = { ...s, shopMods: { ...(s.shopMods || {}), [shopId]: next } };
+  saveTownState(updated);
+}
 
 const ctxD6 = async (ctx, label) =>
   typeof ctx?.d6 === 'function' ? ctx.d6(label) : _d6();
@@ -259,11 +271,35 @@ export async function apply(roll, ctx) {
 
   // 9: Lucky Find — Draw World card + Artifact, purchase for $100 + Gold Value
   if (roll === 9) {
-    const outcome =
-      'One of the market stalls is selling a rare and precious item discovered out in the desert dunes. Draw a World card and an Artifact from that World. You may purchase this Item for $100 + its listed Gold Value.';
-    log.push(outcome);
-    await showResult(ctx, 'LUCKY FIND — Result', [outcome]);
-    ctx.toast?.('Lucky Find: draw a World card + Artifact to purchase.');
+    const draw = drawWorldCardAndArtifact();
+    const worldName = draw.worldName || 'Unknown World';
+    const artifact = draw.artifact;
+
+    log.push(`World Card drawn: ${worldName}`);
+
+    if (!artifact) {
+      const fallback = `World Card: ${worldName} — No Artifacts found for ${worldName} in data. Draw the Artifact manually. Purchase for $100 + listed Gold Value.`;
+      log.push(fallback);
+      await showResult(ctx, 'LUCKY FIND — Result', [fallback]);
+      ctx.toast?.('Lucky Find: draw Artifact manually.');
+      return { log };
+    }
+
+    log.push(`Artifact drawn: ${artifact.name} (${worldName})`);
+
+    const listPrice = Number(artifact.value) || 0;
+    const price = listPrice + 100;
+
+    const saleResult = await offerArtifactForSale(ctx, artifact, {
+      price,
+      acquiredFrom: `Lucky Find (Desert Marketplace) — ${worldName}`,
+      title: 'LUCKY FIND',
+      worldName,
+      patchShopMods: (patch) => patchShopMods(patch),
+      shopModKey: 'artifactForSale',
+    });
+    log.push(...saleResult.log);
+    ctx.toast?.(`Lucky Find: ${artifact.name}!`);
     return { log };
   }
 

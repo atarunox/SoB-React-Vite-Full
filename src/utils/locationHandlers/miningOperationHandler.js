@@ -2,6 +2,9 @@
 
 import { d6 as _d6, d3 as _d3 } from '../../utils/diceHelpers';
 import { loadTownState, saveTownState } from '../../utils/townState';
+import { drawWorldCardAndArtifact, drawArtifactFromWorld, offerArtifactForSale } from './worldCardDraw.js';
+import { gearCards } from '../../data/items/gearCards.js';
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
 
 // Use ctx.d6/ctx.d3 when available (respects manual roll mode); fallback to auto-roll
 const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
@@ -13,6 +16,14 @@ const shopId = 'miningOperation';
 function patchTownState(patch) {
   const s = loadTownState() || {};
   saveTownState({ ...s, ...patch });
+}
+
+function patchShopMods(patch) {
+  const s = loadTownState() || {};
+  const cur = s.shopMods?.[shopId] || {};
+  const next = { ...cur, ...patch };
+  const updated = { ...s, shopMods: { ...(s.shopMods || {}), [shopId]: next } };
+  saveTownState(updated);
 }
 
 // ---------- result formatting helper ----------
@@ -260,10 +271,87 @@ export async function apply(roll, ctx) {
 
   // 11: Buried Town — Draw 2 Gear + 2 Blasted Wastes Artifacts, purchase at Gold Value + $100
   if (roll === 11) {
-    const outcome = 'The workers have discovered the ruins of an old Barter Town! Draw 2 Gear cards and 2 Blasted Wastes Artifacts. Any Heroes at the Mining Operation today may purchase any of these Items for their listed Gold value +$100 (Heroes get first pick based on highest to lowest Lore — roll off if tied).';
-    log.push(outcome);
-    await showResult(ctx, 'BURIED TOWN — Result', [outcome]);
-    ctx.toast?.('Buried Town: Draw 2 Gear + 2 Blasted Wastes Artifacts to purchase!');
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+    const heroName = hero?.name || 'Hero';
+    const drawnItems = [];
+
+    // Draw 2 Gear cards
+    const gearPool = Array.isArray(gearCards) ? gearCards : [];
+    for (let i = 0; i < 2; i++) {
+      if (!gearPool.length) break;
+      const card = gearPool[Math.floor(Math.random() * gearPool.length)];
+      if (card) drawnItems.push({ ...card, id: card.id || `gear_bt_${Date.now()}_${i}`, _kind: 'Gear' });
+    }
+
+    // Draw 2 Blasted Wastes Artifacts
+    const bwPool = Array.isArray(otherWorldArtifacts)
+      ? otherWorldArtifacts.filter(a => a?.world === 'Blasted Wastes')
+      : [];
+    for (let i = 0; i < 2; i++) {
+      if (!bwPool.length) break;
+      const art = bwPool[Math.floor(Math.random() * bwPool.length)];
+      if (art) drawnItems.push({ ...art, id: art.id || `bw_art_bt_${Date.now()}_${i}`, _kind: 'Artifact' });
+    }
+
+    if (!drawnItems.length) {
+      const outcome = 'The workers have discovered ruins, but no items could be drawn from available data. Draw 2 Gear + 2 Blasted Wastes Artifacts manually.';
+      log.push(outcome);
+      await showResult(ctx, 'BURIED TOWN — Result', [outcome]);
+      return { log };
+    }
+
+    log.push(`Unearthed ${drawnItems.length} items from the buried town.`);
+
+    for (let i = 0; i < drawnItems.length; i++) {
+      const item = drawnItems[i];
+      const listPrice = Number(item.value) || 0;
+      const price = listPrice + 100;
+      const effectsStr = item.effects
+        ? (Array.isArray(item.effects) ? item.effects.join('; ') : JSON.stringify(item.effects))
+        : '';
+      const rulesStr = Array.isArray(item.rules) ? item.rules.join(' ') : '';
+      const detailParts = [`${item._kind}: ${item.name}`];
+      if (item.slot) detailParts.push(`Slot: ${item.slot}`);
+      if (effectsStr) detailParts.push(`Effects: ${effectsStr}`);
+      if (rulesStr) detailParts.push(`Rules: ${rulesStr}`);
+      detailParts.push(`Price: $${price} (listed $${listPrice} + $100)`);
+
+      const buyChoice = await ctx.promptChoice?.(
+        `BURIED TOWN — Item ${i + 1}/${drawnItems.length}\n\n${detailParts.join('\n')}\n\nPurchase ${item.name}?`,
+        [
+          { label: `Buy ${item.name} for $${price}` },
+          { label: 'Pass' },
+        ]
+      );
+
+      if (buyChoice === 0) {
+        const heroGold = Number(((ctx.getHeroById ?? ctx.getHero)?.(id))?.gold ?? 0);
+        if (heroGold < price) {
+          const noGold = `${heroName} doesn't have enough gold! Need $${price}, have $${heroGold}.`;
+          log.push(noGold);
+          await showResult(ctx, 'BURIED TOWN — Result', [noGold]);
+        } else {
+          const { _kind, ...cleanItem } = item;
+          ctx.updateHero?.(id, h => {
+            const items = Array.isArray(h.items) ? [...h.items] : [];
+            items.push({
+              ...cleanItem,
+              type: cleanItem.type || _kind,
+              acquiredFrom: 'Buried Town (Mining Operation)',
+              pricePaid: price,
+            });
+            return { ...h, gold: Math.max(0, (h.gold || 0) - price), items };
+          });
+          const bought = `${heroName} purchases ${item.name} for $${price}!`;
+          log.push(bought);
+          await showResult(ctx, 'BURIED TOWN — Result', [bought]);
+          ctx.toast?.(`Bought ${item.name} for $${price}!`);
+        }
+      } else {
+        log.push(`Passed on ${item.name}.`);
+      }
+    }
+
     return { log };
   }
 
@@ -276,15 +364,45 @@ export async function apply(roll, ctx) {
         { label: 'No — Draw a World card and an Artifact from that World' },
       ]
     );
-    let outcome;
+
+    let artifact = null;
+    let worldName = '';
+
     if (choice === 0) {
-      outcome = 'Draw an Artifact from the Derelict Ship OtherWorld! The ancient ship holds untold treasures.';
+      // Draw from Derelict Ship
+      artifact = drawArtifactFromWorld('Derelict Ship');
+      worldName = 'Derelict Ship';
+      log.push(`Drawing an Artifact from the Derelict Ship OtherWorld...`);
     } else {
-      outcome = 'Draw a World card and an Artifact from that World. Who knows what ancient relics await!';
+      // Draw a World card + Artifact from that world
+      const draw = drawWorldCardAndArtifact();
+      artifact = draw.artifact;
+      worldName = draw.worldName || 'Unknown World';
+      log.push(`World Card drawn: ${worldName}`);
     }
-    log.push(outcome);
-    await showResult(ctx, 'ASTOUNDING DISCOVERY — Result', [outcome]);
-    ctx.toast?.('Astounding Discovery!');
+
+    if (!artifact) {
+      const fallback = `No Artifacts found for ${worldName} in data. Draw the Artifact manually.`;
+      log.push(fallback);
+      await showResult(ctx, 'ASTOUNDING DISCOVERY — Result', [fallback]);
+      ctx.toast?.('Astounding Discovery! Draw Artifact manually.');
+      return { log };
+    }
+
+    log.push(`Artifact drawn: ${artifact.name} (${worldName})`);
+
+    // Offer for sale — free discovery, no extra cost
+    const listPrice = Number(artifact.value) || 0;
+    const saleResult = await offerArtifactForSale(ctx, artifact, {
+      price: listPrice,
+      acquiredFrom: `Astounding Discovery (Mining Operation) — ${worldName}`,
+      title: 'ASTOUNDING DISCOVERY',
+      worldName,
+      patchShopMods: (patch) => patchShopMods(patch),
+      shopModKey: 'artifactForSale',
+    });
+    log.push(...saleResult.log);
+    ctx.toast?.(`Astounding Discovery: ${artifact.name}!`);
     return { log };
   }
 

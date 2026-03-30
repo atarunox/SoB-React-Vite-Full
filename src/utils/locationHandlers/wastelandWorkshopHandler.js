@@ -2,6 +2,7 @@
 
 import { d6 as _d6, d3 as _d3 } from '../../utils/diceHelpers';
 import { loadTownState, saveTownState } from '../../utils/townState';
+import { drawWorldCardAndArtifact, offerArtifactForSale } from './worldCardDraw.js';
 
 // Use ctx.d6/ctx.d3 when available (respects manual roll mode); fallback to auto-roll
 const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
@@ -13,6 +14,14 @@ const shopId = 'wastelandWorkshop';
 function patchTownState(patch) {
   const s = loadTownState() || {};
   saveTownState({ ...s, ...patch });
+}
+
+function patchShopMods(patch) {
+  const s = loadTownState() || {};
+  const cur = s.shopMods?.[shopId] || {};
+  const next = { ...cur, ...patch };
+  const updated = { ...s, shopMods: { ...(s.shopMods || {}), [shopId]: next } };
+  saveTownState(updated);
 }
 
 // ---------- result formatting helper ----------
@@ -327,9 +336,40 @@ export async function apply(roll, ctx) {
           log.push(techLine);
           resultLines.push(techLine);
         } else {
-          const artLine = 'Draw a World card and an Artifact from that World!';
-          log.push(artLine);
-          resultLines.push(artLine);
+          // Draw a World card and Artifact, offer for sale
+          const draw = drawWorldCardAndArtifact();
+          const worldName = draw.worldName || 'Unknown World';
+          const artifact = draw.artifact;
+
+          const worldLine = `World Card drawn: ${worldName}`;
+          log.push(worldLine);
+          resultLines.push(worldLine);
+
+          if (!artifact) {
+            const fallback = `No Artifacts found for ${worldName} in data. Draw the Artifact manually.`;
+            log.push(fallback);
+            resultLines.push(fallback);
+          } else {
+            const artLine = `Artifact drawn: ${artifact.name} (${worldName})`;
+            log.push(artLine);
+            resultLines.push(artLine);
+
+            // Show the crate results so far, then offer artifact
+            await showResult(ctx, 'CARGO CRATE — Result', resultLines);
+
+            const listPrice = Number(artifact.value) || 0;
+            const saleResult = await offerArtifactForSale(ctx, artifact, {
+              price: listPrice > 0 ? listPrice : 0,
+              acquiredFrom: `Cargo Crate (Wasteland Workshop) — ${worldName}`,
+              title: 'CARGO CRATE — Artifact',
+              worldName,
+              patchShopMods: (patch) => patchShopMods(patch),
+              shopModKey: 'artifactForSale',
+            });
+            log.push(...saleResult.log);
+            ctx.toast?.(crateTotal >= 5 ? `Cargo Crate: ${crateTotal} Scrap + ${artifact.name}!` : `Cargo Crate: ${artifact.name}!`);
+            return { log };
+          }
         }
       }
     } else {

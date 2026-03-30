@@ -3,6 +3,7 @@
 
 import { d6, d3 } from '../../utils/diceHelpers';
 import { loadTownState, saveTownState } from '../townState.js';
+import { drawWorldCardAndArtifact } from './worldCardDraw.js';
 
 async function rollND(ui, n, sides, label) {
   if (ui?.roll) {
@@ -195,9 +196,35 @@ export async function performMiningOperationService(serviceId, _params = {}, ctx
           log.push(`<b>Buried Escape Pod</b> — Draw ${lootRoll} Wasteland Loot card${lootRoll !== 1 ? 's' : ''} (D3).`);
           break;
         }
-        case 6:
-          log.push('<b>"What\'s This?"</b> — Draw a World card and an Artifact from that World.');
+        case 6: {
+          const draw = drawWorldCardAndArtifact();
+          const worldName = draw.worldName || 'Unknown World';
+          const artifact = draw.artifact;
+          log.push(`<b>"What's This?"</b> — World Card drawn: <b>${worldName}</b>`);
+          if (artifact) {
+            log.push(`Artifact drawn: <b>${artifact.name}</b> (${worldName})`);
+            const effectsStr = artifact.effects
+              ? (Array.isArray(artifact.effects) ? artifact.effects.join('; ') : JSON.stringify(artifact.effects))
+              : '';
+            const rulesStr = Array.isArray(artifact.rules) ? artifact.rules.join(' ') : '';
+            if (effectsStr) log.push(`Effects: ${effectsStr}`);
+            if (rulesStr) log.push(`Rules: ${rulesStr}`);
+
+            // Add artifact to hero's items (free discovery from the mines)
+            const items = Array.isArray(hero.items) ? [...hero.items] : [];
+            items.push({
+              ...artifact,
+              id: artifact.id || `artifact_mines_${Date.now()}`,
+              type: artifact.type || 'Artifact',
+              acquiredFrom: `What's This? (Work the Mines) — ${worldName}`,
+            });
+            pushUpdate({ items });
+            log.push(`Added <b>${artifact.name}</b> to inventory!`);
+          } else {
+            log.push(`No Artifacts found for ${worldName} in data. Draw the Artifact manually.`);
+          }
           break;
+        }
       }
       break;
     }
