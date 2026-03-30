@@ -2,6 +2,10 @@
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { d6 as _d6 } from '../../utils/diceHelpers';
 import { getEventDisplay } from '../locationEventText';
+import { gearCards } from '../../data/items/gearCards.js';
+import { WORLD_CARDS } from '../../data/worldCards';
+import { mineArtifacts } from '../../data/items/mineArtifacts';
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
 
 // Use ctx.d6 when available (respects manual roll mode); fallback to auto-roll
 const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
@@ -151,23 +155,177 @@ export async function apply(roll, ctx) {
     return { log };
   }
 
-  // 11: New Items in Stock — Draw 3 Gear cards; buy one at $25 or listed price
+  // 11: New Items in Stock — Draw 3 Gear cards; buy at listed price or $25
   if (roll === 11) {
-    patchShopMods({ newItemsInStock: true, newItemsCount: 3 });
-    const outcome = 'Fresh in from the Badlands! The shop owner shows 3 new Gear cards for sale. Any may be purchased for list price, or $25 if no price is listed.';
-    log.push(outcome);
-    await showResult(ctx, 'NEW ITEMS IN STOCK — Result', [outcome]);
-    ctx.toast?.('New Items in Stock: Draw 3 Gear cards to purchase.');
+    const pool = Array.isArray(gearCards) ? gearCards : [];
+    const drawn = [];
+    for (let i = 0; i < 3; i++) {
+      if (!pool.length) break;
+      const card = pool[Math.floor(Math.random() * pool.length)];
+      if (card) drawn.push({ ...card, id: card.id || `gear_gs_${Date.now()}_${i}` });
+    }
+
+    if (!drawn.length) {
+      const outcome = 'Fresh in from the Badlands! No Gear cards available in data — draw 3 Gear cards manually.';
+      log.push(outcome);
+      await showResult(ctx, 'NEW ITEMS IN STOCK — Result', [outcome]);
+      return { log };
+    }
+
+    patchShopMods({ newItemsInStock: true, newItemsCount: drawn.length });
+
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+    const heroName = hero?.name || 'Hero';
+    const headerLine = `Fresh in from the Badlands! The shop owner shows ${drawn.length} new Gear cards for sale.`;
+    log.push(headerLine);
+
+    for (let i = 0; i < drawn.length; i++) {
+      const card = drawn[i];
+      const listPrice = Number(card.value) || 0;
+      const price = listPrice > 0 ? listPrice : 25;
+      const priceLabel = listPrice > 0 ? `$${listPrice} (list price)` : '$25 (no list price)';
+      const effectsStr = Array.isArray(card.effects) ? card.effects.join('; ') : '';
+
+      const buyChoice = await ctx.promptChoice?.(
+        `NEW ITEMS IN STOCK (${i + 1}/${drawn.length})\n\n${card.name}${card.slot ? ` (${card.slot})` : ''}${effectsStr ? `\nEffects: ${effectsStr}` : ''}\nPrice: ${priceLabel}\n\nPurchase ${card.name}?`,
+        [
+          { label: `Buy ${card.name} for $${price}` },
+          { label: 'Pass' },
+        ]
+      );
+
+      if (buyChoice === 0) {
+        const heroGold = Number(((ctx.getHeroById ?? ctx.getHero)?.(id))?.gold ?? 0);
+        if (heroGold < price) {
+          const noGold = `${heroName} doesn't have enough gold! Need $${price}, have $${heroGold}.`;
+          log.push(noGold);
+          await showResult(ctx, 'NEW ITEMS IN STOCK — Result', [noGold]);
+        } else {
+          ctx.updateHero?.(id, h => {
+            const items = Array.isArray(h.items) ? [...h.items] : [];
+            items.push({
+              ...card,
+              type: card.type || 'Gear',
+              acquiredFrom: 'New Items in Stock (General Store)',
+              pricePaid: price,
+            });
+            return { ...h, gold: Math.max(0, (h.gold || 0) - price), items };
+          });
+          const bought = `${heroName} purchases ${card.name} for $${price}!`;
+          log.push(bought);
+          await showResult(ctx, 'NEW ITEMS IN STOCK — Result', [bought]);
+          ctx.toast?.(`Bought ${card.name} for $${price}.`);
+        }
+      } else {
+        log.push(`Passed on ${card.name}.`);
+      }
+    }
     return { log };
   }
 
-  // 12: Artifact for Sale — Draw World+Artifact; buy for $100
+  // 12: Artifact for Sale — Draw World+Artifact; buy for listed price or $100
   if (roll === 12) {
-    patchShopMods({ artifactForSale: true, artifactPrice: 100 });
-    const outcome = 'The shop owner has a rare artifact brought back from a recent expedition! Draw a World Card to determine the origin, then draw an Artifact from that world. It may be purchased for list price, or $100 if none listed.';
-    log.push(outcome);
-    await showResult(ctx, 'ARTIFACT FOR SALE — Result', [outcome]);
-    ctx.toast?.('Artifact for Sale: a rare find is available for $100.');
+    const worldArtifactMap = {};
+    if (Array.isArray(mineArtifacts) && mineArtifacts.length > 0) {
+      worldArtifactMap['Mines'] = mineArtifacts;
+    }
+    if (Array.isArray(otherWorldArtifacts)) {
+      for (const art of otherWorldArtifacts) {
+        const w = art?.world || 'Unknown';
+        if (!worldArtifactMap[w]) worldArtifactMap[w] = [];
+        worldArtifactMap[w].push(art);
+      }
+    }
+
+    const availableWorlds = Array.isArray(WORLD_CARDS) && WORLD_CARDS.length > 0
+      ? WORLD_CARDS
+      : Object.keys(worldArtifactMap).map(w => ({ name: w }));
+
+    if (!availableWorlds.length) {
+      const outcome = 'The shop owner has a rare artifact, but no World cards are available in data. Draw a World Card and Artifact manually. Purchase for list price or $100.';
+      log.push(outcome);
+      await showResult(ctx, 'ARTIFACT FOR SALE — Result', [outcome]);
+      return { log };
+    }
+
+    const worldCard = availableWorlds[Math.floor(Math.random() * availableWorlds.length)];
+    const worldName = worldCard.name || 'Unknown World';
+
+    let pool = worldArtifactMap[worldName] || [];
+    if (!pool.length) {
+      const looseKey = Object.keys(worldArtifactMap).find(
+        k => k.toLowerCase().includes(worldName.toLowerCase()) ||
+             worldName.toLowerCase().includes(k.toLowerCase())
+      );
+      if (looseKey) pool = worldArtifactMap[looseKey];
+    }
+
+    if (!pool.length) {
+      const outcome = `World Card drawn: ${worldName}\n\nNo Artifacts found for ${worldName} in data. Draw the Artifact manually. Purchase for list price or $100.`;
+      log.push(outcome);
+      patchShopMods({ artifactForSale: true, artifactPrice: 100 });
+      await showResult(ctx, 'ARTIFACT FOR SALE — Result', [outcome]);
+      return { log };
+    }
+
+    const artifact = pool[Math.floor(Math.random() * pool.length)];
+    const listPrice = Number(artifact.value) || 0;
+    const price = listPrice > 0 ? listPrice : 100;
+    const priceLabel = listPrice > 0 ? `$${listPrice} (list price)` : '$100 (no list price)';
+    const effectsStr = artifact.effects
+      ? (Array.isArray(artifact.effects) ? artifact.effects.join('; ') : JSON.stringify(artifact.effects))
+      : '';
+
+    const hero = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+    const heroName = hero?.name || 'Hero';
+
+    const buyChoice = await ctx.promptChoice?.(
+      `ARTIFACT FOR SALE\n\nWorld Card: ${worldName}\nArtifact: ${artifact.name}\nType: ${artifact.type || 'Artifact'}${effectsStr ? `\nEffects: ${effectsStr}` : ''}\nPrice: ${priceLabel}\n\nPurchase ${artifact.name}?`,
+      [
+        { label: `Buy ${artifact.name} for $${price}` },
+        { label: 'Pass' },
+      ]
+    );
+
+    if (buyChoice === 0) {
+      const heroGold = Number(((ctx.getHeroById ?? ctx.getHero)?.(id))?.gold ?? 0);
+      if (heroGold < price) {
+        const noGold = `${heroName} doesn't have enough gold! Need $${price}, have $${heroGold}.`;
+        log.push(noGold);
+        await showResult(ctx, 'ARTIFACT FOR SALE — Result', [noGold]);
+      } else {
+        ctx.updateHero?.(id, h => {
+          const items = Array.isArray(h.items) ? [...h.items] : [];
+          items.push({
+            ...artifact,
+            id: artifact.id || `artifact_gs_${Date.now()}`,
+            type: artifact.type || 'Artifact',
+            acquiredFrom: 'Artifact for Sale (General Store)',
+            pricePaid: price,
+          });
+          return { ...h, gold: Math.max(0, (h.gold || 0) - price), items };
+        });
+        const bought = `${heroName} purchases ${artifact.name} for $${price}!`;
+        log.push(bought);
+        await showResult(ctx, 'ARTIFACT FOR SALE — Result', [bought]);
+        ctx.toast?.(`Bought ${artifact.name} for $${price}!`);
+      }
+    } else {
+      log.push(`Passed on ${artifact.name}.`);
+      // Store in shopMods so it can still be purchased in the shop UI
+      patchShopMods({
+        artifactForSale: true,
+        artifactPrice: price,
+        artifactCard: {
+          ...artifact,
+          id: artifact.id || `artifact_gs_${Date.now()}`,
+          type: artifact.type || 'Artifact',
+          world: worldName,
+        },
+      });
+      await showResult(ctx, 'ARTIFACT FOR SALE — Result', [`${artifact.name} is available in the shop for $${price}.`]);
+      ctx.toast?.(`Artifact for Sale: ${artifact.name} ($${price}).`);
+    }
     return { log };
   }
 
