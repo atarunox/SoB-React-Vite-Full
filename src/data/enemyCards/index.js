@@ -14,8 +14,10 @@ import { fortressEnemies as fortress } from './fortressEnemies';
 
 export const ENEMY_CARDS = {
   "City of the Ancients": mine,
+  "Mines": mine,
   "Targa Plateau": targa,
   "Swamps of Jargono": jargono,
+  "Jargono": jargono,
   "Trederra": trederra,
   "Caverns of Cynder": cynder,
   "Frontier Town": frontier,
