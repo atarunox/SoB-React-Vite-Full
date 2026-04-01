@@ -1,6 +1,7 @@
 export const mineArtifacts = [
   // --- Batch 1 originals ---------------------------------------------------
   {
+    id: 'mine_scroll_of_flames',
     name: "Scroll of Flames",
     type: "Artifact - Scroll - Magik",
     slot: "None",
@@ -17,6 +18,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Scroll", "Magik"]
   },
   {
+    id: 'mine_life_water',
     name: "Life Water",
     type: "Artifact - Tonic",
     slot: "None",
@@ -30,6 +32,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Tonic"]
   },
   {
+    id: 'mine_book_of_the_mad_king',
     name: "Book of the Mad King",
     type: "Artifact - Book - Occult",
     slot: "None",
@@ -44,6 +47,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Book", "Occult"]
   },
   {
+    id: 'mine_void_catcher',
     name: "Void Catcher",
     type: "Artifact - Void - Tribal - Charm",
     slot: "Charm",
@@ -54,6 +58,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Void", "Tribal", "Charm"]
   },
   {
+    id: 'mine_dead_man_s_iron',
     name: "Dead Man’s Iron",
     type: "Artifact - Gun - Pistol - Occult",
     slot: "Hand Weapon",
@@ -67,6 +72,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Gun", "Pistol", "Occult"]
   },
   {
+    id: 'mine_book_of_the_occult',
     name: "Book of the Occult",
     type: "Artifact - Book - Occult",
     slot: "None",
@@ -80,6 +86,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Book", "Occult"]
   },
   {
+    id: 'mine_mole_s_foot_amulet',
     name: "Mole’s Foot Amulet",
     type: "Artifact - Magik - Charm",
     slot: "Charm",
@@ -93,6 +100,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Magik", "Charm"]
   },
   {
+    id: 'mine_book_of_gom_jaharii',
     name: "Book of Gom’Jaharii",
     type: "Artifact - Book - Ancient",
     slot: "None",
@@ -105,6 +113,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Book", "Ancient"]
   },
   {
+    id: 'mine_liquid_sunlight',
     name: "Liquid Sunlight",
     type: "Artifact - Glass - Light",
     slot: "None",
@@ -120,6 +129,7 @@ export const mineArtifacts = [
 
   // --- Batch 2 (deduped: removed duplicate Life Water) ----------------------
   {
+    id: 'mine_void_lantern',
     name: "Void Lantern",
     type: "Artifact - Light Source - Void",
     slot: "Light Source",
@@ -134,6 +144,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Light Source", "Void"]
   },
   {
+    id: 'mine_amulet_of_trondo',
     name: "Amulet of Trondo",
     type: "Artifact - Magik - Amulet",
     slot: "Amulet",
@@ -144,6 +155,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Magik", "Amulet"]
   },
   {
+    id: 'mine_phase_dagger',
     name: "Phase Dagger",
     type: "Artifact - Hand Weapon - Void",
     slot: "Hand Weapon",
@@ -160,6 +172,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Hand Weapon", "Void"]
   },
   {
+    id: 'mine_otherworld_artifact_targa_plateau',
     name: "Otherworld Artifact (Targa Plateau)",
     type: "Artifact",
     slot: "None",
@@ -170,6 +183,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'mine_soul_shard',
     name: "Soul Shard",
     type: "Artifact - Container - Lost Army",
     slot: "Container",
@@ -185,6 +199,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Container", "Lost Army", "Void"]
   },
   {
+    id: 'mine_lost_army_hell_musket',
     name: "Lost Army Hell Musket",
     type: "Artifact - Gun - Pistol - Lost Army",
     slot: "Hand Weapon",
@@ -201,6 +216,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Gun", "Pistol", "Lost Army"]
   },
   {
+    id: 'mine_vampire_fang',
     name: "Vampire Fang",
     type: "Artifact - Charm - Vampire",
     slot: "Charm",
@@ -214,6 +230,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Charm", "Vampire"]
   },
   {
+    id: 'mine_tome_of_ro_kal',
     name: "Tome of Ro’kal",
     type: "Artifact - Book - Magik - Occult",
     slot: "None",
@@ -230,6 +247,7 @@ export const mineArtifacts = [
 
   // --- Batch 3 --------------------------------------------------------------
   {
+    id: 'mine_black_fang_hatchet',
     name: "Black Fang Hatchet",
     type: "Artifact - Hand Weapon - Tribal",
     slot: "Hand Weapon",
@@ -243,6 +261,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Hand Weapon", "Tribal", "Frontier/Traveler/Tribal Only"]
   },
   {
+    id: 'mine_dark_stone_gloves',
     name: "Dark Stone Gloves",
     type: "Artifact - Dark Stone - Clothing - Gloves",
     slot: "Gloves",
@@ -256,6 +275,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Dark Stone", "Clothing", "Gloves"]
   },
   {
+    id: 'mine_otherworld_artifact_blasted_wastes',
     name: "Otherworld Artifact (Blasted Wastes)",
     type: "Artifact",
     slot: "None",
@@ -266,6 +286,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'mine_vial_of_brimstone_ash',
     name: "Vial of Brimstone Ash",
     type: "Artifact - Void",
     slot: "None",
@@ -278,6 +299,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Void"]
   },
   {
+    id: 'mine_crushed_dark_stone',
     name: "Crushed Dark Stone",
     type: "Artifact - Dark Stone",
     slot: "None",
@@ -291,6 +313,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Dark Stone"]
   },
   {
+    id: 'mine_healing_stone',
     name: "Healing Stone",
     type: "Artifact - Magik",
     slot: "None",
@@ -303,6 +326,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Magik"]
   },
   {
+    id: 'mine_ring_of_zu',
     name: "Ring of Zu",
     type: "Artifact - Ring - Ancient - Magik",
     slot: "Ring",
@@ -318,6 +342,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Ring", "Ancient", "Magik"]
   },
   {
+    id: 'mine_hell_bullets',
     name: "Hell Bullets",
     type: "Artifact - Demonic - Ammo",
     slot: "Ammo",
@@ -332,6 +357,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Demonic", "Ammo"]
   },
   {
+    id: 'mine_hunter',
     name: "Hunter's Spike",
     type: "Artifact - Hand Weapon - Holy",
     slot: "Hand Weapon",
@@ -349,6 +375,7 @@ export const mineArtifacts = [
 
   // --- Batch 4 --------------------------------------------------------------
   {
+    id: 'mine_ornate_mask',
     name: "Ornate Mask",
     type: "Artifact - Clothing - Face - Cult",
     slot: "Face",
@@ -363,6 +390,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Clothing", "Face", "Cult"]
   },
   {
+    id: 'mine_inquisitor',
     name: "Inquisitor's Helmet",
     type: "Artifact - Clothing - Face - Hat",
     slot: "Hat",
@@ -377,6 +405,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Clothing", "Face", "Hat"]
   },
   {
+    id: 'mine_jeweled_blade',
     name: "Jeweled Blade",
     type: "Artifact - Hand Weapon",
     slot: "Hand Weapon",
@@ -390,6 +419,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Hand Weapon"]
   },
   {
+    id: 'mine_masterclass_revolver',
     name: "Masterclass Revolver",
     type: "Artifact - Gun - Pistol",
     slot: "Hand Weapon",
@@ -403,6 +433,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Gun", "Pistol"]
   },
   {
+    id: 'mine_divine_scroll_of_protection',
     name: "Divine Scroll of Protection",
     type: "Artifact - Holy - Scroll",
     slot: "None",
@@ -416,6 +447,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Holy", "Scroll"]
   },
   {
+    id: 'mine_brace_of_dark_stone_pistols',
     name: "Brace of Dark Stone Pistols",
     type: "Artifact - Gun - Pistol - Dark Stone",
     slot: "Hand Weapon",
@@ -430,6 +462,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Gun", "Pistol", "Dark Stone", "Frontier/Outlaw Only"]
   },
   {
+    id: 'mine_otherworld_artifact_caverns_of_cynder',
     name: "Otherworld Artifact (Caverns of Cynder)",
     type: "Artifact",
     slot: "None",
@@ -440,6 +473,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'mine_shadow_shard',
     name: "Shadow Shard",
     type: "Artifact - Magik - Darkness",
     slot: "None",
@@ -454,6 +488,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Magik", "Darkness"]
   },
   {
+    id: 'mine_lost_army_pistol',
     name: "Lost Army Pistol",
     type: "Artifact - Gun - Pistol - Lost Army",
     slot: "Hand Weapon",
@@ -471,6 +506,7 @@ export const mineArtifacts = [
 
   // --- Batch 5 --------------------------------------------------------------
   {
+    id: 'mine_dark_stone_prism',
     name: "Dark Stone Prism",
     type: "Artifact - Dark Stone",
     slot: "None",
@@ -485,6 +521,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Dark Stone"]
   },
   {
+    id: 'mine_otherworld_artifact_derelict_ship',
     name: "Otherworld Artifact (Derelict Ship)",
     type: "Artifact",
     slot: "None",
@@ -495,6 +532,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'mine_hell_pistol',
     name: "Hell Pistol",
     type: "Artifact - Gun - Pistol - Demonic",
     slot: "Hand Weapon",
@@ -509,6 +547,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Gun", "Pistol", "Demonic"]
   },
   {
+    id: 'mine_angel',
     name: "Angel's Tears",
     type: "Artifact - Glass - Holy",
     slot: "None",
@@ -522,6 +561,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Glass", "Holy"]
   },
   {
+    id: 'mine_bone_dominoes',
     name: "Bone Dominoes",
     type: "Artifact - Charm",
     slot: "Charm",
@@ -534,6 +574,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Charm"]
   },
   {
+    id: 'mine_hell_sword',
     name: "Hell Sword",
     type: "Artifact - Hand Weapon - Blade - Demonic",
     slot: "Hand Weapon",
@@ -547,6 +588,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Hand Weapon", "Blade", "Demonic"]
   },
   {
+    id: 'mine_soul_parasite',
     name: "Soul Parasite",
     type: "Artifact - Void - Creature",
     slot: "None",
@@ -562,6 +604,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Void", "Creature"]
   },
   {
+    id: 'mine_void_scroll',
     name: "Void Scroll",
     type: "Artifact - Void - Scroll - Magik",
     slot: "None",
@@ -578,6 +621,7 @@ export const mineArtifacts = [
 
   // --- Batch 6 --------------------------------------------------------------
   {
+    id: 'mine_jewel_of_the_void',
     name: "Jewel of the Void",
     type: "Artifact - Void",
     slot: "None",
@@ -591,6 +635,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Void"]
   },
   {
+    id: 'mine_ring_of_corruption',
     name: "Ring of Corruption",
     type: "Artifact - Ring - Magik",
     slot: "Ring",
@@ -604,6 +649,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Ring", "Magik"]
   },
   {
+    id: 'mine_horrific_statue',
     name: "Horrific Statue",
     type: "Artifact - Dark Stone - Statue",
     slot: "None",
@@ -617,6 +663,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Dark Stone", "Statue"]
   },
   {
+    id: 'mine_void_hood',
     name: "Void Hood",
     type: "Artifact - Void - Clothing - Hat",
     slot: "Hat",
@@ -632,6 +679,7 @@ export const mineArtifacts = [
 
   // --- Batch 7 (deduped: removed duplicate Void Scroll) ---------------------
   {
+    id: 'mine_journal_from_the_alamo',
     name: "Journal from the Alamo",
     type: "Artifact - Book - Relic",
     slot: "None",
@@ -645,6 +693,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Book", "Relic"]
   },
   {
+    id: 'mine_otherworld_artifact_swamps_of_jargono',
     name: "Otherworld Artifact (Swamps of Jargono)",
     type: "Artifact",
     slot: "None",
@@ -655,6 +704,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'mine_void_hound_tooth',
     name: "Void Hound Tooth",
     type: "Artifact - Void - Charm",
     slot: "Charm",
@@ -667,6 +717,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Void", "Charm"]
   },
   {
+    id: 'mine_amulet_of_b_lorn',
     name: "Amulet of Bālorn",
     type: "Artifact - Magik - Amulet",
     slot: "Amulet",
@@ -680,6 +731,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Magik", "Amulet"]
   },
   {
+    id: 'mine_axe_of_savagery',
     name: "Axe of Savagery",
     type: "Artifact - Hand Weapon - Tribal",
     slot: "Hand Weapon",
@@ -694,6 +746,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Hand Weapon", "Tribal"]
   },
   {
+    id: 'mine_hellfire_ring',
     name: "Hellfire Ring",
     type: "Artifact - Ring - Magik",
     slot: "Ring",
@@ -707,6 +760,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Ring", "Magik"]
   },
   {
+    id: 'mine_void_ring',
     name: "Void Ring",
     type: "Artifact - Ring - Magik - Void",
     slot: "Ring",
@@ -722,6 +776,7 @@ export const mineArtifacts = [
 
   // --- Batch 8 (deduped: removed duplicate Hell Bullets, Jewel refs) -------
   {
+    id: 'mine_trederran_trench_pistol',
     name: "Trederran Trench Pistol",
     type: "Artifact - Gun - Pistol - Trederran",
     slot: "Hand Weapon",
@@ -735,6 +790,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Gun", "Pistol", "Trederran"]
   },
   {
+    id: 'mine_olde_bell',
     name: "Olde Bell",
     type: "Artifact - Icon",
     slot: "None",
@@ -750,6 +806,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Icon"]
   },
   {
+    id: 'mine_cross_of_kandor',
     name: "Cross of Kandor",
     type: "Artifact - Hand Weapon - Holy",
     slot: "Hand Weapon",
@@ -764,6 +821,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Hand Weapon", "Holy"]
   },
   {
+    id: 'mine_amulet_of_hein_ghal',
     name: "Amulet of Hein’ghal",
     type: "Artifact - Magik - Amulet",
     slot: "Amulet",
@@ -775,6 +833,7 @@ export const mineArtifacts = [
   },
   // Adding the OW pulls here once for completeness (not duplicated above):
   {
+    id: 'mine_otherworld_artifact_caverns_of_cynder_2',
     name: "Otherworld Artifact (Caverns of Cynder)",
     type: "Artifact",
     slot: "None",
@@ -785,6 +844,7 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'mine_otherworld_artifact_targa_plateau_2',
     name: "Otherworld Artifact (Targa Plateau)",
     type: "Artifact",
     slot: "None",

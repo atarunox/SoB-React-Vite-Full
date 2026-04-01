@@ -28,7 +28,13 @@ function ItemDetails({ card }) {
     weight,
   } = card;
 
-  const effectsList = Array.isArray(effects) ? effects : effects ? [effects] : [];
+  const effectsList = Array.isArray(effects)
+    ? effects
+    : effects && typeof effects === "object"
+      ? Object.entries(effects).map(([k, v]) => `${v >= 0 ? "+" : ""}${v} ${k}`)
+      : effects
+        ? [effects]
+        : [];
 
   const metaParts = [
     type || null,

@@ -77,7 +77,11 @@ function formatArtifactDetails(artifact) {
   if (artifact.slot) lines.push(`Slot: ${artifact.slot}`);
 
   const effects = artifact.effects
-    ? (Array.isArray(artifact.effects) ? artifact.effects.join('; ') : JSON.stringify(artifact.effects))
+    ? (Array.isArray(artifact.effects)
+        ? artifact.effects.join('; ')
+        : typeof artifact.effects === 'object'
+          ? Object.entries(artifact.effects).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k}`).join('; ')
+          : String(artifact.effects))
     : '';
   if (effects) lines.push(`Effects: ${effects}`);
 
