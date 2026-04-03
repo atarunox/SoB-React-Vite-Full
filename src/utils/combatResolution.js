@@ -90,6 +90,7 @@ function getCover(abilities) {
  */
 export async function resolveHeroAttack({
   ui, hero, weapon, dicePool, enemy, offHand = null, conditionRules = null, getStat,
+  critDamageDelta = null,
 }) {
   const log = [];
   let totalWoundsDealt = 0;
@@ -214,15 +215,21 @@ export async function resolveHeroAttack({
     }
 
     // Critical hits: D6 damage, IGNORE enemy Defense
+    // Apply crit damage modifier from conditions (e.g., Eye Stalks +1, Eye Grown Over -1)
+    const effectiveCritDelta = critDamageDelta ?? conditionRules?.critDamageDelta ?? 0;
     let woundsFromCrits = 0;
     if (critHits.length > 0) {
       const critDmgRolls = await ui.roll(critHits.length, 6,
         `${atk.label} — ${critHits.length}d6 Damage (CRITICAL — ignores Defense)`);
       const critDmgArr = Array.isArray(critDmgRolls) ? critDmgRolls : [critDmgRolls];
-      log.push(`Critical Damage: Rolled [${critDmgArr.join(', ')}] (ignores Defense ${enemyDefense})`);
+      if (effectiveCritDelta !== 0) {
+        log.push(`Critical Damage: Rolled [${critDmgArr.join(', ')}] (ignores Defense ${enemyDefense}, ${effectiveCritDelta > 0 ? '+' : ''}${effectiveCritDelta} from conditions)`);
+      } else {
+        log.push(`Critical Damage: Rolled [${critDmgArr.join(', ')}] (ignores Defense ${enemyDefense})`);
+      }
 
       for (const dmg of critDmgArr) {
-        let wounds = dmg; // Crits ignore Defense
+        let wounds = Math.max(0, dmg + effectiveCritDelta); // Crits ignore Defense, apply crit delta
         // Damage Reduction still applies (it's separate from Defense)
         if (dmgReduction > 0 && wounds > 0) {
           wounds = Math.max(1, wounds - dmgReduction);
@@ -635,6 +642,269 @@ export async function resolvePostCombatHealing({ ui, hero, updateHero, heroId })
   }
 
   return { healedWounds: healWounds, healedSanity: healSanity, roll: healRoll, log };
+}
+
+
+/* ==================== Special Hit Type Resolution ==================== */
+
+/**
+ * Resolve Corruption Hits against a hero.
+ * Corruption Hits are defended by Willpower (saving throw per hit).
+ * Unblocked hits add Corruption points directly (not wounds).
+ * Neither Armor nor Spirit Armor prevents Corruption.
+ *
+ * @param {object} opts
+ * @param {object}   opts.ui
+ * @param {object}   opts.hero
+ * @param {number}   opts.hits         - Number of Corruption Hits
+ * @param {number}   [opts.corruptionPerHit=1] - Corruption points per unblocked hit
+ * @param {function} opts.getStat
+ * @param {function} [opts.updateHero]
+ * @param {string}   [opts.heroId]
+ *
+ * @returns {object} { corruption, log }
+ */
+export async function resolveCorruptionHits({
+  ui, hero, hits, corruptionPerHit = 1, getStat, updateHero, heroId,
+}) {
+  const log = [];
+  let incomingHits = Math.max(0, Math.floor(hits));
+
+  if (incomingHits <= 0) {
+    log.push('No Corruption Hits to resolve.');
+    return { corruption: 0, log };
+  }
+
+  log.push(`--- Corruption Attack: ${incomingHits} Corruption Hit(s) ---`);
+
+  // Willpower saves (per hit)
+  const wpTargetGuess =
+    parsePlusTarget(getStat?.(hero, 'Willpower')) ||
+    parsePlusTarget(hero?.willpower) ||
+    NaN;
+
+  const target = Number.isFinite(wpTargetGuess)
+    ? wpTargetGuess
+    : (Number(await ui.promptNumber?.({
+        title: 'Willpower Target',
+        message: 'Enter Willpower target (e.g., 5 for 5+):',
+        min: 2, max: 6, defaultValue: 5,
+      })) || 5);
+
+  let rolls = await ui.roll(incomingHits, 6,
+    `Willpower vs Corruption — ${incomingHits}d6 vs ${target}+`);
+  let arr = Array.isArray(rolls) ? rolls : [rolls];
+  let blocks = arr.filter(n => n >= target).length;
+  log.push(`Willpower ${target}+: Rolled [${arr.join(', ')}] → ${blocks} block(s) of ${incomingHits} Corruption Hit(s).`);
+
+  // Grit reroll
+  const failedCount = arr.length - blocks;
+  if (failedCount > 0) {
+    const gritResult = await _offerGritRerollForSaves(arr, target, hero, ui, updateHero, heroId, 'Willpower (Corruption)');
+    if (gritResult.rerolled) {
+      arr = gritResult.rolls;
+      blocks = arr.filter(n => n >= target).length;
+      log.push(`Grit reroll: [${arr.join(', ')}] → ${blocks} block(s) total.`);
+    }
+  }
+
+  const unblocked = Math.max(0, incomingHits - blocks);
+  const totalCorruption = unblocked * Math.max(1, Math.floor(corruptionPerHit));
+
+  // No Armor or Spirit Armor saves against Corruption
+  log.push(`Corruption: ${unblocked} unblocked hit(s) × ${corruptionPerHit} = ${totalCorruption} Corruption point(s). (No Armor/Spirit Armor saves apply.)`);
+
+  // Apply corruption if we have update access
+  if (totalCorruption > 0 && typeof updateHero === 'function' && heroId) {
+    const curCorruption = Number(hero?.currentCorruption ?? hero?.corruption ?? 0);
+    updateHero(heroId, { currentCorruption: curCorruption + totalCorruption });
+  }
+
+  await ui.toast?.(`${totalCorruption} Corruption gained!`);
+  return { corruption: totalCorruption, log };
+}
+
+
+/**
+ * Resolve Hex Hits against a hero.
+ * Hex Hits cause Wounds but are defended by Willpower (not Defense).
+ * Armor saves still apply after Willpower.
+ *
+ * @param {object} opts
+ * @param {object}   opts.ui
+ * @param {object}   opts.hero
+ * @param {number}   opts.hits         - Number of Hex Hits
+ * @param {number}   [opts.woundsPerHit=1] - Wounds per unblocked hit
+ * @param {function} opts.getStat
+ * @param {function} [opts.updateHero]
+ * @param {string}   [opts.heroId]
+ *
+ * @returns {object} { wounds, log }
+ */
+export async function resolveHexHits({
+  ui, hero, hits, woundsPerHit = 1, getStat, updateHero, heroId,
+}) {
+  const log = [];
+  let incomingHits = Math.max(0, Math.floor(hits));
+
+  if (incomingHits <= 0) {
+    log.push('No Hex Hits to resolve.');
+    return { wounds: 0, log };
+  }
+
+  log.push(`--- Hex Attack: ${incomingHits} Hex Hit(s) ---`);
+
+  // Willpower saves (per hit) — Hex uses Willpower instead of Defense
+  const wpTargetGuess =
+    parsePlusTarget(getStat?.(hero, 'Willpower')) ||
+    parsePlusTarget(hero?.willpower) ||
+    NaN;
+
+  const target = Number.isFinite(wpTargetGuess)
+    ? wpTargetGuess
+    : (Number(await ui.promptNumber?.({
+        title: 'Willpower Target',
+        message: 'Enter Willpower target for Hex defense (e.g., 5 for 5+):',
+        min: 2, max: 6, defaultValue: 5,
+      })) || 5);
+
+  let rolls = await ui.roll(incomingHits, 6,
+    `Willpower vs Hex — ${incomingHits}d6 vs ${target}+`);
+  let arr = Array.isArray(rolls) ? rolls : [rolls];
+  let blocks = arr.filter(n => n >= target).length;
+  log.push(`Willpower ${target}+: Rolled [${arr.join(', ')}] → ${blocks} block(s) of ${incomingHits} Hex Hit(s).`);
+
+  // Grit reroll
+  const failedCount = arr.length - blocks;
+  if (failedCount > 0) {
+    const gritResult = await _offerGritRerollForSaves(arr, target, hero, ui, updateHero, heroId, 'Willpower (Hex)');
+    if (gritResult.rerolled) {
+      arr = gritResult.rolls;
+      blocks = arr.filter(n => n >= target).length;
+      log.push(`Grit reroll: [${arr.join(', ')}] → ${blocks} block(s) total.`);
+    }
+  }
+
+  const unblocked = Math.max(0, incomingHits - blocks);
+  let pendingWounds = unblocked * Math.max(1, Math.floor(woundsPerHit));
+
+  // Armor saves DO apply to Hex wounds
+  if (pendingWounds > 0) {
+    const armorTargetGuess =
+      parsePlusTarget(getStat?.(hero, 'Armor')) ||
+      parsePlusTarget(hero?.armor) ||
+      NaN;
+
+    if (Number.isFinite(armorTargetGuess)) {
+      let armorRolls = await ui.roll(pendingWounds, 6,
+        `Armor vs Hex Wounds — ${pendingWounds}d6 vs ${armorTargetGuess}+`);
+      let armorArr = Array.isArray(armorRolls) ? armorRolls : [armorRolls];
+      let ignores = armorArr.filter(n => n >= armorTargetGuess).length;
+      log.push(`Armor ${armorTargetGuess}+: Rolled [${armorArr.join(', ')}] → ${ignores} save(s) of ${pendingWounds} wound(s).`);
+
+      const armorFailed = armorArr.length - ignores;
+      if (armorFailed > 0) {
+        const gritResult = await _offerGritRerollForSaves(armorArr, armorTargetGuess, hero, ui, updateHero, heroId, 'Armor (Hex)');
+        if (gritResult.rerolled) {
+          armorArr = gritResult.rolls;
+          ignores = armorArr.filter(n => n >= armorTargetGuess).length;
+          log.push(`Grit reroll: [${armorArr.join(', ')}] → ${ignores} save(s) total.`);
+        }
+      }
+
+      pendingWounds = Math.max(0, pendingWounds - ignores);
+    }
+  }
+
+  // KO guard
+  const currentHP = Number(hero?.currentHealth ?? hero?.health ?? hero?.maxHealth ?? 10);
+  if (pendingWounds > currentHP) {
+    log.push(`KO: Hero has ${currentHP} HP. Capping wounds at ${currentHP}.`);
+    pendingWounds = currentHP;
+  }
+
+  log.push(`Hex attack result: ${pendingWounds} wound(s).`);
+  await ui.toast?.(`${pendingWounds} wound(s) from Hex Hits!`);
+  return { wounds: pendingWounds, log };
+}
+
+
+/**
+ * Resolve Toxin Hits against a hero.
+ * Toxin Hits are defended by Defense (like normal hits), but cause
+ * Poison tokens instead of wounds.
+ *
+ * @param {object} opts
+ * @param {object}   opts.ui
+ * @param {object}   opts.hero
+ * @param {number}   opts.hits         - Number of Toxin Hits
+ * @param {number}   [opts.poisonPerHit=1] - Poison tokens per unblocked hit
+ * @param {function} opts.getStat
+ * @param {function} [opts.updateHero]
+ * @param {string}   [opts.heroId]
+ *
+ * @returns {object} { poison, log }
+ */
+export async function resolveToxinHits({
+  ui, hero, hits, poisonPerHit = 1, getStat, updateHero, heroId,
+}) {
+  const log = [];
+  let incomingHits = Math.max(0, Math.floor(hits));
+
+  if (incomingHits <= 0) {
+    log.push('No Toxin Hits to resolve.');
+    return { poison: 0, log };
+  }
+
+  log.push(`--- Toxin Attack: ${incomingHits} Toxin Hit(s) ---`);
+
+  // Defense saves (per hit) — same as normal hits
+  const defTargetGuess =
+    parsePlusTarget(getStat?.(hero, 'Defense')) ||
+    parsePlusTarget(hero?.defense) ||
+    NaN;
+
+  const target = Number.isFinite(defTargetGuess)
+    ? defTargetGuess
+    : (Number(await ui.promptNumber?.({
+        title: 'Defense Target',
+        message: 'Enter Defense target for Toxin defense (e.g., 4 for 4+):',
+        min: 2, max: 6, defaultValue: 4,
+      })) || 4);
+
+  let rolls = await ui.roll(incomingHits, 6,
+    `Defense vs Toxin — ${incomingHits}d6 vs ${target}+`);
+  let arr = Array.isArray(rolls) ? rolls : [rolls];
+  let blocks = arr.filter(n => n >= target).length;
+  log.push(`Defense ${target}+: Rolled [${arr.join(', ')}] → ${blocks} block(s) of ${incomingHits} Toxin Hit(s).`);
+
+  // Grit reroll
+  const failedCount = arr.length - blocks;
+  if (failedCount > 0) {
+    const gritResult = await _offerGritRerollForSaves(arr, target, hero, ui, updateHero, heroId, 'Defense (Toxin)');
+    if (gritResult.rerolled) {
+      arr = gritResult.rolls;
+      blocks = arr.filter(n => n >= target).length;
+      log.push(`Grit reroll: [${arr.join(', ')}] → ${blocks} block(s) total.`);
+    }
+  }
+
+  const unblocked = Math.max(0, incomingHits - blocks);
+  const totalPoison = unblocked * Math.max(1, Math.floor(poisonPerHit));
+
+  log.push(`Toxin: ${unblocked} unblocked hit(s) × ${poisonPerHit} = ${totalPoison} Poison token(s).`);
+
+  // Apply poison markers
+  if (totalPoison > 0 && typeof updateHero === 'function' && heroId) {
+    const curPoison = Number(hero?.markers?.poison ?? 0);
+    updateHero(heroId, (h) => ({
+      ...h,
+      markers: { ...(h.markers || {}), poison: (Number(h.markers?.poison) || 0) + totalPoison },
+    }));
+  }
+
+  await ui.toast?.(`${totalPoison} Poison token(s) gained!`);
+  return { poison: totalPoison, log };
 }
 
 
