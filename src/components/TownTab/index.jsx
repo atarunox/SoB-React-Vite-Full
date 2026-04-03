@@ -611,7 +611,7 @@ export default function TownTab({ heroId }) {
   const resolvedHeroId = heroId ?? activeHeroId;
 
   // Determine which town to show based on the current world
-  const isBlastedWastesTown = world === 'Blasted Wastes' || world === 'Canyons';
+  const isBlastedWastesTown = world === 'Blasted Wastes' || world === 'Canyons' || world === 'The Canyons';
   const activeTownIds = isBlastedWastesTown ? BLASTED_WASTES_TOWN_IDS : FRONTIER_TOWN_IDS;
   const townLabel = isBlastedWastesTown ? 'Blasted Wastes Town' : 'Frontier Town';
 
