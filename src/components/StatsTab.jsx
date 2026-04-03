@@ -316,7 +316,7 @@ export default function StatsTab({
 }) {
   const { hero: activeHero, updateHero } = useHero();
   const { updateHero: updateHeroPosse } = usePosse();
-  const { statsScale, setStatsScale } = useUIScale();
+  const { statsScale, setStatsScale, layoutEditMode } = useUIScale();
 
   // ---- Undo / Redo history for stat changes ----
   const MAX_UNDO = 30;
@@ -735,53 +735,55 @@ export default function StatsTab({
 
   return (
     <div onPointerMove={handlePointerMove}>
-      <div className="flex justify-end mb-2 gap-2 flex-wrap">
-        <button
-          className="btn btn-sm"
-          onClick={handleUndo}
-          disabled={undoStack.length === 0}
-          title="Undo last stat change"
-        >
-          Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
-        </button>
-        <button
-          className="btn btn-sm"
-          onClick={handleRedo}
-          disabled={redoStack.length === 0}
-          title="Redo last undone change"
-        >
-          Redo
-        </button>
-        <button className="btn btn-sm" onClick={() => setDragLocked?.(!dragLocked)}>
-          {dragLocked ? 'Unlock Drag' : 'Lock Drag'}
-        </button>
-        <button className="btn btn-sm" onClick={handleResetLayout}>
-          Reset Layout
-        </button>
-        <button className="btn btn-sm" onClick={() => setShowDetails((v) => !v)}>
-          {showDetails ? 'Hide Details' : 'Detailed Stats'}
-        </button>
-        {/* Tile scale controls */}
-        <div className="flex items-center gap-1 ml-auto">
+      {layoutEditMode && (
+        <div className="flex justify-end mb-2 gap-2 flex-wrap">
           <button
-            className="btn btn-sm px-2"
-            onClick={() => setStatsScale(Math.round((statsScale - 0.01) * 100) / 100)}
-            disabled={statsScale <= 0.5}
-            title="Shrink stat tiles"
+            className="btn btn-sm"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            title="Undo last stat change"
           >
-            -
+            Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
           </button>
-          <span className="text-xs font-medium w-10 text-center">{Math.round(statsScale * 100)}%</span>
           <button
-            className="btn btn-sm px-2"
-            onClick={() => setStatsScale(Math.round((statsScale + 0.01) * 100) / 100)}
-            disabled={statsScale >= 1.5}
-            title="Enlarge stat tiles"
+            className="btn btn-sm"
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
+            title="Redo last undone change"
           >
-            +
+            Redo
           </button>
+          <button className="btn btn-sm" onClick={() => setDragLocked?.(!dragLocked)}>
+            {dragLocked ? 'Unlock Drag' : 'Lock Drag'}
+          </button>
+          <button className="btn btn-sm" onClick={handleResetLayout}>
+            Reset Layout
+          </button>
+          <button className="btn btn-sm" onClick={() => setShowDetails((v) => !v)}>
+            {showDetails ? 'Hide Details' : 'Detailed Stats'}
+          </button>
+          {/* Tile scale controls */}
+          <div className="flex items-center gap-1 ml-auto">
+            <button
+              className="btn btn-sm px-2"
+              onClick={() => setStatsScale(Math.round((statsScale - 0.01) * 100) / 100)}
+              disabled={statsScale <= 0.5}
+              title="Shrink stat tiles"
+            >
+              -
+            </button>
+            <span className="text-xs font-medium w-10 text-center">{Math.round(statsScale * 100)}%</span>
+            <button
+              className="btn btn-sm px-2"
+              onClick={() => setStatsScale(Math.round((statsScale + 0.01) * 100) / 100)}
+              disabled={statsScale >= 1.5}
+              title="Enlarge stat tiles"
+            >
+              +
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Top panel: Detailed Breakdown (Base / Gear / Skills / Conditions / Total) */}
       {showDetails && (

@@ -19,10 +19,13 @@ function validButtonSize(v) {
   return BUTTON_SIZES.includes(v) ? v : 'md';
 }
 
+const LAYOUT_EDIT_KEY = 'sob:layoutEditMode';
+
 const UIScaleContext = createContext({
   scale: 1, setScale: () => {},
   buttonSize: 'md', setButtonSize: () => {},
   statsScale: 1, setStatsScale: () => {},
+  layoutEditMode: false, setLayoutEditMode: () => {},
 });
 
 export { BUTTON_SIZES };
@@ -54,9 +57,18 @@ export function UIScaleProvider({ children }) {
     }
   });
 
+  const [layoutEditMode, setLayoutEditModeRaw] = useState(() => {
+    try {
+      return localStorage.getItem(LAYOUT_EDIT_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const setScale = React.useCallback((v) => setScaleRaw(clampScale(v)), []);
   const setButtonSize = React.useCallback((v) => setButtonSizeRaw(validButtonSize(v)), []);
   const setStatsScale = React.useCallback((v) => setStatsScaleRaw(clampScale(v)), []);
+  const setLayoutEditMode = React.useCallback((v) => setLayoutEditModeRaw(!!v), []);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, String(scale)); } catch {}
@@ -70,13 +82,17 @@ export function UIScaleProvider({ children }) {
     try { localStorage.setItem(STATS_SCALE_KEY, String(statsScale)); } catch {}
   }, [statsScale]);
 
+  useEffect(() => {
+    try { localStorage.setItem(LAYOUT_EDIT_KEY, String(layoutEditMode)); } catch {}
+  }, [layoutEditMode]);
+
   // Apply button size as a data attribute on <html> so CSS can target it
   useEffect(() => {
     document.documentElement.setAttribute('data-btn-size', buttonSize);
   }, [buttonSize]);
 
   return (
-    <UIScaleContext.Provider value={{ scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale }}>
+    <UIScaleContext.Provider value={{ scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale, layoutEditMode, setLayoutEditMode }}>
       {children}
     </UIScaleContext.Provider>
   );

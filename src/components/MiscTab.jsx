@@ -58,7 +58,7 @@ export default function MiscTab() {
   const { hero, setHero } = useHero();
   const { posse, addHero, removeHero } = usePosse();
   const { darkness, growingDread } = useCombatState();
-  const { scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale } = useUIScale();
+  const { scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale, layoutEditMode, setLayoutEditMode } = useUIScale();
 
   // UI state
   const [heroList, setHeroList] = useState([]);            // [{...hero, _lsKey}]
@@ -503,6 +503,27 @@ export default function MiscTab() {
             </button>
           </div>
           <p className="text-xs text-gray-500">Scales the stat boxes on the Stats tab.</p>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[#5c3a1e]/20" />
+
+        {/* --- Change Layout toggle --- */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-sm">Stats Layout Editing</span>
+            <button
+              className={`px-4 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                layoutEditMode
+                  ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                  : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+              }`}
+              onClick={() => setLayoutEditMode(!layoutEditMode)}
+            >
+              {layoutEditMode ? 'Editing On' : 'Change Layout'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">Shows undo/redo, drag lock, reset, and scale controls on the Stats tab.</p>
         </div>
       </div>
 
