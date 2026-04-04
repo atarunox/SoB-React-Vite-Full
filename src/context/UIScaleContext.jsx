@@ -4,10 +4,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const STORAGE_KEY = 'sob:uiScale';
 const BTN_STORAGE_KEY = 'sob:buttonSize';
 const STATS_SCALE_KEY = 'sob:statsScale';
+const COMPACT_KEY = 'sob:compactMode';
+const FONT_SIZE_KEY = 'sob:fontSize';
+const FULL_WIDTH_KEY = 'sob:fullWidth';
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 1.5;
 
 const BUTTON_SIZES = ['sm', 'md', 'lg'];
+const FONT_SIZES = ['sm', 'md', 'lg'];
 
 function clampScale(v) {
   const n = Number(v);
@@ -19,6 +23,10 @@ function validButtonSize(v) {
   return BUTTON_SIZES.includes(v) ? v : 'md';
 }
 
+function validFontSize(v) {
+  return FONT_SIZES.includes(v) ? v : 'md';
+}
+
 const LAYOUT_EDIT_KEY = 'sob:layoutEditMode';
 
 const UIScaleContext = createContext({
@@ -26,9 +34,12 @@ const UIScaleContext = createContext({
   buttonSize: 'md', setButtonSize: () => {},
   statsScale: 1, setStatsScale: () => {},
   layoutEditMode: false, setLayoutEditMode: () => {},
+  compactMode: false, setCompactMode: () => {},
+  fontSize: 'md', setFontSize: () => {},
+  fullWidth: false, setFullWidth: () => {},
 });
 
-export { BUTTON_SIZES };
+export { BUTTON_SIZES, FONT_SIZES };
 
 export function UIScaleProvider({ children }) {
   const [scale, setScaleRaw] = useState(() => {
@@ -65,10 +76,37 @@ export function UIScaleProvider({ children }) {
     }
   });
 
+  const [compactMode, setCompactModeRaw] = useState(() => {
+    try {
+      return localStorage.getItem(COMPACT_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [fontSize, setFontSizeRaw] = useState(() => {
+    try {
+      return validFontSize(localStorage.getItem(FONT_SIZE_KEY));
+    } catch {
+      return 'md';
+    }
+  });
+
+  const [fullWidth, setFullWidthRaw] = useState(() => {
+    try {
+      return localStorage.getItem(FULL_WIDTH_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const setScale = React.useCallback((v) => setScaleRaw(clampScale(v)), []);
   const setButtonSize = React.useCallback((v) => setButtonSizeRaw(validButtonSize(v)), []);
   const setStatsScale = React.useCallback((v) => setStatsScaleRaw(clampScale(v)), []);
   const setLayoutEditMode = React.useCallback((v) => setLayoutEditModeRaw(!!v), []);
+  const setCompactMode = React.useCallback((v) => setCompactModeRaw(!!v), []);
+  const setFontSize = React.useCallback((v) => setFontSizeRaw(validFontSize(v)), []);
+  const setFullWidth = React.useCallback((v) => setFullWidthRaw(!!v), []);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, String(scale)); } catch {}
@@ -86,13 +124,45 @@ export function UIScaleProvider({ children }) {
     try { localStorage.setItem(LAYOUT_EDIT_KEY, String(layoutEditMode)); } catch {}
   }, [layoutEditMode]);
 
-  // Apply button size as a data attribute on <html> so CSS can target it
+  useEffect(() => {
+    try { localStorage.setItem(COMPACT_KEY, String(compactMode)); } catch {}
+  }, [compactMode]);
+
+  useEffect(() => {
+    try { localStorage.setItem(FONT_SIZE_KEY, fontSize); } catch {}
+  }, [fontSize]);
+
+  useEffect(() => {
+    try { localStorage.setItem(FULL_WIDTH_KEY, String(fullWidth)); } catch {}
+  }, [fullWidth]);
+
+  // Apply data attributes on <html> so CSS can target them
   useEffect(() => {
     document.documentElement.setAttribute('data-btn-size', buttonSize);
   }, [buttonSize]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-font-size', fontSize);
+  }, [fontSize]);
+
+  useEffect(() => {
+    if (compactMode) {
+      document.documentElement.setAttribute('data-compact', 'true');
+    } else {
+      document.documentElement.removeAttribute('data-compact');
+    }
+  }, [compactMode]);
+
   return (
-    <UIScaleContext.Provider value={{ scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale, layoutEditMode, setLayoutEditMode }}>
+    <UIScaleContext.Provider value={{
+      scale, setScale,
+      buttonSize, setButtonSize,
+      statsScale, setStatsScale,
+      layoutEditMode, setLayoutEditMode,
+      compactMode, setCompactMode,
+      fontSize, setFontSize,
+      fullWidth, setFullWidth,
+    }}>
       {children}
     </UIScaleContext.Provider>
   );
