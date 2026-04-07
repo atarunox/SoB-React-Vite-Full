@@ -164,17 +164,21 @@ export async function apply(roll, ctx) {
       if (duel) {
         const you = d2d6();
         const them = d2d6();
+        const youLine = `Rolled [${you}] for your draw (2d6).`;
+        const themLine = `Rolled [${them}] for the gunslinger's draw (2d6).`;
+        log.push(youLine);
+        log.push(themLine);
         if (you >= them) {
           ctx.updateHero?.(id, h => ({ ...h, xp: (h.xp || 0) + 25 }));
           const outcome = `High Noon Duel: You drew faster (${you} vs ${them})! +25 XP.`;
           log.push(outcome);
-          await showResult(ctx, 'HIGH NOON DUEL — Result', [outcome]);
+          await showResult(ctx, 'HIGH NOON DUEL — Result', [youLine, themLine, '', outcome]);
           ctx.toast?.(outcome);
         } else {
           ctx.updateHero?.(id, h => addWanted(h));
           const outcome = `High Noon Duel: Outdrawn (${you} vs ${them}). You are now Wanted!`;
           log.push(outcome);
-          await showResult(ctx, 'HIGH NOON DUEL — Result', [outcome]);
+          await showResult(ctx, 'HIGH NOON DUEL — Result', [youLine, themLine, '', outcome]);
           ctx.toast?.(outcome);
         }
       } else {
