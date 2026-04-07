@@ -5,6 +5,7 @@ import { loadTownState, saveTownState } from '../../utils/townState';
 import { drawWorldCardAndArtifact, drawArtifactFromWorld, offerArtifactForSale } from './worldCardDraw.js';
 import { gearCards } from '../../data/items/gearCards.js';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
+import { townLocations } from '../../data/townLocations/index.js';
 
 // Use ctx.d6/ctx.d3 when available (respects manual roll mode); fallback to auto-roll
 const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
@@ -34,6 +35,11 @@ function formatCheckResult(result, stat, target) {
     return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
   }
   return null;
+}
+
+function townLocationName(locId) {
+  const found = townLocations.find(l => l?.id === locId);
+  return found?.name || locId;
 }
 
 async function showResult(ctx, title, lines) {
@@ -128,36 +134,67 @@ export async function apply(roll, ctx) {
     const lines = ['The Mining Operation is Destroyed!'];
     log.push('The Mining Operation is Destroyed!');
 
-    // Roll D6 for 1-2 adjacent town locations
-    const adjCount = await ctx.promptChoice?.(
-      `REFINERY EXPLOSION\n${info.lore}\n\nHow many Town Locations are adjacent to the Mining Operation on your Town Map?`,
-      [
-        { label: '1 adjacent Location' },
-        { label: '2 adjacent Locations' },
-      ]
-    );
-    const numAdj = (adjCount ?? 0) + 1;
-
-    for (let i = 0; i < numAdj; i++) {
-      const adjRoll = await ctxD6(ctx, `Refinery Explosion — Roll D6 for adjacent Location ${i + 1} (1-2 = Destroyed)`);
-      const adjLine = `Adjacent Location ${i + 1}: Rolled [${adjRoll}] — ${adjRoll <= 2 ? 'DESTROYED!' : 'Safe.'}`;
-      log.push(adjLine);
-      lines.push(adjLine);
+    // Player rolls a D6 in real life for each adjacent Town Location.
+    // Any Location that rolled a 1 or 2 is Destroyed — player selects which.
+    const otherLocations = townLocations.filter(l => l?.id && l.id !== shopId);
+    const destroyedAdjacent = [];
+    while (true) {
+      const remaining = otherLocations.filter(l => !destroyedAdjacent.includes(l.id));
+      const choices = [
+        ...remaining.map(l => ({ label: l.name || l.id })),
+        { label: '— Done (no more Destroyed Locations) —' },
+      ];
+      const pick = await ctx.promptChoice?.(
+        `REFINERY EXPLOSION\n${info.lore}\n\nRoll a D6 in real life for each Town Location adjacent to the Mining Operation.\nFor each one that rolled a 1 or 2, select it below to mark it as Destroyed.\n\nAlready Destroyed: ${destroyedAdjacent.length ? destroyedAdjacent.map(d => townLocationName(d)).join(', ') : '(none)'}`,
+        choices,
+      );
+      if (pick == null || pick === choices.length - 1) break;
+      const chosen = remaining[pick];
+      if (chosen?.id) destroyedAdjacent.push(chosen.id);
     }
 
-    // Heroes at destroyed locations take 2D6 Wounds ignoring Defense
-    const heroIds = ctx.getHeroesAtShop?.(shopId) || [id];
-    for (const hid of heroIds) {
-      const w1 = await ctxD6(ctx, 'Refinery Explosion — Roll first D6 for Wounds');
-      const w2 = await ctxD6(ctx, 'Refinery Explosion — Roll second D6 for Wounds');
-      const totalWounds = w1 + w2;
-      const woundLine = `Rolled [${w1}, ${w2}] = ${totalWounds} Wounds (ignoring Defense).`;
-      log.push(woundLine);
-      lines.push(woundLine);
-      ctx.updateHero?.(hid, (h) => ({
-        ...h,
-        currentHealth: Math.max(0, (h.currentHealth ?? h.health ?? h.maxHealth ?? 10) - totalWounds),
-      }));
+    // Mark adjacent destroyed locations in townState
+    if (destroyedAdjacent.length) {
+      const ts2 = loadTownState() || {};
+      const dset = new Set(ts2.destroyedLocations || []);
+      destroyedAdjacent.forEach(d => dset.add(d));
+      saveTownState({ ...ts2, destroyedLocations: Array.from(dset) });
+    }
+
+    const allDestroyed = [shopId, ...destroyedAdjacent];
+
+    // Heroes at any destroyed location take 2D6 Wounds ignoring Defense
+    for (const locId of allDestroyed) {
+      const locName = townLocationName(locId);
+      const heroIds = ctx.getHeroesAtShop?.(locId) || [];
+      const destroyedLine = `${locName} is DESTROYED!`;
+      log.push(destroyedLine);
+      lines.push(destroyedLine);
+      for (const hid of heroIds) {
+        const hero = (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? null;
+        const heroName = hero?.name || 'Hero';
+        const w1 = await ctxD6(ctx, `${heroName} @ ${locName} — Roll first D6 for Wounds`);
+        const w2 = await ctxD6(ctx, `${heroName} @ ${locName} — Roll second D6 for Wounds`);
+        const totalWounds = w1 + w2;
+        const woundLine = `${heroName} @ ${locName}: Rolled [${w1}, ${w2}] = ${totalWounds} Wounds (ignoring Defense).`;
+        log.push(woundLine);
+        lines.push(woundLine);
+        ctx.updateHero?.(hid, (h) => ({
+          ...h,
+          currentHealth: Math.max(0, (h.currentHealth ?? h.health ?? h.maxHealth ?? 10) - totalWounds),
+        }));
+        await showResult(
+          ctx,
+          `REFINERY EXPLOSION — ${heroName}`,
+          [
+            `${heroName} was at the ${locName} when it was destroyed!`,
+            '',
+            `Rolled [${w1}, ${w2}] = ${totalWounds} Wounds (ignoring Defense).`,
+            '',
+            `The ${locName} is Destroyed — ${heroName} must find a new Town Location.`,
+          ],
+        );
+      }
     }
 
     await showResult(ctx, 'REFINERY EXPLOSION — Result', lines);
