@@ -11,6 +11,10 @@ export function buildNumberedPrompt(title, options) {
 export const ui = {
   promptSelect: ({ title = 'Choose one', options = [], defaultIndex = 0 }) => {
     if (!Array.isArray(options) || options.length === 0) return null;
+    if (options.length === 1) {
+      try { window.alert(`${title}\n\n${options[0]?.label ?? options[0]}`); } catch {}
+      return options[0];
+    }
     const raw = window.prompt(
       buildNumberedPrompt(title, options),
       String((defaultIndex ?? 0) + 1)

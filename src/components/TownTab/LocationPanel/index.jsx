@@ -266,10 +266,16 @@ export default function TownTab({ heroId }) {
   };
   const uiApi = {
 promptChoice: async (title, options) => {
+  if (Array.isArray(options) && options.length === 1) {
+    const only = options[0];
+    const label = (only && (only.label || only)) || 'Continue';
+    try { window.alert(`${title}\n\n${label}`); } catch {}
+    return 0;
+  }
   const msg =
     `${title}\n\n${options
          .map((o, i) => `${i + 1}. ${o.label || o}`)
-          .join('\n')}\n\nEnter a number:`,
+          .join('\n')}\n\nEnter a number:`;
   const pick = window.prompt(msg, '1');
   const idx = Math.max(0, Math.min(options.length - 1, (Number(pick) | 0) - 1));
   return idx;

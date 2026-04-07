@@ -210,10 +210,22 @@ export async function apply(roll, ctx) {
 
     const heroIds = ctx.getHeroesAtShop?.(shopId) || [id];
     for (const hid of heroIds) {
-      ctx.updateHero?.(hid, (h) => ({
-        ...h,
-        corruption: (h.corruption ?? 0) + corruptionRoll,
-      }));
+      const h = (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? null;
+      const heroName = h?.name || 'Hero';
+      // Willpower save per Corruption Hit (corruption is not specified to ignore Willpower)
+      const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const saveRolls = await ctx.roll?.(corruptionRoll, 6, `${heroName} — Willpower ${wpTarget}+ saves vs ${corruptionRoll} Corruption Hits`) || [];
+      const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+      const blocks = arr.filter(n => n >= wpTarget).length;
+      const unblocked = Math.max(0, corruptionRoll - blocks);
+      log.push(`${heroName}: Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblocked} corruption taken.`);
+      if (unblocked > 0) {
+        ctx.updateHero?.(hid, (hh) => ({
+          ...hh,
+          currentCorruption: (hh.currentCorruption ?? hh.corruption ?? 0) + unblocked,
+        }));
+      }
     }
 
     // Block Work the Mines today

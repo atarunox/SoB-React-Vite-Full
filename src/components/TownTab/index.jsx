@@ -26,6 +26,7 @@ import { hasKeyword, removeKeyword } from '../../utils/keywords';
 import { performSaloonService } from '../../utils/locationHandlers/saloonServices.js';
 import { performGamblingHallService } from '../../utils/locationHandlers/gamblingHallServices.js';
 import { performSheriffsOfficeService } from '../../utils/locationHandlers/sheriffsOfficeServices.js';
+import { performMiningOperationService } from '../../utils/locationHandlers/miningOperationServices.js';
 
 import {
   canUseTribalTent,
@@ -1149,6 +1150,13 @@ const foWorldArtifactOffer =
       return Array.isArray(r) ? r[0] : r;
     },
     promptChoice: async (title, options) => {
+      // Single-option prompts: just show an alert (no number entry)
+      if (Array.isArray(options) && options.length === 1) {
+        const only = options[0];
+        const label = (only && (only.label || only)) || 'Continue';
+        try { window.alert(`${title}\n\n${label}`); } catch {}
+        return 0;
+      }
       const msg =
         `${title}\n\n${options
           .map((o, i) => `${i + 1}. ${o.label || o}`)
@@ -2407,6 +2415,41 @@ const foWorldArtifactOffer =
       if (res?.log?.length) console.log(res.log.join('\n'));
       setServiceUi(
         res?.ui || { title: svc.name, outcome: ['Performed.'] }
+      );
+      setState(loadTownState());
+      return;
+    }
+
+    // ---------- Mining Operation ----------
+    if (shopId === 'miningOperation') {
+      const moId = hero.id || hero.localId;
+
+      // Enforce "1 of 3 Work Down in the Tunnels per Location Visit"
+      const workIds = ['mo_work_refinery', 'mo_work_fungus_farms', 'mo_work_mines'];
+      if (workIds.includes(svc.id)) {
+        const usedAny = workIds.some((wid) => (getVisitCount(wid) || 0) > 0);
+        if (usedAny) {
+          alert('You may only do 1 of the 3 "Work Down in the Tunnels" services per visit.');
+          return;
+        }
+      }
+
+      const moCtx = {
+        ui: uiApi,
+        getActiveHeroId: () => moId,
+        getHeroById: (hid) => posse.find((x) => (x.id || x.localId) === hid) || null,
+        getHero: (hid) => posse.find((x) => (x.id || x.localId) === hid) || null,
+        updateHero: posseApi.updateHero,
+      };
+      const res = await performMiningOperationService(svc.id, {}, moCtx);
+      applyActions(res?.actions);
+      if (workIds.includes(svc.id)) {
+        // Mark all 3 as used so the UI grays them out
+        workIds.forEach((wid) => incVisitCount(wid));
+      }
+      if (res?.log?.length) console.log(res.log.join('\n'));
+      setServiceUi(
+        res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
       );
       setState(loadTownState());
       return;
@@ -3770,33 +3813,56 @@ const foWorldArtifactOffer =
                         >
                           Buy
                         </button>
-                      ) : (
-                        <button
-                          className="btn btn-sm btn-primary"
-                          disabled={
-                            hero.chosenLocation !==
-                              openLocationId ||
+                      ) : (() => {
+                          const tunnelIds = ['mo_work_refinery', 'mo_work_fungus_farms', 'mo_work_mines'];
+                          const isTunnelWork = openLocationId === 'miningOperation' && tunnelIds.includes(item?.id);
+                          const tunnelWorkUsed = isTunnelWork && tunnelIds.some((wid) => (getVisitCount(wid) || 0) > 0);
+                          const blockedSvc = !!state?.blockedServices?.[item?.id];
+                          const performDisabled =
+                            hero.chosenLocation !== openLocationId ||
                             gatedByLaw ||
-                            gatedOutlaw
-                          }
-                          title={
-                            gatedByLaw
-                              ? "Law heroes may not use the Smuggler's Den."
-                              : gatedOutlaw
-                              ? 'Outlaw only.'
-                              : ''
-                          }
-                          onClick={() =>
-                            handlePerform(
-                              openLocationId,
-                              item,
-                              idx
-                            )
-                          }
-                        >
-                          Perform
-                        </button>
-                      )}
+                            gatedOutlaw ||
+                            blockedSvc ||
+                            tunnelWorkUsed;
+                          const performTitle = gatedByLaw
+                            ? "Law heroes may not use the Smuggler's Den."
+                            : gatedOutlaw
+                            ? 'Outlaw only.'
+                            : blockedSvc
+                            ? 'Blocked today by a Location Event.'
+                            : tunnelWorkUsed
+                            ? 'You may only do 1 of the 3 Tunnels Work services per visit.'
+                            : '';
+                          return (
+                            <button
+                              className="btn btn-sm btn-primary"
+                              disabled={performDisabled}
+                              title={performTitle}
+                              onClick={() =>
+                                handlePerform(
+                                  openLocationId,
+                                  item,
+                                  idx
+                                )
+                              }
+                            >
+                              Perform
+                            </button>
+                          );
+                        })()}
+                      {openLocationId === 'miningOperation' &&
+                        ['mo_work_refinery', 'mo_work_fungus_farms', 'mo_work_mines'].includes(item?.id) && (
+                          <>
+                            {state?.blockedServices?.[item?.id] && (
+                              <span className="text-[10px] text-red-700 bg-red-50 border border-red-200 rounded px-2 py-0.5">
+                                Closed today (Location Event)
+                              </span>
+                            )}
+                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                              Pick 1 of 3 per visit
+                            </span>
+                          </>
+                        )}
 
                       {restrictionsLabel && (
                         <span className="text-[10px] text-red-700 bg-red-50 border border-red-200 rounded px-2 py-0.5">

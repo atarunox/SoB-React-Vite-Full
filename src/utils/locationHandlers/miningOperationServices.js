@@ -68,11 +68,22 @@ export async function performMiningOperationService(serviceId, _params = {}, ctx
       pushUpdate({ currentGrit: curGrit - 1 });
       log.push('Discarded <b>1 Grit</b> to work the Refinery.');
 
-      // Take D3 Corruption Hits
+      // Take D3 Corruption Hits — Willpower save per Hit
       const corruptRoll = await roll1d3(ui, 'Work the Refinery — D3 Corruption Hits');
-      const curCorruption = Number(hero.corruption || 0);
-      pushUpdate({ corruption: curCorruption + corruptRoll });
-      log.push(`Took <b>${corruptRoll} Corruption Hit${corruptRoll !== 1 ? 's' : ''}</b> (D3) from the refinery work.`);
+      const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const saveRolls = await rollND(ui, corruptRoll, 6, `Willpower ${wpTarget}+ saves vs ${corruptRoll} Corruption Hits`);
+      const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+      const blocked2 = arr.filter((n) => n >= wpTarget).length;
+      const unblocked = Math.max(0, corruptRoll - blocked2);
+      log.push(`Rolled D3 → ${corruptRoll} Corruption Hit${corruptRoll !== 1 ? 's' : ''}. Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocked2} blocked.`);
+      if (unblocked > 0) {
+        const curCorruption = Number(hero.currentCorruption ?? hero.corruption ?? 0);
+        pushUpdate({ currentCorruption: curCorruption + unblocked });
+        log.push(`Took <b>${unblocked} Corruption</b> from the refinery work.`);
+      } else {
+        log.push('Resisted all Corruption from the refinery work.');
+      }
 
       // Gain D6 × $100
       const goldRoll = await roll1(ui, 'Work the Refinery — D6 × $100 pay');
