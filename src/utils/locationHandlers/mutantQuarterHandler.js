@@ -292,6 +292,17 @@ export async function apply(roll, ctx) {
       log.push(showLine);
 
       if (showRoll >= 3) {
+        // Willpower save for 1 Corruption Hit
+        const hRef = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+        const wpStr = String(hRef?.willpower ?? hRef?.stats?.Willpower ?? '5+');
+        const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+        const saveRolls = await ctx.roll?.(1, 6, `Willpower ${wpTarget}+ save vs 1 Corruption Hit`) || [];
+        const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+        const wpBlocked = wpArr.filter(n => n >= wpTarget).length;
+        const unblockedCorruption = Math.max(0, 1 - wpBlocked);
+        const wpLine = `Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${wpBlocked ? 'blocked!' : '1 corruption taken.'}`;
+        log.push(wpLine);
+
         ctx.updateHero?.(id, (h) => {
           const maxGrit = Number(h.maxGrit ?? h.stats?.Grit ?? 2);
           const curGrit = Number(h.currentGrit ?? h.grit ?? 0);
@@ -299,13 +310,13 @@ export async function apply(roll, ctx) {
           return {
             ...h,
             currentGrit: nextGrit,
-            corruptionHits: (h.corruptionHits || 0) + 1,
+            currentCorruption: (h.currentCorruption ?? h.corruption ?? 0) + unblockedCorruption,
           };
         });
-        const outcome = 'The show is wild! Recover 1 Grit and take 1 Corruption Hit.';
+        const outcome = `The show is wild! Recover 1 Grit and take 1 Corruption Hit${unblockedCorruption === 0 ? ' (blocked by Willpower)' : ''}.`;
         log.push(outcome);
-        await showResult(ctx, 'MUTANT SALOON — Result', [tokenLine, showLine, '', outcome]);
-        ctx.toast?.('Mutant Saloon: +1 Tequila, +15 XP, +1 Grit, +1 Corruption Hit.');
+        await showResult(ctx, 'MUTANT SALOON — Result', [tokenLine, showLine, wpLine, '', outcome]);
+        ctx.toast?.(`Mutant Saloon: +1 Tequila, +15 XP, +1 Grit, ${unblockedCorruption} Corruption.`);
       } else {
         const outcome = 'The show is entertaining but nothing special happens beyond the XP.';
         log.push(outcome);
@@ -426,10 +437,10 @@ export async function apply(roll, ctx) {
   // 11: Preaching the Faith — +1 Spirit next Adventure, remove 2 Corruption Hits
   if (roll === 11) {
     ctx.updateHero?.(id, (h) => {
-      const corr = Math.max(0, (h.corruptionHits || 0) - 2);
+      const nextCorruption = Math.max(0, (h.currentCorruption ?? h.corruption ?? 0) - 2);
       return {
         ...h,
-        corruptionHits: corr,
+        currentCorruption: nextCorruption,
         adventureBuffs: {
           ...(h.adventureBuffs || {}),
           Spirit: ((h.adventureBuffs?.Spirit) || 0) + 1,

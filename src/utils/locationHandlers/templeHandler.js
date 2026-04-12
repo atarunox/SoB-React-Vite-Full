@@ -149,13 +149,25 @@ async function applyIdolEvent4(idolRoll, ctx, id, log) {
       const rollLine = `Rolled [${roll1}, ${roll2}] + Strength ${str} = ${total}`;
       log.push(rollLine);
       if (total >= 13) {
-        // Apply 3 Corruption Hits to every Hero
+        // Apply 3 Corruption Hits to every Hero (with Willpower saves)
         const allHeroes = ctx.getHeroesAtShop?.('temple') || [id];
+        const corruptionHits = 3;
         for (const hid of allHeroes) {
-          ctx.updateHero?.(hid, (h) => ({
-            ...h,
-            corruption: (h.corruption ?? 0) + 3,
-          }));
+          const h = (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? null;
+          const heroName = h?.name || 'Hero';
+          const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
+          const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+          const saveRolls = await ctx.roll?.(corruptionHits, 6, `${heroName} — Willpower ${wpTarget}+ saves vs ${corruptionHits} Corruption Hits`) || [];
+          const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+          const blocks = arr.filter(n => n >= wpTarget).length;
+          const unblocked = Math.max(0, corruptionHits - blocks);
+          log.push(`${heroName}: Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblocked} corruption taken.`);
+          if (unblocked > 0) {
+            ctx.updateHero?.(hid, (hh) => ({
+              ...hh,
+              currentCorruption: (hh.currentCorruption ?? hh.corruption ?? 0) + unblocked,
+            }));
+          }
         }
         const outcome = `${rollLine}\nTotal is 13 or higher — the countdown sequence triggers! This is the last day in Town for all Heroes. Every Hero takes 3 Corruption Hits from the ensuing fallout.`;
         log.push(outcome);
@@ -240,10 +252,28 @@ async function applyIdolEvent4(idolRoll, ctx, id, log) {
         const corruptRoll = await ctxD6(ctx, 'Radiation Leak — Roll D6 for Corruption Hits');
         const corruptLine = `Rolled [${corruptRoll}] Corruption Hits.`;
         log.push(corruptLine);
-        const outcome = `The followers catch you tampering and burn you on the core! Take ${corruptRoll} Corruption Hits. The Temple is Destroyed anyway.`;
+
+        // Willpower saves per Corruption Hit
+        const h = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+        const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
+        const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+        const saveRolls = await ctx.roll?.(corruptRoll, 6, `Willpower ${wpTarget}+ saves vs ${corruptRoll} Corruption Hits`) || [];
+        const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+        const blocks = arr.filter(n => n >= wpTarget).length;
+        const unblocked = Math.max(0, corruptRoll - blocks);
+        const wpLine = `Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblocked} corruption taken.`;
+        log.push(wpLine);
+        if (unblocked > 0) {
+          ctx.updateHero?.(id, (hh) => ({
+            ...hh,
+            currentCorruption: (hh.currentCorruption ?? hh.corruption ?? 0) + unblocked,
+          }));
+        }
+
+        const outcome = `The followers catch you tampering and burn you on the core! Take ${corruptRoll} Corruption Hits (${unblocked} after Willpower saves). The Temple is Destroyed anyway.`;
         log.push(outcome);
-        await showResult(ctx, 'RADIATION LEAK — Failed!', [checkLine, corruptLine, '', outcome]);
-        ctx.toast?.(`Radiation Leak: failed! ${corruptRoll} Corruption Hits. Temple Destroyed.`);
+        await showResult(ctx, 'RADIATION LEAK — Failed!', [checkLine, corruptLine, wpLine, '', outcome]);
+        ctx.toast?.(`Radiation Leak: failed! ${unblocked} Corruption. Temple Destroyed.`);
       }
       return;
     }

@@ -444,12 +444,27 @@ export async function apply(roll, ctx) {
     }
 
     const earnings = agiSuccesses * 500;
-    const corruption = agiSuccesses;
+    const corruptionHits = agiSuccesses;
     const robberyOutcome = agiSuccesses > 0
-      ? `${agiSuccesses} success(es) — Robbery haul: $${earnings}, Corruption Hits: ${corruption}.`
+      ? `${agiSuccesses} success(es) — Robbery haul: $${earnings}, Corruption Hits: ${corruptionHits}.`
       : 'The robbery doesn\u2019t go as planned \u2014 no loot from the heist.';
     log.push(robberyOutcome);
     await showResult(ctx, 'ONE LAST JOB — Phase 2 Result', [agiLine, '', robberyOutcome]);
+
+    // Willpower saves for Corruption Hits from the robbery
+    let unblockedCorruption = 0;
+    if (corruptionHits > 0) {
+      const h = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+      const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const saveRolls = await ctx.roll?.(corruptionHits, 6, `Willpower ${wpTarget}+ saves vs ${corruptionHits} Corruption Hits`) || [];
+      const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+      const blocks = arr.filter(n => n >= wpTarget).length;
+      unblockedCorruption = Math.max(0, corruptionHits - blocks);
+      const wpLine = `Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblockedCorruption} corruption taken.`;
+      log.push(wpLine);
+      await showResult(ctx, 'ONE LAST JOB — Willpower Saves', [wpLine]);
+    }
 
     // Remove temporary Agility buff
     if (totalBonus > 0) {
@@ -475,10 +490,10 @@ export async function apply(roll, ctx) {
       ctx.updateHero?.(id, h => ({
         ...h,
         gold: (h.gold || 0) + earnings,
-        corruption: (h.corruption || 0) + corruption,
+        currentCorruption: (h.currentCorruption ?? h.corruption ?? 0) + unblockedCorruption,
       }));
       const outcome = earnings > 0
-        ? `You got away without a hitch! +$${earnings}, +${corruption} Corruption Hit(s).`
+        ? `You got away without a hitch! +$${earnings}, +${unblockedCorruption} Corruption (after Willpower saves).`
         : 'The robbery was a bust, but at least you got away without a hitch.';
       log.push(outcome);
       await showResult(ctx, 'ONE LAST JOB — Getaway Result', [luckLine, '', outcome]);
@@ -490,11 +505,11 @@ export async function apply(roll, ctx) {
         return {
           ...wanted,
           gold: (h.gold || 0) + halfEarnings,
-          corruption: (h.corruption || 0) + corruption,
+          currentCorruption: (h.currentCorruption ?? h.corruption ?? 0) + unblockedCorruption,
         };
       });
       const outcome = earnings > 0
-        ? `The swarthy bandido sold you out! You keep only $${halfEarnings} (half of $${earnings}), take ${corruption} Corruption Hit(s), and become Wanted!`
+        ? `The swarthy bandido sold you out! You keep only $${halfEarnings} (half of $${earnings}), take ${unblockedCorruption} Corruption (after saves), and become Wanted!`
         : 'The swarthy bandido sold you out! The robbery was a bust and you become Wanted!';
       log.push(outcome);
       await showResult(ctx, 'ONE LAST JOB — Getaway Result', [luckLine, '', outcome]);

@@ -204,11 +204,18 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
     }
 
     case 'saloon_troupe_pickpocket': {
-      // Take D3 Corruption Hits first (cost of attempting)
+      // Take D3 Corruption Hits first (cost of attempting) — with Willpower saves
       const corruptionHits = d3();
-      const curCorruption = Number(hero.corruption || 0);
-      pushUpdate({ corruption: curCorruption + corruptionHits });
-      log.push(`Pickpocket costs <b>${corruptionHits} Corruption Hit(s)</b> (D3).`);
+      const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const wpRolls = await rollND(ui, corruptionHits, 6, `Willpower ${wpTarget}+ saves vs ${corruptionHits} Corruption Hits`);
+      const wpBlocked = wpRolls.filter(r => r >= wpTarget).length;
+      const unblockedCorruption = Math.max(0, corruptionHits - wpBlocked);
+      log.push(`Pickpocket: ${corruptionHits} Corruption Hit(s) (D3). Willpower [${wpRolls.join(', ')}] vs ${wpTarget}+ — ${wpBlocked} blocked, ${unblockedCorruption} taken.`);
+      if (unblockedCorruption > 0) {
+        const curCorruption = Number(hero.currentCorruption ?? hero.corruption ?? 0);
+        pushUpdate({ currentCorruption: curCorruption + unblockedCorruption });
+      }
 
       // Agility 4+ test: per-die 4–5 = $10, per 6 = draw a Gear card
       const ag = Math.max(1, stat('Agility', 1));

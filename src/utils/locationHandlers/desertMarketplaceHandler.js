@@ -327,12 +327,12 @@ export async function apply(roll, ctx) {
         const maxGrit = Number(h.maxGrit ?? h.stats?.Grit ?? 2);
         const curGrit = Number(h.currentGrit ?? h.grit ?? 0);
         const nextGrit = Math.min(maxGrit, curGrit + 1);
-        const corruption = Math.max(0, (h.corruption ?? 0) - 1);
+        const nextCorruption = Math.max(0, (h.currentCorruption ?? h.corruption ?? 0) - 1);
         return {
           ...h,
           gold: Math.max(0, (h.gold || 0) - 100),
           currentGrit: nextGrit,
-          corruption,
+          currentCorruption: nextCorruption,
         };
       });
       const outcome =
@@ -345,8 +345,8 @@ export async function apply(roll, ctx) {
         const maxGrit = Number(h.maxGrit ?? h.stats?.Grit ?? 2);
         const curGrit = Number(h.currentGrit ?? h.grit ?? 0);
         const nextGrit = Math.min(maxGrit, curGrit + 1);
-        const corruption = Math.max(0, (h.corruption ?? 0) - 1);
-        return { ...h, currentGrit: nextGrit, corruption };
+        const nextCorruption = Math.max(0, (h.currentCorruption ?? h.corruption ?? 0) - 1);
+        return { ...h, currentGrit: nextGrit, currentCorruption: nextCorruption };
       });
       const outcome =
         'You give a Side Bag Token to help the starving refugees. Discard 1 Side Bag Token. Recover 1 Grit and remove 1 Corruption Point.';

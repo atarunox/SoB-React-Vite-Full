@@ -92,22 +92,43 @@ export async function apply(roll, ctx) {
       ctx.toast?.('Plague Tent: Luck test passed — no effect.');
     } else {
       const corruptionRoll = await ctxD3(ctx, 'Plague Tent — Roll D3 for Corruption Hits');
-      const corruptionLine = `Rolled [${corruptionRoll}] for Corruption Hits (D3, no Willpower saves).`;
+      const corruptionLine = `Rolled [${corruptionRoll}] for Corruption Hits (D3).`;
       log.push(corruptionLine);
 
+      // Willpower saves per Corruption Hit
+      const hRef = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+      const wpStr = String(hRef?.willpower ?? hRef?.stats?.Willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const saveRolls = await ctx.roll?.(corruptionRoll, 6, `Willpower ${wpTarget}+ saves vs ${corruptionRoll} Corruption Hits`) || [];
+      const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+      const wpBlocks = wpArr.filter(n => n >= wpTarget).length;
+      const unblockedCorruption = Math.max(0, corruptionRoll - wpBlocks);
+      const wpLine = `Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${wpBlocks} blocked, ${unblockedCorruption} corruption taken.`;
+      log.push(wpLine);
+
+      if (unblockedCorruption > 0) {
+        ctx.updateHero?.(id, (h) => {
+          const maxCor = Number(h.maxCorruption ?? h.stats?.['Max Corruption'] ?? 5) || 5;
+          const cur = Math.max(0, Number(h.currentCorruption ?? 0));
+          let next = cur + unblockedCorruption;
+
+          // Overflow -> Mutations
+          const overflow = Math.floor(next / maxCor);
+          next = next % maxCor;
+
+          const nextMut = Array.isArray(h.mutations) ? [...h.mutations] : [];
+          for (let i = 0; i < overflow; i++) nextMut.push({ name: 'Mutation — Roll Needed' });
+
+          return {
+            ...h,
+            currentCorruption: next,
+            mutations: nextMut,
+          };
+        });
+      }
+
+      // Shaken Nerves: Max Grit capped at 1 next Adventure (always applied on fail)
       ctx.updateHero?.(id, (h) => {
-        const maxCor = Number(h.maxCorruption ?? h.stats?.['Max Corruption'] ?? 5) || 5;
-        const cur = Math.max(0, Number(h.currentCorruption ?? 0));
-        let next = cur + corruptionRoll;
-
-        // Overflow -> Mutations
-        const overflow = Math.floor(next / maxCor);
-        next = next % maxCor;
-
-        const nextMut = Array.isArray(h.mutations) ? [...h.mutations] : [];
-        for (let i = 0; i < overflow; i++) nextMut.push({ name: 'Mutation — Roll Needed' });
-
-        // Shaken Nerves: Max Grit capped at 1 next Adventure
         const tmp = {
           id: `gritcap_nextadv_${Date.now()}`,
           type: 'Temporary',
@@ -121,20 +142,14 @@ export async function apply(roll, ctx) {
           addedAt: Date.now(),
         };
         const mergedConds = appendTemporary(h.conditions, tmp);
-
-        return {
-          ...h,
-          currentCorruption: next,
-          mutations: nextMut,
-          conditions: mergedConds,
-        };
+        return { ...h, conditions: mergedConds };
       });
 
-      const mutNote = corruptionRoll > 0 ? ' Corruption overflow may trigger Mutations.' : '';
-      const outcome = `Failed! Gain ${corruptionRoll} Corruption Hit${corruptionRoll !== 1 ? 's' : ''} (no Willpower saves).${mutNote} Added "Shaken Nerves" (Max Grit cap 1 next Adventure).`;
+      const mutNote = unblockedCorruption > 0 ? ' Corruption overflow may trigger Mutations.' : '';
+      const outcome = `Failed! ${corruptionRoll} Corruption Hit${corruptionRoll !== 1 ? 's' : ''} — ${unblockedCorruption} after Willpower saves.${mutNote} Added "Shaken Nerves" (Max Grit cap 1 next Adventure).`;
       log.push(outcome);
-      await showResult(ctx, 'PLAGUE TENT — Result', [checkLine, corruptionLine, '', outcome]);
-      ctx.toast?.(`Plague Tent: +${corruptionRoll} Corruption, Shaken Nerves added.`);
+      await showResult(ctx, 'PLAGUE TENT — Result', [checkLine, corruptionLine, wpLine, '', outcome]);
+      ctx.toast?.(`Plague Tent: +${unblockedCorruption} Corruption, Shaken Nerves added.`);
     }
     return { log };
   }
@@ -241,8 +256,23 @@ export async function apply(roll, ctx) {
       results.push({ ...t, roll: dieRoll, removed, corruption });
     }
 
-    // Tally natural 1s for corruption
+    // Tally natural 1s for corruption hits
     const ones = results.filter(r => r.corruption).length;
+
+    // Willpower saves for Corruption Hits from natural 1s
+    let unblockedCorruption = ones;
+    let wpLine = '';
+    if (ones > 0) {
+      const hRef = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+      const wpStr = String(hRef?.willpower ?? hRef?.stats?.Willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const saveRolls = await ctx.roll?.(ones, 6, `Willpower ${wpTarget}+ saves vs ${ones} Corruption Hits`) || [];
+      const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+      const wpBlocks = wpArr.filter(n => n >= wpTarget).length;
+      unblockedCorruption = Math.max(0, ones - wpBlocks);
+      wpLine = `Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${wpBlocks} blocked, ${unblockedCorruption} corruption taken.`;
+      log.push(wpLine);
+    }
 
     // Apply changes to hero
     ctx.updateHero?.(id, (h) => {
@@ -257,8 +287,8 @@ export async function apply(roll, ctx) {
         next[r.bucket] = arr;
       }
 
-      const nextHits = Math.max(0, Number(h.corruptionHits ?? h.currentCorruption ?? 0)) + ones;
-      return { ...h, conditions: next, corruptionHits: nextHits };
+      const nextCorruption = Math.max(0, Number(h.currentCorruption ?? h.corruption ?? 0)) + unblockedCorruption;
+      return { ...h, conditions: next, currentCorruption: nextCorruption };
     });
 
     // Build summary for display
@@ -267,13 +297,13 @@ export async function apply(roll, ctx) {
       return `  ${label}: Rolled [${r.roll}] — ${r.removed ? 'Removed' : r.corruption ? 'Kept + Corruption' : 'Kept'}`;
     });
     const corruptionNote = ones > 0
-      ? `\nNatural 1s: ${ones} — +${ones} Corruption Hit${ones === 1 ? '' : 's'}.`
+      ? `\nNatural 1s: ${ones} — ${unblockedCorruption} Corruption after Willpower saves.`
       : '\nNo natural 1s — no extra Corruption.';
 
     const outcome = `Medical Miracle results:\n${summaryLines.join('\n')}${corruptionNote}`;
     log.push(outcome);
     await showResult(ctx, 'MEDICAL MIRACLE — Result', [outcome]);
-    ctx.toast?.(`Medical Miracle: ${results.filter(r => r.removed).length} removed, ${ones} Corruption Hit${ones === 1 ? '' : 's'}.`);
+    ctx.toast?.(`Medical Miracle: ${results.filter(r => r.removed).length} removed, ${unblockedCorruption} Corruption.`);
     return { log };
   }
 
