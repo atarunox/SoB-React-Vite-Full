@@ -255,7 +255,10 @@ export async function apply(roll, ctx) {
       const w1 = await ctxD6(ctx, 'Held Up — Roll first d6 for Wounds');
       const w2 = await ctxD6(ctx, 'Held Up — Roll second d6 for Wounds');
       const wounds = w1 + w2;
-      ctx.updateHero?.(id, h => ({ ...h, wounds: (h.wounds || 0) + wounds }));
+      ctx.updateHero?.(id, h => ({
+        ...h,
+        currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - wounds),
+      }));
       const woundLine = `Rolled [${w1}, ${w2}] = ${wounds} Wounds (ignoring Defense).`;
       log.push(woundLine);
       const outcome = `2D6 = ${you} < Initiative ${heroInit} \u2014 FAILED! They beat ${heroName} down! Take ${wounds} Wounds, ignoring Defense.`;

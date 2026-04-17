@@ -107,7 +107,7 @@ export default function LocationEventModal({
       onMouseDown={handleBackdrop}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-lg"
+        className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -118,7 +118,7 @@ export default function LocationEventModal({
           {/* Set roll control (always available until you choose to lock it) */}
           <button
             onClick={onManualPrompt}
-            className="text-xs px-2 py-1 rounded border hover:shadow transition"
+            className="text-sm px-3 py-2 rounded border hover:shadow transition min-h-[44px]"
             title="Set roll manually"
             disabled={busy}
           >

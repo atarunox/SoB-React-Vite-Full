@@ -134,7 +134,7 @@ export async function applyHits(heroId, dmg, ctx = {}, ui = {}) {
   // Last resort direct update
   ctx.updateHero?.(heroId, (h) => ({
     ...h,
-    wounds: (h.wounds || 0) + dmg,
+    currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - dmg),
   }));
 
   ui.toast?.(`Took ${dmg} Hits.`);

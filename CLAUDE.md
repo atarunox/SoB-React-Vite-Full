@@ -1,233 +1,324 @@
-# CLAUDE.md — Shadows of Brimstone Companion App
+# Shadows of Brimstone — Hero Tracker App
 
-## Overview
+## Project Overview
 
-Digital companion/tracker for the Shadows of Brimstone board game. Built with React 18, Vite 5, Tailwind CSS 4, and Firebase (Firestore). JavaScript only — no TypeScript.
+React + Vite app for tracking Heroes, Town Visits, and game state for the *Shadows of Brimstone* board game by Flying Frog Productions. Firebase for cloud persistence, localStorage as fallback. Tailwind CSS v4 for styling. Mobile-first target audience.
 
-## Commands
+**Tech stack:** React 18, Vite 5, Tailwind CSS 4.1, Firebase (Firestore), framer-motion, react-router-dom v6.
 
-```bash
-npm run dev        # Start dev server (port 5173)
-npm run build      # Production build (use to verify changes — no linter or tests)
-npm run preview    # Preview production build
+---
+
+## Critical Codebase Conventions
+
+### Canonical Hero Fields
+
+`sanitizeHero.js` is the single source of truth. Every hero object passes through it on load/save. Fields not in the canonical schema are silently ignored or overwritten.
+
+**Resource pools (read/write these):**
+| Field | Meaning | Default |
+|---|---|---|
+| `currentHealth` | Current HP | 10 |
+| `maxHealth` | Max HP | 10 |
+| `currentSanity` | Current Sanity | 10 |
+| `maxSanity` | Max Sanity | 10 |
+| `currentCorruption` | Corruption Points accumulated | 0 |
+| `maxCorruption` | Corruption Resistance threshold | 5 |
+| `currentGrit` | Current Grit tokens | 0 |
+| `Grit` | Max Grit cap | 2 |
+| `gold` | Currency | 0 |
+| `xp` | Experience points | 0 |
+
+**Core stats (inside `hero.stats`):**
+| Stat | Type | Default |
+|---|---|---|
+| `Strength` | Dice pool | 2 |
+| `Agility` | Dice pool | 2 |
+| `Cunning` | Dice pool | 2 |
+| `Spirit` | Dice pool | 2 |
+| `Lore` | Dice pool | 2 |
+| `Luck` | Dice pool | 2 |
+| `Initiative` | Numeric | 4 |
+| `Combat` | Dice pool (attack dice) | 1 |
+| `Move` | Numeric | 0 |
+
+**Threshold stats (inside `hero.stats`, "X+" format, lower is better):**
+| Stat | Default |
+|---|---|
+| `Melee To-Hit` | 4+ |
+| `Ranged To-Hit` | 4+ |
+| `Defense` | 4+ |
+| `Willpower` | 5+ |
+| `Armor` | — |
+| `Spirit Armor` | — |
+
+**Conditions:** `injuries[]`, `madness[]`, `mutations[]` (top-level arrays of objects).
+
+**Gear:** `hero.gear` is a slot-keyed object with 13 standard slots: `Main Hand`, `Off Hand`, `Head`, `Torso`, `Coat`, `Gloves`, `Hands`, `Pants`, `Feet`, `Shoulders`, `Face`, `Extra 1`, `Extra 2`.
+
+### CRITICAL: Field Name Bugs to Avoid
+
+The sanitizer (line 172) mirrors `corruption: currentCorruption` as a **read-only alias**. This means:
+- Writing to `corruption` is **silently dropped** on next sanitize pass
+- Writing to `corruptionHits` does **nothing** (not a real field)
+- Writing to `wounds` does **nothing** (not a real field)
+- Writing to `health` is **silently dropped** (overwritten by `currentHealth`)
+
+**Always write to the canonical field:**
+```js
+// CORRECT — corruption
+ctx.updateHero(id, h => ({
+  ...h,
+  currentCorruption: (h.currentCorruption ?? 0) + amount,
+}));
+
+// CORRECT — damage (reduce health)
+ctx.updateHero(id, h => ({
+  ...h,
+  currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - wounds),
+}));
+
+// CORRECT — healing
+ctx.updateHero(id, h => ({
+  ...h,
+  currentHealth: Math.min(h.maxHealth ?? 10, (h.currentHealth ?? 0) + healAmount),
+}));
+
+// WRONG — silently dropped
+ctx.updateHero(id, h => ({ ...h, corruption: X }));   // ← dropped
+ctx.updateHero(id, h => ({ ...h, wounds: X }));        // ← dropped  
+ctx.updateHero(id, h => ({ ...h, health: X }));        // ← dropped
+ctx.updateHero(id, h => ({ ...h, corruptionHits: X }));// ← dropped
 ```
 
-**Tool scripts:**
-```bash
-node tools/fix-town-imports.mjs     # Add explicit .js extensions to town location imports
-node tools/check-balance.mjs <file> # Validate bracket/brace/paren balance in a file
+### Willpower Save Pattern for Corruption Hits
+
+Reference implementation: `miningOperationHandler.js:215-228`.
+
+Every source of Corruption Hits **must** allow Willpower saves unless the card text explicitly says "ignoring Willpower":
+
+```js
+const h = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
+const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
+const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+const saveRolls = await ctx.roll?.(hitCount, 6,
+  `Willpower ${wpTarget}+ saves vs ${hitCount} Corruption Hits`) || [];
+const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+const blocks = arr.filter(n => n >= wpTarget).length;
+const unblocked = Math.max(0, hitCount - blocks);
+if (unblocked > 0) {
+  ctx.updateHero?.(id, hh => ({
+    ...hh,
+    currentCorruption: (hh.currentCorruption ?? 0) + unblocked,
+  }));
+}
 ```
 
-## Architecture
+### Stat Calculation Pipeline
 
+`calculateStats.js` merges: base stats → gear mods → skill mods → condition mods.
+- Threshold stats (Defense, Willpower, etc.) are improved by **subtracting** the delta (e.g., Defense 4+ with +1 → 3+).
+- `conditionRules.js` aggregates non-numeric rules: `forbidSlots`, `noCrit`, `dsAllergy`, `gritCap`, `noGuns`, etc.
+
+---
+
+## Verified Shadows of Brimstone Rules Reference
+
+*Sources: City of the Ancients Rulebook, Swamps of Death Rulebook, Official FAQ (Nov 2019), Esoteric Order of Gamers rules summary v1.2, Shadows of Brimstone Wiki, Brimstone Mission Generator Reference.*
+
+### Combat
+
+**Attack rolls:**
+- Roll dice equal to **Combat** stat (or weapon dice). Each die hitting the weapon's **To Hit** target (Melee or Ranged) scores a Hit.
+- **Critical Hit:** Natural 6 on an attack die **ignores Defense** — no Defense save allowed.
+
+**Defense (HP path):**
+1. Roll 1 Defense die per incoming Hit. Success (meeting Defense target) blocks the entire Hit.
+2. Each unblocked Hit deals the weapon's Damage in Wounds.
+3. If hero has Armor, roll 1 Armor die per Wound. Success ignores that Wound.
+
+**Willpower (Sanity path):**
+1. Roll 1 Willpower die per Horror Hit. Success blocks 1 Hit.
+2. Each unblocked Hit deals Sanity damage.
+3. If hero has Spirit Armor, roll per Sanity Wound to ignore.
+
+**"Ignoring Defense"** = no Defense save at all; Hits go straight to Damage.
+**"Ignoring Willpower"** = no Willpower save; Hits go straight to Sanity damage.
+These are **separate flags** — one does not imply the other.
+
+### Corruption
+
+**Corruption Hit vs Corruption Point — CRITICAL DISTINCTION:**
+- A **Corruption Hit** is an incoming event → Hero rolls **Willpower save** (1 die per Hit).
+- Failed saves become **Corruption Points** added to the tracker.
+- Some effects explicitly "ignore Willpower" — only then are points applied directly.
+
+**Overflow → Mutation:**
+- When Corruption Points **reach Max Corruption** (default 5), discard all points to 0 and roll on the **Mutation Chart**. Mutation is permanent.
+
+**Dark Stone end-of-adventure roll (two-stage):**
+1. For each Dark Stone carried, roll D6. On **1-3**, take a Corruption Hit.
+2. Willpower save as normal against each Hit.
+3. **No Grit rerolls** on the D6 roll itself. Grit **can** be used on the Willpower save.
+
+### Grit
+
+- **Start of each Mission:** 1 Grit (regardless of max).
+- **Max Grit:** Printed per Hero class (often 2-3). Increased by level-ups/items.
+- **Usage:** Spend 1 Grit to **reroll any number of failed dice** from a single roll. Cannot reroll the same die twice.
+- **Restriction:** Grit **cannot** reroll anything rolled **on a chart** (Injury, Madness, Mutation, Town Event, Exploration, Travel, Trap charts). It CAN reroll attack/defense/save dice even if prompted by a chart result.
+- **Recovery:** Skip exploration action (heal D6 or recover 1 Grit), level up (+1), specific abilities/events.
+
+### Health, Sanity, and KO
+
+- **Knocked Out (KO'd):** Health or Sanity reaches 0 during a Fight.
+- **End of Fight recovery:** Roll on **Injury Chart** (if HP hit 0) or **Madness Chart** (if Sanity hit 0), then heal **2D6** (split between Wounds and Sanity as desired).
+- **Killed / Permanent Madness:** Specific chart results that remove the Hero permanently.
+- **Heavy Wounds:** Injury chart results that are cumulative and permanent until cured.
+
+### Town Visits
+
+**Structure:**
+- Each Day, each Hero visits **1 Town Location**.
+- On visit: roll event (typically D12 for location event chart, entries 1-12).
+- Then resolve services (purchases, healing, gambling, etc.).
+
+**Town Event Track (Darkness in Town):**
+- Day Marker starts at 1. End of each Day: roll D6. If roll ≤ Day Marker, a Town Event triggers (reset marker to 1). Otherwise advance marker +1.
+- Longer stays → events become near-certain → pressure to leave.
+
+**Ending Town Stay:**
+- Voluntary (declare at start of new Day) or forced by Town Event.
+- Resolve upkeep, then pick next Mission.
+
+**Core Frontier Town locations:** Doc's Office, Saloon, General Store, Sheriff's Office, Frontier Outpost, Gambling Hall, Blacksmith, Indian Trading Post, Street Market, Mutant Quarter, Smuggler's Den, Church (expansion), plus others per expansion.
+
+### XP and Advancement
+
+- **Level thresholds:** 500, 1000, 2000, 3000, 4500, 6000, 8000 XP (Levels 2-8).
+- **On level up:** Remove all Wound/Sanity counters, regain 1 Grit, choose one advancement from class-specific chart.
+- **Skill Trees:** Four upgrade paths per class; each node requires prior nodes.
+
+### Dark Stone
+
+- Carried Dark Stone = risk (end-of-adventure corruption roll).
+- Dark Stone weapons grant bonus attack dice but increase corruption exposure.
+- Items with `darkStone: true` flag count for end-of-adventure rolls.
+
+### Mutations, Injuries, Madness
+
+- **Mutation Chart:** D66 (36 entries). Permanent stat/rule changes. Some forbid gear slots, change hands available, grant/remove abilities.
+- **Injury Chart:** D66 (36 entries). Heavy Wounds, stat losses, equipment restrictions. Cumulative.
+- **Madness Chart:** D66 (36 entries). Behavioral rules, stat changes.
+- All three are career-permanent unless specifically cured.
+
+---
+
+## File Structure Map
+
+### Core Architecture
 ```
 src/
-├── components/    # 151 files — UI components organized by feature (DM/, Loot/, Shops/, Town/, TownTab/)
-├── data/          # 217 files — game content (heroes, enemies, items, loot, town locations, skill trees)
-├── utils/         # 82 files — pure game logic (combat, conditions, stats, location events)
-├── context/       # 6 React Context providers
-├── hooks/         # 5 custom hooks (combat state, loot pool, Firestore sync)
-├── firebase/      # Config + sync handlers
-├── screens/       # Page-level components
-├── App.jsx        # Router + provider tree
-└── main.jsx       # ReactDOM entry
+├── utils/
+│   ├── sanitizeHero.js          — Canonical hero schema (SOURCE OF TRUTH)
+│   ├── calculateStats.js        — Stat pipeline: base + gear + skills + conditions
+│   ├── conditionRules.js        — Non-numeric rule aggregation (forbidSlots, noCrit, etc.)
+│   ├── combatResolution.js      — Defense/Armor + Willpower/SpiritArmor resolution
+│   ├── heroAccess.js            — Helper functions (adjustGrit, applyWounds, etc.)
+│   ├── heroUtils.js             — Utility reads
+│   ├── promptApi.js             — Dice roll/prompt UI bridge
+│   ├── diceHelpers.js           — d6, d3, 2d6, Peril die
+│   ├── townState.js             — Town visit state (localStorage)
+│   ├── townStateAccess.js       — Town state readers/writers
+│   └── locationHandlers/        — 26 handler files (see below)
+├── data/
+│   ├── items/gearCards.js       — 100+ gear items with slots/effects/mods
+│   ├── items/mineArtifacts.js   — Mine artifact loot table
+│   ├── items/otherWorldArtifacts.js — OtherWorld artifact loot
+│   ├── heroClassCards.js        — Hero class definitions
+│   ├── getExperienceForLevel.js — XP thresholds
+│   ├── getLevelingChart.js      — Per-class level-up charts
+│   ├── levelingCharts/          — Detailed per-class progression
+│   ├── enemyCards/              — Enemy stat blocks per world
+│   └── charts/                  — Mutation/Injury/Madness D66 tables
+├── components/
+│   ├── StatsTab.jsx             — Hero stats display + gear mod aggregation
+│   ├── GearTab.jsx              — Slot-based equipment management
+│   ├── ConditionsTab.jsx        — Injuries/Madness/Mutations viewer
+│   ├── MiscTab.jsx              — XP, Gold, Skills, Level tracking
+│   ├── PosseTab.jsx             — Multi-hero posse management
+│   ├── SidebagsTab.jsx          — Side Bag token tracking
+│   ├── TownPhaseTab.jsx         — Town visit flow
+│   ├── TownTab/                 — Town UI components
+│   ├── Town/                    — Location event modal + visit panel
+│   ├── DM/                      — DM tools (enemy panels, charts, loot)
+│   └── Shops/                   — Shop/service UI
+├── context/
+│   ├── HeroContext.jsx          — Hero state + Firebase sync
+│   └── PosseContext.jsx         — Multi-hero collection management
+└── firebase/
+    └── firebaseConfig.js        — Firebase init with local-only fallback
 ```
 
-## Context Providers (State Management)
-
-| Context | Purpose |
-|---------|---------|
-| PosseContext | All heroes in the party |
-| HeroContext | Active/selected hero |
-| WorldContext | Current game world |
-| CampaignContext | Campaign tracking |
-| DeckRegistryContext | Item deck management |
-| UIScaleContext | UI scaling preferences |
-
-**Data flow:** Context API (shared state) + localStorage (offline persistence) + Firestore (cloud sync). `sanitizeHero.js` validates all hero data before Firestore writes.
-
-## Coding Conventions
-
-- **Components:** Functional only. `export default function ComponentName() {}`.
-- **Context pattern:** `createContext(null)` → `export function XProvider({ children })` → `export function useX()`.
-- **Styling:** Tailwind utility classes. Inline `style={{}}` only for dynamic values.
-- **State:** `useMemo`, `useCallback`, `useRef` for memoization. localStorage with try/catch.
-- **Defensive coding:** Optional chaining (`hero?.id`), nullish coalescing (`?? fallback`).
-- **Naming:** PascalCase components, camelCase functions, UPPER_SNAKE constants, `use` prefix for hooks.
-- **Exports:** Default exports for components, named exports for utilities.
-
-## Game Data Format
-
-Hero stats use mixed types — numbers for values, strings for thresholds:
-```js
-{ stats: { Agility: 4 }, toHit: { ranged: "4+", melee: "5+" }, defense: "4+" }
-```
-
-Data is organized as nested objects: `category > className > details`. Arrays for abilities and items.
-
-## Gotchas
-
-- **No linter or test framework.** Run `npm run build` to verify changes compile.
-- **Town location imports** need explicit `.js` extensions or Vite can't resolve them. Run `fix-town-imports.mjs` if you see import errors.
-- **Large files:** TownTab/index.jsx (~111KB), GearTab.jsx (~48KB), calculateStats.js (~47KB).
-- **Firebase localMode:** When env vars are missing, Firebase gracefully falls back to localStorage-only mode.
-- **Sanitization:** Hero data is sanitized on every write — undefined values stripped, dot-keys rejected, circular refs detected.
-
-## Location Handler Conventions
-
-All location event handlers in `src/utils/locationHandlers/` **must** follow these patterns. Reference `saloonHandler.js` as the canonical example.
-
-### Required patterns for every handler
-
-1. **display() function** — Return `{ title, lore, effect }` for each roll value. Lore should match the card text from the board game rulebook.
-
-2. **Lore in log output** — Every event starts with title + lore in the log:
-   ```js
-   log.push(`[Location] (${roll}) ${info.title} — ${info.lore}`);
-   log.push(`Effect: ${info.effect}`);
-   ```
-
-3. **Result prompts** — After every roll (skill checks, damage, costs, healing), **show the result as a prompt dialog** so the player can see and acknowledge the outcome before continuing:
-   ```js
-   await showResult(ctx, 'EVENT TITLE — Result', [checkLine, '', outcome]);
-   ```
-   Use `ctx.promptChoice` with a single `[{ label: 'Continue' }]` button. The `showResult` helper does this:
-   ```js
-   async function showResult(ctx, title, lines) {
-     const body = Array.isArray(lines) ? lines.join('\n') : lines;
-     await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
-   }
-   ```
-
-4. **Skill checks use returnDetails** — Always use `returnDetails: true` and format the result:
-   ```js
-   const result = await ctx.doSkillCheck(id, {
-     stat: 'Strength', target: 5, returnDetails: true,
-     message: `EVENT TITLE\nLore text\nFlavor about what you're doing.`,
-   });
-   const checkLine = formatCheckResult(result, 'Strength', 5);
-   // checkLine = "Rolled [3, 5] — PASSED (Strength 5+, 1 success)"
-   ```
-
-5. **Auto-rolled dice show values** — When rolling D6 for damage, costs, healing, etc., always show the roll:
-   ```js
-   const woundRoll = d6();
-   const woundLine = `Rolled [${woundRoll}] for Wounds.`;
-   log.push(woundLine);
-   ```
-
-6. **Skill check messages include hero context** — The `message` param to `doSkillCheck` should include the event title, lore, and a flavor line about what the hero is attempting. The system appends the mechanical label (e.g., "Strength 5+ test (3d6)") automatically.
-
-7. **Player choices for OR-tests** — When the rulebook says "Stat1 X+ OR Stat2 Y+", use `promptChoice` to let the player pick which test to attempt (don't auto-chain them).
-
-8. **Manual vs Auto rolls** — If the roll is something the player can influence (skill checks, willpower, defense, armor saves, tests), use a manual input pre-filled with an auto-roll result. The player can accept the default by hitting Continue, or change the value if they rolled physical dice or spent grit. This avoids an extra "auto or manual?" prompt — the input field serves both purposes. For rolls the player cannot control (damage amounts, item values, gold costs, wound rolls), auto-roll with `d6()` and just display the result.
-
-### Hero data field names
-
-- **Grit:** Use `currentGrit` (not `grit`). Read: `h.currentGrit ?? h.grit ?? 0`. Write: `{ currentGrit: newVal }`.
-- **Health:** Use `currentHealth`. Max at `h.maxHealth ?? h.max_health ?? 10`.
-- **Sanity:** Use `currentSanity`. Max at `h.maxSanity ?? h.SanityMax ?? 0`.
-- **Gold:** Use `h.gold`. Always `Math.max(0, ...)` to prevent negative.
-- **XP:** Use `h.xp`.
-- **Location visit buffs:** Store on `hero.locationVisitBuffs` (e.g., `{ Luck: 2, Cunning: 2 }`). These are automatically picked up by `doSkillCheck` and `getEffectiveStat` in `locationEventContext.js`.
-- **Adventure buffs/debuffs:** Store on `hero.adventureBuffs` / `hero.adventureDebuffs` for effects that apply at next adventure start.
-
-### Handler return format
-
-```js
-return {
-  actions: [],
-  townState: ctx.townState,
-  log: result?.log || [`Location Event Roll: ${roll}`],
-  eventRoll: roll,
-  eventIndex: Math.max(0, roll - 2),
-};
-```
-
-### Never use `window.prompt`, `window.alert`, or `window.confirm`
-
-Use the structured ctx methods instead: `ctx.promptChoice`, `ctx.promptNumber`, `ctx.promptYesNo`, `ctx.doSkillCheck`.
-
-## SoB Combat Rules Reference
-
-### Hero Attacks vs Enemies
-
-1. **Roll To-Hit**: Roll dice equal to Combat (melee) or Shots (ranged) stat. Max 8 dice per attack. Each die ≥ weapon's To-Hit value = 1 Hit. Dual-wielding off-hand needs 1 higher to hit and neither weapon can crit.
-2. **Assign Hits**: Melee hits to adjacent enemies only. Ranged must target adjacent enemies first; overflow to others only after adjacent are dead.
-3. **Roll Damage**: Each Hit deals D6 damage.
-4. **Enemy Defense (flat reduction)**: Subtract enemy's Defense value from each damage roll. Remainder = wounds to enemy Health. Defense 0 or less = no damage from that hit.
-5. **Critical Hits**: Ignore enemy Defense entirely. If enemy is immune to crits ("Tough"), treat as normal hit (Defense applies).
-6. **Enemy Armor (saving throw, if any)**: Per wound, roll D6 ≥ Armor target to negate that wound.
-
-### Enemy Attacks vs Heroes
-
-1. **Enemy generates Hits**: Based on Combat/Shots values and To-Hit target.
-2. **Hero Defense (saving throw)**: Roll D6 per incoming Hit. Each roll ≥ Defense target blocks that entire Hit. Roll all Defense dice together (Grit can reroll all failed dice at once).
-3. **Wounds**: Each unblocked Hit = wounds equal to enemy's Damage value.
-4. **Hero Armor (saving throw)**: Roll D6 per wound. Each roll ≥ Armor target negates 1 wound. Only one Armor save applies (use best). Armor saves do NOT stack.
-5. **KO'd**: Health reaches 0 = KO'd. No further wounds applied.
-
-### Horror/Sanity Track
-
-Same structure but with different stats:
-- **Horror Hits** defended by Willpower (saving throw per hit).
-- Unblocked Horror Hits cause Sanity Damage (usually 1 per hit unless stated otherwise).
-- **Spirit Armor** saves per point of Sanity Damage (like Armor for wounds).
-- Neither Armor nor Spirit Armor prevents Corruption.
-
-### Hit Types
-
-| Type | Causes | Defended By |
-|------|--------|-------------|
-| Hits | Wounds | Defense (hero) / flat reduction (enemy) |
-| Horror Hits | Sanity Damage | Willpower |
-| Corruption Hits | Corruption Points | Willpower |
-| Hex Hits | Wounds | Willpower |
-| Toxin Hits | Poison tokens | Defense |
-
-### Special Mechanics
-
-- **Endurance (X)**: Caps wounds from a single Hit to X. Applied before Armor saves.
-- **Damage Reduction**: "Reduce all damage by X (min 1)" — flat subtraction before converting to wounds. Some are type-specific (Fire, Ranged, etc.).
-- **Tough**: Immune to Critical Hits only (not damage reduction).
-- **Cover X+**: Situational saving throw against specific damage types (e.g., "Cover 4+ vs Explosives"). Separate from Defense/Armor.
-
-### Enemy vs Hero Defense — Key Difference
-
-**Enemy Defense = flat number** (higher = better for enemy). Stored as plain int (e.g., `defense: 5`). Subtracted from each D6 damage roll. Modifiers add/subtract directly: `+1 Defense` → `defense + 1`.
-
-**Hero Defense = threshold** (lower = better for hero). Stored as string (e.g., `"4+"`). Roll D6 ≥ target to block. In `calculateStats.js`, a positive delta improves the threshold: `+1` makes `5+` → `4+`.
-
-### Combat Resolution Order (Full)
+### Location Handlers
+Each file exports an async handler that receives a context object (`ctx`) with `updateHero`, `roll`, `promptChoice`, `doSkillCheck`, `toast`, `showResult`, etc.
 
 ```
-Hero Attack → Roll To-Hit → Assign Hits → Roll D6 Damage per Hit
-  → Subtract Enemy Defense (flat) → Apply Endurance cap
-  → Roll Enemy Armor saves (per wound) → Apply wounds to Health
-
-Enemy Attack → Generate Hits → Hero rolls Defense (per hit, saving throw)
-  → Failed hits × Damage value = pending Wounds
-  → Hero rolls Armor (per wound, saving throw) → Apply wounds to Health
+locationHandlers/
+├── blacksmithHandler.js
+├── campSiteHandler.js
+├── churchHandler.js
+├── docsOfficeHandler.js + docsOfficeServices.js
+├── frontierOutpostHandler.js + bank/bounties/training services
+├── gamblingHallHandler.js + gamblingHallServices.js
+├── generalStoreHandler.js
+├── indianTradingPostHandler.js + services
+├── locationEventHandler.js      — Unified event dispatcher
+├── mutantQuarterHandler.js + services
+├── saloonHandler.js + saloonServices.js
+├── sheriffsOfficeHandler.js + services
+├── smugglersDenHandler.js + smugglersDenServices.js
+├── streetMarketHandler.js + services + backAlleyServices
+└── campSiteHandler.js
 ```
 
-### After a Fight
+---
 
-Fight ends immediately when all enemies defeated. Each hero heals D3 (any mix of Wounds/Sanity).
+## Mobile / UI Conventions
 
-### Stat Modifier Sign Conventions
+- **Tailwind CSS v4** with `sm:`, `md:`, `lg:` breakpoints. Default is mobile-first.
+- **Tap targets:** Minimum 44×44px on interactive elements (buttons, links, toggles).
+- **Modals/drawers:** Must respect viewport height; use `max-h-[80vh] overflow-y-auto`.
+- **Text:** Use `break-words` or `overflow-wrap: anywhere` for long effect descriptions.
+- **Grids:** Use `grid-cols-1 sm:grid-cols-2 md:grid-cols-3` pattern for responsive layouts.
+- **Font sizes:** Minimum `text-sm` (14px) for readability on mobile.
 
-For **enemy stats** (flat numbers — combat, initiative, health, move, damage, defense):
-- Positive modifier = better for enemy (e.g., `combat: 1` means +1 Combat)
-- `defense: 1` = +1 Defense = harder to wound
-- `defense: -1` = -1 Defense = easier to wound
+---
 
-For **hero threshold stats** (Defense, Armor, Willpower, Spirit Armor — "X+" format):
-- In `calculateStats.js` `applyDeltas`: positive delta = improvement (lower threshold)
-- `+1` makes `5+` → `4+`
+## Known Issues / Audit Findings
 
-## Don'ts
+### Critical (data not persisting)
+- `heroAccess.js:adjustCorruption` writes to `corruption` (dropped by sanitizer) — must use `currentCorruption`
+- `heroAccess.js:applyWounds/healWounds` writes to `wounds` (not a canonical field) — must use `currentHealth`
+- `promptApi.js:137` applyHits fallback writes to `wounds` — must use `currentHealth`
+- `saloonHandler.js:156` Bar Fight writes `wounds` — dropped
+- `saloonHandler.js:213` Song and Dance heals `health` — dropped
+- `streetMarketHandler.js:150` scuffle writes `wounds` — dropped
+- `gamblingHallServices.js:318` Robbery writes `wounds` — dropped
+- `docsOfficeServices.js:477` injection writes `corruption` — dropped
 
-- Don't add TypeScript — project is JS-only by design.
-- Don't restructure `src/data/` — game content is organized by domain and referenced extensively.
-- Don't remove localStorage fallbacks — they enable offline play.
-- Don't remove sanitization logic — it prevents corrupt data in Firestore.
+### Missing Willpower Saves
+Any Corruption Hit source must allow Willpower saves unless card text explicitly says "ignoring Willpower". Check all `currentCorruption +=` writes to confirm saves are present.
+
+### Not Yet Implemented
+- Adventure system (exploration, depth/darkness track, encounter resolution)
+- Enemy attack engine (only hero defense is modeled)
+- Critical hit handling in combat (nat 6 → ignore Defense)
+- Dark Stone end-of-adventure corruption roll (two-stage)
+- Grit reroll restrictions (no rerolls on charts)
+- Bleeding/Fear/Madness auto-application post-combat
+- Grit spend during combat
+- Dark Stone allergy auto-damage (`dsAllergy` flag aggregated but not enforced)
+- `gritCap` enforcement from conditions
+- `forbidSlots` enforcement in all gear equip paths
+- Wanted/Outlaw status tracking on hero
+- OtherWorld-specific mutation tables

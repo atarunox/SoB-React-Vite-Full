@@ -278,7 +278,10 @@ export async function apply(roll, ctx) {
       ctx.toast?.('Bar Fight: you push through safely!');
     } else {
       const woundRoll = await ctxD6(ctx, 'Bar Fight — Roll 1d6 for Wounds');
-      ctx.updateHero?.(id, (h) => ({ ...h, wounds: (h.wounds || 0) + woundRoll }));
+      ctx.updateHero?.(id, (h) => ({
+        ...h,
+        currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - woundRoll),
+      }));
       const woundLine = `Rolled [${woundRoll}] for Wounds.`;
       log.push(woundLine);
       const outcome = `The brawl catches you square. You take ${woundRoll} Wounds (these carry over to the next Adventure).`;

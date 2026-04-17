@@ -411,7 +411,7 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       const hits = D6();
       ctx.updateHero?.(id, (h) => ({
         ...h,
-        wounds: (h.wounds || 0) + hits,
+        currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - hits),
       }));
       log.push(`Robbery: 1 → D6(${hits}) Hits.`);
     }
