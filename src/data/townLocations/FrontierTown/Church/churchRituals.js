@@ -389,10 +389,8 @@ async function runBanishCorruption(getHero, writeHero, uiApi, toast) {
     const removed = Math.min(toRemove, current);
     const next = Math.max(0, current - removed);
 
-    // Keep both in sync so StatsTab (currentCorruption) and any legacy code see it.
     writeHero({
       currentCorruption: next,
-      corruption: next,
     });
 
     toast(`Banish Corruption: removed ${removed} Corruption (rolled ${removalRoll}).`);

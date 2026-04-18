@@ -37,19 +37,23 @@ export const TRAVEL_HAZARD_CHART = [
     name: 'Lost in the Wastes',
     description: 'The posse gets lost! Each Hero takes D3 Corruption Hits.',
     resolve: async (ctx) => {
-      const log = ['LOST IN THE WASTES! Each Hero takes D3 Corruption Hits.'];
+      const log = ['LOST IN THE WASTES! Each Hero takes D3 Corruption Hits (Willpower saves allowed).'];
       for (const hero of ctx.heroes) {
         const id = hero.id || hero.localId;
         const name = hero.name || hero.heroClass || 'Hero';
-        const corruptionHits = d3();
-        const curCorruption = Number(hero.currentCorruption ?? hero.corruption ?? 0);
-        if (ctx.updateHero) {
+        const hits = d3();
+        const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
+        const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+        const saves = Array.from({ length: hits }, () => d6());
+        const blocked = saves.filter(r => r >= wpTarget).length;
+        const unblocked = Math.max(0, hits - blocked);
+        if (ctx.updateHero && unblocked > 0) {
           ctx.updateHero(id, (h) => ({
             ...h,
-            currentCorruption: (Number(h.currentCorruption ?? h.corruption ?? 0)) + corruptionHits,
+            currentCorruption: (Number(h.currentCorruption ?? h.corruption ?? 0)) + unblocked,
           }));
         }
-        log.push(`${name}: ${corruptionHits} Corruption Hit(s) → gains ${corruptionHits} Corruption.`);
+        log.push(`${name}: ${hits} Corruption Hit(s), Willpower ${wpTarget}+ saves [${saves.join(', ')}] → ${blocked} blocked, ${unblocked} Corruption gained.`);
       }
       return { log };
     },

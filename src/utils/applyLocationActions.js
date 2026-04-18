@@ -31,7 +31,10 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
       case 'HEAL_TO_FULL': {
         const h = getHero(a.heroId);
         if (!h) break;
-        updateHero?.(a.heroId, { health: h.maxHealth ?? h.health, sanity: h.maxSanity ?? h.sanity });
+        updateHero?.(a.heroId, {
+          currentHealth: h.maxHealth ?? h.currentHealth ?? 10,
+          currentSanity: h.maxSanity ?? h.currentSanity ?? 10,
+        });
         break;
       }
 
@@ -59,8 +62,8 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
       case 'APPLY_WOUNDS': {
         const h = getHero(a.heroId);
         if (!h) break;
-        const health = Math.max(0, (h.health ?? 0) - (a.amount ?? 0));
-        updateHero?.(a.heroId, { health });
+        const cur = h.currentHealth ?? h.maxHealth ?? 10;
+        updateHero?.(a.heroId, { currentHealth: Math.max(0, cur - (a.amount ?? 0)) });
         break;
       }
 
