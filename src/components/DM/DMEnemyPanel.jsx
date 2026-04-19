@@ -6,8 +6,6 @@ import { useCombatState } from "../../hooks/useCombatState";
 import { ENEMY_CARDS } from '../../data/enemyCards';
 import { THREAT_DECKS, getThreatDeck } from '../../data/enemies/threatDecks';
 
-import { DARKNESS_CARDS } from '../../data/darknessCards';
-import { GROWING_DREAD_CARDS } from '../../data/growingDreadCards';
 import EnemyGroupCard from './EnemyGroupCard';
 import DMActiveEnemiesPanel from './DMActiveEnemiesPanel';
 
@@ -38,8 +36,7 @@ function rollEliteAbilities(eliteChart, count) {
 //   Level 7:   Brutal + 1 Elite Ability
 //   Level 8+:  Brutal + 2 Elite Abilities
 // Drifter in posse: +1 Elite Ability (Danger Magnet)
-// Darkness/Growing Dread modifiers can add more
-function getEliteAndBrutal(posse, globalModifiers = []) {
+function getEliteAndBrutal(posse) {
   const highestLevel = Math.max(
     ...(posse.map(h => Number(h.level || h.Level || 1) || 1)),
     1
@@ -54,14 +51,8 @@ function getEliteAndBrutal(posse, globalModifiers = []) {
   else if (highestLevel === 4) { elite = 2; }
   else if (highestLevel === 3) { elite = 1; }
 
-  // Drifter bonus — "Danger Magnet" grants enemies +1 Elite Ability
   if (posse.some(h => /drifter/i.test(h?.class || h?.heroClass || ''))) {
     elite += 1;
-  }
-
-  // Darkness / Growing Dread modifiers that add elite abilities
-  for (const mod of globalModifiers) {
-    if (mod.eliteModifier) elite += Number(mod.eliteModifier) || 0;
   }
 
   return { elite: Math.max(0, elite), brutal };
@@ -72,13 +63,11 @@ export default function DMEnemyPanel() {
   const { posse } = usePosse();
   const { combatGroups, setCombatGroups } = useCombatState();
   const [drawnCard, setDrawnCard] = useState(null);
-  const [globalModifiers, setGlobalModifiers] = useState([]);
   const [threatLevel, setThreatLevel] = useState('low');
 
-  // Compute current elite count and brutal flag
   const { elite: eliteCount, brutal: isBrutal } = useMemo(
-    () => getEliteAndBrutal(posse, globalModifiers),
-    [posse, globalModifiers]
+    () => getEliteAndBrutal(posse),
+    [posse]
   );
 
   // Draw threat card and generate groups
@@ -121,35 +110,6 @@ export default function DMEnemyPanel() {
     setCombatGroups(prev => [...(prev || []), ...newGroups]);
   };
 
-  // Global modifiers
-  function addGlobalModifier(type) {
-    let card;
-    if (type === 'darkness') {
-      const idx = Math.floor(Math.random() * DARKNESS_CARDS.length);
-      card = DARKNESS_CARDS[idx];
-    }
-    if (type === 'growingDread') {
-      const idx = Math.floor(Math.random() * GROWING_DREAD_CARDS.length);
-      card = GROWING_DREAD_CARDS[idx];
-    }
-    if (!card) return;
-    setGlobalModifiers(prev => [
-      ...prev,
-      {
-        type,
-        name: card.name,
-        effect: card.effect || {},
-        addKeywords: card.keywords || [],
-        description: card.description || '',
-        eliteModifier: card.eliteModifier || 0,
-      }
-    ]);
-  }
-
-  function removeGlobalModifier(idx) {
-    setGlobalModifiers(prev => prev.filter((_, i) => i !== idx));
-  }
-
   // Check for Drifter presence for display
   const hasDrifter = posse.some(h => /drifter/i.test(h?.class || h?.heroClass || ''));
   const highestLevel = Math.max(...(posse.map(h => Number(h.level || h.Level || 1) || 1)), 1);
@@ -165,25 +125,6 @@ export default function DMEnemyPanel() {
             (Highest Lvl: {highestLevel}{hasDrifter ? ' • Drifter +1' : ''})
           </span>
         </div>
-      </div>
-
-      {/* GLOBAL MODIFIERS */}
-      <div className="mb-2">
-        <b>Global Modifiers:</b>
-        <div className="flex gap-2 mt-1">
-          <button className="btn btn-xs btn-outline" onClick={() => addGlobalModifier('darkness')}>+ Darkness Card</button>
-          <button className="btn btn-xs btn-outline" onClick={() => addGlobalModifier('growingDread')}>+ Growing Dread Card</button>
-        </div>
-        <ul className="list-disc list-inside text-xs mt-1">
-          {globalModifiers.length === 0 && <li className="italic text-gray-400">None</li>}
-          {globalModifiers.map((m, i) => (
-            <li key={i}>
-              <b>{m.type.toUpperCase()}:</b> <span className="font-semibold">{m.name}</span>
-              {m.description && <span className="ml-2 italic">{m.description}</span>}
-              <button className="ml-2 text-red-600 underline" onClick={() => removeGlobalModifier(i)}>Remove</button>
-            </li>
-          ))}
-        </ul>
       </div>
 
       {/* THREAT DRAWER */}
@@ -221,7 +162,7 @@ export default function DMEnemyPanel() {
       {/* Active enemies display with cycling/show-all view */}
       <DMActiveEnemiesPanel
         combatGroups={combatGroups}
-        globalModifiers={globalModifiers}
+        globalModifiers={[]}
         setCombatGroups={setCombatGroups}
         eliteCount={eliteCount}
         isBrutal={isBrutal}
