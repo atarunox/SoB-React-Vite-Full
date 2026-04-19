@@ -88,6 +88,7 @@ const uid = () =>
 
 const POSSE_BUFFS_KEY = "sob:posseBuffs";
 const POSSE_ITEMS_KEY = "sob:posseItems";
+const TREASURE_POOL_KEY = "sob:treasurePool";
 
 const hasBrowserStorage =
   typeof window !== "undefined" && typeof localStorage !== "undefined";
@@ -105,14 +106,17 @@ function loadArrayFromStorage(key) {
 }
 
 export default function PosseTab() {
-  const { posse, activeHeroId, setActiveHeroId } = usePosse();
+  const { posse, activeHeroId, setActiveHeroId, updateHero } = usePosse();
 
-  const [activeTab, setActiveTab] = useState("Overview"); // Overview | Posse Buffs | Posse Items
+  const [activeTab, setActiveTab] = useState("Overview");
   const [posseBuffs, setPosseBuffs] = useState(() =>
     loadArrayFromStorage(POSSE_BUFFS_KEY)
   );
   const [posseItems, setPosseItems] = useState(() =>
     loadArrayFromStorage(POSSE_ITEMS_KEY)
+  );
+  const [treasurePool, setTreasurePool] = useState(() =>
+    loadArrayFromStorage(TREASURE_POOL_KEY)
   );
 
   // Persist buffs/items whenever they change
@@ -130,16 +134,21 @@ export default function PosseTab() {
     } catch {}
   }, [posseItems]);
 
-  // Re-sync from localStorage whenever the sub-tab changes
   useEffect(() => {
     if (!hasBrowserStorage) return;
+    try {
+      localStorage.setItem(TREASURE_POOL_KEY, JSON.stringify(treasurePool));
+    } catch {}
+  }, [treasurePool]);
 
+  useEffect(() => {
+    if (!hasBrowserStorage) return;
     if (activeTab === "Posse Buffs") {
-      const latest = loadArrayFromStorage(POSSE_BUFFS_KEY);
-      setPosseBuffs(latest);
+      setPosseBuffs(loadArrayFromStorage(POSSE_BUFFS_KEY));
     } else if (activeTab === "Posse Items") {
-      const latest = loadArrayFromStorage(POSSE_ITEMS_KEY);
-      setPosseItems(latest);
+      setPosseItems(loadArrayFromStorage(POSSE_ITEMS_KEY));
+    } else if (activeTab === "Treasure Pool") {
+      setTreasurePool(loadArrayFromStorage(TREASURE_POOL_KEY));
     }
   }, [activeTab]);
 
@@ -237,6 +246,29 @@ export default function PosseTab() {
     setPosseItems([]);
   };
 
+  // ---- treasure pool handlers ------------------------------------------------
+
+  const claimTreasure = (itemId, heroId) => {
+    const item = treasurePool.find((it) => it.id === itemId);
+    if (!item) return;
+    const hero = posse.find((h) => getId(h) === heroId);
+    if (!hero) return;
+    const inv = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
+    inv.push({ ...item, _claimedAt: Date.now() });
+    updateHero({ id: heroId, inventory: inv, updatedAt: Date.now() });
+    setTreasurePool((prev) => prev.filter((it) => it.id !== itemId));
+  };
+
+  const removeTreasure = (itemId) => {
+    if (!window.confirm("Discard this item permanently?")) return;
+    setTreasurePool((prev) => prev.filter((it) => it.id !== itemId));
+  };
+
+  const clearTreasurePool = () => {
+    if (!window.confirm("Discard all items in the treasure pool?")) return;
+    setTreasurePool([]);
+  };
+
   // ---------------------------------------------------------------------------
 
   return (
@@ -245,7 +277,7 @@ export default function PosseTab() {
       <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
         <h2 className="text-xl font-bold">Posse</h2>
         <div className="flex flex-wrap gap-2">
-          {["Overview", "Posse Buffs", "Posse Items"].map((tab) => (
+          {["Overview", "Treasure Pool", "Posse Buffs", "Posse Items"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -423,6 +455,124 @@ export default function PosseTab() {
             </div>
           )}
         </>
+      )}
+
+      {/* TREASURE POOL TAB ---------------------------------------------------- */}
+      {activeTab === "Treasure Pool" && (
+        <section className="rounded-xl border border-[#5C3A21] bg-[#fdf6e3]/90 p-4 shadow space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold text-lg">
+              Treasure Pool
+              {treasurePool.length > 0 && (
+                <span className="ml-2 text-sm font-normal text-gray-600">
+                  ({treasurePool.length} item{treasurePool.length !== 1 ? "s" : ""})
+                </span>
+              )}
+            </h3>
+            {treasurePool.length > 0 && (
+              <button
+                className="btn btn-sm btn-ghost text-red-600"
+                onClick={clearTreasurePool}
+              >
+                Discard All
+              </button>
+            )}
+          </div>
+
+          {treasurePool.length === 0 ? (
+            <div className="text-sm text-gray-600 italic">
+              No items in the treasure pool. When heroes drop items, they appear
+              here for others to claim.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {treasurePool.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-[#8b6b46] bg-white p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm">{item.name}</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {item.slot && (
+                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-700">
+                            {item.slot}
+                          </span>
+                        )}
+                        {item.value != null && item.value > 0 && (
+                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                            ${item.value}
+                          </span>
+                        )}
+                        {item.weight != null && item.weight > 0 && (
+                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                            Wt: {item.weight}
+                          </span>
+                        )}
+                        {item._droppedBy && (
+                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+                            From: {item._droppedBy}
+                          </span>
+                        )}
+                      </div>
+                      {(item.description || item.effect) && (
+                        <div className="mt-1 text-xs text-gray-700">
+                          {item.description || item.effect}
+                        </div>
+                      )}
+                      {item.mods && Object.keys(item.mods).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {Object.entries(item.mods)
+                            .filter(([, v]) => typeof v === "number" && v !== 0)
+                            .map(([k, v]) => (
+                              <span
+                                key={k}
+                                className="text-[11px] px-1.5 py-0.5 rounded bg-green-50 text-green-800"
+                              >
+                                {k} {v > 0 ? "+" : ""}
+                                {v}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      className="btn btn-xs btn-ghost text-red-600 shrink-0"
+                      onClick={() => removeTreasure(item.id)}
+                      title="Discard permanently"
+                    >
+                      Discard
+                    </button>
+                  </div>
+
+                  {/* Claim buttons — one per hero */}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {sorted.map((hero) => {
+                      const hid = getId(hero);
+                      const heroName =
+                        hero.name || hero.heroName || hero.heroClass || "Hero";
+                      return (
+                        <button
+                          key={hid}
+                          className="btn btn-xs btn-outline min-h-[36px]"
+                          onClick={() => claimTreasure(item.id, hid)}
+                        >
+                          Give to {heroName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-600">
+            Items dropped by heroes appear here. Tap a hero name to add the item
+            to their inventory.
+          </p>
+        </section>
       )}
 
       {/* POSSE BUFFS TAB ----------------------------------------------------- */}

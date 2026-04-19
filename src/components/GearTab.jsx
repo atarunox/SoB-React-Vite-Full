@@ -525,11 +525,22 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
 
   // Actions (inventory / gear)
   const dropItem = (id) => {
-    if (!window.confirm('Drop this item?')) return;
+    if (!window.confirm('Drop this item to the Treasure Pool?')) return;
+    const item = (viewHero.inventory || []).find(i => String(i.id) === String(id));
     const inv = (viewHero.inventory || []).filter(i => String(i.id) !== String(id));
     const nextHero = { ...viewHero, inventory: inv, updatedAt: Date.now() };
     saveHero(nextHero);
     try { setViewHero && setViewHero(nextHero); } catch {}
+
+    if (item) {
+      const heroName = viewHero.name || viewHero.heroName || viewHero.heroClass || 'Hero';
+      try {
+        const LS_KEY = 'sob:treasurePool';
+        const pool = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+        pool.push({ ...item, _droppedBy: heroName, _droppedAt: Date.now() });
+        localStorage.setItem(LS_KEY, JSON.stringify(pool));
+      } catch {}
+    }
   };
 
   const isItemAllowedForSlot = (slot, it) => {
@@ -960,7 +971,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button onClick={() => { dropItem(item.id); }} className="btn btn-xs btn-error">
-                    Drop
+                    Drop to Pool
                   </button>
                 </div>
               </div>
