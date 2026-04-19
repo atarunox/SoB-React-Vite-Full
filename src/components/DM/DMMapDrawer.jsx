@@ -67,9 +67,12 @@ export default function DMMapDrawer({ world = 'Mines' }) {
   const drawCard = () => {
     setDeck(prevDeck => {
       if (prevDeck.length === 0) return prevDeck;
-      const top = prevDeck[0];
-      setDrawn(prevDrawn => [top, ...prevDrawn]);
       return prevDeck.slice(1);
+    });
+    setDrawn(prevDrawn => {
+      const currentDeck = deck;
+      if (currentDeck.length === 0) return prevDrawn;
+      return [currentDeck[0], ...prevDrawn];
     });
   };
 
