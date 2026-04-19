@@ -566,14 +566,12 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
                       Claim as {h.name}
                     </button>
                   ))}
-                  {isItemCard(card) && (
-                    <button
-                      className="btn btn-xs btn-accent"
-                      onClick={() => sendToTreasurePool(idx)}
-                    >
-                      → Treasure Pool
-                    </button>
-                  )}
+                  <button
+                    className="btn btn-xs btn-accent"
+                    onClick={() => sendToTreasurePool(idx)}
+                  >
+                    → Treasure Pool
+                  </button>
                 </>
               )}
             </div>
