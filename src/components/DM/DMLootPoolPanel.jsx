@@ -280,6 +280,25 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
     return deckDef[Math.floor(Math.random() * deckDef.length)];
   }
 
+  function redrawCard(idx) {
+    const old = lootPool[idx];
+    if (!old || old.claimedBy) return;
+    if (old._isExpanded && old.id) deck.release(old.id);
+    const deckDef = LOOT_DECKS[world] || LOOT_DECKS["Mines"] || [];
+    if (!deckDef.length) return;
+    const base = deckDef[Math.floor(Math.random() * deckDef.length)];
+    const replacement = preExpandCard(base, old.drawnFor, world);
+    setLootPool((prev) => {
+      const copy = [...prev];
+      copy[idx] = replacement;
+      return copy;
+    });
+    setLootHistory((prev) => [
+      ...prev,
+      { action: "redraw", card: replacement, from: old.name, to: null, time: Date.now() },
+    ]);
+  }
+
   function revertResourcesForCard(hero, card) {
     const res = card?.resolvedResources;
     if (!res) return hero;
@@ -571,6 +590,12 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
                     onClick={() => sendToTreasurePool(idx)}
                   >
                     → Treasure Pool
+                  </button>
+                  <button
+                    className="btn btn-xs btn-warning"
+                    onClick={() => redrawCard(idx)}
+                  >
+                    Redraw
                   </button>
                 </>
               )}
