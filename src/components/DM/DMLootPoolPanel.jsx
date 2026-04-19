@@ -357,6 +357,34 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
     ]);
   }
 
+  function sendToTreasurePool(idx) {
+    const card = lootPool[idx];
+    if (!card) return;
+
+    const item = {
+      ...card,
+      id: card._instanceId || card.id || `loot_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      _droppedBy: card.drawnFor || 'Loot Pool',
+      _droppedAt: Date.now(),
+    };
+    delete item.claimedBy;
+    delete item.resolvedResources;
+    delete item.drawnFor;
+
+    try {
+      const key = 'sob:treasurePool';
+      const pool = JSON.parse(localStorage.getItem(key) || '[]');
+      pool.push(item);
+      localStorage.setItem(key, JSON.stringify(pool));
+    } catch {}
+
+    setLootPool((prev) => prev.filter((_, i) => i !== idx));
+    setLootHistory((prev) => [
+      ...prev,
+      { action: 'treasure', card, from: 'pool', to: 'Treasure Pool', time: Date.now() },
+    ]);
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="font-bold text-lg">Loot Pool</h2>
@@ -528,15 +556,25 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
                   </div>
                 </>
               ) : (
-                posse.map((h) => (
-                  <button
-                    key={h.id || h.localId}
-                    className="btn btn-xs btn-outline"
-                    onClick={() => claimLoot(idx, h.id || h.localId)}
-                  >
-                    Claim as {h.name}
-                  </button>
-                ))
+                <>
+                  {posse.map((h) => (
+                    <button
+                      key={h.id || h.localId}
+                      className="btn btn-xs btn-outline"
+                      onClick={() => claimLoot(idx, h.id || h.localId)}
+                    >
+                      Claim as {h.name}
+                    </button>
+                  ))}
+                  {isItemCard(card) && (
+                    <button
+                      className="btn btn-xs btn-accent"
+                      onClick={() => sendToTreasurePool(idx)}
+                    >
+                      → Treasure Pool
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
