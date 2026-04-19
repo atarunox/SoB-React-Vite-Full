@@ -89,7 +89,7 @@ export default function HeroScreen({
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex justify-around items-center gap-1 border-y-2 border-leather bg-gradient-to-b from-parchment-dark to-parchment py-3 px-2 shadow-inner-dark">
+      <div className="flex flex-wrap justify-center items-center gap-1 border-y-2 border-leather bg-gradient-to-b from-parchment-dark to-parchment py-2 px-2 shadow-inner-dark">
         {TABS.map(tab => (
           <button
             key={tab}
