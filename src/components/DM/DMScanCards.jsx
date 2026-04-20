@@ -1,6 +1,6 @@
 // src/components/DM/DMScanCards.jsx
 import React, { useState, useRef, useCallback } from 'react';
-import { runOcr } from '../../utils/cardOcr';
+import { runOcr, scanWithClaudeVision } from '../../utils/cardOcr';
 
 // ── Deck type definitions ────────────────────────────────────────────────────
 
@@ -24,6 +24,7 @@ const GEAR_SLOTS = ['Gun', 'Hand Weapon', 'Light Source', 'Tonic', 'Coat', 'Hat'
 const ARTIFACT_SLOTS = ['None', 'Charm', 'Hand Weapon', 'Gun', 'Coat', 'Hat', 'Boots', 'Gloves'];
 
 const LS_KEY = 'sob:scannedCards';
+const LS_API_KEY = 'sob:claudeApiKey';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,66 +39,102 @@ function savePending(data) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
 }
 
-// ── OCR text → field guesses ─────────────────────────────────────────────────
+// ── Merge Claude/OCR response into deck-specific form shape ──────────────────
+
+function applyToSchema(raw, deckType) {
+  const name = raw.name || '';
+  const effect = raw.effect || '';
+  const tags = Array.isArray(raw.tags) ? raw.tags : [];
+
+  switch (deckType) {
+    case 'darkness':
+      return {
+        name,
+        effect,
+        tags: tags.length ? tags : ['Darkness'],
+        remainsInPlay: raw.remainsInPlay ?? false,
+      };
+    case 'growingDread':
+      return {
+        id: toId(name),
+        name,
+        flavorText: raw.flavorText || '',
+        effect,
+        promoId: raw.promoId || '',
+      };
+    case 'mineEncounter':
+    case 'wastesEncounter':
+      return {
+        name,
+        tags: tags.length ? tags : ['Encounter'],
+        test: raw.test || '',
+        effect,
+        remainsInPlay: raw.remainsInPlay ?? false,
+      };
+    case 'mineMap':
+    case 'wastesMap':
+      return {
+        id: toId(name),
+        name,
+        image: `/assets/images/maps/${name.replace(/\s+/g, '_')}.png`,
+      };
+    case 'mineLoot':
+      return { name: raw.name || effect || '' };
+    case 'wastesLoot':
+      return { name, description: raw.description || effect };
+    case 'gear':
+      return {
+        id: toId(name),
+        name,
+        slot: raw.slot || '',
+        effects: Array.isArray(raw.effects) ? raw.effects : [effect].filter(Boolean),
+        value: raw.value ?? 0,
+        twoHanded: raw.twoHanded ?? false,
+        darkStone: raw.darkStone ?? false,
+        upgradeSlots: raw.upgradeSlots ?? 0,
+        restrictions: raw.restrictions ?? [],
+      };
+    case 'mineArtifact':
+      return {
+        id: toId(name),
+        name,
+        type: raw.type || 'Artifact',
+        slot: raw.slot || 'None',
+        value: raw.value ?? 0,
+        weight: raw.weight ?? 1,
+        upgradeSlots: raw.upgradeSlots ?? 0,
+        effects: Array.isArray(raw.effects) ? raw.effects : [effect].filter(Boolean),
+        requires: raw.requires || '',
+        tags: tags.length ? tags : ['Artifact'],
+      };
+    default:
+      return { name, effect };
+  }
+}
+
+// ── Heuristic parser for Tesseract raw text ──────────────────────────────────
 
 function parseOcrText(raw, deckType) {
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
   const fullText = lines.join(' ');
 
   const name = lines[0] || '';
-
-  // Flavor text heuristic: shorter italicised-looking lines between name and effect
-  // Often they end with ! or ... and are shorter than 80 chars
   const flavorLine = lines.find((l, i) => i > 0 && l.length < 100 && /[.!]$/.test(l) && !/[:+\-\d]/.test(l));
-
-  // Effect: everything after name (and flavorText if found)
   const effectStart = flavorLine ? lines.indexOf(flavorLine) + 1 : 1;
-  const effectLines = lines.slice(effectStart);
+  const effect = lines.slice(effectStart).join(' ').trim();
 
-  // Try to parse value ($NNN pattern)
   const valueMatch = fullText.match(/\$\s*(\d+)/);
   const value = valueMatch ? Number(valueMatch[1]) : 0;
-
-  // Weight (Wt N)
   const weightMatch = fullText.match(/\bWt\.?\s*(\d+)/i);
   const weight = weightMatch ? Number(weightMatch[1]) : 1;
-
-  // Upgrade slots (N upgrade slot)
   const upgradeMatch = fullText.match(/(\d+)\s+upgrade\s+slot/i);
   const upgradeSlots = upgradeMatch ? Number(upgradeMatch[1]) : 0;
-
-  // Test for encounters: "Cunning 5+" style
   const testMatch = fullText.match(/\b(Strength|Agility|Cunning|Spirit|Lore|Luck|Initiative)\s+(\d+\+)/i);
   const test = testMatch ? `${testMatch[1]} ${testMatch[2]}` : '';
-
-  // Promo ID for growing dread
   const promoMatch = fullText.match(/Promo-?\s*(\d+)/i);
   const promoId = promoMatch ? `Promo-${promoMatch[1]}` : '';
 
-  const effect = effectLines.join(' ').trim();
-
-  switch (deckType) {
-    case 'darkness':
-      return { name, effect, tags: ['Darkness'], remainsInPlay: false };
-    case 'growingDread':
-      return { id: toId(name), name, flavorText: flavorLine || '', effect, promoId };
-    case 'mineEncounter':
-    case 'wastesEncounter':
-      return { name, tags: ['Encounter'], test, effect, remainsInPlay: false };
-    case 'mineMap':
-    case 'wastesMap':
-      return { id: toId(name), name, image: `/assets/images/maps/${name.replace(/\s+/g, '_')}.png` };
-    case 'mineLoot':
-      return { name: fullText.slice(0, 120) };
-    case 'wastesLoot':
-      return { name, description: effect };
-    case 'gear':
-      return { id: toId(name), name, slot: '', effects: [effect], value, twoHanded: false, darkStone: false, upgradeSlots, restrictions: [] };
-    case 'mineArtifact':
-      return { id: toId(name), name, type: 'Artifact', slot: 'None', value, weight, upgradeSlots, effects: [effect], requires: '', tags: ['Artifact'] };
-    default:
-      return { name, effect };
-  }
+  return applyToSchema({ name, effect, flavorText: flavorLine || '', value, weight, upgradeSlots, test, promoId }, deckType);
 }
 
 // ── Field renderer per deck type ─────────────────────────────────────────────
@@ -199,7 +236,7 @@ function FormFields({ deckType, data, onChange }) {
       return (
         <div className="space-y-3">
           {field('Name', 'name')}
-          {field('ID (auto)', 'id', 'text')}
+          {field('ID (auto)', 'id')}
           {textarea('Flavor Text', 'flavorText')}
           {textarea('Effect', 'effect')}
           {field('Promo ID', 'promoId', 'text', 'e.g. Promo-147')}
@@ -335,14 +372,27 @@ export default function DMScanCards() {
   const [imageUrl, setImageUrl] = useState('');
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [rawText, setRawText] = useState('');
+  const [scanEngine, setScanEngine] = useState('');    // 'claude' | 'tesseract'
+  const [rawText, setRawText] = useState('');          // tesseract only
   const [showRaw, setShowRaw] = useState(false);
   const [formData, setFormData] = useState({});
   const [hasScanned, setHasScanned] = useState(false);
   const [pending, setPending] = useState(() => loadPending());
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem(LS_API_KEY) || '');
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiKeyDraft, setApiKeyDraft] = useState(() => localStorage.getItem(LS_API_KEY) || '');
   const fileInputRef = useRef(null);
 
   const currentPending = pending[deckType] || [];
+  const useClaudeVision = !!apiKey;
+
+  const saveApiKey = () => {
+    const trimmed = apiKeyDraft.trim();
+    setApiKey(trimmed);
+    if (trimmed) localStorage.setItem(LS_API_KEY, trimmed);
+    else localStorage.removeItem(LS_API_KEY);
+    setShowSettings(false);
+  };
 
   const handleFileChange = useCallback((e) => {
     const file = e.target.files?.[0];
@@ -353,27 +403,36 @@ export default function DMScanCards() {
     setFormData({});
     setHasScanned(false);
     setProgress(0);
+    setScanEngine('');
   }, []);
 
   const handleScan = useCallback(async () => {
     if (!imageFile) return;
     setScanning(true);
-    setProgress(5);
+    setProgress(10);
     try {
-      const text = await runOcr(imageFile, setProgress);
-      setRawText(text);
-      const parsed = parseOcrText(text, deckType);
-      setFormData(parsed);
+      if (useClaudeVision) {
+        setProgress(30);
+        const result = await scanWithClaudeVision(imageFile, deckType, apiKey);
+        setProgress(100);
+        setScanEngine('claude');
+        setRawText('');
+        setFormData(applyToSchema(result, deckType));
+      } else {
+        const text = await runOcr(imageFile, setProgress);
+        setScanEngine('tesseract');
+        setRawText(text);
+        setFormData(parseOcrText(text, deckType));
+      }
       setHasScanned(true);
     } catch (err) {
-      alert(`OCR failed: ${err.message}`);
+      alert(`Scan failed: ${err.message}`);
     } finally {
       setScanning(false);
       setProgress(0);
     }
-  }, [imageFile, deckType]);
+  }, [imageFile, deckType, useClaudeVision, apiKey]);
 
-  // Auto-update id when name changes
   const handleFormChange = useCallback((next) => {
     if (next.name !== formData.name && next.id !== undefined) {
       next.id = toId(next.name);
@@ -394,6 +453,7 @@ export default function DMScanCards() {
     setImageUrl('');
     setRawText('');
     setHasScanned(false);
+    setScanEngine('');
   }, [formData, deckType, pending]);
 
   const handleRemoveCard = useCallback((idx) => {
@@ -419,11 +479,69 @@ export default function DMScanCards() {
 
   return (
     <div className="p-4 space-y-5 max-w-2xl mx-auto">
-      <h2 className="text-xl font-bold">Scan Cards</h2>
-      <p className="text-sm text-gray-600">
-        Select a deck, photograph a card, then correct the OCR output and confirm.
-        Cards are queued locally until you export the JSON.
-      </p>
+
+      {/* Header + settings toggle */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-xl font-bold">Scan Cards</h2>
+          <p className="text-sm text-gray-600 mt-0.5">
+            Select a deck, photograph a card, then confirm the extracted fields.
+          </p>
+        </div>
+        <button
+          className="btn btn-sm btn-ghost shrink-0"
+          onClick={() => setShowSettings(v => !v)}
+        >
+          ⚙ AI Settings
+        </button>
+      </div>
+
+      {/* Settings panel */}
+      {showSettings && (
+        <div className="rounded-xl border border-blue-300 bg-blue-50 p-4 space-y-3">
+          <div className="font-semibold text-sm">Claude Vision API (optional)</div>
+          <p className="text-xs text-gray-600">
+            Claude Vision is dramatically more accurate than Tesseract on dark, stylised cards.
+            ~$0.001 per scan using Haiku.{' '}
+            <a
+              href="https://console.anthropic.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-blue-700"
+            >
+              Get a key at console.anthropic.com
+            </a>
+          </p>
+          <div>
+            <label className="text-xs font-semibold text-gray-600">API Key</label>
+            <input
+              type="password"
+              className="input input-sm w-full mt-0.5 font-mono"
+              placeholder="sk-ant-…"
+              value={apiKeyDraft}
+              onChange={e => setApiKeyDraft(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button className="btn btn-sm btn-primary" onClick={saveApiKey}>Save</button>
+            <button className="btn btn-sm btn-ghost" onClick={() => setShowSettings(false)}>Cancel</button>
+            {apiKey && (
+              <button
+                className="btn btn-sm btn-ghost text-red-600 ml-auto"
+                onClick={() => { setApiKeyDraft(''); setApiKey(''); localStorage.removeItem(LS_API_KEY); setShowSettings(false); }}
+              >
+                Remove Key
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Engine indicator */}
+      <div className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-1 font-medium
+        ${useClaudeVision ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+        {useClaudeVision ? '✦ Claude Vision (high accuracy)' : '◈ Tesseract OCR (local)'}
+      </div>
 
       {/* Deck selector */}
       <div>
@@ -473,7 +591,9 @@ export default function DMScanCards() {
 
         {scanning && (
           <div className="space-y-1">
-            <div className="text-sm text-gray-600">Running OCR… {progress}%</div>
+            <div className="text-sm text-gray-600">
+              {useClaudeVision ? 'Asking Claude…' : 'Running OCR…'} {progress}%
+            </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div className="bg-amber-600 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
@@ -485,13 +605,20 @@ export default function DMScanCards() {
       {hasScanned && (
         <div className="rounded-xl border border-amber-400 bg-amber-50 p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Verify & Edit Fields</h3>
-            <button
-              className="btn btn-xs btn-ghost"
-              onClick={() => setShowRaw(v => !v)}
-            >
-              {showRaw ? 'Hide' : 'Show'} raw OCR text
-            </button>
+            <div>
+              <h3 className="font-semibold">Verify & Edit Fields</h3>
+              <span className="text-xs text-gray-500">
+                {scanEngine === 'claude' ? '✦ Extracted by Claude Vision' : '◈ Extracted by Tesseract OCR'}
+              </span>
+            </div>
+            {scanEngine === 'tesseract' && rawText && (
+              <button
+                className="btn btn-xs btn-ghost"
+                onClick={() => setShowRaw(v => !v)}
+              >
+                {showRaw ? 'Hide' : 'Show'} raw OCR text
+              </button>
+            )}
           </div>
 
           {showRaw && rawText && (
@@ -548,12 +675,13 @@ export default function DMScanCards() {
 
       {/* Tips */}
       <div className="text-xs text-gray-500 space-y-1 border-t pt-3">
-        <p><strong>Tips for better OCR:</strong></p>
+        <p><strong>Remote use:</strong> The app is accessible on your local network — check the Vite console for the Network URL (e.g. <code>http://100.x.x.x:5173</code>). With <a href="https://tailscale.com" target="_blank" rel="noopener noreferrer" className="underline">Tailscale</a> on your phone you can scan cards from anywhere while your PC is on.</p>
+        <p className="mt-2"><strong>Tips for better scans:</strong></p>
         <ul className="list-disc list-inside space-y-0.5">
-          <li>Flat lighting — avoid shadows across the card</li>
-          <li>Keep the card straight and fully in frame</li>
-          <li>Bright, even light gives the best contrast</li>
-          <li>The "Show raw OCR text" panel lets you copy-paste any missed text</li>
+          <li>Flat, even lighting — avoid shadows across the card</li>
+          <li>Card straight and fully in frame</li>
+          <li>Claude Vision handles dark/stylised text far better than Tesseract</li>
+          {!useClaudeVision && <li>Add a Claude API key (⚙ AI Settings above) for much higher accuracy</li>}
         </ul>
       </div>
     </div>
