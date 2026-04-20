@@ -13,6 +13,7 @@ import DMLootPoolPanel from './DMLootPoolPanel';
 import DMTradePanel from './DMTradePanel';
 import DMItemGenerator from './DMItemGenerator';
 import DMHandPanel from './DMHandPanel';
+import DMScanCards from './DMScanCards';
 
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
@@ -125,6 +126,7 @@ const TABS = [
   { id: 'itemGen',      label: 'Item Generator',   component: DMItemGenerator },
   { id: 'charts',       label: 'Charts',           component: DMChartPanel },
   { id: 'townPhase',    label: 'Town Phase',       component: TownPhaseTab },
+  { id: 'scan',         label: 'Scan Cards',       component: DMScanCards },
   { id: 'options',      label: 'Options',          component: OptionsPanel },
 ];
 
