@@ -25,6 +25,10 @@ const ARTIFACT_SLOTS = ['None', 'Charm', 'Hand Weapon', 'Gun', 'Coat', 'Hat', 'B
 
 const LS_KEY = 'sob:scannedCards';
 const LS_API_KEY = 'sob:claudeApiKey';
+const SS_DECK_KEY = 'sob:scanDeckType';
+
+const hasSecureCamera = typeof navigator !== 'undefined'
+  && !!navigator.mediaDevices?.getUserMedia;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -367,7 +371,9 @@ function exportCards(deckType, cards) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DMScanCards() {
-  const [deckType, setDeckType] = useState('darkness');
+  const [deckType, setDeckType] = useState(() => {
+    try { return sessionStorage.getItem(SS_DECK_KEY) || 'darkness'; } catch { return 'darkness'; }
+  });
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -388,6 +394,7 @@ export default function DMScanCards() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const currentPending = pending[deckType] || [];
   const useClaudeVision = !!apiKey;
@@ -401,7 +408,17 @@ export default function DMScanCards() {
     };
   }, []);
 
+  // Persist deckType so it survives page reloads from native camera
+  useEffect(() => {
+    try { sessionStorage.setItem(SS_DECK_KEY, deckType); } catch {}
+  }, [deckType]);
+
   const startCamera = useCallback(async () => {
+    // On HTTP, getUserMedia is unavailable — fall back to native camera input
+    if (!hasSecureCamera) {
+      cameraInputRef.current?.click();
+      return;
+    }
     setCameraError('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -409,7 +426,6 @@ export default function DMScanCards() {
       });
       streamRef.current = stream;
       setCameraActive(true);
-      // Attach stream after React renders the <video>
       requestAnimationFrame(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -656,10 +672,20 @@ export default function DMScanCards() {
             >
               🖼 Choose from Gallery
             </button>
+            {/* Gallery picker (no capture — won't open native camera) */}
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            {/* Native camera fallback for HTTP (no getUserMedia) */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -772,7 +798,9 @@ export default function DMScanCards() {
         <p><strong>Remote use:</strong> Install <a href="https://tailscale.com" target="_blank" rel="noopener noreferrer" className="underline">Tailscale</a> on your phone and visit your PC's Tailscale IP (e.g. <code>http://100.x.x.x:5173</code> — shown in the Vite console) to scan from anywhere.</p>
         <p className="mt-2"><strong>Tips for better scans:</strong></p>
         <ul className="list-disc list-inside space-y-0.5">
-          <li>Use "Open Camera" for inline capture — "Choose from Gallery" for existing photos</li>
+          <li>{hasSecureCamera
+            ? 'Inline camera active (HTTPS) — page stays open while you photograph'
+            : 'On HTTP, "Open Camera" uses the native camera — your deck selection is saved if the page reloads'}</li>
           <li>Flat, even lighting — avoid shadows across the card</li>
           <li>Card straight and fully in frame</li>
           {!useClaudeVision && <li>Add a Claude API key (⚙ AI Settings) for much higher accuracy on dark cards</li>}
