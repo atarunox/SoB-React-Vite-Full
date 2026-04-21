@@ -1,5 +1,5 @@
 // src/components/DM/DMScanCards.jsx
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { runOcr, scanWithClaudeVision } from '../../utils/cardOcr';
 
 // ── Deck type definitions ────────────────────────────────────────────────────
@@ -372,8 +372,8 @@ export default function DMScanCards() {
   const [imageUrl, setImageUrl] = useState('');
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [scanEngine, setScanEngine] = useState('');    // 'claude' | 'tesseract'
-  const [rawText, setRawText] = useState('');          // tesseract only
+  const [scanEngine, setScanEngine] = useState('');
+  const [rawText, setRawText] = useState('');
   const [showRaw, setShowRaw] = useState(false);
   const [formData, setFormData] = useState({});
   const [hasScanned, setHasScanned] = useState(false);
@@ -381,10 +381,75 @@ export default function DMScanCards() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(LS_API_KEY) || '');
   const [showSettings, setShowSettings] = useState(false);
   const [apiKeyDraft, setApiKeyDraft] = useState(() => localStorage.getItem(LS_API_KEY) || '');
+
+  // Inline camera state
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const currentPending = pending[deckType] || [];
   const useClaudeVision = !!apiKey;
+
+  // Clean up camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    setCameraError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      streamRef.current = stream;
+      setCameraActive(true);
+      // Attach stream after React renders the <video>
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      });
+    } catch (err) {
+      setCameraError(err.name === 'NotAllowedError'
+        ? 'Camera permission denied. Allow camera access in your browser settings.'
+        : `Camera error: ${err.message}`);
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const file = new File([blob], `card_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setImageFile(file);
+      setImageUrl(URL.createObjectURL(blob));
+      setRawText('');
+      setFormData({});
+      setHasScanned(false);
+      setScanEngine('');
+      stopCamera();
+    }, 'image/jpeg', 0.92);
+  }, [stopCamera]);
 
   const saveApiKey = () => {
     const trimmed = apiKeyDraft.trim();
@@ -559,29 +624,58 @@ export default function DMScanCards() {
 
       {/* Image capture */}
       <div className="rounded-xl border border-gray-300 p-4 space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <button
-            className="btn btn-outline"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            📷 Take Photo / Choose Image
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          {imageFile && !scanning && (
-            <button className="btn btn-primary" onClick={handleScan}>
-              🔍 Scan
-            </button>
-          )}
-        </div>
 
-        {imageUrl && (
+        {/* Inline camera viewfinder */}
+        {cameraActive && (
+          <div className="space-y-2">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="rounded-lg w-full max-h-80 object-contain bg-black"
+            />
+            <div className="flex gap-2">
+              <button className="btn btn-primary flex-1" onClick={capturePhoto}>
+                📸 Capture
+              </button>
+              <button className="btn btn-ghost" onClick={stopCamera}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* Buttons — hidden while camera is live */}
+        {!cameraActive && (
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-outline" onClick={startCamera}>
+              📷 Open Camera
+            </button>
+            <button
+              className="btn btn-outline"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              🖼 Choose from Gallery
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            {imageFile && !scanning && (
+              <button className="btn btn-primary" onClick={handleScan}>
+                🔍 Scan
+              </button>
+            )}
+          </div>
+        )}
+
+        {cameraError && (
+          <div className="text-sm text-red-600 bg-red-50 rounded p-2">{cameraError}</div>
+        )}
+
+        {imageUrl && !cameraActive && (
           <img
             src={imageUrl}
             alt="Card to scan"
@@ -675,13 +769,13 @@ export default function DMScanCards() {
 
       {/* Tips */}
       <div className="text-xs text-gray-500 space-y-1 border-t pt-3">
-        <p><strong>Remote use:</strong> The app is accessible on your local network — check the Vite console for the Network URL (e.g. <code>http://100.x.x.x:5173</code>). With <a href="https://tailscale.com" target="_blank" rel="noopener noreferrer" className="underline">Tailscale</a> on your phone you can scan cards from anywhere while your PC is on.</p>
+        <p><strong>Remote use:</strong> Install <a href="https://tailscale.com" target="_blank" rel="noopener noreferrer" className="underline">Tailscale</a> on your phone and visit your PC's Tailscale IP (e.g. <code>http://100.x.x.x:5173</code> — shown in the Vite console) to scan from anywhere.</p>
         <p className="mt-2"><strong>Tips for better scans:</strong></p>
         <ul className="list-disc list-inside space-y-0.5">
+          <li>Use "Open Camera" for inline capture — "Choose from Gallery" for existing photos</li>
           <li>Flat, even lighting — avoid shadows across the card</li>
           <li>Card straight and fully in frame</li>
-          <li>Claude Vision handles dark/stylised text far better than Tesseract</li>
-          {!useClaudeVision && <li>Add a Claude API key (⚙ AI Settings above) for much higher accuracy</li>}
+          {!useClaudeVision && <li>Add a Claude API key (⚙ AI Settings) for much higher accuracy on dark cards</li>}
         </ul>
       </div>
     </div>
