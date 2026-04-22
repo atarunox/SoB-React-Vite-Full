@@ -5,16 +5,30 @@ import { runOcr, scanWithClaudeVision } from '../../utils/cardOcr';
 // ── Deck type definitions ────────────────────────────────────────────────────
 
 const DECK_TYPES = [
-  { id: 'darkness',        label: 'Darkness Card' },
-  { id: 'growingDread',    label: 'Growing Dread Card' },
-  { id: 'mineEncounter',   label: 'Mine Encounter' },
-  { id: 'wastesEncounter', label: 'Wastes Encounter' },
-  { id: 'mineMap',         label: 'Mine Map Card' },
-  { id: 'wastesMap',       label: 'Wastes Map Card' },
-  { id: 'mineLoot',        label: 'Mine Loot' },
-  { id: 'wastesLoot',      label: 'Wastes Loot' },
-  { id: 'gear',            label: 'Gear Card' },
-  { id: 'mineArtifact',    label: 'Mine Artifact' },
+  { id: 'darkness',     label: 'Darkness Card' },
+  { id: 'growingDread', label: 'Growing Dread Card' },
+  { id: 'encounter',    label: 'Encounter' },
+  { id: 'map',          label: 'Map Card' },
+  { id: 'loot',         label: 'Loot' },
+  { id: 'gear',         label: 'Gear Card' },
+  { id: 'artifact',     label: 'Artifact' },
+  { id: 'depthEvent',   label: 'Depth Event' },
+];
+
+const WORLDS = [
+  'Mines',
+  'Blasted Wastes',
+  'Targa Plateau',
+  'Caverns of Cynder',
+  'Jargono',
+  'Trederra',
+  'Derelict Ship',
+  'The Canyons',
+  'Belly of the Beast',
+  'Forest of the Dead',
+  'Cursed Mountain',
+  'Valley of the Serpent Kings',
+  'Forbidden Fortress',
 ];
 
 const DARKNESS_TAGS = ['Darkness', 'Ritual', 'Dread', 'Boost', 'Soldier', 'Construct', 'Undead', 'Demon', 'Void'];
@@ -26,6 +40,9 @@ const ARTIFACT_SLOTS = ['None', 'Charm', 'Hand Weapon', 'Gun', 'Coat', 'Hat', 'B
 const LS_KEY = 'sob:scannedCards';
 const LS_API_KEY = 'sob:claudeApiKey';
 const SS_DECK_KEY = 'sob:scanDeckType';
+const SS_WORLD_KEY = 'sob:scanWorld';
+
+const NEEDS_WORLD = new Set(['encounter', 'map', 'loot', 'artifact', 'depthEvent']);
 
 const hasSecureCamera = typeof navigator !== 'undefined'
   && !!navigator.mediaDevices?.getUserMedia;
@@ -54,6 +71,7 @@ function applyToSchema(raw, deckType) {
     case 'darkness':
       return {
         name,
+        flavorText: raw.flavorText || '',
         effect,
         tags: tags.length ? tags : ['Darkness'],
         remainsInPlay: raw.remainsInPlay ?? false,
@@ -66,25 +84,22 @@ function applyToSchema(raw, deckType) {
         effect,
         promoId: raw.promoId || '',
       };
-    case 'mineEncounter':
-    case 'wastesEncounter':
+    case 'encounter':
       return {
         name,
+        flavorText: raw.flavorText || '',
         tags: tags.length ? tags : ['Encounter'],
         test: raw.test || '',
         effect,
         remainsInPlay: raw.remainsInPlay ?? false,
       };
-    case 'mineMap':
-    case 'wastesMap':
+    case 'map':
       return {
         id: toId(name),
         name,
         image: `/assets/images/maps/${name.replace(/\s+/g, '_')}.png`,
       };
-    case 'mineLoot':
-      return { name: raw.name || effect || '' };
-    case 'wastesLoot':
+    case 'loot':
       return { name, description: raw.description || effect };
     case 'gear':
       return {
@@ -98,7 +113,7 @@ function applyToSchema(raw, deckType) {
         upgradeSlots: raw.upgradeSlots ?? 0,
         restrictions: raw.restrictions ?? [],
       };
-    case 'mineArtifact':
+    case 'artifact':
       return {
         id: toId(name),
         name,
@@ -110,6 +125,14 @@ function applyToSchema(raw, deckType) {
         effects: Array.isArray(raw.effects) ? raw.effects : [effect].filter(Boolean),
         requires: raw.requires || '',
         tags: tags.length ? tags : ['Artifact'],
+      };
+    case 'depthEvent':
+      return {
+        id: toId(name),
+        name,
+        flavorText: raw.flavorText || '',
+        effect,
+        depth: raw.depth || '',
       };
     default:
       return { name, effect };
@@ -227,6 +250,7 @@ function FormFields({ deckType, data, onChange }) {
       return (
         <div className="space-y-3">
           {field('Name', 'name')}
+          {textarea('Flavor / Lore Text (italic)', 'flavorText')}
           {textarea('Effect', 'effect')}
           <div>
             <label className="text-xs font-semibold text-gray-600">Tags</label>
@@ -241,17 +265,17 @@ function FormFields({ deckType, data, onChange }) {
         <div className="space-y-3">
           {field('Name', 'name')}
           {field('ID (auto)', 'id')}
-          {textarea('Flavor Text', 'flavorText')}
+          {textarea('Flavor / Lore Text (italic)', 'flavorText')}
           {textarea('Effect', 'effect')}
           {field('Promo ID', 'promoId', 'text', 'e.g. Promo-147')}
         </div>
       );
 
-    case 'mineEncounter':
-    case 'wastesEncounter':
+    case 'encounter':
       return (
         <div className="space-y-3">
           {field('Name', 'name')}
+          {textarea('Flavor / Lore Text (italic)', 'flavorText')}
           {textarea('Effect', 'effect')}
           <div>
             <label className="text-xs font-semibold text-gray-600">Tags</label>
@@ -262,8 +286,7 @@ function FormFields({ deckType, data, onChange }) {
         </div>
       );
 
-    case 'mineMap':
-    case 'wastesMap':
+    case 'map':
       return (
         <div className="space-y-3">
           {field('Name', 'name')}
@@ -272,14 +295,7 @@ function FormFields({ deckType, data, onChange }) {
         </div>
       );
 
-    case 'mineLoot':
-      return (
-        <div className="space-y-3">
-          {field('Loot text (full)', 'name', 'text', 'e.g. Gain D6 x 50 Gold.')}
-        </div>
-      );
-
-    case 'wastesLoot':
+    case 'loot':
       return (
         <div className="space-y-3">
           {field('Name', 'name')}
@@ -319,7 +335,7 @@ function FormFields({ deckType, data, onChange }) {
         </div>
       );
 
-    case 'mineArtifact':
+    case 'artifact':
       return (
         <div className="space-y-3">
           {field('Name', 'name')}
@@ -343,6 +359,17 @@ function FormFields({ deckType, data, onChange }) {
             <label className="text-xs font-semibold text-gray-600">Tags</label>
             <TagCheckboxes allTags={ARTIFACT_TAGS} selected={data.tags} onChange={v => set('tags', v)} />
           </div>
+        </div>
+      );
+
+    case 'depthEvent':
+      return (
+        <div className="space-y-3">
+          {field('Name', 'name')}
+          {field('ID (auto)', 'id')}
+          {textarea('Flavor / Lore Text (italic)', 'flavorText')}
+          {textarea('Effect', 'effect')}
+          {field('Depth (e.g. 1, 2, 3, or "any")', 'depth', 'text', 'any')}
         </div>
       );
 
@@ -374,6 +401,9 @@ export default function DMScanCards() {
   const [deckType, setDeckType] = useState(() => {
     try { return sessionStorage.getItem(SS_DECK_KEY) || 'darkness'; } catch { return 'darkness'; }
   });
+  const [world, setWorld] = useState(() => {
+    try { return sessionStorage.getItem(SS_WORLD_KEY) || 'Mines'; } catch { return 'Mines'; }
+  });
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -396,7 +426,8 @@ export default function DMScanCards() {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  const currentPending = pending[deckType] || [];
+  const pendingKey = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
+  const currentPending = pending[pendingKey] || [];
   const useClaudeVision = !!apiKey;
 
   // Clean up camera stream on unmount
@@ -408,10 +439,13 @@ export default function DMScanCards() {
     };
   }, []);
 
-  // Persist deckType so it survives page reloads from native camera
+  // Persist selections so they survive page reloads from native camera
   useEffect(() => {
     try { sessionStorage.setItem(SS_DECK_KEY, deckType); } catch {}
   }, [deckType]);
+  useEffect(() => {
+    try { sessionStorage.setItem(SS_WORLD_KEY, world); } catch {}
+  }, [world]);
 
   const startCamera = useCallback(async () => {
     // On HTTP, getUserMedia is unavailable — fall back to native camera input
@@ -494,7 +528,8 @@ export default function DMScanCards() {
     try {
       if (useClaudeVision) {
         setProgress(30);
-        const result = await scanWithClaudeVision(imageFile, deckType, apiKey);
+        const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
+        const result = await scanWithClaudeVision(imageFile, label, apiKey);
         setProgress(100);
         setScanEngine('claude');
         setRawText('');
@@ -525,7 +560,7 @@ export default function DMScanCards() {
     if (!formData.name && !formData.id) { alert('Add at least a name before confirming.'); return; }
     const updated = {
       ...pending,
-      [deckType]: [...(pending[deckType] || []), { ...formData }],
+      [pendingKey]: [...(pending[pendingKey] || []), { ...formData }],
     };
     setPending(updated);
     savePending(updated);
@@ -535,28 +570,28 @@ export default function DMScanCards() {
     setRawText('');
     setHasScanned(false);
     setScanEngine('');
-  }, [formData, deckType, pending]);
+  }, [formData, pendingKey, pending]);
 
   const handleRemoveCard = useCallback((idx) => {
     const updated = {
       ...pending,
-      [deckType]: (pending[deckType] || []).filter((_, i) => i !== idx),
+      [pendingKey]: (pending[pendingKey] || []).filter((_, i) => i !== idx),
     };
     setPending(updated);
     savePending(updated);
-  }, [pending, deckType]);
+  }, [pending, pendingKey]);
 
   const handleExport = useCallback(() => {
     if (!currentPending.length) { alert('No cards to export yet.'); return; }
-    exportCards(deckType, currentPending);
-  }, [deckType, currentPending]);
+    exportCards(pendingKey, currentPending);
+  }, [pendingKey, currentPending]);
 
   const handleClearAll = useCallback(() => {
-    if (!window.confirm(`Discard all ${currentPending.length} scanned ${deckType} card(s)?`)) return;
-    const updated = { ...pending, [deckType]: [] };
+    if (!window.confirm(`Discard all ${currentPending.length} scanned card(s)?`)) return;
+    const updated = { ...pending, [pendingKey]: [] };
     setPending(updated);
     savePending(updated);
-  }, [pending, deckType, currentPending.length]);
+  }, [pending, pendingKey, currentPending.length]);
 
   return (
     <div className="p-4 space-y-5 max-w-2xl mx-auto">
@@ -624,18 +659,34 @@ export default function DMScanCards() {
         {useClaudeVision ? '✦ Claude Vision (high accuracy)' : '◈ Tesseract OCR (local)'}
       </div>
 
-      {/* Deck selector */}
-      <div>
-        <label className="text-xs font-semibold text-gray-600">Deck Type</label>
-        <select
-          className="select select-bordered w-full mt-1"
-          value={deckType}
-          onChange={e => { setDeckType(e.target.value); setFormData({}); setHasScanned(false); }}
-        >
-          {DECK_TYPES.map(d => (
-            <option key={d.id} value={d.id}>{d.label}</option>
-          ))}
-        </select>
+      {/* Deck + World selectors */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-semibold text-gray-600">Deck Type</label>
+          <select
+            className="select select-bordered w-full mt-1"
+            value={deckType}
+            onChange={e => { setDeckType(e.target.value); setFormData({}); setHasScanned(false); }}
+          >
+            {DECK_TYPES.map(d => (
+              <option key={d.id} value={d.id}>{d.label}</option>
+            ))}
+          </select>
+        </div>
+        {NEEDS_WORLD.has(deckType) && (
+          <div>
+            <label className="text-xs font-semibold text-gray-600">World</label>
+            <select
+              className="select select-bordered w-full mt-1"
+              value={world}
+              onChange={e => { setWorld(e.target.value); setFormData({}); setHasScanned(false); }}
+            >
+              {WORLDS.map(w => (
+                <option key={w} value={w}>{w}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Image capture */}
@@ -760,7 +811,7 @@ export default function DMScanCards() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">
-              Queued — {DECK_TYPES.find(d => d.id === deckType)?.label} ({currentPending.length})
+              Queued — {NEEDS_WORLD.has(deckType) ? `${world} ` : ''}{DECK_TYPES.find(d => d.id === deckType)?.label} ({currentPending.length})
             </h3>
             <div className="flex gap-2">
               <button className="btn btn-sm btn-accent" onClick={handleExport}>

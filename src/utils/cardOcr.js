@@ -118,20 +118,22 @@ function buildPrompt(deckType) {
 Card type: ${deckType}
 
 Extract ALL visible text and return a JSON object with these fields (omit fields not present on this card):
-- name: the card title (usually bold text at top)
-- effect: the main rules text (everything that describes what the card does)
-- flavorText: any lore or flavour text (often italic, in quotes, or styled differently from the rules text)
-- tags: array of keyword tags or subtypes shown on the card
+- name: the card title (usually large bold text at top of the card)
+- flavorText: the lore/narrative text — this is the italic or stylistically different text that sets the scene or tells a story. It is NOT rules text. On encounter cards it usually appears right below the subtitle line before the rules. Capture it completely and verbatim.
+- effect: the main rules/mechanical text (everything that describes what the card DOES — dice rolls, tests, damage, conditions, etc.). Do NOT include the flavorText here.
+- tags: array of keyword tags or subtypes shown on the card subtitle line (e.g. "Encounter", "Environment", "Cold", "Darkness", "Ritual")
 - value: numeric gold/dollar value if shown (integer)
 - weight: numeric weight shown after "Wt" (integer)
 - upgradeSlots: number of upgrade slots shown (integer)
 - remainsInPlay: true if the card says "Remains in Play"
 - test: skill test string if shown, e.g. "Cunning 5+"
-- promoId: promo identifier if shown, e.g. "Promo-147"
+- promoId: promo identifier if shown, e.g. "Promo-110"
+- depth: depth level number if this is a depth event card
 
 Rules:
-- Correct obvious OCR-style spelling errors in proper nouns when you can infer them from context
-- Include ALL text in effect/flavorText — do not truncate
+- IMPORTANT: Separate flavorText (narrative/lore, usually italic) from effect (rules/mechanics) carefully. They are different fields.
+- Correct obvious OCR-style spelling errors using Shadows of Brimstone context
+- Include ALL text — do not truncate or summarize
 - Return ONLY a valid JSON object, no markdown fences, no explanation`;
 }
 
