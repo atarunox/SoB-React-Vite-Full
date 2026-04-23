@@ -356,6 +356,17 @@ export default function DMActiveEnemiesPanel({
           "id",
           "localId",
           "note",
+          "stats",
+          "toHit",
+          "eliteAbilities",
+          "statVariantMissing",
+          "brutal",
+          "combat",
+          "Combat",
+          "xpEach",
+          "xp",
+          "XP",
+          "set",
         ]);
         const otherEntries = Object.entries(stats)
           .filter(([k]) => !EXCLUDE.has(k))
@@ -366,15 +377,25 @@ export default function DMActiveEnemiesPanel({
           })
           .filter((e) => e.text);
 
+        const brutalFlag = group.baseStats?.brutal;
+        const hasStatSystem = typeof brutalFlag === 'boolean';
+        const cardBg = brutalFlag ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-[#3b2f1d]';
+        const cardBorder = brutalFlag ? 'border-red-800' : hasStatSystem ? 'border-green-800' : 'border-[#8b6b46]';
+
         return (
           <div
             key={group.id || idx}
-            className="rounded-lg p-4 bg-[#3b2f1d] text-amber-100 border border-[#8b6b46] shadow"
+            className={`rounded-lg p-4 ${cardBg} text-amber-100 border ${cardBorder} shadow`}
           >
             {/* HEADER: name/elite/keywords (left) + small initiative bubble (right) */}
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="flex flex-col gap-2 min-w-[220px]">
                 <div className="flex items-baseline gap-2 flex-wrap">
+                  {hasStatSystem && (
+                    <span className={`text-xs font-bold italic tracking-widest uppercase ${brutalFlag ? 'text-red-400' : 'text-green-400'}`}>
+                      {brutalFlag ? 'Brutal' : 'Normal'}
+                    </span>
+                  )}
                   <span className="font-bold text-xl leading-none">{group.name}</span>
                   <span className="text-sm opacity-90">x{group.count}</span>
                   {group.eliteAbilityList?.length > 0 && (

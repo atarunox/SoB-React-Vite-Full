@@ -85,6 +85,11 @@ export default function EnemyGroupCard({
 
   const bs = group.baseStats || {};
   const keywords = statBundle.keywords || bs.keywords || [];
+  const hasStatSystem = typeof bs.brutal === 'boolean';
+
+  const headerBg = isBrutal ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-leather-dark';
+  const borderColor = isBrutal ? 'border-red-800' : hasStatSystem ? 'border-green-800' : 'border-leather';
+  const statBarBg = isBrutal ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-leather-dark';
 
   const statCell = (label, value, highlight = false) => (
     <div className={`flex flex-col items-center justify-center px-2 py-1 ${highlight ? 'bg-black/20' : ''}`}>
@@ -94,7 +99,7 @@ export default function EnemyGroupCard({
   );
 
   return (
-    <div className={`rounded-lg overflow-hidden shadow-horror border-2 ${isBrutal ? 'border-red-800' : 'border-leather'} text-sm`}>
+    <div className={`rounded-lg overflow-hidden shadow-horror border-2 ${borderColor} text-sm`}>
       <StatBreakdownModal
         show={breakdownModal.show}
         onClose={() => setBreakdownModal({ show: false, stat: "", breakdown: null })}
@@ -103,11 +108,18 @@ export default function EnemyGroupCard({
       />
 
       {/* ── Header ── */}
-      <div className={`px-3 pt-2 pb-2 ${isBrutal ? 'bg-red-950' : 'bg-leather-dark'} relative`}>
+      <div className={`px-3 pt-2 pb-2 ${headerBg} relative`}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            {isBrutal && (
-              <div className="text-xs font-bold italic text-red-400 tracking-widest uppercase mb-0.5">Brutal</div>
+            {hasStatSystem && (
+              <div className={`text-xs font-bold italic tracking-widest uppercase mb-0.5 ${isBrutal ? 'text-red-400' : 'text-green-400'}`}>
+                {isBrutal ? 'Brutal' : 'Normal'}
+              </div>
+            )}
+            {bs.statVariantMissing && (
+              <div className="text-[10px] text-amber-400 italic mb-0.5">
+                ({isBrutal ? 'Normal' : 'Brutal'} stats not yet scanned — using {isBrutal ? 'brutal' : 'normal'} fallback)
+              </div>
             )}
             <div className="text-parchment-light font-bold text-lg leading-tight truncate" style={{ fontVariant: 'small-caps' }}>
               {group.name}
@@ -142,12 +154,12 @@ export default function EnemyGroupCard({
           </div>
           <ul className="space-y-1">
             {bs.abilities.map((a, i) => {
-              const [title, ...rest] = a.split(' - ');
-              const desc = rest.join(' - ');
+              const [title, ...rest] = a.split(/\s[–-]\s/);
+              const desc = rest.join(' – ');
               return (
                 <li key={i} className="text-xs leading-snug text-leather-dark">
                   {desc ? (
-                    <><b>{title}</b> - {desc}</>
+                    <><b>{title}</b> – {desc}</>
                   ) : a}
                 </li>
               );
@@ -177,11 +189,11 @@ export default function EnemyGroupCard({
           <div className="text-xs font-bold uppercase tracking-widest text-amber-800 mb-1">Elite Abilities</div>
           <ul className="space-y-1">
             {group.eliteAbilityList.map((a, i) => {
-              const [title, ...rest] = (a.text || '').split(' - ');
-              const desc = rest.join(' - ');
+              const [title, ...rest] = (a.text || '').split(/\s[–-]\s/);
+              const desc = rest.join(' – ');
               return (
                 <li key={i} className="text-xs leading-snug text-amber-900">
-                  <b>{a.roll}. {title}</b>{desc && ` - ${desc}`}
+                  <b>{a.roll}. {title}</b>{desc && ` – ${desc}`}
                 </li>
               );
             })}
@@ -190,7 +202,7 @@ export default function EnemyGroupCard({
       )}
 
       {/* ── Stats bar ── */}
-      <div className={`${isBrutal ? 'bg-red-950' : 'bg-leather-dark'} border-t border-parchment/20`}>
+      <div className={`${statBarBg} border-t border-parchment/20`}>
         <div className="grid grid-cols-6 divide-x divide-parchment/20 text-center">
           <div className="flex flex-col items-center col-span-2 divide-y divide-parchment/20">
             <span className="text-[9px] uppercase tracking-widest text-parchment/60 pt-1">To Hit</span>
@@ -225,11 +237,11 @@ export default function EnemyGroupCard({
           {showElite && (
             <div className="bg-green-950/80 px-3 py-2 space-y-1">
               {bs.eliteChart.map((entry, i) => {
-                const [title, ...rest] = entry.split(' - ');
-                const desc = rest.join(' - ');
+                const [title, ...rest] = entry.split(/\s[–-]\s/);
+                const desc = rest.join(' – ');
                 return (
                   <div key={i} className="text-xs text-parchment/90 leading-snug">
-                    <b>{i + 1}) {title}</b>{desc && ` - ${desc}`}
+                    <b>{i + 1}) {title}</b>{desc && ` – ${desc}`}
                   </div>
                 );
               })}

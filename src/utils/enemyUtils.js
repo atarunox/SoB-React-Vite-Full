@@ -40,4 +40,63 @@ export function getEnemyDifficulty({
   return { elite: baseElite, brutal };
 }
 
+/**
+ * Normalize enemy data from either schema into a flat structure.
+ *
+ * New schema (westernEnemies):
+ *   stats: { normal: { combat, damage, defense, health, xp }, brutal: { ... } }
+ *   toHit: { melee: "3+", ranged: null }
+ *   eliteAbilities: [...]
+ *
+ * Old schema (mineEnemies, forestEnemies, etc.):
+ *   health, defense, melee: { toHit, damage }, ranged, eliteChart: [...]
+ */
+export function normalizeEnemyData(enemyData, isBrutal) {
+  if (!enemyData) return {};
+
+  const hasNewSchema = enemyData.stats
+    && (enemyData.stats.normal !== undefined || enemyData.stats.brutal !== undefined);
+
+  if (!hasNewSchema) return { ...enemyData };
+
+  const preferred = isBrutal ? enemyData.stats.brutal : enemyData.stats.normal;
+  const fallback = isBrutal ? enemyData.stats.normal : enemyData.stats.brutal;
+  const variant = preferred || fallback || {};
+
+  const normalized = { ...enemyData };
+
+  normalized.combat = variant.combat;
+  normalized.damage = variant.damage;
+  normalized.defense = variant.defense;
+  normalized.health = variant.health;
+  normalized.brutal = isBrutal && !!preferred;
+  normalized.statVariantMissing = !preferred;
+
+  // Parse xp "10+5" → xp: 10, xpEach: 5
+  if (typeof variant.xp === 'string' && variant.xp.includes('+')) {
+    const [base, each] = variant.xp.split('+').map(s => s.trim());
+    normalized.xp = base;
+    normalized.xpEach = each;
+  } else {
+    normalized.xp = variant.xp;
+  }
+
+  // Normalize toHit: { melee, ranged } → melee/ranged objects
+  if (enemyData.toHit) {
+    normalized.melee = enemyData.toHit.melee
+      ? { toHit: enemyData.toHit.melee, damage: variant.damage }
+      : null;
+    normalized.ranged = enemyData.toHit.ranged
+      ? { toHit: enemyData.toHit.ranged, damage: variant.damage }
+      : null;
+  }
+
+  // Map eliteAbilities → eliteChart
+  if (enemyData.eliteAbilities && !enemyData.eliteChart) {
+    normalized.eliteChart = enemyData.eliteAbilities;
+  }
+
+  return normalized;
+}
+
 export default function Placeholder() { return null; }

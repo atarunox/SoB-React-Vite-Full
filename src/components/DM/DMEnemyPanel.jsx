@@ -5,6 +5,7 @@ import { useCombatState } from "../../hooks/useCombatState";
 
 import { ENEMY_CARDS } from '../../data/enemyCards';
 import { THREAT_DECKS, getThreatDeck } from '../../data/enemies/threatDecks';
+import { normalizeEnemyData } from '../../utils/enemyUtils';
 
 import EnemyGroupCard from './EnemyGroupCard';
 import DMActiveEnemiesPanel from './DMActiveEnemiesPanel';
@@ -88,7 +89,8 @@ export default function DMEnemyPanel() {
     }
 
     const newGroups = card.enemies.map((eg, i) => {
-      const enemyData = ENEMY_CARDS[world]?.find(e => e.name === eg.name) || {};
+      const rawEnemyData = ENEMY_CARDS[world]?.find(e => e.name === eg.name) || {};
+      const enemyData = normalizeEnemyData(rawEnemyData, isBrutal);
       const chart = enemyData.eliteChart || [];
       const rolled = rollEliteAbilities(chart, eliteCount);
 
