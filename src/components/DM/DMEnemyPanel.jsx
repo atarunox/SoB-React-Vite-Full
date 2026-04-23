@@ -7,7 +7,6 @@ import { ENEMY_CARDS } from '../../data/enemyCards';
 import { THREAT_DECKS, getThreatDeck } from '../../data/enemies/threatDecks';
 import { normalizeEnemyData } from '../../utils/enemyUtils';
 
-import EnemyGroupCard from './EnemyGroupCard';
 import DMActiveEnemiesPanel from './DMActiveEnemiesPanel';
 
 const THREAT_LEVELS = ['low', 'medium', 'high', 'epic'];
@@ -168,6 +167,7 @@ export default function DMEnemyPanel() {
         setCombatGroups={setCombatGroups}
         eliteCount={eliteCount}
         isBrutal={isBrutal}
+        posse={posse}
       />
     </div>
   );
