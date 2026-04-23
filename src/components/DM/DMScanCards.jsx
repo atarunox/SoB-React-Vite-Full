@@ -106,9 +106,9 @@ function applyToSchema(raw, deckType) {
         id: toId(name),
         name,
         slot: raw.slot || '',
+        hands: raw.hands ?? (raw.twoHanded ? 2 : 1),
         effects: Array.isArray(raw.effects) ? raw.effects : [effect].filter(Boolean),
         value: raw.value ?? 0,
-        twoHanded: raw.twoHanded ?? false,
         darkStone: raw.darkStone ?? false,
         upgradeSlots: raw.upgradeSlots ?? 0,
         restrictions: raw.restrictions ?? [],
@@ -119,6 +119,7 @@ function applyToSchema(raw, deckType) {
         name,
         type: raw.type || 'Artifact',
         slot: raw.slot || 'None',
+        hands: raw.hands ?? 1,
         value: raw.value ?? 0,
         weight: raw.weight ?? 1,
         upgradeSlots: raw.upgradeSlots ?? 0,
@@ -321,7 +322,14 @@ function FormFields({ deckType, data, onChange }) {
           </div>
           {field('Value ($)', 'value', 'number')}
           {field('Upgrade Slots', 'upgradeSlots', 'number')}
-          {toggle('Two-Handed', 'twoHanded')}
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Hands</label>
+            <select className="select select-sm w-full mt-0.5" value={data.hands ?? 1} onChange={e => set('hands', Number(e.target.value))}>
+              <option value={1}>1 Hand</option>
+              <option value={2}>2 Hands</option>
+              <option value={3}>3 Hands</option>
+            </select>
+          </div>
           {toggle('Dark Stone', 'darkStone')}
           <div>
             <label className="text-xs font-semibold text-gray-600">Restrictions (one per line)</label>
@@ -345,6 +353,14 @@ function FormFields({ deckType, data, onChange }) {
             <label className="text-xs font-semibold text-gray-600">Slot</label>
             <select className="select select-sm w-full mt-0.5" value={data.slot || 'None'} onChange={e => set('slot', e.target.value)}>
               {ARTIFACT_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Hands</label>
+            <select className="select select-sm w-full mt-0.5" value={data.hands ?? 1} onChange={e => set('hands', Number(e.target.value))}>
+              <option value={1}>1 Hand</option>
+              <option value={2}>2 Hands</option>
+              <option value={3}>3 Hands</option>
             </select>
           </div>
           <div>

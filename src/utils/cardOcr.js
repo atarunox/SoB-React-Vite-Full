@@ -124,6 +124,7 @@ Extract ALL visible text and return a JSON object with these fields (omit fields
 - tags: array of keyword tags or subtypes shown on the card subtitle line (e.g. "Encounter", "Environment", "Cold", "Darkness", "Ritual")
 - value: numeric gold/dollar value if shown (integer)
 - weight: numeric weight shown after "Wt" (integer)
+- hands: how many hands the item requires (1, 2, or 3) — look for hand icons or "Two Handed" / "2 Hands" text
 - upgradeSlots: number of upgrade slots shown (integer)
 - remainsInPlay: true if the card says "Remains in Play"
 - test: skill test string if shown, e.g. "Cunning 5+"
