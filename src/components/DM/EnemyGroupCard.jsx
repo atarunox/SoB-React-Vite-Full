@@ -14,14 +14,12 @@ export default function EnemyGroupCard({
   posse = [],
   globalModifiers = [],
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [breakdownModal, setBreakdownModal] = useState({ show: false, stat: "", breakdown: null });
   const [manualOverrides, setManualOverrides] = useState(group.manualOverrides || {});
+  const [showElite, setShowElite] = useState(false);
 
-  // Get full stats with breakdowns
   const statBundle = getAllStatsWithBreakdown(group, globalModifiers, manualOverrides);
 
-  // Get the difficulty values
   const highestLevel = Math.max(...(posse.map(h => h.level || 1)), 1);
   const hasDrifter = posse.some(h => h.heroClass === "Drifter");
   const darknessPassed = globalModifiers.some(m => m.type === "darknessPassed");
@@ -36,24 +34,23 @@ export default function EnemyGroupCard({
     manualExtraElite,
   });
 
+  // Use brutal flag from enemy data OR from posse level
+  const isBrutal = brutal || group.baseStats?.brutal;
+
   function setManualElite(val) {
     const newGroups = [...allGroups];
     newGroups[groupIdx].manualExtraElite = val;
     setCombatGroups(newGroups);
   }
 
-  // --- Modifiers ---
   const drawTrait = () => {
     const traitDeck = TRAIT_DECKS[group.baseStats.world] || [];
     const idx = Math.floor(Math.random() * traitDeck.length);
     const card = traitDeck[idx];
     const newGroups = [...allGroups];
     newGroups[groupIdx].modifiers.push({
-      type: "trait",
-      name: card.name,
-      effect: card.effect || {},
-      addKeywords: card.keywords || [],
-      description: card.description || "",
+      type: "trait", name: card.name, effect: card.effect || {},
+      addKeywords: card.keywords || [], description: card.description || "",
     });
     setCombatGroups(newGroups);
   };
@@ -62,11 +59,8 @@ export default function EnemyGroupCard({
     const card = DARKNESS_CARDS[idx];
     const newGroups = [...allGroups];
     newGroups[groupIdx].modifiers.push({
-      type: "darkness",
-      name: card.name,
-      effect: card.effect || {},
-      addKeywords: card.keywords || [],
-      description: card.description || "",
+      type: "darkness", name: card.name, effect: card.effect || {},
+      addKeywords: card.keywords || [], description: card.description || "",
     });
     setCombatGroups(newGroups);
   };
@@ -75,125 +69,189 @@ export default function EnemyGroupCard({
     const card = GROWING_DREAD_CARDS[idx];
     const newGroups = [...allGroups];
     newGroups[groupIdx].modifiers.push({
-      type: "growingDread",
-      name: card.name,
-      effect: card.effect || {},
-      addKeywords: card.keywords || [],
-      description: card.description || "",
+      type: "growingDread", name: card.name, effect: card.effect || {},
+      addKeywords: card.keywords || [], description: card.description || "",
     });
     setCombatGroups(newGroups);
   };
+  const removeModifier = (i) => {
+    const newGroups = [...allGroups];
+    newGroups[groupIdx].modifiers.splice(i, 1);
+    setCombatGroups(newGroups);
+  };
+  const removeGroup = () => {
+    setCombatGroups(allGroups.filter((_, i) => i !== groupIdx));
+  };
 
-  // --- Display ---
+  const bs = group.baseStats || {};
+  const keywords = statBundle.keywords || bs.keywords || [];
+
+  const statCell = (label, value, highlight = false) => (
+    <div className={`flex flex-col items-center justify-center px-2 py-1 ${highlight ? 'bg-black/20' : ''}`}>
+      <span className="text-[10px] uppercase tracking-widest text-parchment/70 font-semibold">{label}</span>
+      <span className="text-xl font-bold text-parchment leading-none mt-0.5">{value ?? '—'}</span>
+    </div>
+  );
+
   return (
-    <div className="bg-yellow-50 border rounded p-2 shadow flex flex-col gap-2">
+    <div className={`rounded-lg overflow-hidden shadow-horror border-2 ${isBrutal ? 'border-red-800' : 'border-leather'} text-sm`}>
       <StatBreakdownModal
         show={breakdownModal.show}
         onClose={() => setBreakdownModal({ show: false, stat: "", breakdown: null })}
         breakdown={breakdownModal.breakdown}
         statName={breakdownModal.stat}
       />
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <span className="font-bold text-lg">{group.name}</span>
+
+      {/* ── Header ── */}
+      <div className={`px-3 pt-2 pb-2 ${isBrutal ? 'bg-red-950' : 'bg-leather-dark'} relative`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            {isBrutal && (
+              <div className="text-xs font-bold italic text-red-400 tracking-widest uppercase mb-0.5">Brutal</div>
+            )}
+            <div className="text-parchment-light font-bold text-lg leading-tight truncate" style={{ fontVariant: 'small-caps' }}>
+              {group.name}
+              {group.count > 1 && <span className="ml-2 text-brass font-bold">×{group.count}</span>}
+            </div>
+            <div className="text-parchment/60 text-xs tracking-wide">
+              {keywords.join(' ♦ ')}
+            </div>
+          </div>
+          {/* Initiative */}
+          <div className="flex flex-col items-center shrink-0">
+            <span className="text-[9px] uppercase tracking-widest text-parchment/60">Initiative</span>
+            <div className="w-10 h-10 rounded-full border-2 border-parchment/40 bg-black/30 flex items-center justify-center">
+              <span className="text-parchment font-bold text-lg leading-none">{bs.initiative ?? '—'}</span>
+            </div>
+          </div>
         </div>
-        <button className="btn btn-xs btn-outline" onClick={() => setExpanded((e) => !e)}>
-          {expanded ? "Hide" : "Show"} Details
-        </button>
+        <div className="flex items-center gap-3 mt-1 text-xs text-parchment/70">
+          <span>Size: <b className="text-parchment">{bs.Size || bs.size || '—'}</b></span>
+          <span>Move: <b className="text-parchment">{bs.move ?? '—'}</b></span>
+          <span>Escape: <b className="text-parchment">{bs.escape || '—'}</b></span>
+          <span>XP: <b className="text-parchment">{bs.xp ?? '—'}{bs.xpEach ? ` +${bs.xpEach} ea` : ''}</b></span>
+        </div>
       </div>
-      {/* Difficulty summary */}
-      <div className="flex flex-row gap-4 items-center text-base mt-1">
-        <span>
-          <b>Elite Abilities:</b> {eliteAbilities}
-        </span>
-        {brutal && <span className="text-red-600 font-bold">BRUTAL</span>}
-      </div>
-      {/* Manual Elite */}
-      <div className="flex gap-2 mt-2">
-        <button
-          className="btn btn-xs btn-outline"
-          onClick={() => setManualElite(manualExtraElite + 1)}
-        >+1 Elite</button>
-        <button
-          className="btn btn-xs btn-outline"
-          disabled={manualExtraElite === 0}
-          onClick={() => setManualElite(Math.max(0, manualExtraElite - 1))}
-        >-1 Elite</button>
-      </div>
-      {/* Expanded details */}
-      {expanded && (
-        <div className="flex flex-col gap-3 mt-2 text-base">
-          {/* Stat block */}
-          <div className="bg-base-200 p-2 rounded grid grid-cols-2 md:grid-cols-3 gap-2 text-sm border font-mono leading-tight">
-            <div><b>Initiative:</b> {group.baseStats?.initiative ?? "—"}</div>
-            <div><b>Combat:</b> {group.baseStats?.combat ?? "—"}</div>
-            <div><b>Size:</b> {group.baseStats?.size || group.baseStats?.Size || "—"}</div>
-            <div><b>Health:</b> {group.baseStats?.health ?? "—"}</div>
-            <div><b>Defense:</b> {group.baseStats?.defense ?? "—"}</div>
-            <div><b>Move:</b> {group.baseStats?.move ?? "—"}</div>
-            <div><b>Escape:</b> {group.baseStats?.escape || "—"}</div>
-            <div><b>XP:</b> {group.baseStats?.xp ?? "—"}</div>
-            <div className="col-span-2">
-              <b>Melee:</b> {
-                group.baseStats?.melee
-                  ? <>To-Hit {group.baseStats.melee.toHit ?? "—"}, Damage {group.baseStats.melee.damage ?? "—"}</>
-                  : "—"
-              }
-            </div>
-            <div>
-              <b>Ranged:</b> {
-                group.baseStats?.ranged
-                  ? <>To-Hit {group.baseStats.ranged.toHit ?? "—"}, Damage {group.baseStats.ranged.damage ?? "—"}</>
-                  : "—"
-              }
-            </div>
+
+      {/* ── Abilities ── */}
+      {Array.isArray(bs.abilities) && bs.abilities.length > 0 && (
+        <div className="bg-parchment-dark border-t border-leather px-3 py-2">
+          <div className="text-xs font-bold uppercase tracking-widest text-leather-dark mb-1"
+               style={{ fontVariant: 'small-caps', color: '#8B6914' }}>
+            Abilities:
           </div>
-          {/* Abilities */}
-          <div>
-            <b>Abilities:</b>
-            <ul className="list-disc list-inside ml-5 whitespace-pre-line text-sm">
-              {(Array.isArray(group.baseStats.abilities)
-                ? group.baseStats.abilities
-                : (group.baseStats.abilities || "")
-                  .split(/\d: |, ?(?=[A-Za-z0-9])/g)
-              ).filter(a => a && a.trim()).map((a, i) =>
-                <li key={i}>{a.trim()}</li>
-              )}
-            </ul>
-          </div>
-          {/* Keywords */}
-          <div className="flex gap-6 flex-wrap text-xs">
-            <div><b>Keywords:</b> {statBundle.keywords?.join(", ") || "—"}</div>
-          </div>
-          {/* Modifiers */}
-          <div>
-            <b>Modifiers:</b>
-            <ul className="list-disc list-inside ml-5 text-xs">
-              {group.modifiers.length === 0 && <li className="italic text-gray-400">None</li>}
-              {group.modifiers.map((m, i) => (
-                <li key={i}>
-                  <b>{m.type.toUpperCase()}:</b> <span className="font-semibold">{m.name}</span>
-                  {m.description && <span className="ml-2 italic">{m.description}</span>}
-                  <button
-                    className="ml-2 text-red-600 underline"
-                    onClick={() => {
-                      const newGroups = [...allGroups];
-                      newGroups[groupIdx].modifiers.splice(i, 1);
-                      setCombatGroups(newGroups);
-                    }}
-                  >Remove</button>
+          <ul className="space-y-1">
+            {bs.abilities.map((a, i) => {
+              const [title, ...rest] = a.split(' - ');
+              const desc = rest.join(' - ');
+              return (
+                <li key={i} className="text-xs leading-snug text-leather-dark">
+                  {desc ? (
+                    <><b>{title}</b> - {desc}</>
+                  ) : a}
                 </li>
-              ))}
-            </ul>
-            <div className="flex gap-2 mt-2">
-              <button className="btn btn-xs btn-outline" onClick={drawTrait}>Draw Trait</button>
-              <button className="btn btn-xs btn-outline" onClick={drawDarkness}>Draw Darkness</button>
-              <button className="btn btn-xs btn-outline" onClick={drawGrowingDread}>Draw Growing Dread</button>
-            </div>
-          </div>
+              );
+            })}
+          </ul>
         </div>
       )}
+
+      {/* ── Active modifiers ── */}
+      {group.modifiers.length > 0 && (
+        <div className="bg-parchment border-t border-leather px-3 py-2">
+          <div className="text-xs font-bold uppercase tracking-widest text-leather mb-1">Active Modifiers</div>
+          <ul className="space-y-1">
+            {group.modifiers.map((m, i) => (
+              <li key={i} className="flex items-start justify-between gap-1 text-xs">
+                <span><b>{m.name}</b>{m.description && ` — ${m.description}`}</span>
+                <button className="text-red-600 shrink-0 hover:underline" onClick={() => removeModifier(i)}>✕</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* ── Elite abilities (when rolled) ── */}
+      {Array.isArray(group.eliteAbilityList) && group.eliteAbilityList.length > 0 && (
+        <div className="bg-amber-50 border-t border-amber-300 px-3 py-2">
+          <div className="text-xs font-bold uppercase tracking-widest text-amber-800 mb-1">Elite Abilities</div>
+          <ul className="space-y-1">
+            {group.eliteAbilityList.map((a, i) => {
+              const [title, ...rest] = (a.text || '').split(' - ');
+              const desc = rest.join(' - ');
+              return (
+                <li key={i} className="text-xs leading-snug text-amber-900">
+                  <b>{a.roll}. {title}</b>{desc && ` - ${desc}`}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* ── Stats bar ── */}
+      <div className={`${isBrutal ? 'bg-red-950' : 'bg-leather-dark'} border-t border-parchment/20`}>
+        <div className="grid grid-cols-6 divide-x divide-parchment/20 text-center">
+          <div className="flex flex-col items-center col-span-2 divide-y divide-parchment/20">
+            <span className="text-[9px] uppercase tracking-widest text-parchment/60 pt-1">To Hit</span>
+            <div className="grid grid-cols-2 w-full divide-x divide-parchment/20">
+              {statCell('Range', bs.ranged ? bs.ranged.toHit : '—')}
+              {statCell('Melee', bs.melee ? bs.melee.toHit : '—')}
+            </div>
+          </div>
+          {statCell('Combat', bs.combat ?? (bs.melee?.dice ?? '—'), true)}
+          {statCell('Damage', bs.melee?.damage ?? '—', true)}
+          <div className="col-span-2 flex flex-col items-center justify-center px-1 py-1">
+            <span className="text-[9px] uppercase tracking-widest text-parchment/60">Health</span>
+            <span className="text-2xl font-bold text-parchment leading-none">{bs.health ?? '—'}</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[9px] text-parchment/60">Defense</span>
+              <span className="text-xs font-bold text-parchment bg-black/30 rounded-full w-5 h-5 flex items-center justify-center">{bs.defense ?? '—'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Elite chart ── */}
+      {Array.isArray(bs.eliteChart) && bs.eliteChart.length > 0 && (
+        <div className="border-t border-leather">
+          <button
+            className="w-full flex items-center justify-between px-3 py-1.5 bg-green-950 text-parchment/80 text-xs"
+            onClick={() => setShowElite(v => !v)}
+          >
+            <span className="font-bold uppercase tracking-widest" style={{ fontVariant: 'small-caps' }}>Elite Chart</span>
+            <span className="text-parchment/50">{showElite ? '▲ Hide' : '▼ Roll a D6 for Elite Ability'}</span>
+          </button>
+          {showElite && (
+            <div className="bg-green-950/80 px-3 py-2 space-y-1">
+              {bs.eliteChart.map((entry, i) => {
+                const [title, ...rest] = entry.split(' - ');
+                const desc = rest.join(' - ');
+                return (
+                  <div key={i} className="text-xs text-parchment/90 leading-snug">
+                    <b>{i + 1}) {title}</b>{desc && ` - ${desc}`}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Controls ── */}
+      <div className="bg-parchment border-t border-leather px-3 py-2 flex flex-wrap gap-2 items-center">
+        <div className="flex gap-1">
+          <button className="btn btn-xs btn-outline" onClick={() => setManualElite(manualExtraElite + 1)}>+1 Elite</button>
+          <button className="btn btn-xs btn-outline" disabled={manualExtraElite === 0}
+            onClick={() => setManualElite(Math.max(0, manualExtraElite - 1))}>−1 Elite</button>
+        </div>
+        <div className="flex gap-1">
+          <button className="btn btn-xs btn-outline" onClick={drawTrait}>Trait</button>
+          <button className="btn btn-xs btn-outline" onClick={drawDarkness}>Darkness</button>
+          <button className="btn btn-xs btn-outline" onClick={drawGrowingDread}>Grd</button>
+        </div>
+        <button className="btn btn-xs btn-ghost text-red-600 ml-auto" onClick={removeGroup}>Remove</button>
+      </div>
     </div>
   );
 }
