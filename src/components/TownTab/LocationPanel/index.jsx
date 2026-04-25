@@ -74,15 +74,18 @@ const SHOPS_WITH_PRICE_MODS = {
   streetMarket:      { saleFloor: 25 },
   indianTradingPost: { saleFloor: 0 },
   smugglersDen:      { saleFloor: 0 },
+  wastelandWorkshop: { saleFloor: 0 },
 };
 
 function applyShopPriceMods(costRaw, townState, shopId) {
   const cfg = SHOPS_WITH_PRICE_MODS[shopId];
   if (!cfg) return costRaw;
   const mods = townState?.shopMods?.[shopId];
-  if (!mods || (!mods.priceDelta && !mods.saleActive)) return costRaw;
+  const wwFlags = shopId === 'wastelandWorkshop' ? (townState?.wastelandWorkshopFlags || {}) : {};
+  const surcharge = Number(wwFlags.overABarrelSurcharge || 0);
+  const delta = Number(mods?.priceDelta || 0) + surcharge;
+  if (!delta && !mods?.saleActive) return costRaw;
   if (costRaw == null || typeof costRaw === 'string') return costRaw;
-  const delta = Number(mods.priceDelta || 0);
   const floor = cfg.saleFloor || 0;
   if (typeof costRaw === 'number') {
     let g = costRaw + delta;
@@ -579,6 +582,16 @@ promptChoice: async (title, options) => {
     if (isMount && heroHasMount) {
       alert('You already have a Mount. A hero can only own one Mount at a time.');
       return;
+    }
+
+    // Wasteland Workshop: Broken Torch blocks items with Scrap cost
+    if (shopId === 'wastelandWorkshop' && state?.wastelandWorkshopFlags?.brokenTorch) {
+      const rawCost = getCost(item);
+      const costCheck = normalizeCostObject(rawCost);
+      if (costCheck?.scrap > 0) {
+        alert('The Broken Torch event prevents purchasing items that cost Scrap today.');
+        return;
+      }
     }
 
     const itemId = getItemId(item, idx);

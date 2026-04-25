@@ -214,6 +214,12 @@ export function sanitizeHero(inputHero) {
     currentCorruption,
     corruption: currentCorruption,
 
+    gold: hero.gold ?? 0,
+    darkStone: hero.darkStone ?? 0,
+    scrap: hero.scrap ?? 0,
+    tech: hero.tech ?? 0,
+    xp: hero.xp ?? 0,
+
     grit: hero.currentGrit ?? 0,
     heroClass: (hero.heroClass ?? 'Unknown').replace(/\s+/g, ''),
     name: hero.name ?? 'Unnamed Hero',
