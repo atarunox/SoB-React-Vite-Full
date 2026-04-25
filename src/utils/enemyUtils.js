@@ -83,11 +83,12 @@ export function normalizeEnemyData(enemyData, isBrutal) {
 
   // Normalize toHit: { melee, ranged } → melee/ranged objects
   if (enemyData.toHit) {
+    const dmg = variant.damage ?? null;
     normalized.melee = enemyData.toHit.melee
-      ? { toHit: enemyData.toHit.melee, damage: variant.damage }
+      ? { toHit: enemyData.toHit.melee, damage: dmg }
       : null;
     normalized.ranged = enemyData.toHit.ranged
-      ? { toHit: enemyData.toHit.ranged, damage: variant.damage }
+      ? { toHit: enemyData.toHit.ranged, damage: dmg }
       : null;
   }
 

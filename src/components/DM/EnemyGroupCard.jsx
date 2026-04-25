@@ -45,8 +45,10 @@ export default function EnemyGroupCard({
 
   const drawTrait = () => {
     const traitDeck = TRAIT_DECKS[group.baseStats.world] || [];
+    if (traitDeck.length === 0) return;
     const idx = Math.floor(Math.random() * traitDeck.length);
     const card = traitDeck[idx];
+    if (!card) return;
     const newGroups = [...allGroups];
     newGroups[groupIdx].modifiers.push({
       type: "trait", name: card.name, effect: card.effect || {},
@@ -211,7 +213,7 @@ export default function EnemyGroupCard({
               {statCell('Melee', bs.melee ? bs.melee.toHit : '—')}
             </div>
           </div>
-          {statCell('Combat', bs.combat ?? (bs.melee?.dice ?? '—'), true)}
+          {statCell('Combat', bs.combat ?? '—', true)}
           {statCell('Damage', bs.melee?.damage ?? '—', true)}
           <div className="col-span-2 flex flex-col items-center justify-center px-1 py-1">
             <span className="text-[9px] uppercase tracking-widest text-parchment/60">Health</span>

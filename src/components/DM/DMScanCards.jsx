@@ -563,7 +563,7 @@ export default function DMScanCards() {
       setScanning(false);
       setProgress(0);
     }
-  }, [imageFile, deckType, useClaudeVision, apiKey]);
+  }, [imageFile, deckType, useClaudeVision, apiKey, world]);
 
   const handleFormChange = useCallback((next) => {
     if (next.name !== formData.name && next.id !== undefined) {
