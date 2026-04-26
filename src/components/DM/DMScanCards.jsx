@@ -67,7 +67,7 @@ function savePending(data) {
 
 // ── Merge Claude/OCR response into deck-specific form shape ──────────────────
 
-function applyToSchema(raw, deckType) {
+function applyToSchema(raw, deckType, enemySide = 'normal') {
   const name = raw.name || '';
   const effect = raw.effect || '';
   const tags = Array.isArray(raw.tags) ? raw.tags : [];
@@ -147,7 +147,10 @@ function applyToSchema(raw, deckType) {
       const defense = raw.defense ?? 0;
       const health = raw.health ?? 0;
       const xp = raw.xp || '0';
-      return {
+      const abilities = Array.isArray(raw.abilities) ? raw.abilities : [];
+      const elites = Array.isArray(raw.eliteAbilities) ? raw.eliteAbilities : [];
+      const prefix = enemySide === 'brutal' ? 'brutal' : 'normal';
+      const base = {
         name,
         keywords: (raw.keywords || tags || []),
         Size: raw.Size || 'Medium',
@@ -156,20 +159,20 @@ function applyToSchema(raw, deckType) {
         escape: raw.escape || '4+',
         meleeToHit: raw.meleeToHit || '4+',
         rangedToHit: raw.rangedToHit || null,
-        normalCombat: raw.normalCombat ?? combat,
-        normalDamage: raw.normalDamage ?? damage,
-        normalDefense: raw.normalDefense ?? defense,
-        normalHealth: raw.normalHealth ?? health,
-        normalXp: raw.normalXp || xp,
-        brutalCombat: raw.brutalCombat ?? 0,
-        brutalDamage: raw.brutalDamage ?? 0,
-        brutalDefense: raw.brutalDefense ?? 0,
-        brutalHealth: raw.brutalHealth ?? 0,
-        brutalXp: raw.brutalXp || '0',
-        abilities: Array.isArray(raw.abilities) ? raw.abilities : [],
-        eliteAbilities: Array.isArray(raw.eliteAbilities) ? raw.eliteAbilities : [],
+        normalCombat: 0, normalDamage: 0, normalDefense: 0, normalHealth: 0, normalXp: '0',
+        brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: '0',
+        abilities,
+        eliteAbilities: enemySide === 'normal' ? elites : [],
+        brutalEliteAbilities: enemySide === 'brutal' ? elites : [],
         threatTier: raw.threatTier || 'medium',
+        _scannedSide: enemySide,
       };
+      base[`${prefix}Combat`] = combat;
+      base[`${prefix}Damage`] = damage;
+      base[`${prefix}Defense`] = defense;
+      base[`${prefix}Health`] = health;
+      base[`${prefix}Xp`] = xp;
+      return base;
     }
     default:
       return { name, effect };
@@ -484,8 +487,12 @@ function FormFields({ deckType, data, onChange }) {
             <EffectsEditor value={data.abilities} onChange={v => set('abilities', v)} />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-600">Elite Abilities (chart)</label>
+            <label className="text-xs font-semibold text-gray-600">Elite Abilities (Normal chart)</label>
             <EffectsEditor value={data.eliteAbilities} onChange={v => set('eliteAbilities', v)} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Elite Abilities (Brutal chart — leave empty if same as Normal)</label>
+            <EffectsEditor value={data.brutalEliteAbilities} onChange={v => set('brutalEliteAbilities', v)} />
           </div>
         </div>
       );
@@ -528,6 +535,7 @@ function formatEnemyForExport(card) {
     },
     abilities: card.abilities || [],
     eliteAbilities: card.eliteAbilities || [],
+    ...(card.brutalEliteAbilities?.length ? { brutalEliteAbilities: card.brutalEliteAbilities } : {}),
   };
 }
 
@@ -702,7 +710,7 @@ export default function DMScanCards() {
         setProgress(100);
         setScanEngine('claude');
         setRawText('');
-        setFormData(applyToSchema(result, deckType));
+        setFormData(applyToSchema(result, deckType, enemySide));
       } else {
         const text = await runOcr(imageFile, setProgress);
         setScanEngine('tesseract');
@@ -727,10 +735,45 @@ export default function DMScanCards() {
 
   const handleAddCard = useCallback(() => {
     if (!formData.name && !formData.id) { alert('Add at least a name before confirming.'); return; }
-    const updated = {
-      ...pending,
-      [pendingKey]: [...(pending[pendingKey] || []), { ...formData }],
-    };
+    const existing = pending[pendingKey] || [];
+    let updatedList;
+    if (deckType === 'enemy' && formData.name) {
+      const matchIdx = existing.findIndex(c => c.name && c.name.toLowerCase() === formData.name.toLowerCase());
+      if (matchIdx >= 0) {
+        const merged = { ...existing[matchIdx] };
+        const side = formData._scannedSide || enemySide;
+        if (side === 'brutal') {
+          merged.brutalCombat = formData.brutalCombat;
+          merged.brutalDamage = formData.brutalDamage;
+          merged.brutalDefense = formData.brutalDefense;
+          merged.brutalHealth = formData.brutalHealth;
+          merged.brutalXp = formData.brutalXp;
+          if (formData.brutalEliteAbilities?.length) merged.brutalEliteAbilities = formData.brutalEliteAbilities;
+        } else {
+          merged.normalCombat = formData.normalCombat;
+          merged.normalDamage = formData.normalDamage;
+          merged.normalDefense = formData.normalDefense;
+          merged.normalHealth = formData.normalHealth;
+          merged.normalXp = formData.normalXp;
+          merged.abilities = formData.abilities;
+          merged.eliteAbilities = formData.eliteAbilities;
+          merged.keywords = formData.keywords;
+          merged.Size = formData.Size;
+          merged.initiative = formData.initiative;
+          merged.move = formData.move;
+          merged.escape = formData.escape;
+          merged.meleeToHit = formData.meleeToHit;
+          merged.rangedToHit = formData.rangedToHit;
+        }
+        updatedList = [...existing];
+        updatedList[matchIdx] = merged;
+      } else {
+        updatedList = [...existing, { ...formData }];
+      }
+    } else {
+      updatedList = [...existing, { ...formData }];
+    }
+    const updated = { ...pending, [pendingKey]: updatedList };
     setPending(updated);
     savePending(updated);
     setFormData({});
@@ -795,17 +838,52 @@ export default function DMScanCards() {
           const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
           const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
           const result = await scanWithClaudeVision(file, label, apiKey, extra);
-          cardData = applyToSchema(result, deckType);
+          cardData = applyToSchema(result, deckType, enemySide);
         } else {
           const text = await runOcr(file, () => {});
           cardData = parseOcrText(text, deckType);
         }
         results.push({ file: file.name, card: cardData });
         const key = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
-        localPending = {
-          ...localPending,
-          [key]: [...(localPending[key] || []), { ...cardData }],
-        };
+        const existing = (localPending[key] || []);
+        if (deckType === 'enemy' && cardData.name) {
+          const matchIdx = existing.findIndex(c => c.name && c.name.toLowerCase() === cardData.name.toLowerCase());
+          if (matchIdx >= 0) {
+            const merged = { ...existing[matchIdx] };
+            if (enemySide === 'brutal') {
+              merged.brutalCombat = cardData.brutalCombat;
+              merged.brutalDamage = cardData.brutalDamage;
+              merged.brutalDefense = cardData.brutalDefense;
+              merged.brutalHealth = cardData.brutalHealth;
+              merged.brutalXp = cardData.brutalXp;
+              if (cardData.brutalEliteAbilities?.length) {
+                merged.brutalEliteAbilities = cardData.brutalEliteAbilities;
+              }
+            } else {
+              merged.normalCombat = cardData.normalCombat;
+              merged.normalDamage = cardData.normalDamage;
+              merged.normalDefense = cardData.normalDefense;
+              merged.normalHealth = cardData.normalHealth;
+              merged.normalXp = cardData.normalXp;
+              merged.abilities = cardData.abilities;
+              merged.eliteAbilities = cardData.eliteAbilities;
+              merged.keywords = cardData.keywords;
+              merged.Size = cardData.Size;
+              merged.initiative = cardData.initiative;
+              merged.move = cardData.move;
+              merged.escape = cardData.escape;
+              merged.meleeToHit = cardData.meleeToHit;
+              merged.rangedToHit = cardData.rangedToHit;
+            }
+            const updated = [...existing];
+            updated[matchIdx] = merged;
+            localPending = { ...localPending, [key]: updated };
+          } else {
+            localPending = { ...localPending, [key]: [...existing, { ...cardData }] };
+          }
+        } else {
+          localPending = { ...localPending, [key]: [...existing, { ...cardData }] };
+        }
         setPending({ ...localPending });
         savePending(localPending);
         setBatchResults([...results]);
@@ -1186,9 +1264,18 @@ export default function DMScanCards() {
               <div key={idx} className="rounded-lg border border-gray-200 bg-white p-3 flex justify-between gap-2">
                 <div className="text-sm min-w-0">
                   <div className="font-semibold truncate">{card.name || card.id || '(unnamed)'}</div>
-                  {(card.effect || card.description) && (
+                  {deckType === 'enemy' ? (
+                    <div className="flex gap-1 mt-0.5">
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${card.normalHealth ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                        N{card.normalHealth ? ` ${card.normalHealth}hp` : ''}
+                      </span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${card.brutalHealth ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-400'}`}>
+                        B{card.brutalHealth ? ` ${card.brutalHealth}hp` : ''}
+                      </span>
+                    </div>
+                  ) : (card.effect || card.description) ? (
                     <div className="text-xs text-gray-600 truncate">{card.effect || card.description}</div>
-                  )}
+                  ) : null}
                 </div>
                 <button
                   className="btn btn-xs btn-ghost text-red-600 shrink-0"
