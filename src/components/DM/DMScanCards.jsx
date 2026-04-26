@@ -566,6 +566,16 @@ export default function DMScanCards() {
   const [showSettings, setShowSettings] = useState(false);
   const [apiKeyDraft, setApiKeyDraft] = useState(() => localStorage.getItem(LS_API_KEY) || '');
 
+  // Batch scan state
+  const [batchQueue, setBatchQueue] = useState([]);
+  const [batchIndex, setBatchIndex] = useState(-1);
+  const [batchResults, setBatchResults] = useState([]);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchErrors, setBatchErrors] = useState([]);
+  const batchAbortRef = useRef(false);
+  const batchInputRef = useRef(null);
+  const batchMultiRef = useRef(null);
+
   // Inline camera state
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -743,6 +753,67 @@ export default function DMScanCards() {
     setPending(updated);
     savePending(updated);
   }, [pending, pendingKey, currentPending.length]);
+
+  const handleBatchFiles = useCallback((e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    files.sort((a, b) => a.name.localeCompare(b.name));
+    setBatchQueue(files);
+    setBatchIndex(-1);
+    setBatchResults([]);
+    setBatchErrors([]);
+    batchAbortRef.current = false;
+    if (batchInputRef.current) batchInputRef.current.value = '';
+    if (batchMultiRef.current) batchMultiRef.current.value = '';
+  }, []);
+
+  const runBatch = useCallback(async () => {
+    if (!batchQueue.length) return;
+    setBatchRunning(true);
+    setBatchResults([]);
+    setBatchErrors([]);
+    batchAbortRef.current = false;
+    const results = [];
+    const errors = [];
+    let localPending = { ...pending };
+
+    for (let i = 0; i < batchQueue.length; i++) {
+      if (batchAbortRef.current) break;
+      setBatchIndex(i);
+      const file = batchQueue[i];
+      try {
+        let cardData;
+        if (useClaudeVision) {
+          const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
+          const result = await scanWithClaudeVision(file, label, apiKey);
+          cardData = applyToSchema(result, deckType);
+        } else {
+          const text = await runOcr(file, () => {});
+          cardData = parseOcrText(text, deckType);
+        }
+        results.push({ file: file.name, card: cardData });
+        const key = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
+        localPending = {
+          ...localPending,
+          [key]: [...(localPending[key] || []), { ...cardData }],
+        };
+        setPending({ ...localPending });
+        savePending(localPending);
+        setBatchResults([...results]);
+      } catch (err) {
+        errors.push({ file: file.name, error: err.message });
+        setBatchErrors([...errors]);
+      }
+    }
+
+    setBatchIndex(-1);
+    setBatchRunning(false);
+    setBatchQueue([]);
+  }, [batchQueue, pending, deckType, world, useClaudeVision, apiKey]);
+
+  const cancelBatch = useCallback(() => {
+    batchAbortRef.current = true;
+  }, []);
 
   return (
     <div className="p-4 space-y-5 max-w-2xl mx-auto">
@@ -940,6 +1011,107 @@ export default function DMScanCards() {
               <div className="bg-amber-600 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Batch scan */}
+      <div className="rounded-xl border border-gray-300 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-sm">Batch Scan</h3>
+            <p className="text-xs text-gray-500">Select a folder of card images to auto-scan all at once</p>
+          </div>
+          {!batchRunning && (
+            <div className="flex gap-1">
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => batchInputRef.current?.click()}
+              >
+                Folder
+              </button>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => batchMultiRef.current?.click()}
+              >
+                Files
+              </button>
+            </div>
+          )}
+        </div>
+        <input
+          ref={batchInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          webkitdirectory=""
+          className="hidden"
+          onChange={handleBatchFiles}
+        />
+        <input
+          ref={batchMultiRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleBatchFiles}
+        />
+
+        {batchQueue.length > 0 && !batchRunning && (
+          <div className="space-y-2">
+            <p className="text-sm">{batchQueue.length} image(s) ready to scan</p>
+            <div className="flex gap-2">
+              <button className="btn btn-sm btn-primary" onClick={runBatch}>
+                Start Batch Scan
+              </button>
+              <button className="btn btn-sm btn-ghost" onClick={() => setBatchQueue([])}>
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
+        {batchRunning && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                Scanning {batchIndex + 1} of {batchQueue.length}: {batchQueue[batchIndex]?.name}
+              </span>
+              <button className="btn btn-xs btn-ghost text-red-600" onClick={cancelBatch}>
+                Stop
+              </button>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all"
+                style={{ width: `${((batchIndex + 1) / batchQueue.length) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              {batchResults.length} scanned, {batchErrors.length} errors
+            </p>
+          </div>
+        )}
+
+        {!batchRunning && batchResults.length > 0 && (
+          <div className="text-sm text-green-700 bg-green-50 rounded p-2">
+            Batch complete: {batchResults.length} card(s) added to queue.
+            {batchErrors.length > 0 && (
+              <span className="text-red-600 ml-1">{batchErrors.length} failed.</span>
+            )}
+          </div>
+        )}
+
+        {!batchRunning && batchErrors.length > 0 && (
+          <details className="text-xs">
+            <summary className="text-red-600 cursor-pointer font-semibold">
+              {batchErrors.length} error(s)
+            </summary>
+            <ul className="mt-1 space-y-0.5">
+              {batchErrors.map((e, i) => (
+                <li key={i}><strong>{e.file}:</strong> {e.error}</li>
+              ))}
+            </ul>
+          </details>
         )}
       </div>
 
