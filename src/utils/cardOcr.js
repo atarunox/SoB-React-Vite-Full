@@ -176,12 +176,13 @@ Rules:
 export async function scanWithClaudeVision(file, deckType, apiKey, extra = {}) {
   const base64 = await fileToBase64(file);
   const mediaType = getMediaType(file);
+  const cleanKey = apiKey.replace(/[^\x20-\x7E]/g, '').trim();
 
   const response = await fetch(CLAUDE_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
+      'x-api-key': cleanKey,
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },

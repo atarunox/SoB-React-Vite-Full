@@ -670,7 +670,7 @@ export default function DMScanCards() {
   }, [stopCamera]);
 
   const saveApiKey = () => {
-    const trimmed = apiKeyDraft.trim();
+    const trimmed = apiKeyDraft.replace(/[^\x20-\x7E]/g, '').trim();
     setApiKey(trimmed);
     if (trimmed) localStorage.setItem(LS_API_KEY, trimmed);
     else localStorage.removeItem(LS_API_KEY);
