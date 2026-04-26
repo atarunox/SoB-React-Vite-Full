@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { mineEncounters } from '../../data/encounters/mineEncounters';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
+import { canyonEncounters } from '../../data/encounters/canyonEncounters';
 import { useCombatState } from '../../hooks/useCombatState';
 
 function shuffle(array) {
@@ -15,6 +16,7 @@ function shuffle(array) {
 const WORLD_TO_ENCOUNTER_CARDS = {
   Mines: mineEncounters,
   "Blasted Wastes": blastedWastesEncounters,
+  "Canyons": canyonEncounters,
 };
 
 function classifyTarget(enc = {}) {

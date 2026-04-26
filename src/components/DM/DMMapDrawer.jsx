@@ -4,6 +4,7 @@ import DrawnMapTilesRow from './DrawnMapTilesRow';
 import { mineCards } from '../../data/maps/mineCards';
 import { blastedWastesCards } from '../../data/maps/blastedWastesCards';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
+import { canyonEncounters } from '../../data/encounters/canyonEncounters';
 
 function shuffle(arr) {
   const a = [...arr];
@@ -21,7 +22,7 @@ const WORLD_TO_MAP_CARDS = {
 
 const WORLD_TO_ENCOUNTERS = {
   'Blasted Wastes': blastedWastesEncounters,
-  // Add more as needed
+  'Canyons': canyonEncounters,
 };
 
 function computeRemainingDeck(allCards, drawn) {
