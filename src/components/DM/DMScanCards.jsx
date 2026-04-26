@@ -45,6 +45,7 @@ const LS_KEY = 'sob:scannedCards';
 const LS_API_KEY = 'sob:claudeApiKey';
 const SS_DECK_KEY = 'sob:scanDeckType';
 const SS_WORLD_KEY = 'sob:scanWorld';
+const SS_SIDE_KEY = 'sob:scanEnemySide';
 
 const NEEDS_WORLD = new Set(['encounter', 'map', 'loot', 'artifact', 'depthEvent', 'enemy']);
 
@@ -548,6 +549,9 @@ export default function DMScanCards() {
   const [world, setWorld] = useState(() => {
     try { return sessionStorage.getItem(SS_WORLD_KEY) || 'Mines'; } catch { return 'Mines'; }
   });
+  const [enemySide, setEnemySide] = useState(() => {
+    try { return sessionStorage.getItem(SS_SIDE_KEY) || 'normal'; } catch { return 'normal'; }
+  });
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -590,6 +594,9 @@ export default function DMScanCards() {
   useEffect(() => {
     try { sessionStorage.setItem(SS_WORLD_KEY, world); } catch {}
   }, [world]);
+  useEffect(() => {
+    try { sessionStorage.setItem(SS_SIDE_KEY, enemySide); } catch {}
+  }, [enemySide]);
 
   const startCamera = useCallback(async () => {
     // On HTTP, getUserMedia is unavailable — fall back to native camera input
@@ -832,6 +839,26 @@ export default function DMScanCards() {
           </div>
         )}
       </div>
+
+      {deckType === 'enemy' && (
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Difficulty Side</label>
+          <div className="flex gap-0 rounded-lg overflow-hidden border border-gray-400">
+            <button
+              className={`flex-1 py-2 px-4 text-sm font-semibold transition-colors ${enemySide === 'normal' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              onClick={() => setEnemySide('normal')}
+            >
+              Normal
+            </button>
+            <button
+              className={`flex-1 py-2 px-4 text-sm font-semibold transition-colors ${enemySide === 'brutal' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              onClick={() => setEnemySide('brutal')}
+            >
+              Brutal
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Image capture */}
       <div className="rounded-xl border border-gray-300 p-4 space-y-3">
