@@ -166,10 +166,37 @@ export default function DMMapDrawer({ world = 'Mines' }) {
                 <h3 className="text-lg font-bold mb-2 text-yellow-900 drop-shadow">
                   Advanced Encounter: {enlarged.encounter.name}
                 </h3>
+                {enlarged.encounter.flavor && (
+                  <p className="italic text-gray-700 mb-2 text-sm">{enlarged.encounter.flavor}</p>
+                )}
+                {enlarged.encounter.test && typeof enlarged.encounter.test === 'object' ? (
+                  <div className="mb-2 p-2 bg-white/60 rounded border border-gray-200">
+                    <p className="font-semibold text-sm">{enlarged.encounter.test.stat} {enlarged.encounter.test.target}</p>
+                    {enlarged.encounter.test.success?.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-green-700 text-xs font-bold">SUCCESS: </span>
+                        {enlarged.encounter.test.success.join('; ')}
+                      </div>
+                    )}
+                    {enlarged.encounter.test.fail?.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-red-700 text-xs font-bold">FAIL: </span>
+                        {enlarged.encounter.test.fail.join('; ')}
+                      </div>
+                    )}
+                  </div>
+                ) : enlarged.encounter.test ? (
+                  <div className="mb-2"><strong>Test:</strong> {enlarged.encounter.test}</div>
+                ) : null}
                 {enlarged.encounter.effect && (
                   <div className="mb-2 text-gray-900">
                     <strong>Effect:</strong> {enlarged.encounter.effect}
                   </div>
+                )}
+                {enlarged.encounter.effects?.length > 0 && (
+                  <ul className="list-disc list-inside text-sm mb-2">
+                    {enlarged.encounter.effects.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
                 )}
               </div>
             )}
