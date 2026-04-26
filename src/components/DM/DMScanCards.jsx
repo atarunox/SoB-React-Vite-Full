@@ -140,38 +140,37 @@ function applyToSchema(raw, deckType) {
         effect,
         depth: raw.depth || '',
       };
-    case 'enemy':
+    case 'enemy': {
+      const move = raw.move != null ? String(raw.move) : '0';
+      const combat = raw.combat != null ? raw.combat : 0;
+      const damage = raw.damage ?? 0;
+      const defense = raw.defense ?? 0;
+      const health = raw.health ?? 0;
+      const xp = raw.xp || '0';
       return {
         name,
-        keywords: tags.length ? tags : [],
+        keywords: (raw.keywords || tags || []),
         Size: raw.Size || 'Medium',
         initiative: raw.initiative ?? 0,
-        move: raw.move ?? 0,
+        move,
         escape: raw.escape || '4+',
-        toHit: {
-          melee: raw.meleeToHit || '4+',
-          ranged: raw.rangedToHit || null,
-        },
-        stats: {
-          normal: {
-            combat: raw.normalCombat ?? 0,
-            damage: raw.normalDamage ?? 0,
-            defense: raw.normalDefense ?? 0,
-            health: raw.normalHealth ?? 0,
-            xp: raw.normalXp || '0',
-          },
-          brutal: {
-            combat: raw.brutalCombat ?? 0,
-            damage: raw.brutalDamage ?? 0,
-            defense: raw.brutalDefense ?? 0,
-            health: raw.brutalHealth ?? 0,
-            xp: raw.brutalXp || '0',
-          },
-        },
+        meleeToHit: raw.meleeToHit || '4+',
+        rangedToHit: raw.rangedToHit || null,
+        normalCombat: raw.normalCombat ?? combat,
+        normalDamage: raw.normalDamage ?? damage,
+        normalDefense: raw.normalDefense ?? defense,
+        normalHealth: raw.normalHealth ?? health,
+        normalXp: raw.normalXp || xp,
+        brutalCombat: raw.brutalCombat ?? 0,
+        brutalDamage: raw.brutalDamage ?? 0,
+        brutalDefense: raw.brutalDefense ?? 0,
+        brutalHealth: raw.brutalHealth ?? 0,
+        brutalXp: raw.brutalXp || '0',
         abilities: Array.isArray(raw.abilities) ? raw.abilities : [],
         eliteAbilities: Array.isArray(raw.eliteAbilities) ? raw.eliteAbilities : [],
         threatTier: raw.threatTier || 'medium',
       };
+    }
     default:
       return { name, effect };
   }
@@ -499,24 +498,32 @@ function FormFields({ deckType, data, onChange }) {
 // ── Export ───────────────────────────────────────────────────────────────────
 
 function formatEnemyForExport(card) {
+  const mv = card.move;
+  const moveVal = /^\*+$/.test(String(mv)) ? String(mv) : (Number(mv) || 0);
+  const normCombat = card.normalCombat;
+  const brutCombat = card.brutalCombat;
   return {
     name: card.name,
     keywords: card.keywords || [],
     Size: card.Size || 'Medium',
-    initiative: card.initiative ?? 0,
-    move: card.move ?? 0,
+    initiative: Number(card.initiative) || 0,
+    move: moveVal,
     escape: card.escape || '4+',
-    toHit: card.toHit || { melee: card.meleeToHit || '4+', ranged: card.rangedToHit || null },
-    stats: card.stats || {
+    toHit: { melee: card.meleeToHit || '4+', ranged: card.rangedToHit || null },
+    stats: {
       normal: {
-        combat: card.normalCombat ?? 0, damage: card.normalDamage ?? 0,
-        defense: card.normalDefense ?? 0, health: card.normalHealth ?? 0,
-        xp: card.normalXp || '0',
+        combat: /^\*+$/.test(String(normCombat)) ? String(normCombat) : (Number(normCombat) || 0),
+        damage: Number(card.normalDamage) || 0,
+        defense: Number(card.normalDefense) || 0,
+        health: Number(card.normalHealth) || 0,
+        xp: String(card.normalXp || '0'),
       },
       brutal: {
-        combat: card.brutalCombat ?? 0, damage: card.brutalDamage ?? 0,
-        defense: card.brutalDefense ?? 0, health: card.brutalHealth ?? 0,
-        xp: card.brutalXp || '0',
+        combat: /^\*+$/.test(String(brutCombat)) ? String(brutCombat) : (Number(brutCombat) || 0),
+        damage: Number(card.brutalDamage) || 0,
+        defense: Number(card.brutalDefense) || 0,
+        health: Number(card.brutalHealth) || 0,
+        xp: String(card.brutalXp || '0'),
       },
     },
     abilities: card.abilities || [],
@@ -690,7 +697,8 @@ export default function DMScanCards() {
       if (useClaudeVision) {
         setProgress(30);
         const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
-        const result = await scanWithClaudeVision(imageFile, label, apiKey);
+        const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+        const result = await scanWithClaudeVision(imageFile, label, apiKey, extra);
         setProgress(100);
         setScanEngine('claude');
         setRawText('');
@@ -785,7 +793,8 @@ export default function DMScanCards() {
         let cardData;
         if (useClaudeVision) {
           const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
-          const result = await scanWithClaudeVision(file, label, apiKey);
+          const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+          const result = await scanWithClaudeVision(file, label, apiKey, extra);
           cardData = applyToSchema(result, deckType);
         } else {
           const text = await runOcr(file, () => {});
@@ -880,6 +889,12 @@ export default function DMScanCards() {
         ${useClaudeVision ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
         {useClaudeVision ? '✦ Claude Vision (high accuracy)' : '◈ Tesseract OCR (local)'}
       </div>
+
+      {deckType === 'enemy' && !useClaudeVision && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+          Enemy sheets require <strong>Claude Vision</strong> — Tesseract cannot read the complex layout with stat boxes and decorative fonts. Add an API key in AI Settings above.
+        </div>
+      )}
 
       {/* Deck + World selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -113,7 +113,37 @@ function getMediaType(file) {
   return 'image/jpeg';
 }
 
-function buildPrompt(deckType) {
+function buildPrompt(deckType, extra = {}) {
+  if (extra.isEnemy) {
+    return `You are extracting data from a Shadows of Brimstone ENEMY SHEET photo.
+This is the ${extra.enemySide || 'normal'} difficulty side.
+
+Extract ALL visible text and stats. Return a JSON object with these fields:
+- name: the enemy name (large decorative text at top)
+- keywords: array of keyword subtypes shown below the name (e.g. "Void", "Ancient", "Beast", "Undead", "Demon")
+- Size: the size shown on the card ("Small", "Medium", "Large", or "Extra Large")
+- initiative: the initiative number (top-right circle)
+- move: the Move value (number, or "**" or "*" for special movement). If it says "**" use the string "**"
+- escape: the Escape value (e.g. "4+")
+- meleeToHit: the Melee To Hit value (e.g. "4+", "3+")
+- rangedToHit: the Ranged To Hit value (e.g. "4+"), or null if shown as "-"
+- combat: the Combat stat (number, or "*" for special)
+- damage: the Damage stat (number)
+- defense: the Defense stat (number)
+- health: the Health stat (number)
+- xp: the XP value as a string (e.g. "25", "10+5" meaning 10 base + 5 per hero)
+- abilities: array of ability strings, each formatted as "Name - Description". Include the full text of each ability. Stars (*) before ability names indicate threat level requirements.
+- eliteAbilities: array of elite chart entries, each formatted as "Name - Description". These are in the "Elite Chart" section at the bottom, numbered 1-6.
+
+Rules:
+- Read ALL stat numbers carefully from the stat boxes at the bottom of the card
+- A star/asterisk (*) in Combat means the value is special (described in abilities)
+- Double star (**) in Move means special movement (described in abilities)
+- Include star prefixes on abilities (e.g. "*Flailing Tentacles" or "**Eruption From Below")
+- XP format: "=25" means flat 25 XP. "=10 +5" means 10 base + 5 per additional hero, write as "10+5"
+- Return ONLY a valid JSON object, no markdown fences, no explanation`;
+  }
+
   return `You are extracting data from a Shadows of Brimstone card photo.
 Card type: ${deckType}
 
@@ -143,7 +173,7 @@ Rules:
  * Returns a structured object with the fields extracted from the card.
  * Throws if the API key is invalid or the request fails.
  */
-export async function scanWithClaudeVision(file, deckType, apiKey) {
+export async function scanWithClaudeVision(file, deckType, apiKey, extra = {}) {
   const base64 = await fileToBase64(file);
   const mediaType = getMediaType(file);
 
@@ -157,13 +187,13 @@ export async function scanWithClaudeVision(file, deckType, apiKey) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [
         {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: buildPrompt(deckType) },
+            { type: 'text', text: buildPrompt(deckType, extra) },
           ],
         },
       ],
