@@ -13,6 +13,7 @@ const DECK_TYPES = [
   { id: 'gear',         label: 'Gear Card' },
   { id: 'artifact',     label: 'Artifact' },
   { id: 'depthEvent',   label: 'Depth Event' },
+  { id: 'enemy',        label: 'Enemy Sheet' },
 ];
 
 const WORLDS = [
@@ -36,13 +37,16 @@ const ENCOUNTER_TAGS = ['Encounter', 'Active', 'Environment', 'Stranger', 'Demon
 const ARTIFACT_TAGS = ['Artifact', 'Scroll', 'Magik', 'Void', 'Tribal', 'Charm', 'Weapon', 'Armor', 'Dark Stone'];
 const GEAR_SLOTS = ['Gun', 'Hand Weapon', 'Light Source', 'Tonic', 'Coat', 'Hat', 'Boots', 'Gloves', 'Charm', 'None'];
 const ARTIFACT_SLOTS = ['None', 'Charm', 'Hand Weapon', 'Gun', 'Coat', 'Hat', 'Boots', 'Gloves'];
+const ENEMY_KEYWORDS = ['Beast', 'Cursed', 'Undead', 'Demon', 'Void', 'Soldier', 'Construct', 'Robot', 'Swarm', 'Spirit', 'Nature', 'Corrupted', 'Werewolf', 'Vampire', 'Tribal', 'Outlaw', 'Targa'];
+const ENEMY_SIZES = ['Small', 'Medium', 'Large', 'XL'];
+const THREAT_TIERS = ['low', 'medium', 'high', 'epic'];
 
 const LS_KEY = 'sob:scannedCards';
 const LS_API_KEY = 'sob:claudeApiKey';
 const SS_DECK_KEY = 'sob:scanDeckType';
 const SS_WORLD_KEY = 'sob:scanWorld';
 
-const NEEDS_WORLD = new Set(['encounter', 'map', 'loot', 'artifact', 'depthEvent']);
+const NEEDS_WORLD = new Set(['encounter', 'map', 'loot', 'artifact', 'depthEvent', 'enemy']);
 
 const hasSecureCamera = typeof navigator !== 'undefined'
   && !!navigator.mediaDevices?.getUserMedia;
@@ -134,6 +138,38 @@ function applyToSchema(raw, deckType) {
         flavorText: raw.flavorText || '',
         effect,
         depth: raw.depth || '',
+      };
+    case 'enemy':
+      return {
+        name,
+        keywords: tags.length ? tags : [],
+        Size: raw.Size || 'Medium',
+        initiative: raw.initiative ?? 0,
+        move: raw.move ?? 0,
+        escape: raw.escape || '4+',
+        toHit: {
+          melee: raw.meleeToHit || '4+',
+          ranged: raw.rangedToHit || null,
+        },
+        stats: {
+          normal: {
+            combat: raw.normalCombat ?? 0,
+            damage: raw.normalDamage ?? 0,
+            defense: raw.normalDefense ?? 0,
+            health: raw.normalHealth ?? 0,
+            xp: raw.normalXp || '0',
+          },
+          brutal: {
+            combat: raw.brutalCombat ?? 0,
+            damage: raw.brutalDamage ?? 0,
+            defense: raw.brutalDefense ?? 0,
+            health: raw.brutalHealth ?? 0,
+            xp: raw.brutalXp || '0',
+          },
+        },
+        abilities: Array.isArray(raw.abilities) ? raw.abilities : [],
+        eliteAbilities: Array.isArray(raw.eliteAbilities) ? raw.eliteAbilities : [],
+        threatTier: raw.threatTier || 'medium',
       };
     default:
       return { name, effect };
@@ -389,6 +425,71 @@ function FormFields({ deckType, data, onChange }) {
         </div>
       );
 
+    case 'enemy':
+      return (
+        <div className="space-y-3">
+          {field('Name', 'name')}
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Keywords</label>
+            <TagCheckboxes allTags={ENEMY_KEYWORDS} selected={data.keywords} onChange={v => set('keywords', v)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-gray-600">Size</label>
+              <select className="select select-sm w-full mt-0.5" value={data.Size || 'Medium'} onChange={e => set('Size', e.target.value)}>
+                {ENEMY_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600">Threat Tier</label>
+              <select className="select select-sm w-full mt-0.5" value={data.threatTier || 'medium'} onChange={e => set('threatTier', e.target.value)}>
+                {THREAT_TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {field('Initiative', 'initiative', 'number')}
+            {field('Move', 'move', 'number')}
+            {field('Escape', 'escape', 'text', '4+')}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {field('Melee To-Hit', 'meleeToHit', 'text', '4+')}
+            {field('Ranged To-Hit (blank if none)', 'rangedToHit', 'text', '')}
+          </div>
+
+          <div className="border border-gray-300 rounded p-3 space-y-2">
+            <h4 className="text-sm font-bold text-gray-700">Normal Stats</h4>
+            <div className="grid grid-cols-5 gap-2">
+              {field('Combat', 'normalCombat', 'number')}
+              {field('Damage', 'normalDamage', 'number')}
+              {field('Defense', 'normalDefense', 'number')}
+              {field('Health', 'normalHealth', 'number')}
+              {field('XP', 'normalXp', 'text', '10+5')}
+            </div>
+          </div>
+
+          <div className="border border-red-300 rounded p-3 space-y-2">
+            <h4 className="text-sm font-bold text-red-700">Brutal Stats</h4>
+            <div className="grid grid-cols-5 gap-2">
+              {field('Combat', 'brutalCombat', 'number')}
+              {field('Damage', 'brutalDamage', 'number')}
+              {field('Defense', 'brutalDefense', 'number')}
+              {field('Health', 'brutalHealth', 'number')}
+              {field('XP', 'brutalXp', 'text', '15+10')}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Abilities</label>
+            <EffectsEditor value={data.abilities} onChange={v => set('abilities', v)} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Elite Abilities (chart)</label>
+            <EffectsEditor value={data.eliteAbilities} onChange={v => set('eliteAbilities', v)} />
+          </div>
+        </div>
+      );
+
     default:
       return null;
   }
@@ -396,10 +497,37 @@ function FormFields({ deckType, data, onChange }) {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
+function formatEnemyForExport(card) {
+  return {
+    name: card.name,
+    keywords: card.keywords || [],
+    Size: card.Size || 'Medium',
+    initiative: card.initiative ?? 0,
+    move: card.move ?? 0,
+    escape: card.escape || '4+',
+    toHit: card.toHit || { melee: card.meleeToHit || '4+', ranged: card.rangedToHit || null },
+    stats: card.stats || {
+      normal: {
+        combat: card.normalCombat ?? 0, damage: card.normalDamage ?? 0,
+        defense: card.normalDefense ?? 0, health: card.normalHealth ?? 0,
+        xp: card.normalXp || '0',
+      },
+      brutal: {
+        combat: card.brutalCombat ?? 0, damage: card.brutalDamage ?? 0,
+        defense: card.brutalDefense ?? 0, health: card.brutalHealth ?? 0,
+        xp: card.brutalXp || '0',
+      },
+    },
+    abilities: card.abilities || [],
+    eliteAbilities: card.eliteAbilities || [],
+  };
+}
+
 function exportCards(deckType, cards) {
   const label = DECK_TYPES.find(d => d.id === deckType)?.label || deckType;
   const date = new Date().toISOString().slice(0, 10);
-  const json = JSON.stringify(cards, null, 2);
+  const exportData = deckType === 'enemy' ? cards.map(formatEnemyForExport) : cards;
+  const json = JSON.stringify(exportData, null, 2);
   const content = `// Scanned cards — ${label} — ${date}\n// Paste / merge into the appropriate data file\nexport default ${json};\n`;
 
   const blob = new Blob([content], { type: 'text/javascript' });
