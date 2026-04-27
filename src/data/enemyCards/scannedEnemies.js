@@ -492,8 +492,7 @@ export const scannedEnemies = [
       "Ambassadors of Hell - Lava Men gain +1 Combat if their target has one or more Corruption Points, and +1 Combat for each Mutation their target has.",
       "Heat Shimmer - Armor 5+",
       "Lava Explosion - When a Lava Man is killed, every adjacent Hero takes D6 Wounds, ignoring Defense.",
-      "Lava Eruption - At the start of their Activation, roll a D6 for each Lava Man. On the roll of 1 or 2, it will immediately make an extra Ranged Attack (Range 8, Shots 1, Damage D6+2) against a Random Hero within Range, before activating as normal.",
-      "Searing Heat - +2 Damage on all Attacks."
+      "Lava Eruption - At the start of their Activation, roll a D6 for each Lava Man. On the roll of 1 or 2, it will immediately make an extra Ranged Attack (Range 8, Shots 1, Damage D6+2) against a Random Hero within Range, before activating as normal."
     ],
     brutalEliteAbilities: []
   },
