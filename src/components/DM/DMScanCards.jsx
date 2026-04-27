@@ -149,9 +149,14 @@ function applyToSchema(raw, deckType, enemySide = 'normal') {
       const xp = raw.xp || '0';
       const abilities = Array.isArray(raw.abilities) ? raw.abilities : [];
       const elites = Array.isArray(raw.eliteAbilities) ? raw.eliteAbilities : [];
-      const prefix = enemySide === 'brutal' ? 'brutal' : 'normal';
+      // Auto-detect brutal: use isBrutal from Claude, or name starting with "Brutal", or manual toggle
+      const detectedBrutal = raw.isBrutal === true || /^brutal\s+/i.test(name);
+      const side = detectedBrutal ? 'brutal' : enemySide;
+      // Strip "Brutal" prefix from name if present
+      const cleanName = name.replace(/^brutal\s+/i, '').trim();
+      const prefix = side === 'brutal' ? 'brutal' : 'normal';
       const base = {
-        name,
+        name: cleanName,
         keywords: (raw.keywords || tags || []),
         Size: raw.Size || 'Medium',
         initiative: raw.initiative ?? 0,
@@ -162,10 +167,10 @@ function applyToSchema(raw, deckType, enemySide = 'normal') {
         normalCombat: 0, normalDamage: 0, normalDefense: 0, normalHealth: 0, normalXp: '0',
         brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: '0',
         abilities,
-        eliteAbilities: enemySide === 'normal' ? elites : [],
-        brutalEliteAbilities: enemySide === 'brutal' ? elites : [],
+        eliteAbilities: side === 'normal' ? elites : [],
+        brutalEliteAbilities: side === 'brutal' ? elites : [],
         threatTier: raw.threatTier || 'medium',
-        _scannedSide: enemySide,
+        _scannedSide: side,
       };
       base[`${prefix}Combat`] = combat;
       base[`${prefix}Damage`] = damage;
@@ -850,7 +855,7 @@ export default function DMScanCards() {
           const matchIdx = existing.findIndex(c => c.name && c.name.toLowerCase() === cardData.name.toLowerCase());
           if (matchIdx >= 0) {
             const merged = { ...existing[matchIdx] };
-            if (enemySide === 'brutal') {
+            if (cardData._scannedSide === 'brutal') {
               merged.brutalCombat = cardData.brutalCombat;
               merged.brutalDamage = cardData.brutalDamage;
               merged.brutalDefense = cardData.brutalDefense;

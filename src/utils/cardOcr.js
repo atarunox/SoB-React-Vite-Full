@@ -116,10 +116,10 @@ function getMediaType(file) {
 function buildPrompt(deckType, extra = {}) {
   if (extra.isEnemy) {
     return `You are extracting data from a Shadows of Brimstone ENEMY SHEET photo.
-This is the ${extra.enemySide || 'normal'} difficulty side.
 
 Extract ALL visible text and stats. Return a JSON object with these fields:
-- name: the enemy name (large decorative text at top)
+- name: the enemy name (large decorative text at top). IMPORTANT: The Brutal side of enemy sheets has the word "Brutal" printed as a banner/watermark above or near the name. Do NOT include "Brutal" in the name field. The name should be the same on both Normal and Brutal sides (e.g. "Ancient Horror", not "Brutal Ancient Horror").
+- isBrutal: boolean — set to true if you see a "BRUTAL" banner/watermark/label on the card. This indicates it's the Brutal difficulty side. If no Brutal marking is visible, set to false.
 - keywords: array of keyword subtypes shown below the name (e.g. "Void", "Ancient", "Beast", "Undead", "Demon")
 - Size: the size shown on the card ("Small", "Medium", "Large", or "Extra Large")
 - initiative: the initiative number (top-right circle)
@@ -141,6 +141,7 @@ Rules:
 - Double star (**) in Move means special movement (described in abilities)
 - Include star prefixes on abilities (e.g. "*Flailing Tentacles" or "**Eruption From Below")
 - XP format: "=25" means flat 25 XP. "=10 +5" means 10 base + 5 per additional hero, write as "10+5"
+- NEVER include "Brutal" in the name field — use the isBrutal flag instead
 - Return ONLY a valid JSON object, no markdown fences, no explanation`;
   }
 
