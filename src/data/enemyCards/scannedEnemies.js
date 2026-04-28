@@ -4,12 +4,13 @@ export const scannedEnemies = [
     keywords: ["Void", "Beast"],
     Size: "Medium",
     initiative: 0,
-    move: "0",
+    move: 0,
     escape: "2+",
-    meleeToHit: "-",
-    rangedToHit: "-",
-    normalCombat: 0, normalDamage: 0, normalDefense: 2, normalHealth: 15, normalXp: "5+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: null, ranged: null },
+    stats: {
+      normal: { combat: 0, damage: 0, defense: 2, health: 15, xp: "5+5" },
+      brutal: null
+    },
     abilities: [
       "Immobile - This Enemy cannot be moved in any way.",
       "Spawn - At the end of each turn, roll 2 dice for the Egg Sack. For each roll of 4+, place 1 new Void Spider adjacent to it. If a Void Spider cannot be placed for any reason, instead every Hero adjacent to the Egg Sack takes 1 Hit that does 4 Damage.",
@@ -23,20 +24,20 @@ export const scannedEnemies = [
       "Leathery Shell - +6 Health",
       "Acidic Webs - At the start of each Turn, Heroes take 1 Wound, ignoring Defense, for each Webbed marker they have.",
       "Too Many Spiders - Egg Sacks now roll 3 dice for their Spawn ability."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Seeker Drones",
     keywords: ["Robot", "Targa"],
     Size: "Medium",
     initiative: 6,
-    move: "8",
+    move: 8,
     escape: "3+",
-    meleeToHit: "-",
-    rangedToHit: "3+",
-    normalCombat: 0, normalDamage: 0, normalDefense: 4, normalHealth: 5, normalXp: "10+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: null, ranged: "3+" },
+    stats: {
+      normal: { combat: 0, damage: 0, defense: 4, health: 5, xp: "10+5" },
+      brutal: null
+    },
     abilities: [
       "Flight - Moves through other models and changes targets each turn.",
       "Laying Down Fire - Instead of making a Melee Attack after moving, this Enemy makes its Ranged Attack at its target.",
@@ -50,20 +51,20 @@ export const scannedEnemies = [
       "Darting Hover - Now has Cover 5+ (ignores each Hit on the D6 roll of 5+).",
       "Thermal Fusion Boost - The Fusion Blasters are +2 Shots. Now Escape 4+.",
       "Seeker Killer Protocol - Seeker Drones now make their Ranged Attack at every Hero within 2 spaces instead of only at their target."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Void Spiders",
     keywords: ["Beast", "Void"],
     Size: "Medium",
     initiative: 6,
-    move: "8",
+    move: 8,
     escape: "4+",
-    meleeToHit: "4+",
-    rangedToHit: null,
-    normalCombat: 2, normalDamage: 2, normalDefense: 0, normalHealth: 3, normalXp: "10",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: null },
+    stats: {
+      normal: { combat: 2, damage: 2, defense: 0, health: 3, xp: "10" },
+      brutal: null
+    },
     abilities: [
       "Countless Swarm - Moves through other models. Up to 3 Spiders may share the same space, though they will not double-up or triple-up unless necessary to reach their target. All spaces that contain 2 or more Spiders allow those Spiders to make their full Combat Attack against all adjacent Heroes. When applying Damage from a Hit, the Hero may divide the Damage between any Spiders in the target's space as they see fit (use Defense for each as normal)."
     ],
@@ -74,20 +75,20 @@ export const scannedEnemies = [
       "Hardened Shells - +2 Defense.",
       "Vicious Bite - Now Melee To Hit 3+.",
       "Deadly Venom - Spider Combat Hits are +2 Damage."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Ancient Spiders",
     keywords: ["Beast", "Void", "Targa"],
     Size: "Medium",
     initiative: 6,
-    move: "8",
+    move: 8,
     escape: "4+",
-    meleeToHit: "3+",
-    rangedToHit: null,
-    normalCombat: 2, normalDamage: 2, normalDefense: 0, normalHealth: 3, normalXp: "20",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "3+", ranged: null },
+    stats: {
+      normal: { combat: 2, damage: 2, defense: 0, health: 3, xp: "20" },
+      brutal: null
+    },
     abilities: [
       "Countless Swarm - Moves through other models. Up to 3 Spiders may share the same space, though they will not double-up or triple-up unless necessary to reach their target. All spaces that contain 2 or more Spiders allow those Spiders to make their full Combat Attack against all adjacent Heroes. When applying Damage from a Hit, the Hero may divide the Damage between any Spiders in the target's space as they see fit (use Defense for each as normal).",
       "Void Bite - Spider Melee To Hit rolls of 5+ do double Damage."
@@ -99,20 +100,20 @@ export const scannedEnemies = [
       "Frosty Shells - Armor 5+",
       "Feeds on Technology - +1 Combat for every Tech Item and token the target has. +1 Initiative",
       "Deadly Venom - Spider Combat Hits are +2 Damage."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Trench Spiders",
     keywords: ["Beast", "Void", "Trederra"],
     Size: "Medium",
     initiative: 6,
-    move: "8",
+    move: 8,
     escape: "4+",
-    meleeToHit: "4+",
-    rangedToHit: null,
-    normalCombat: 2, normalDamage: 2, normalDefense: 0, normalHealth: 3, normalXp: "20",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: null },
+    stats: {
+      normal: { combat: 2, damage: 2, defense: 0, health: 3, xp: "20" },
+      brutal: null
+    },
     abilities: [
       "Countless Swarm - Moves through other models. Up to 3 Spiders may share the same space, though they will not double-up or triple-up unless necessary to reach their target. All spaces that contain 2 or more Spiders allow those Spiders to make their full Combat Attack against all adjacent Heroes. When applying Damage from a Hit, the Hero may divide the Damage between any Spiders in the target's space as they see fit (use Defense for each as normal).",
       "Tunneling Scavengers - Always has a Cover 5+ save and gets +1 Damage for each Corruption Point the target has."
@@ -124,20 +125,20 @@ export const scannedEnemies = [
       "Group Dark Stone Radiation (1) - Any Hero ending their move adjacent to 1 or more Spiders takes 1 Corruption Hit.",
       "Vicious Bite - Now Melee To Hit 3+.",
       "Corpse Feeding - +1 Combat. Whenever a Hero is KO'd, all Spiders gain +1 Combat until the end of the Turn."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Nightshade Spiders",
     keywords: ["Beast", "Void", "Forest of the Dead"],
     Size: "Medium",
     initiative: 6,
-    move: "8",
+    move: 8,
     escape: "4+",
-    meleeToHit: "4+",
-    rangedToHit: null,
-    normalCombat: 2, normalDamage: 2, normalDefense: 0, normalHealth: 3, normalXp: "15",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: null },
+    stats: {
+      normal: { combat: 2, damage: 2, defense: 0, health: 3, xp: "15" },
+      brutal: null
+    },
     abilities: [
       "Countless Swarm - Moves through other models. Up to 3 Spiders may share the same space, though they will not double-up or triple-up unless necessary to reach their target. All spaces that contain 2 or more Spiders allow those Spiders to make their full Combat Attack against all adjacent Heroes. When applying Damage from a Hit, the Hero may divide the Damage between any Spiders in the target's space as they see fit (use Defense for each as normal).",
       "Nightshade Toxin - Whenever a Hero rolls a 1 To Hit while adjacent to 1 or more Nightshade Spiders, they take D3 Wounds, ignoring Defense and Armor."
@@ -149,20 +150,20 @@ export const scannedEnemies = [
       "Hardened Shells - +2 Defense.",
       "Forest Webbing - Spider To Hit rolls of 6+ also give the target a Webbed marker if they take any Wounds from the Hit.",
       "Deadly Venom - Spider Combat Hits are +2 Damage."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Hungry Dead",
     keywords: ["Undead"],
     Size: "Medium",
     initiative: 1,
-    move: "2",
+    move: 2,
     escape: "4+",
-    meleeToHit: "4+",
-    rangedToHit: null,
-    normalCombat: 1, normalDamage: 3, normalDefense: 4, normalHealth: 1, normalXp: "20",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: null },
+    stats: {
+      normal: { combat: 1, damage: 3, defense: 4, health: 1, xp: "20" },
+      brutal: null
+    },
     abilities: [
       "Fear (1) - A Hero starting their Activation adjacent automatically takes 1 Horror Hit."
     ],
@@ -173,20 +174,20 @@ export const scannedEnemies = [
       "Resilient - +1 Defense",
       "Stench of Death - All Heroes on the same Map Tile as one or more Hungry Dead or Corpse Piles are now -1 on all of their To Hit rolls (natural rolls of 6 still count as Critical Hits).",
       "Rotten Evil - All Hungry Dead are now Fear (2)."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Hell Vermin",
     keywords: ["Mutant", "Beast"],
     Size: "Medium",
     initiative: 6,
-    move: "8",
+    move: 8,
     escape: "4+",
-    meleeToHit: "4+",
-    rangedToHit: null,
-    normalCombat: 3, normalDamage: 4, normalDefense: 2, normalHealth: 13, normalXp: "10+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: null },
+    stats: {
+      normal: { combat: 3, damage: 4, defense: 2, health: 13, xp: "10+5" },
+      brutal: null
+    },
     abilities: [
       "Fear (2) - A Hero starting their Activation adjacent automatically takes 2 Horror Hits.",
       "Regeneration (2) - Heals 2 Wounds at the start of each turn.",
@@ -200,20 +201,20 @@ export const scannedEnemies = [
       "Void Fleas - Heroes on the same Map Tile cannot Recover Grit.",
       "Rancid Breath - Hell Vermin are now Fear (3).",
       "Vile Corruption - The Corruption Bite ability now causes D3 Corruption Hits."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "The Undead Gunslinger",
     keywords: ["Undead", "Outlaw"],
     Size: "Medium",
     initiative: 8,
-    move: "6",
+    move: 6,
     escape: "3+",
-    meleeToHit: "5+",
-    rangedToHit: "3+",
-    normalCombat: 4, normalDamage: 4, normalDefense: 4, normalHealth: 10, normalXp: "15+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "5+", ranged: "3+" },
+    stats: {
+      normal: { combat: 4, damage: 4, defense: 4, health: 10, xp: "15+5" },
+      brutal: null
+    },
     abilities: [
       "Shootout Terror (2) - A Hero starting their Activation on the same Map Tile automatically takes 2 Horror Hits",
       "Deadman's Six-Shooter - Ranged Attack: Range 8, Shots 2, Damage 2* *To Hit rolls of 6 draw a Deadman's Shot card instead of normal Damage.",
@@ -227,20 +228,20 @@ export const scannedEnemies = [
       "Quickdraw - The Hero selected as the initial 'Target' for the Undead Gunslinger's Shootout each turn draws an extra Deadman's Shot card, in addition to any Hits they might take.",
       "Regeneration (H) - Now Heals 1 wound at the start of each turn for every non-KO'd Hero in play. (minimum of 2).",
       "Hunger for Revenge - Deadman's Six-Shooter is +2 Shots (may be upgraded multiple times)."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "The Lost Army",
     keywords: ["Undead", "Soldier", "Lost Army"],
     Size: "Medium",
     initiative: 2,
-    move: "2",
+    move: 2,
     escape: "4+",
-    meleeToHit: "3+",
-    rangedToHit: "5+",
-    normalCombat: 1, normalDamage: 6, normalDefense: 4, normalHealth: 3, normalXp: "30",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "3+", ranged: "5+" },
+    stats: {
+      normal: { combat: 1, damage: 6, defense: 4, health: 3, xp: "30" },
+      brutal: null
+    },
     abilities: [
       "Fear (2) - A Hero starting their Activation adjacent automatically takes 2 Horror Hits.",
       "Battle Line - While In Formation, a Lost Army model is Armor 5+ and only makes a Retreat move on the roll of 6 (instead of the normal 4, 5, or 6).",
@@ -253,20 +254,20 @@ export const scannedEnemies = [
       "Cold Efficiency - +1 Combat, and +1 Damage with the Hell Musket Volley",
       "Siege Gear - Lost Army are now Armor 4+ while In Formation.",
       "Burning Skulls - Lost Army are now Fear (3) and, due to their terrifying cackle, any time a Hero on the same Map Tile as one or more Lost Army models would Recover a Grit, roll a D6. That Grit is not Recovered on the roll of 1, 2, or 3."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Swamp Raptor",
     keywords: ["Beast", "Jargano"],
     Size: "Medium",
     initiative: 5,
-    move: "10",
+    move: 10,
     escape: "3+",
-    meleeToHit: "3+",
-    rangedToHit: null,
-    normalCombat: 3, normalDamage: 5, normalDefense: 3, normalHealth: 40, normalXp: "10+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "3+", ranged: null },
+    stats: {
+      normal: { combat: 3, damage: 5, defense: 3, health: 40, xp: "10+5" },
+      brutal: null
+    },
     abilities: [
       "Terror (2) - A Hero starting their Activation on the same Map Tile automatically takes 2 Horror Hits.",
       "Chomp - After making a Melee Attack, roll one extra Combat against a Random adjacent Hero as a Chomp Attack, doing 2D6 Damage. If a 6 is rolled To Hit, this Chomp ignores Defense.",
@@ -280,20 +281,20 @@ export const scannedEnemies = [
       "Savage Jaws - All of the Swamp Raptor's Attacks are +3 Damage.",
       "Hardened Scales - Swamp Raptor is +5 Health and is now Defense 4.",
       "Whipping Tail - Heroes that are adjacent to the Swamp Raptor are -1 on all of their To Hit rolls (natural rolls of 6+ still count as Critical Hits)."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Hellfire Succubi",
     keywords: ["Demon", "Cynder"],
     Size: "Medium",
     initiative: 8,
-    move: "7",
+    move: 7,
     escape: "5+",
-    meleeToHit: "3+",
-    rangedToHit: null,
-    normalCombat: 3, normalDamage: 2, normalDefense: 3, normalHealth: 7, normalXp: "35",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "3+", ranged: null },
+    stats: {
+      normal: { combat: 3, damage: 2, defense: 3, health: 7, xp: "35" },
+      brutal: null
+    },
     abilities: [
       "Vicious Claws - Heroes are -1 to their Defense rolls against Hellfire Succubi Combat Hits (ie - Defense 4+ would need to roll 5 or higher to save).",
       "Hellfire Demons - Hellfire Succubi are immune to Hellfire and Burning Markers.",
@@ -306,20 +307,20 @@ export const scannedEnemies = [
       "Soulless Eyes - +5 Health",
       "Wreathed in Flame - +1 Initiative and any Hero ending their move adjacent to one or more Hellfire Succubi must pass an Agility 5+ test or immediately take D3 Burning Markers.",
       "Unholy Spite - +1 Combat and all Holy Heroes ending their Move on the same Map Tile as one or more Hellfire Succubi take D3 Corruption Hits. Also, any time a Preacher/Nun Hero successfully casts a Sermon, they take D6 Corruption Hits."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Hell Cannon",
     keywords: ["Undead", "Artillery", "Lost Army"],
     Size: "Medium",
     initiative: 1,
-    move: "2",
+    move: 2,
     escape: "2+",
-    meleeToHit: "4+",
-    rangedToHit: "5+",
-    normalCombat: 0, normalDamage: 0, normalDefense: 4, normalHealth: 15, normalXp: "15+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: "5+" },
+    stats: {
+      normal: { combat: 0, damage: 0, defense: 4, health: 15, xp: "15+5" },
+      brutal: null
+    },
     abilities: [
       "Fear (4) - A Hero starting their Activation adjacent takes 4 Horror Hits.",
       "Artillery - The Hell Cannon follows the rules for Ranged Enemies.",
@@ -334,20 +335,20 @@ export const scannedEnemies = [
       "Spectral Skull Shot - Any time a Hero takes Damage from the Hell Cannon, they also take D6 Horror Hits.",
       "Bone Shards - The Hell Cannon's Grape Shot at adjacent Heroes now does * Damage instead.",
       "Back From Hell - The Hell Cannon's Cannon Balls now do * +3 Damage, ignoring Defense and Armor instead."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Undead Outlaws",
     keywords: ["Undead", "Outlaw"],
     Size: "Medium",
     initiative: 2,
-    move: "4",
+    move: 4,
     escape: "3+",
-    meleeToHit: "4+",
-    rangedToHit: "4+",
-    normalCombat: 1, normalDamage: 3, normalDefense: 4, normalHealth: 5, normalXp: "45",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: "4+" },
+    stats: {
+      normal: { combat: 1, damage: 3, defense: 4, health: 5, xp: "45" },
+      brutal: null
+    },
     abilities: [
       "Shootout - A Hero starting their Activation adjacent automatically takes 2 Horror Hits.",
       "Fear (2) - A Hero starting their Activation adjacent automatically takes 2 Horror Hits.",
@@ -361,20 +362,20 @@ export const scannedEnemies = [
       "Rotten Bodies - +4 Health and Heal 1 wound at the start of each turn.",
       "Need for Revenge - +2 Shots on all Ranged Attacks.",
       "Expert Gunfighters - Range To Hit is now 3+"
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "HellBats",
     keywords: ["Demon", "Void"],
     Size: "Medium",
     initiative: 6,
-    move: "12",
+    move: 12,
     escape: "3+",
-    meleeToHit: "3+",
-    rangedToHit: null,
-    normalCombat: 3, normalDamage: 1, normalDefense: 2, normalHealth: 1, normalXp: "10",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "3+", ranged: null },
+    stats: {
+      normal: { combat: 3, damage: 1, defense: 2, health: 1, xp: "10" },
+      brutal: null
+    },
     abilities: [
       "Flight - HellBats move through other models and change targets each turn.",
       "Nightmarish - For every Hit done by a HellBat, the Hero also takes 1 Horror Hit."
@@ -386,20 +387,20 @@ export const scannedEnemies = [
       "Barbed Tail - +1 Combat.",
       "Armored Scales - +2 Health",
       "Razor Wings - HellBat Combat Hits now do 3 Damage each."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Harbinger",
     keywords: ["Demon"],
     Size: "Medium",
     initiative: 4,
-    move: "12",
+    move: 12,
     escape: "3+",
-    meleeToHit: "4+",
-    rangedToHit: "-",
-    normalCombat: 3, normalDamage: 4, normalDefense: 3, normalHealth: 18, normalXp: "10+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: null },
+    stats: {
+      normal: { combat: 3, damage: 4, defense: 3, health: 18, xp: "10+5" },
+      brutal: null
+    },
     abilities: [
       "Unspeakable Terror (3) - A Hero starting their Activation on the same or adjacent Map Tile automatically takes 3 Horror Hits.",
       "Bringer of Death - At the end of each Fight Round, makes a Random Special Attack: Sweeping Strike (every adjacent Hero takes D6 Combat Hits), Summon Hellbats (immediately add D3 Hellbats to the Fight using Ambush), or Regenerate (the Harbinger Heals D6 Wounds).",
@@ -413,20 +414,20 @@ export const scannedEnemies = [
       "Claws - Harbinger Combat Hits now cause 2 Hits each.",
       "Fleshless Body - +4 Health",
       "Shriek of Command - All other Enemies are +2 Health as long as the Harbinger is alive."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Serpentmen Shaman",
     keywords: ["Serpentmen", "Tribal", "Magic", "Argono"],
     Size: "Medium",
     initiative: 7,
-    move: "10",
+    move: 10,
     escape: "4+",
-    meleeToHit: "4+",
-    rangedToHit: "4+",
-    normalCombat: 3, normalDamage: 4, normalDefense: 3, normalHealth: 18, normalXp: "10+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: "4+" },
+    stats: {
+      normal: { combat: 3, damage: 4, defense: 3, health: 18, xp: "10+5" },
+      brutal: null
+    },
     abilities: [
       "Retreat - If adjacent to a Hero at the start of its Activation, makes a Free Move along the shortest distance to no longer be adjacent. In the first turn of an Ambush, does not Retreat.",
       "Serpent Magik - At the start of its Activation (after any Retreat), while not adjacent to a Hero, the Shaman rolls a D6. On 1-2 it targets a Random Hero and moves to attack as normal, on 3-6 it does not move and casts a random Spell from the Serpent Magik deck.",
@@ -440,20 +441,20 @@ export const scannedEnemies = [
       "Thanu's Chosen - Endurance (2) - Cannot take more than 2 Wounds from a single Hit (extra Damage is wasted). Replaces any other Endurance.",
       "Serpent of the Inner Circle - +6 Health",
       "Savage Warrior Priest - Loses the Retreat ability. No longer rolls for Serpent Magik. Instead, always targets a Random Hero and moves to Attack. At the end of its Move (before Attacking), also casts a Spell, even if adjacent to a Hero."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Magma Giant",
     keywords: ["Construct", "Cynder"],
     Size: "Medium",
     initiative: 3,
-    move: "6",
+    move: 6,
     escape: "3+",
-    meleeToHit: "4+",
-    rangedToHit: "6+",
-    normalCombat: 3, normalDamage: 3, normalDefense: 3, normalHealth: 25, normalXp: "15+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: "6+" },
+    stats: {
+      normal: { combat: 3, damage: 3, defense: 3, health: 25, xp: "15+5" },
+      brutal: null
+    },
     abilities: [
       "Unspeakable Terror (2) - A Hero starting their Activation on the same or adjacent Map Tile takes 2 Horror Hits.",
       "Hardening Surface - During each Hero's Activation, this Enemy's Defense is +1 for each successive Hit assigned to it after the first (until end of that Activation), immune to Burning Markers.",
@@ -468,20 +469,20 @@ export const scannedEnemies = [
       "Burning Rage - +1 Combat and +1 Damage on Combat Hits.",
       "Swift Flow - +1 Initiative and +2 Move",
       "Sizzling Touch - The Burning Smash ability now deals D3 Burning markers to each Hero affected, instead of only 1."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Lava Men",
     keywords: ["Construct", "Cynder"],
     Size: "Medium",
     initiative: 3,
-    move: "6",
+    move: 6,
     escape: "3+",
-    meleeToHit: "4+",
-    rangedToHit: "4+",
-    normalCombat: 4, normalDamage: 3, normalDefense: 3, normalHealth: 10, normalXp: "10+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: "4+" },
+    stats: {
+      normal: { combat: 4, damage: 3, defense: 3, health: 10, xp: "10+5" },
+      brutal: null
+    },
     abilities: [
       "Burning Touch - Lava Men To Hit rolls of 6 also immediately add a Burning Marker to the Hero.",
       "Molten Body - Immune to Critical Hits from Ranged Attacks.",
@@ -493,20 +494,20 @@ export const scannedEnemies = [
       "Heat Shimmer - Armor 5+",
       "Lava Explosion - When a Lava Man is killed, every adjacent Hero takes D6 Wounds, ignoring Defense.",
       "Lava Eruption - At the start of their Activation, roll a D6 for each Lava Man. On the roll of 1 or 2, it will immediately make an extra Ranged Attack (Range 8, Shots 1, Damage D6+2) against a Random Hero within Range, before activating as normal."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Serpentmen Warriors",
     keywords: ["Serpentmen", "Tribal", "Argono"],
     Size: "Medium",
     initiative: 5,
-    move: "10",
+    move: 10,
     escape: "5+",
-    meleeToHit: "4+",
-    rangedToHit: null,
-    normalCombat: 2, normalDamage: 3, normalDefense: 2, normalHealth: 6, normalXp: "35",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: "4+", ranged: null },
+    stats: {
+      normal: { combat: 2, damage: 3, defense: 2, health: 6, xp: "35" },
+      brutal: null
+    },
     abilities: [
       "Serpentmen Tribe - If there is not already a Serpentmen Tribe card in play, draw one to determine the tribal territory you are in.",
       "Slither - Moves through other models and changes targets each turn.",
@@ -520,20 +521,20 @@ export const scannedEnemies = [
       "Savage - +2 Combat",
       "Poisoned Weapons - Any Hero that takes one or more Wounds from Serpentmen Warrior Attacks during the turn also gains a Poison marker.",
       "Whipping Tails - Heroes that are adjacent to one or more Serpentmen Warriors are -1 on all of their To Hit rolls (natural rolls of 6+ still count as Critical Hits)."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
   {
     name: "Corpse Pile",
     keywords: ["Undead"],
     Size: "Medium",
     initiative: 0,
-    move: "0",
+    move: 0,
     escape: "1+",
-    meleeToHit: "-",
-    rangedToHit: "-",
-    normalCombat: 0, normalDamage: 0, normalDefense: 2, normalHealth: 6, normalXp: "10+5",
-    brutalCombat: 0, brutalDamage: 0, brutalDefense: 0, brutalHealth: 0, brutalXp: "0",
+    toHit: { melee: null, ranged: null },
+    stats: {
+      normal: { combat: 0, damage: 0, defense: 2, health: 6, xp: "10+5" },
+      brutal: null
+    },
     abilities: [
       "Immobile - Corpse Piles cannot be moved in any way.",
       "Fear (1) - A Hero starting their Activation adjacent automatically takes 1 Horror Hit.",
@@ -546,7 +547,6 @@ export const scannedEnemies = [
       "Bloated Remains - +1 Defense",
       "Squirming Pile - Corpse Piles now spawn a new Hungry Dead on the roll of 3+.",
       "Freshly Stacked - Corpse Piles now roll twice each turn to spawn a Hungry Dead."
-    ],
-    brutalEliteAbilities: []
+    ]
   },
 ];
