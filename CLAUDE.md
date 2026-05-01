@@ -322,3 +322,42 @@ Any Corruption Hit source must allow Willpower saves unless card text explicitly
 - `forbidSlots` enforcement in all gear equip paths
 - Wanted/Outlaw status tracking on hero
 - OtherWorld-specific mutation tables
+
+### Enemy Mechanic Support Reference
+
+When adding new enemy cards, cross-reference abilities against this table.
+
+**Combat resolver handles** (`combatResolution.js`):
+- Endurance (X) — max wounds per hit cap, parsed from ability text
+- Tough — immune to Critical Hits, parsed from ability text
+- Cover X+ — additional save per hit, parsed from ability text
+- Enemy Armor X+ — parsed from ability text
+
+**Hero markers implemented** (`statusMarkers.js`):
+| Marker key | Matches enemy ability text |
+|---|---|
+| `bleeding` | "Bleeding marker" |
+| `poison` | "Poison marker" |
+| `fire` | "Burning marker" (naming mismatch — enemies say "Burning", system uses "fire") |
+| `web` | "Webbed marker" |
+| `snare` | "Snare marker" |
+| `noise` | "Noise marker" |
+
+**Markers NOT in system:**
+- Void Venom — used by all Spider variants (stat penalty/damage over time)
+
+**Enemy mechanics NOT implemented:**
+- Regeneration (X) — heals X wounds at turn start (Hell Vermin, Undead Gunslinger, Harbinger, Corpse Pile)
+- Spawning — add new enemies mid-fight (Egg Sacks spawn Void Spiders, Corpse Pile spawns Hungry Dead)
+- Fear/Terror/Unspeakable Terror — automatic Horror Hits at activation start (most enemies)
+- D8 dice for To Hit — Magma Giant uses D8 instead of D6 (Massive Fists ability)
+- Lava Spaces — terrain markers that heal Lava Men and damage Heroes
+- Shootout mechanics — Undead Gunslinger/Outlaws special ranged resolution
+- Formation — Lost Army defensive stance (Armor bonus, retreat resistance)
+- Enemy special card decks — Serpent Magik, Shaman Juju Trinkets, Deadman's Shot, Cannon reference cards
+
+**Enemy data schema** (`enemyUtils.js:normalizeEnemyData`):
+Three schemas exist; the normalizer handles all three:
+1. **Old** (mineEnemies): flat `health`, `defense`, `melee: { toHit, damage }`, `eliteChart`
+2. **Western** (westernEnemies, scannedEnemies): `stats: { normal, brutal }`, `toHit: { melee, ranged }`, `eliteAbilities`
+3. **Scanner internal** (DMScanCards pending queue): flat `normalCombat`, `brutalCombat`, etc. — converted to western format by `formatEnemyForExport`
