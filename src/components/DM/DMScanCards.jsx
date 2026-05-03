@@ -599,6 +599,10 @@ export default function DMScanCards() {
   // Inline camera state
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [liveMode, setLiveMode] = useState(false);
+  const [inFlight, setInFlight] = useState(0);
+  const [liveScanned, setLiveScanned] = useState(0);
+  const [flashActive, setFlashActive] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -659,7 +663,75 @@ export default function DMScanCards() {
       streamRef.current = null;
     }
     setCameraActive(false);
+    setLiveMode(false);
   }, []);
+
+  // Fire-and-forget background scan — used in live mode to keep camera open
+  const processInBackground = useCallback(async (file) => {
+    setInFlight(n => n + 1);
+    try {
+      const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
+      const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+      const result = await scanWithClaudeVision(file, label, apiKey, extra);
+      const cardData = applyToSchema(result, deckType, enemySide);
+      const key = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
+
+      setPending(prev => {
+        const existing = prev[key] || [];
+        let updatedList;
+        if (deckType === 'enemy' && cardData.name) {
+          const matchIdx = existing.findIndex(c => c.name?.toLowerCase() === cardData.name.toLowerCase());
+          if (matchIdx >= 0) {
+            const merged = { ...existing[matchIdx] };
+            if (cardData._scannedSide === 'brutal') {
+              merged.brutalCombat = cardData.brutalCombat;
+              merged.brutalDamage = cardData.brutalDamage;
+              merged.brutalDefense = cardData.brutalDefense;
+              merged.brutalHealth = cardData.brutalHealth;
+              merged.brutalXp = cardData.brutalXp;
+              if (cardData.brutalEliteAbilities?.length) merged.brutalEliteAbilities = cardData.brutalEliteAbilities;
+            } else {
+              merged.normalCombat = cardData.normalCombat;
+              merged.normalDamage = cardData.normalDamage;
+              merged.normalDefense = cardData.normalDefense;
+              merged.normalHealth = cardData.normalHealth;
+              merged.normalXp = cardData.normalXp;
+              merged.abilities = cardData.abilities;
+              merged.eliteAbilities = cardData.eliteAbilities;
+              merged.keywords = cardData.keywords;
+              merged.Size = cardData.Size;
+              merged.initiative = cardData.initiative;
+              merged.move = cardData.move;
+              merged.escape = cardData.escape;
+              merged.meleeToHit = cardData.meleeToHit;
+              merged.rangedToHit = cardData.rangedToHit;
+            }
+            updatedList = [...existing];
+            updatedList[matchIdx] = merged;
+          } else {
+            updatedList = [...existing, { ...cardData }];
+          }
+        } else {
+          updatedList = [...existing, { ...cardData }];
+        }
+        const updated = { ...prev, [key]: updatedList };
+        savePending(updated);
+        return updated;
+      });
+      setLiveScanned(n => n + 1);
+    } catch (err) {
+      console.warn('Background scan failed:', err.message);
+    } finally {
+      setInFlight(n => n - 1);
+    }
+  }, [deckType, world, apiKey, enemySide]);
+
+  const startLiveCamera = useCallback(async () => {
+    setLiveMode(true);
+    setLiveScanned(0);
+    setInFlight(0);
+    await startCamera();
+  }, [startCamera]);
 
   const capturePhoto = useCallback(() => {
     const video = videoRef.current;
@@ -672,15 +744,22 @@ export default function DMScanCards() {
     canvas.toBlob(blob => {
       if (!blob) return;
       const file = new File([blob], `card_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      setImageFile(file);
-      setImageUrl(URL.createObjectURL(blob));
-      setRawText('');
-      setFormData({});
-      setHasScanned(false);
-      setScanEngine('');
-      stopCamera();
+      if (liveMode) {
+        // Flash feedback — camera stays open
+        setFlashActive(true);
+        setTimeout(() => setFlashActive(false), 250);
+        processInBackground(file);
+      } else {
+        setImageFile(file);
+        setImageUrl(URL.createObjectURL(blob));
+        setRawText('');
+        setFormData({});
+        setHasScanned(false);
+        setScanEngine('');
+        stopCamera();
+      }
     }, 'image/jpeg', 0.92);
-  }, [stopCamera]);
+  }, [liveMode, stopCamera, processInBackground]);
 
   const saveApiKey = () => {
     const trimmed = apiKeyDraft.replace(/[^\x20-\x7E]/g, '').trim();
@@ -1035,19 +1114,43 @@ export default function DMScanCards() {
         {/* Inline camera viewfinder */}
         {cameraActive && (
           <div className="space-y-2">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="rounded-lg w-full max-h-80 object-contain bg-black"
-            />
+            <div className="relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="rounded-lg w-full max-h-80 object-contain bg-black"
+              />
+              {/* Capture flash */}
+              {flashActive && (
+                <div className="absolute inset-0 bg-white/60 rounded-lg pointer-events-none" />
+              )}
+              {/* Live mode status overlay */}
+              {liveMode && (
+                <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center gap-2">
+                  <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                    {inFlight > 0 ? `🔄 ${inFlight} scanning…` : 'Ready'}
+                  </span>
+                  <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                    {liveScanned > 0 ? `✓ ${liveScanned} queued` : 'Tap Scan Card'}
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               <button className="btn btn-primary flex-1" onClick={capturePhoto}>
-                📸 Capture
+                {liveMode ? '📸 Scan Card' : '📸 Capture'}
               </button>
-              <button className="btn btn-ghost" onClick={stopCamera}>Cancel</button>
+              <button className="btn btn-ghost" onClick={stopCamera}>
+                {liveMode ? 'Stop' : 'Cancel'}
+              </button>
             </div>
+            {liveMode && (
+              <p className="text-xs text-gray-500 text-center">
+                Cards auto-queue in background — keep scanning without stopping
+              </p>
+            )}
           </div>
         )}
 
@@ -1057,6 +1160,11 @@ export default function DMScanCards() {
             <button className="btn btn-outline" onClick={startCamera}>
               📷 Open Camera
             </button>
+            {useClaudeVision && (
+              <button className="btn btn-outline btn-primary" onClick={startLiveCamera}>
+                🎥 Live Scan
+              </button>
+            )}
             <button
               className="btn btn-outline"
               onClick={() => fileInputRef.current?.click()}
@@ -1300,7 +1408,9 @@ export default function DMScanCards() {
         <p className="mt-2"><strong>Tips for better scans:</strong></p>
         <ul className="list-disc list-inside space-y-0.5">
           <li>{hasSecureCamera
-            ? 'Inline camera active (HTTPS) — page stays open while you photograph'
+            ? useClaudeVision
+              ? '🎥 Live Scan keeps camera open — tap Scan Card for each card, results auto-queue in background'
+              : 'Inline camera active (HTTPS) — page stays open while you photograph'
             : 'On HTTP, "Open Camera" uses the native camera — your deck selection is saved if the page reloads'}</li>
           <li>Flat, even lighting — avoid shadows across the card</li>
           <li>Card straight and fully in frame</li>
