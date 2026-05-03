@@ -853,6 +853,33 @@ export const mineArtifacts = [
     upgradeSlots: 0,
     effects: ["Draw an Artifact from the Targa Plateau Artifacts Deck."],
     tags: ["Artifact", "Otherworld"]
+  },
+  {
+    id: 'mine_cross_of_hidalgo',
+    name: "Cross of Hidalgo",
+    type: "Artifact - Hand Weapon - Holy",
+    slot: "Hand Weapon",
+    value: 625,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: [
+      "+1 Combat.",
+      "+1 Lore.",
+      "Once per turn, you may use 1 Grit to add +D6 Damage to one of your Combat Hits against a Demon or Ghost."
+    ],
+    requires: "Spirit 3 or higher to use",
+    tags: ["Artifact", "Hand Weapon", "Holy"]
+  },
+  {
+    id: 'mine_otherworld_artifact_canyons',
+    name: "Otherworld Artifact (Canyons)",
+    type: "Artifact",
+    slot: "None",
+    value: null,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: ["Draw an Artifact from the Canyon Deck."],
+    tags: ["Artifact", "Otherworld"]
   }
 ];
 export default mineArtifacts;
