@@ -1,6 +1,6 @@
 // src/components/DM/DMScanCards.jsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { runOcr, scanWithClaudeVision } from '../../utils/cardOcr';
+import { runOcr, scanWithClaudeVision, scanMultiCardImage } from '../../utils/cardOcr';
 
 // ── Deck type definitions ────────────────────────────────────────────────────
 
@@ -810,6 +810,76 @@ export default function DMScanCards() {
     }
   }, [imageFile, deckType, useClaudeVision, apiKey, world]);
 
+  const handleScanGroup = useCallback(async () => {
+    if (!imageFile || !useClaudeVision) return;
+    setScanning(true);
+    setProgress(20);
+    try {
+      const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
+      const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+      setProgress(40);
+      const cards = await scanMultiCardImage(imageFile, label, apiKey, extra);
+      setProgress(100);
+
+      const key = pendingKey;
+      setPending(prev => {
+        let local = { ...prev };
+        let existing = local[key] || [];
+        for (const raw of cards) {
+          const cardData = applyToSchema(raw, deckType, enemySide);
+          if (deckType === 'enemy' && cardData.name) {
+            const matchIdx = existing.findIndex(c => c.name?.toLowerCase() === cardData.name.toLowerCase());
+            if (matchIdx >= 0) {
+              const merged = { ...existing[matchIdx] };
+              if (cardData._scannedSide === 'brutal') {
+                merged.brutalCombat = cardData.brutalCombat;
+                merged.brutalDamage = cardData.brutalDamage;
+                merged.brutalDefense = cardData.brutalDefense;
+                merged.brutalHealth = cardData.brutalHealth;
+                merged.brutalXp = cardData.brutalXp;
+                if (cardData.brutalEliteAbilities?.length) merged.brutalEliteAbilities = cardData.brutalEliteAbilities;
+              } else {
+                merged.normalCombat = cardData.normalCombat;
+                merged.normalDamage = cardData.normalDamage;
+                merged.normalDefense = cardData.normalDefense;
+                merged.normalHealth = cardData.normalHealth;
+                merged.normalXp = cardData.normalXp;
+                merged.abilities = cardData.abilities;
+                merged.eliteAbilities = cardData.eliteAbilities;
+                merged.keywords = cardData.keywords;
+                merged.Size = cardData.Size;
+                merged.initiative = cardData.initiative;
+                merged.move = cardData.move;
+                merged.escape = cardData.escape;
+                merged.meleeToHit = cardData.meleeToHit;
+                merged.rangedToHit = cardData.rangedToHit;
+              }
+              existing = [...existing];
+              existing[matchIdx] = merged;
+            } else {
+              existing = [...existing, { ...cardData }];
+            }
+          } else {
+            existing = [...existing, { ...cardData }];
+          }
+        }
+        local[key] = existing;
+        savePending(local);
+        return local;
+      });
+
+      alert(`Found ${cards.length} card(s) — added to queue.`);
+      setImageFile(null);
+      setImageUrl('');
+      setHasScanned(false);
+    } catch (err) {
+      alert(`Group scan failed: ${err.message}`);
+    } finally {
+      setScanning(false);
+      setProgress(0);
+    }
+  }, [imageFile, deckType, useClaudeVision, apiKey, world, enemySide, pendingKey]);
+
   const handleFormChange = useCallback((next) => {
     if (next.name !== formData.name && next.id !== undefined) {
       next.id = toId(next.name);
@@ -1189,9 +1259,16 @@ export default function DMScanCards() {
               onChange={handleFileChange}
             />
             {imageFile && !scanning && (
-              <button className="btn btn-primary" onClick={handleScan}>
-                🔍 Scan
-              </button>
+              <>
+                <button className="btn btn-primary" onClick={handleScan}>
+                  🔍 Scan
+                </button>
+                {useClaudeVision && (
+                  <button className="btn btn-secondary" onClick={handleScanGroup}>
+                    🔍 Scan Group
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

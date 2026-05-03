@@ -169,12 +169,7 @@ Rules:
 - Return ONLY a valid JSON object, no markdown fences, no explanation`;
 }
 
-/**
- * Scan a card image using the Claude Vision API.
- * Returns a structured object with the fields extracted from the card.
- * Throws if the API key is invalid or the request fails.
- */
-export async function scanWithClaudeVision(file, deckType, apiKey, extra = {}) {
+async function callClaude(file, prompt, apiKey, maxTokens = 2048) {
   const base64 = await fileToBase64(file);
   const mediaType = getMediaType(file);
   const cleanKey = apiKey.replace(/[^\x20-\x7E]/g, '').trim();
@@ -189,13 +184,13 @@ export async function scanWithClaudeVision(file, deckType, apiKey, extra = {}) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      max_tokens: maxTokens,
       messages: [
         {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: buildPrompt(deckType, extra) },
+            { type: 'text', text: prompt },
           ],
         },
       ],
@@ -208,15 +203,47 @@ export async function scanWithClaudeVision(file, deckType, apiKey, extra = {}) {
   }
 
   const data = await response.json();
-  const text = (data.content?.[0]?.text || '').trim();
+  return (data.content?.[0]?.text || '').trim();
+}
 
-  // Strip markdown fences if present
+function parseJsonResponse(text) {
   const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
   try {
     return JSON.parse(jsonStr);
   } catch {
-    const m = jsonStr.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
+    const arrMatch = jsonStr.match(/\[[\s\S]*\]/);
+    if (arrMatch) return JSON.parse(arrMatch[0]);
+    const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (objMatch) return JSON.parse(objMatch[0]);
     throw new Error(`Could not parse Claude response: ${text.slice(0, 200)}`);
   }
+}
+
+/**
+ * Scan a single card image using the Claude Vision API.
+ * Returns a structured object with the fields extracted from the card.
+ */
+export async function scanWithClaudeVision(file, deckType, apiKey, extra = {}) {
+  const text = await callClaude(file, buildPrompt(deckType, extra), apiKey);
+  return parseJsonResponse(text);
+}
+
+/**
+ * Scan an image containing MULTIPLE cards.
+ * Returns an array of structured objects, one per card found.
+ */
+export async function scanMultiCardImage(file, deckType, apiKey, extra = {}) {
+  const singlePrompt = buildPrompt(deckType, extra);
+  const multiPrompt = `This image contains MULTIPLE cards laid out together (could be 2-12 cards).
+Identify each individual card in the image and extract its data separately.
+
+For each card, use these extraction rules:
+${singlePrompt}
+
+Return a JSON ARRAY of objects — one object per card found. Even if you only find one card, wrap it in an array.
+Return ONLY the JSON array, no markdown fences, no explanation.`;
+
+  const text = await callClaude(file, multiPrompt, apiKey, 8192);
+  const result = parseJsonResponse(text);
+  return Array.isArray(result) ? result : [result];
 }
