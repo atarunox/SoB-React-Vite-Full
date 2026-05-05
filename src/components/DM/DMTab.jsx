@@ -15,6 +15,7 @@ import DMItemGenerator from './DMItemGenerator';
 import DMHandPanel from './DMHandPanel';
 import DMScanCards from './DMScanCards';
 import DMTurnTracker from './DMTurnTracker';
+import DMAdventureTracker from './DMAdventureTracker';
 
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
@@ -117,6 +118,7 @@ function OptionsPanel({
 // ---------------------------- Tabs list ------------------------------------
 const TABS = [
   { id: 'players',      label: 'Players',          component: PlayersWithConditions },
+  { id: 'adventure',    label: 'Adventure',        component: DMAdventureTracker },
   { id: 'initiative',   label: 'Initiative',       component: DMTurnTracker },
   { id: 'enemies',      label: 'Enemies',          component: DMEnemyPanel },
   { id: 'darkness',     label: 'Darkness',         component: DMDarknessDrawer },

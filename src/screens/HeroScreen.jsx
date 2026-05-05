@@ -12,6 +12,7 @@ import DMTab from '../components/DM/DMTab';
 import MiscTab from '../components/MiscTab';
 import PosseTab from '../components/PosseTab';
 import HeroSelector from '../components/HeroSelector';
+import AdventureTrackView from '../components/AdventureTrackView';
 
 export default function HeroScreen({
   dragLocked,
@@ -109,6 +110,11 @@ export default function HeroScreen({
             <span className="relative z-10">{tab}</span>
           </button>
         ))}
+      </div>
+
+      {/* Adventure Track (visible to all players when active) */}
+      <div className="px-3 pt-2">
+        <AdventureTrackView />
       </div>
 
       {/* Tab Content */}

@@ -8,6 +8,7 @@ import { PosseProvider, usePosse } from './context/PosseContext';
 import { DeckRegistryProvider } from './context/DeckRegistryContext';
 import { HeroProvider, useHero } from './context/HeroContext'; // ⬅️ use HeroContext for active hero
 import { UIScaleProvider, useUIScale } from './context/UIScaleContext';
+import { AdventureProvider } from './context/AdventureContext';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import PossePanel from './components/PossePanel';
@@ -60,9 +61,11 @@ export default function App() {
             <CombatProvider>
               <PosseProvider>
                 <HeroProvider>
-                  <UIScaleProvider>
-                    <AppShell />
-                  </UIScaleProvider>
+                  <AdventureProvider>
+                    <UIScaleProvider>
+                      <AppShell />
+                    </UIScaleProvider>
+                  </AdventureProvider>
                 </HeroProvider>
               </PosseProvider>
             </CombatProvider>
