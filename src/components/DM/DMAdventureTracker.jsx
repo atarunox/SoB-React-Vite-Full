@@ -74,6 +74,7 @@ function RollResult({ lastRoll }) {
 
 export default function DMAdventureTracker({ posse = [] }) {
   const adventure = useAdventure();
+  if (!adventure) return null;
   const { state, updateAdventure, advanceDepth, retreatDepth, advanceDarkness, retreatDarkness, rollHBtD, resetAdventure, endAdventure } = adventure;
   const [showConfig, setShowConfig] = useState(false);
   const [configDraft, setConfigDraft] = useState({});
