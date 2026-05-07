@@ -115,6 +115,26 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     return effects;
   }, [combatGroups]);
 
+  const advanceTurn = useCallback(() => {
+    setActivationLog(null);
+    if (turnOrder.length === 0) return;
+
+    const nextIdx = currentIdx + 1;
+    if (nextIdx >= turnOrder.length) {
+      setRound(r => r + 1);
+      setCurrentIdx(0);
+      setActivatedThisRound(new Set());
+    } else {
+      setCurrentIdx(nextIdx);
+    }
+  }, [currentIdx, turnOrder.length]);
+
+  const markActivated = useCallback(() => {
+    if (current) {
+      setActivatedThisRound(prev => new Set(prev).add(current.id));
+    }
+  }, [current]);
+
   const handleResolveActivation = useCallback(async () => {
     if (!current || current.type !== 'hero') return;
 
@@ -181,20 +201,6 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     }
   }, [current, updateHero, markActivated, advanceTurn]);
 
-  const advanceTurn = useCallback(() => {
-    setActivationLog(null);
-    if (turnOrder.length === 0) return;
-
-    const nextIdx = currentIdx + 1;
-    if (nextIdx >= turnOrder.length) {
-      setRound(r => r + 1);
-      setCurrentIdx(0);
-      setActivatedThisRound(new Set());
-    } else {
-      setCurrentIdx(nextIdx);
-    }
-  }, [currentIdx, turnOrder.length]);
-
   const prevTurn = useCallback(() => {
     setActivationLog(null);
     if (currentIdx > 0) {
@@ -211,12 +217,6 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     setActivationLog(null);
     setActivatedThisRound(new Set());
   }, []);
-
-  const markActivated = useCallback(() => {
-    if (current) {
-      setActivatedThisRound(prev => new Set(prev).add(current.id));
-    }
-  }, [current]);
 
   const effects = current ? getActivationEffects(current) : [];
 
