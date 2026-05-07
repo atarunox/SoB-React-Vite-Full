@@ -560,9 +560,39 @@ function exportCards(deckType, cards) {
   URL.revokeObjectURL(url);
 }
 
+// ── Transform scanned enemy to combat format ─────────────────────────────────
+
+function transformScannedEnemyToCombat(card, side = 'normal') {
+  const stats = card.stats || {};
+  const sideStats = stats[side] || {};
+
+  return {
+    name: card.name,
+    count: 1,
+    keywords: card.keywords || [],
+    Size: card.Size || 'Medium',
+    baseStats: {
+      health: Number(sideStats.health) || 0,
+      combat: /^\*+$/.test(String(sideStats.combat)) ? String(sideStats.combat) : (Number(sideStats.combat) || 0),
+      damage: Number(sideStats.damage) || 0,
+      defense: String(sideStats.defense || '5+'),
+      move: card.move || 0,
+      initiative: Number(card.initiative) || 0,
+      toHit: card.toHit || { melee: '4+', ranged: null },
+      escape: card.escape || '4+',
+      armor: '—',
+    },
+    abilities: card.abilities || [],
+    eliteAbilities: side === 'brutal' && card.brutalEliteAbilities?.length
+      ? card.brutalEliteAbilities
+      : (card.eliteAbilities || []),
+    xp: sideStats.xp || '0',
+  };
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function DMScanCards() {
+export default function DMScanCards({ addGroup, combatGroups }) {
   const [deckType, setDeckType] = useState(() => {
     try { return sessionStorage.getItem(SS_DECK_KEY) || 'darkness'; } catch { return 'darkness'; }
   });
@@ -958,6 +988,30 @@ export default function DMScanCards() {
     setPending(updated);
     savePending(updated);
   }, [pending, pendingKey, currentPending.length]);
+
+  const handleAddToCombat = useCallback((card, idx) => {
+    if (!addGroup) {
+      alert('Combat integration not available (addGroup missing)');
+      return;
+    }
+    if (deckType !== 'enemy') {
+      alert('Only enemy cards can be added to combat.');
+      return;
+    }
+
+    // Ask which side (Normal or Brutal)
+    const side = window.confirm('Add as Brutal enemy? (Cancel for Normal)')
+      ? 'brutal'
+      : 'normal';
+
+    const combatEnemy = transformScannedEnemyToCombat(card, side);
+    addGroup(combatEnemy);
+
+    // Optionally remove from queue after adding
+    if (window.confirm('Enemy added to combat! Remove from scan queue?')) {
+      handleRemoveCard(idx);
+    }
+  }, [addGroup, deckType, handleRemoveCard]);
 
   const handleBatchFiles = useCallback((e) => {
     const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
@@ -1452,7 +1506,7 @@ export default function DMScanCards() {
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {currentPending.map((card, idx) => (
               <div key={idx} className="rounded-lg border border-gray-200 bg-white p-3 flex justify-between gap-2">
-                <div className="text-sm min-w-0">
+                <div className="text-sm min-w-0 flex-1">
                   <div className="font-semibold truncate">{card.name || card.id || '(unnamed)'}</div>
                   {deckType === 'enemy' ? (
                     <div className="flex gap-1 mt-0.5">
@@ -1467,12 +1521,23 @@ export default function DMScanCards() {
                     <div className="text-xs text-gray-600 truncate">{card.effect || card.description}</div>
                   ) : null}
                 </div>
-                <button
-                  className="btn btn-xs btn-ghost text-red-600 shrink-0"
-                  onClick={() => handleRemoveCard(idx)}
-                >
-                  ✕
-                </button>
+                <div className="flex gap-1 shrink-0">
+                  {deckType === 'enemy' && addGroup && (
+                    <button
+                      className="btn btn-xs btn-primary"
+                      onClick={() => handleAddToCombat(card, idx)}
+                      title="Add to active combat"
+                    >
+                      ⚔ Combat
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-xs btn-ghost text-red-600"
+                    onClick={() => handleRemoveCard(idx)}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
