@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { resolveActivationMarkers, getAllMarkers } from '../../utils/statusMarkers';
+import { rollND } from '../../utils/diceHelpers';
 
 const LS_KEY = 'sob_turnTracker';
 
@@ -113,6 +114,72 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
 
     return effects;
   }, [combatGroups]);
+
+  const handleResolveActivation = useCallback(async () => {
+    if (!current || current.type !== 'hero') return;
+
+    const hero = current.hero;
+    const heroId = current.id;
+    const markers = getAllMarkers(hero);
+
+    if (markers.length === 0) {
+      setActivationLog(['No activation markers to resolve.']);
+      return;
+    }
+
+    // Minimal UI adapter for resolveActivationMarkers
+    const ui = {
+      roll: async (count, sides, label) => {
+        const rolls = rollND(count, sides);
+        return rolls;
+      },
+      toast: (msg) => {
+        console.log(`[Activation] ${msg}`);
+      },
+    };
+
+    const getStat = (h, statName) => {
+      return h?.stats?.[statName] ?? h?.[statName?.toLowerCase()] ?? 0;
+    };
+
+    try {
+      const result = await resolveActivationMarkers({
+        ui,
+        hero,
+        getStat,
+        updateHero,
+        heroId,
+      });
+
+      // Apply wounds to hero (CRITICAL: use currentHealth, not wounds/health)
+      if (result.wounds > 0 && updateHero) {
+        updateHero(heroId, (h) => {
+          const maxHP = Number(h.maxHealth ?? 10);
+          const curHP = Number(h.currentHealth ?? maxHP);
+          const nextHP = Math.max(0, curHP - result.wounds);
+          return { ...h, currentHealth: nextHP };
+        });
+      }
+
+      // Display log
+      const logLines = result.log || [];
+      if (result.lostActivation) {
+        logLines.push('⚠️ Hero loses this activation due to Snare/Web!');
+      }
+      setActivationLog(logLines);
+
+      // Auto-advance if lost activation
+      if (result.lostActivation) {
+        setTimeout(() => {
+          markActivated();
+          advanceTurn();
+        }, 2000);
+      }
+    } catch (err) {
+      setActivationLog([`Error resolving markers: ${err.message}`]);
+      console.error(err);
+    }
+  }, [current, updateHero, markActivated, advanceTurn]);
 
   const advanceTurn = useCallback(() => {
     setActivationLog(null);
@@ -255,6 +322,14 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
             <button className="btn btn-sm btn-outline min-h-[44px]" onClick={prevTurn}>
               ← Prev
             </button>
+            {current.type === 'hero' && getAllMarkers(current.hero).length > 0 && (
+              <button
+                className="btn btn-sm btn-warning min-h-[44px]"
+                onClick={handleResolveActivation}
+              >
+                ⚡ Resolve Markers
+              </button>
+            )}
             <button
               className={`btn btn-sm min-h-[44px] ${current.type === 'hero' ? 'btn-primary' : 'btn-error'}`}
               onClick={() => { markActivated(); advanceTurn(); }}
