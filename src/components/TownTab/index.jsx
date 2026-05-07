@@ -776,8 +776,7 @@ const foWorldArtifactOffer =
 
   if (!hero) return <div className="p-4">Loading hero data…</div>;
 
-  const heroId = hero.id || hero.localId;
-  const ejected = isHeroEjected(state, heroId);
+  const ejected = isHeroEjected(state, resolvedHeroId);
   const canVisit = !hero.chosenLocation && !!hero.lodging && !ejected;
 
   const handleOpenLocation = (shopId) => {
