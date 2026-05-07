@@ -1,5 +1,5 @@
 // src/utils/locationHandlers/campSiteHandler.js
-import { loadTownState, saveTownState } from '../../utils/townState';
+import { loadTownState, saveTownState, ejectHero } from '../../utils/townState';
 import { d6 as _d6 } from '../../utils/diceHelpers';
 import { getEventDisplay } from '../locationEventText';
 
@@ -89,11 +89,13 @@ export async function apply(roll, ctx) {
       await showResult(ctx, '"MY FRIEND DOESN\'T LIKE YOU MUCH!" — Result', [outcome]);
       ctx.toast?.('Triggered Solo Adventure: High Noon Duel.');
     } else {
+      // Eject this hero from town (can't visit locations for rest of stay)
+      ejectHero(id);
       ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
-      const outcome = 'You decide discretion is the better part of valor and leave Town immediately.';
+      const outcome = 'You decide discretion is the better part of valor and leave Town immediately. You are ejected from town for the rest of this stay.';
       log.push(outcome);
       await showResult(ctx, '"MY FRIEND DOESN\'T LIKE YOU MUCH!" — Result', [outcome]);
-      ctx.toast?.('You leave Town immediately.');
+      ctx.toast?.('You leave Town immediately — ejected for this stay.');
     }
     return { log };
   }

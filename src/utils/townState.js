@@ -522,6 +522,24 @@ export function isTownStayActive(state) {
   return state?.townStayActive !== false;
 }
 
+/**
+ * Eject a hero from town (they can't visit locations for rest of stay).
+ * Used for events where one hero must leave town but others can continue.
+ */
+export function ejectHero(heroId) {
+  const state = loadTownState();
+  if (!state.ejectedHeroes) state.ejectedHeroes = {};
+  state.ejectedHeroes[heroId] = true;
+  return commit(state);
+}
+
+/**
+ * Check if a hero has been ejected from town.
+ */
+export function isHeroEjected(state, heroId) {
+  return !!(state?.ejectedHeroes?.[heroId]);
+}
+
 // ---- Debug Mode -----------------------------------------------------------
 
 export function setDebugMode(state, enabled) {

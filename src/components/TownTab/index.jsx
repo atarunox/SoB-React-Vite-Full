@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   loadTownState,
+  isHeroEjected,
   resetTownState,
   saveTownState,
   isLocationDestroyed,
@@ -775,7 +776,9 @@ const foWorldArtifactOffer =
 
   if (!hero) return <div className="p-4">Loading hero data…</div>;
 
-  const canVisit = !hero.chosenLocation && !!hero.lodging;
+  const heroId = hero.id || hero.localId;
+  const ejected = isHeroEjected(state, heroId);
+  const canVisit = !hero.chosenLocation && !!hero.lodging && !ejected;
 
   const handleOpenLocation = (shopId) => {
     setOpenLocationId(shopId);
@@ -2921,6 +2924,9 @@ const foWorldArtifactOffer =
         <strong>
           {hero.lodging || 'Undecided'}
         </strong>
+        {ejected && (
+          <span className="text-red-600 font-bold"> | ⚠️ EJECTED FROM TOWN</span>
+        )}
         {hero.gold !== undefined && (
           <span> | Gold: ${hero.gold}</span>
         )}
@@ -3086,6 +3092,7 @@ const foWorldArtifactOffer =
                 <button
                   className="btn btn-primary"
                   disabled={!canVisit}
+                  title={ejected ? "You have been ejected from town and cannot visit locations" : !hero.lodging ? "Choose lodging first" : ""}
                   onClick={() =>
                     handleVisit(
                       openLocationId
