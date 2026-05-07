@@ -72,12 +72,16 @@ function RollResult({ lastRoll }) {
   );
 }
 
-export default function DMAdventureTracker({ posse = [] }) {
+export default function DMAdventureTracker({ posse: posseProp = [] }) {
   const adventure = useAdventure();
   if (!adventure) return null;
   const { state, updateAdventure, advanceDepth, retreatDepth, advanceDarkness, retreatDarkness, rollHBtD, resetAdventure, endAdventure } = adventure;
+  const { updateHero } = usePosse();
   const [showConfig, setShowConfig] = useState(false);
   const [configDraft, setConfigDraft] = useState({});
+  const [lanternUsedThisTurn, setLanternUsedThisTurn] = useState(false);
+
+  const posse = posseProp;
 
   const lanternBearers = useMemo(() => {
     return posse.map(hero => {
@@ -107,7 +111,44 @@ export default function DMAdventureTracker({ posse = [] }) {
       bloodSpatterSpaces: state.bloodSpatterSpaces,
     };
     resetAdventure(config);
+    setLanternUsedThisTurn(false);
   }, [resetAdventure, configDraft, state]);
+
+  // Reset lantern ability when turn advances
+  const lastTurn = React.useRef(state.turn);
+  React.useEffect(() => {
+    if (state.turn !== lastTurn.current) {
+      setLanternUsedThisTurn(false);
+      lastTurn.current = state.turn;
+    }
+  }, [state.turn]);
+
+  const handleRerollHBtD = useCallback(() => {
+    if (!currentBearer || !lanternAbility?.reroll) return;
+    const heroId = currentBearer.heroId;
+    const hero = posse.find(h => (h.id || h.localId) === heroId);
+    if (!hero) return;
+
+    const currentGrit = Number(hero.currentGrit ?? hero.Grit ?? 0);
+    const gritCost = lanternAbility.gritCost || 1;
+
+    if (currentGrit < gritCost) {
+      alert(`Not enough Grit! Need ${gritCost}, have ${currentGrit}.`);
+      return;
+    }
+
+    // Deduct Grit
+    updateHero(heroId, (h) => ({
+      ...h,
+      currentGrit: Math.max(0, (Number(h.currentGrit ?? h.Grit ?? 0)) - gritCost),
+    }));
+
+    setLanternUsedThisTurn(true);
+
+    // Reroll
+    const bearerName = currentBearer.heroName || 'DM';
+    rollHBtD(bearerName, usesPerilDie ? 'peril' : null);
+  }, [currentBearer, lanternAbility, posse, updateHero, rollHBtD, usesPerilDie]);
 
   const missionFailed = state.darkness <= 0 && state.active;
   const dangerZone = state.darkness <= 2 && state.darkness > 0 && state.active;
@@ -255,6 +296,20 @@ export default function DMAdventureTracker({ posse = [] }) {
         >
           Roll Hold Back the Darkness
         </button>
+        {lanternAbility?.reroll && state.lastRoll && !lanternUsedThisTurn && (
+          <button
+            className="btn btn-sm btn-outline btn-warning w-full min-h-[44px]"
+            onClick={handleRerollHBtD}
+            disabled={missionFailed}
+          >
+            ⚡ Use {lanternAbility.label} (Reroll) — Cost: {lanternAbility.gritCost} Grit
+            {currentBearer && (() => {
+              const hero = posse.find(h => (h.id || h.localId) === currentBearer.heroId);
+              const grit = Number(hero?.currentGrit ?? hero?.Grit ?? 0);
+              return ` (Have: ${grit})`;
+            })()}
+          </button>
+        )}
       </div>
 
       {/* Depth controls */}
