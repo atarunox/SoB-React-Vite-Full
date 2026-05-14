@@ -35,7 +35,7 @@ const trederranVeteranUpgradeChart = [
     },
     {
       name: "Dark Stone Greed",
-      description: "You are +1 Sanity for each Dark Stone and Dark Stone icon on Items that you are carrying. This includes Dark Stone that is ‘Hidden’ (max +10)."
+      description: "You are +1 Sanity for each Dark Stone and Dark Stone icon on Items that you are carrying. This includes Dark Stone that is 'Hidden' (max +10)."
     }
   ],
   [
@@ -67,7 +67,7 @@ const trederranVeteranUpgradeChart = [
     },
     {
       name: "Trederran Sunset",
-      description: "Any time you are KO’d, you may do 2D6 Wounds to every adjacent model, ignoring Defense. You now have unlimited Grit."
+      description: "Any time you are KO'd, you may do 2D6 Wounds to every adjacent model, ignoring Defense. You now have unlimited Grit."
     },
     {
       name: "Death Machine",

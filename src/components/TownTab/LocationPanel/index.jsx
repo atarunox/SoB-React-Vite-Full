@@ -6,6 +6,7 @@ import {
   saveTownState,
 } from '../../utils/townState';
 import { usePosse } from '../../context/PosseContext';
+import { hasKeyword, addKeyword, removeKeyword } from '../../utils/keywords';
 import { shopDataById } from '../../data/shopDataByID';
 import { tabsByShop } from '../../data/townLocations/tabsByShop.js';
 import { makeLocEventCtx } from '../../utils/locationEventContext';
@@ -29,6 +30,8 @@ import {
 // UI pieces
 import TownEventCard from './TownEventCard';
 import RareFindPanel from './RareFindPanel';
+import BlacksmithUpgradeReward from '../../BlacksmithUpgradeReward';
+import { FREE_ATTACK_UPGRADE } from '../../../utils/locationHandlers/blacksmithHandler';
 
 // icons / helpers
 import {
@@ -37,6 +40,7 @@ import {
   isInjection,
   isRitualService,
   isBanishCorruptionService,
+  isBlessedAura,
   isExorcismService,
   isResurrectionService,
   isTokenPurchase,
@@ -62,6 +66,39 @@ const CAMP_SHOPS = ['campSiteTents'];
 // tiny helpers
 const isObj = (v) => v && typeof v === 'object';
 const getItemId = (item, idx = 0) => item?.id || item?.name || `item_${idx}`;
+
+// Apply shopMods (priceDelta / saleActive) to a cost object for any location
+// Blacksmith sale floor = $10, Street Market sale floor = $25
+const SHOPS_WITH_PRICE_MODS = {
+  blacksmith:        { saleFloor: 10 },
+  streetMarket:      { saleFloor: 25 },
+  indianTradingPost: { saleFloor: 0 },
+  smugglersDen:      { saleFloor: 0 },
+  wastelandWorkshop: { saleFloor: 0 },
+};
+
+function applyShopPriceMods(costRaw, townState, shopId) {
+  const cfg = SHOPS_WITH_PRICE_MODS[shopId];
+  if (!cfg) return costRaw;
+  const mods = townState?.shopMods?.[shopId];
+  const wwFlags = shopId === 'wastelandWorkshop' ? (townState?.wastelandWorkshopFlags || {}) : {};
+  const surcharge = Number(wwFlags.overABarrelSurcharge || 0);
+  const delta = Number(mods?.priceDelta || 0) + surcharge;
+  if (!delta && !mods?.saleActive) return costRaw;
+  if (costRaw == null || typeof costRaw === 'string') return costRaw;
+  const floor = cfg.saleFloor || 0;
+  if (typeof costRaw === 'number') {
+    let g = costRaw + delta;
+    if (floor > 0 && costRaw > 0) g = Math.max(floor, g);
+    return Math.max(0, g);
+  }
+  if (typeof costRaw === 'object') {
+    let g = Number(costRaw.gold || 0) + delta;
+    if (floor > 0 && Number(costRaw.gold || 0) > 0) g = Math.max(floor, g);
+    return { ...costRaw, gold: Math.max(0, g) };
+  }
+  return costRaw;
+}
 
 // Event read wrapper (engine wants state)
 const getLocEventState = (shopId) => _getLocEventState(loadTownState(), shopId);
@@ -220,8 +257,8 @@ export default function TownTab({ heroId }) {
     },
     addToken: (id, tokenName) => {
       const target = posse.find((h) => (h.id || h.localId) === id) || {};
-      const sideBag = nextSideBag(target, tokenName, 1);
-      updateHero({ id, sideBag });
+      const sidebags = nextSideBag(target, tokenName, 1);
+      updateHero({ id, sidebags });
     },
     getHeroesAtShop: (shopId) => {
       if (!shopId) return [resolvedHeroId].filter(Boolean);
@@ -232,10 +269,16 @@ export default function TownTab({ heroId }) {
   };
   const uiApi = {
 promptChoice: async (title, options) => {
+  if (Array.isArray(options) && options.length === 1) {
+    const only = options[0];
+    const label = (only && (only.label || only)) || 'Continue';
+    try { window.alert(`${title}\n\n${label}`); } catch {}
+    return 0;
+  }
   const msg =
     `${title}\n\n${options
          .map((o, i) => `${i + 1}. ${o.label || o}`)
-          .join('\n')}\n\nEnter a number:`,
+          .join('\n')}\n\nEnter a number:`;
   const pick = window.prompt(msg, '1');
   const idx = Math.max(0, Math.min(options.length - 1, (Number(pick) | 0) - 1));
   return idx;
@@ -391,6 +434,135 @@ promptChoice: async (title, options) => {
       return;
     }
 
+    // Blessed Aura purchase — prompt, Spirit test, then auto-equip
+    if (isBlessedAura(item)) {
+      const costRaw = getCost(item);
+      const costObj = normalizeCostObject(costRaw);
+      if (!canAfford(costObj)) {
+        alert('Cannot afford this Blessed Aura.');
+        return;
+      }
+
+      const testSpec = item.rules?.test || { stat: 'Spirit', target: 4 };
+      const auraName = item.name.replace(/\s*\(.*\)$/, '');
+
+      // Prompt: confirm purchase and explain the test
+      const proceed = window.confirm(
+        `Purchase: ${auraName}\n` +
+        `Cost: $${costObj.gold ?? 0}\n\n` +
+        `This requires a ${testSpec.stat} ${testSpec.target}+ test to obtain.\n` +
+        `Gold is spent whether the test passes or fails.\n\n` +
+        `Proceed with purchase?`
+      );
+      if (!proceed) return;
+
+      // Deduct cost
+      const goldAfter = (hero.gold ?? 0) - (costObj.gold ?? 0);
+      const darkStoneAfter = (hero.darkStone ?? 0) - (costObj.darkStone ?? 0);
+
+      // Roll Spirit test using effective stat
+      let statVal = Number(hero?.stats?.[testSpec.stat] ?? hero?.[testSpec.stat] ?? 1) || 1;
+      try {
+        const { calculateCurrentStats } = await import('../../../utils/calculateStats');
+        const { stats: merged = {} } = calculateCurrentStats(hero);
+        const effective = Number(merged[testSpec.stat]) || 0;
+        if (effective > statVal) statVal = effective;
+      } catch {}
+      const dice = Math.max(1, statVal);
+      const rolls = Array.from({ length: dice }, () => Math.floor(Math.random() * 6) + 1);
+      const passed = rolls.some(r => r >= testSpec.target);
+
+      if (!passed) {
+        // Failed — pay gold but don't receive the aura
+        updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter });
+        alert(
+          `${testSpec.stat} ${testSpec.target}+ Test FAILED\n\n` +
+          `Rolled: [${rolls.join(', ')}]  (${dice}d6, need ${testSpec.target}+)\n\n` +
+          `You paid $${costObj.gold ?? 0} but the blessing did not take hold.`
+        );
+        return;
+      }
+
+      // Passed — build a clean aura item and auto-equip to Blessed Aura slot
+      const auraItem = {
+        id: item.id || `aura_${Date.now()}`,
+        name: auraName,
+        type: 'Aura',
+        slot: 'Blessed Aura',
+        tags: Array.isArray(item.tags) ? [...item.tags] : ['Blessed Aura'],
+        description: item.effect || '',
+        mods: item.mods ? { ...item.mods } : {},
+        rules: item.rules ? { ...item.rules } : {},
+        oneUse: true,
+        scope: 'nextAdventure',
+      };
+
+      const inventory = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
+      // Remove any old auras from inventory with same id to prevent duplicates
+      const cleanInv = inventory.filter(i => i?.id !== auraItem.id);
+      cleanInv.push(auraItem);
+
+      const gear = { ...(hero.gear || {}) };
+      // Return old aura to inventory if one was equipped (different aura)
+      const oldAura = gear['Blessed Aura'];
+      if (oldAura && oldAura.name && oldAura.name !== 'Empty Slot' && oldAura.id !== auraItem.id) {
+        cleanInv.push(oldAura);
+      }
+      gear['Blessed Aura'] = auraItem;
+
+      updateHero({ id: hero.id || hero.localId, gold: goldAfter, darkStone: darkStoneAfter, inventory: cleanInv, gear });
+
+      alert(
+        `${testSpec.stat} ${testSpec.target}+ Test PASSED!\n\n` +
+        `Rolled: [${rolls.join(', ')}]  (${dice}d6, need ${testSpec.target}+)\n\n` +
+        `${auraName} equipped to your Blessed Aura slot.\n` +
+        `Effect: ${item.effect || 'See gear details.'}`
+      );
+      return;
+    }
+
+    // Conversion purchase — grants +1 Spirit, Holy keyword
+    if (item?.id === 'ch_conversion') {
+      // Block if hero already has Holy keyword
+      if (hasKeyword(hero, 'Holy')) {
+        alert('This hero already has the Holy keyword and cannot purchase Conversion.');
+        return;
+      }
+      const costRaw = getCost(item);
+      const costObj = normalizeCostObject(costRaw);
+      if (!canAfford(costObj)) {
+        alert('Cannot afford Conversion.');
+        return;
+      }
+      const proceed = window.confirm(
+        `Purchase: Conversion\nCost: $${costObj.gold ?? 0}\n\n` +
+        `Effect: +1 Spirit and gain the Holy keyword.\n` +
+        `Warning: Each time you visit the Saloon, roll a D6;\non 1–2, you lose this bonus.\n\n` +
+        `Proceed?`
+      );
+      if (!proceed) return;
+
+      const goldAfter = (hero.gold ?? 0) - (costObj.gold ?? 0);
+      const keywords = addKeyword(hero, 'Holy');
+
+      // Store as a gear slot so collectGearMods picks up the +1 Spirit
+      const conversionItem = {
+        id: 'ch_conversion',
+        name: 'Conversion',
+        type: 'Blessing',
+        slot: 'Blessing',
+        tags: ['Blessing', 'Holy', 'Conversion'],
+        description: '+1 Spirit, Holy keyword. Saloon visit: D6 roll 1–2 loses this.',
+        mods: { Spirit: 1 },
+      };
+      const gear = { ...(hero.gear || {}) };
+      gear['Blessing'] = conversionItem;
+
+      updateHero({ id: hero.id || hero.localId, gold: goldAfter, keywords, gear });
+      alert('Conversion purchased!\n\n+1 Spirit and you are now Holy.\nBeware the Saloon — a D6 roll of 1–2 will strip this blessing.');
+      return;
+    }
+
     // Restrictions — class gate
     if (item?.restrictions?.allowedClasses) {
       const allowed = item.restrictions.allowedClasses.map(String);
@@ -412,8 +584,19 @@ promptChoice: async (title, options) => {
       return;
     }
 
+    // Wasteland Workshop: Broken Torch blocks items with Scrap cost
+    if (shopId === 'wastelandWorkshop' && state?.wastelandWorkshopFlags?.brokenTorch) {
+      const rawCost = getCost(item);
+      const costCheck = normalizeCostObject(rawCost);
+      if (costCheck?.scrap > 0) {
+        alert('The Broken Torch event prevents purchasing items that cost Scrap today.');
+        return;
+      }
+    }
+
     const itemId = getItemId(item, idx);
-    const costRaw = getCost(item);
+    const costBase = getCost(item);
+    const costRaw = applyShopPriceMods(costBase, state, shopId);
     const costObj = normalizeCostObject(costRaw);
 
     if (!canAfford(costObj)) {
@@ -450,8 +633,8 @@ promptChoice: async (title, options) => {
       const scrap = (hero.scrap ?? 0) - (costObj.scrap ?? 0);
       const tech = (hero.tech ?? 0) - (costObj.tech ?? 0);
 
-      const sideBag = nextSideBag(hero, type, amount);
-      updateHero({ id: hero.id || hero.localId, gold, darkStone, scrap, tech, sideBag });
+      const sidebags = nextSideBag(hero, type, amount);
+      updateHero({ id: hero.id || hero.localId, gold, darkStone, scrap, tech, sidebags });
 
       incVisitCount(itemId);
       return;
@@ -681,7 +864,8 @@ promptChoice: async (title, options) => {
             {entries.map((item, idx) => {
               if (!item) return null;
 
-              const costRaw = getCost(item);
+              const costBase = getCost(item);
+              const costRaw = applyShopPriceMods(costBase, state, openLocationId);
               const costObj =
                 typeof costRaw === 'number' || (costRaw && typeof costRaw === 'object')
                   ? typeof costRaw === 'number'
@@ -883,6 +1067,25 @@ promptChoice: async (title, options) => {
               hero={hero}
               onBuy={() => handleBuyRareFind(openLocationId)}
             />
+          )}
+
+          {/* Unique Forging (Roll 12) — apply Free Attack upgrade */}
+          {openLocationId === 'blacksmith' && state?.shopMods?.blacksmith?.uniqueForging && (
+            <div className="mt-3">
+              <BlacksmithUpgradeReward
+                listedUpgrade={FREE_ATTACK_UPGRADE}
+                onDone={() => {
+                  // Clear the flag once applied or dismissed
+                  const s = loadTownState();
+                  const cur = s.shopMods?.blacksmith || {};
+                  const next = { ...cur };
+                  delete next.uniqueForging;
+                  s.shopMods = { ...(s.shopMods || {}), blacksmith: next };
+                  saveTownState(s);
+                  setState(loadTownState());
+                }}
+              />
+            </div>
           )}
         </div>
       )}

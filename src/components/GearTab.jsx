@@ -6,6 +6,7 @@ import { flattenTokens } from '../data/SidebagLibrary';
 import { calculateCurrentStats } from '../utils/calculateStats';
 import { getConditionRules } from '../utils/conditionRules';
 import { ASSETS } from './TownTab/townTabHelpers';
+import churchBlessedAuras from '../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
 // --------------------------------- helpers ---------------------------------
 const baseGearSlots = [
@@ -64,6 +65,18 @@ function aggregateGearMods(gearObj = {}) {
     if (key) seen.add(key);
     if (!it || !it.mods) continue;
     for (const [k, v] of Object.entries(it.mods)) {
+      // Handle threshold strings like '5+' (Armor, Spirit Armor, etc.)
+      if (typeof v === 'string' && /^\d+\+$/.test(v.trim())) {
+        const newThresh = parseInt(v, 10);
+        const cur = totals[k];
+        if (typeof cur === 'string' && /^\d+\+$/.test(cur)) {
+          const curNum = parseInt(cur, 10);
+          if (newThresh < curNum) totals[k] = v.trim();
+        } else if (cur == null) {
+          totals[k] = v.trim();
+        }
+        continue;
+      }
       if (typeof v !== 'number') continue;
       totals[k] = (totals[k] || 0) + v;
     }
@@ -209,6 +222,7 @@ const isArtifact = (it) =>
 
 // ---------------- Sidebag presets ----------------
 const PRESETS_ALL = Array.isArray(flattenTokens?.()) ? flattenTokens() : [];
+const TOKEN_DESC_MAP = new Map(PRESETS_ALL.map(t => [t.name.toLowerCase(), t.description]));
 
 export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) {
   const posseCtx = usePosse();
@@ -267,6 +281,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
     Object.keys(liveHero?.gear || {}).map(s => `${s}:${liveHero?.gear?.[s]?.id ?? ''}`).join('|'),
     liveHero?.sidebags?.capacity,
     (liveHero?.sidebags?.items || []).map(i => `${i?.name}:${i?.qty}`).join('|'),
+    JSON.stringify(liveHero?.sideBag || liveHero?.sideBagTokens || null),
   ]);
 
   // Local UI state
@@ -361,10 +376,10 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
   const gear = viewHero.gear || {};
   const sidebags = (function ensureSidebags(hero) {
     const sb = hero?.sidebags;
-    if (!sb || typeof sb !== 'object') return { capacity: 6, items: [] };
-    const capacity = Number.isFinite(sb.capacity) ? sb.capacity : 6;
-    const items = Array.isArray(sb.items)
-      ? sb.items.map(i => {
+    const base = (sb && typeof sb === 'object') ? sb : { capacity: 6, items: [] };
+    const capacity = Number.isFinite(base.capacity) ? base.capacity : 6;
+    const items = Array.isArray(base.items)
+      ? base.items.map(i => {
           const id = i?.id || uid();
           const name = i?.name || 'Token';
           const qty = Math.max(1, Number(i?.qty) || 1);
@@ -373,6 +388,20 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
           return { id, name, qty, description };
         })
       : [];
+
+    // Migrate tokens from legacy flat sideBag format (only when items list is empty)
+    if (items.length === 0) {
+      const legacy = hero?.sideBag || hero?.sideBagTokens;
+      if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+        for (const [tokenName, count] of Object.entries(legacy)) {
+          const qty = Math.max(0, Number(count) || 0);
+          if (qty <= 0 || !tokenName) continue;
+          const preset = PRESETS.find(p => p.name.toLowerCase() === tokenName.toLowerCase());
+          items.push({ id: uid(), name: tokenName, qty, description: preset?.description || '' });
+        }
+      }
+    }
+
     return { capacity, items };
   })(viewHero);
 
@@ -496,11 +525,22 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
 
   // Actions (inventory / gear)
   const dropItem = (id) => {
-    if (!window.confirm('Drop this item?')) return;
+    if (!window.confirm('Drop this item to the Treasure Pool?')) return;
+    const item = (viewHero.inventory || []).find(i => String(i.id) === String(id));
     const inv = (viewHero.inventory || []).filter(i => String(i.id) !== String(id));
     const nextHero = { ...viewHero, inventory: inv, updatedAt: Date.now() };
     saveHero(nextHero);
     try { setViewHero && setViewHero(nextHero); } catch {}
+
+    if (item) {
+      const heroName = viewHero.name || viewHero.heroName || viewHero.heroClass || 'Hero';
+      try {
+        const LS_KEY = 'sob:treasurePool';
+        const pool = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+        pool.push({ ...item, _droppedBy: heroName, _droppedAt: Date.now() });
+        localStorage.setItem(LS_KEY, JSON.stringify(pool));
+      } catch {}
+    }
   };
 
   const isItemAllowedForSlot = (slot, it) => {
@@ -537,7 +577,14 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
   const aggregated = aggregateGearMods(gear);
 
   const persistSidebags = (nextSB) => {
-    const nextHero = { ...viewHero, sidebags: nextSB, updatedAt: Date.now() };
+    const nextHero = {
+      ...viewHero,
+      sidebags: nextSB,
+      // Explicitly null legacy fields so they overwrite in PosseContext's merge
+      sideBag: null,
+      sideBagTokens: null,
+      updatedAt: Date.now(),
+    };
     saveHero(nextHero);
     try { setViewHero && setViewHero(nextHero); } catch {}
   };
@@ -698,7 +745,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                   .sort(([a], [b]) => a.localeCompare(b))
                   .map(([k, v]) => (
                     <span key={k} className="badge badge-ghost">
-                      {statLabel(k)} {v > 0 ? `+${v}` : v}
+                      {statLabel(k)} {typeof v === 'string' ? v : (v > 0 ? `+${v}` : v)}
                     </span>
                   ))}
               </div>
@@ -752,31 +799,34 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                   <div className="text-[10px] uppercase tracking-wide text-gray-600 text-center">{slot}</div>
 
                   <div className="mt-1 text-base font-bold min-h-[1.5rem] flex items-center gap-2">
-                    {eqSafe ? eqSafe.name : <span className="text-gray-400 italic">Empty</span>}
+                    {eqSafe ? eqSafe.name.replace(/\s*\(Spirit \d\+\+?\)$/, '') : <span className="text-gray-400 italic">Empty</span>}
                     {eqSafe && isTwoHandMirrored(slot, eqSafe) && (
                       <span className="badge badge-outline text-[10px]">2-Handed</span>
                     )}
                   </div>
 
-                  {!!eqSafe?.description && (
+                  {!!(eqSafe?.description || eqSafe?.effect) && (
                     <div className="mt-1 text-[11px] leading-tight text-gray-700 max-h-20 overflow-auto pr-1 italic">
-                      {eqSafe.description}
+                      {slot === 'Blessed Aura'
+                        ? (churchBlessedAuras.find(a => a.id === eqSafe.id)?.effect || eqSafe.description || eqSafe.effect)
+                        : (eqSafe.description || eqSafe.effect)}
                     </div>
                   )}
 
-                  {eqSafe?.mods && typeof eqSafe.mods === 'object' && Object.keys(eqSafe.mods).length > 0 && (
+                  {slot !== 'Blessed Aura' && eqSafe?.mods && typeof eqSafe.mods === 'object' && Object.keys(eqSafe.mods).length > 0 && (
                     <ul className="mt-1 text-[11px] leading-tight list-disc list-inside max-h-24 overflow-auto pr-1">
                       {Object.entries(eqSafe.mods)
-                        .filter(([, v]) => typeof v === 'number' && v !== 0)
+                        .filter(([, v]) => (typeof v === 'number' && v !== 0) || (typeof v === 'string' && /^\d+\+$/.test(v.trim())))
                         .map(([k, v]) => (
                           <li key={k}>
-                            <span className="font-semibold">{statLabel(k)}</span> {v > 0 ? '+' : ''}{v}
+                            <span className="font-semibold">{statLabel(k)}</span>{' '}
+                            {typeof v === 'string' ? v.trim() : `${v > 0 ? '+' : ''}${v}`}
                           </li>
                         ))}
                     </ul>
                   )}
 
-                  {Array.isArray(eqSafe?.effects) && eqSafe.effects.length > 0 && (
+                  {slot !== 'Blessed Aura' && Array.isArray(eqSafe?.effects) && eqSafe.effects.length > 0 && (
                     <ul className="mt-1 text-[11px] leading-tight list-disc list-inside max-h-24 overflow-auto pr-1">
                       {eqSafe.effects.map((line, i) => (
                         <li key={`eff-${i}`}>{line}</li>
@@ -822,15 +872,21 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                       <option value="">(Choose item)</option>
                       {eqSafe && (
                         <option value={eqSafe.id} disabled>
-                          (Equipped) {eqSafe.name}
+                          (Equipped) {eqSafe.name.replace(/\s*\(Spirit \d\+\+?\)$/, '')}
                         </option>
                       )}
                       {opts.length === 0 && <option disabled>No compatible items</option>}
-                      {opts.map((it, i) => (
-                        <option key={`${it.id || it.name || 'opt'}-${i}`} value={it.id}>
-                          {it.name}
-                        </option>
-                      ))}
+                      {opts.map((it, i) => {
+                        const isAura = slot === 'Blessed Aura' && hasTag(it, 'Blessed Aura');
+                        const displayName = isAura
+                          ? `${it.name.replace(/\s*\(.*\)$/, '')}${it.description ? ' — ' + it.description : ''}`
+                          : it.name;
+                        return (
+                          <option key={`${it.id || it.name || 'opt'}-${i}`} value={it.id}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>
@@ -915,7 +971,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button onClick={() => { dropItem(item.id); }} className="btn btn-xs btn-error">
-                    Drop
+                    Drop to Pool
                   </button>
                 </div>
               </div>
@@ -982,8 +1038,8 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
               <div key={it.id} className="border rounded-xl p-2 flex items-start justify-between bg-white">
                 <div className="pr-2">
                   <div className="font-medium">{it.name}</div>
-                  {it.description && (
-                    <div className="text-xs text-gray-700 mt-0.5">{it.description}</div>
+                  {(it.description || TOKEN_DESC_MAP.get((it.name || '').toLowerCase())) && (
+                    <div className="text-xs text-gray-700 mt-0.5">{it.description || TOKEN_DESC_MAP.get((it.name || '').toLowerCase())}</div>
                   )}
                   <div className="text-xs text-gray-600 mt-1">Qty: {it.qty ?? 1}</div>
                 </div>
@@ -1156,13 +1212,28 @@ function equipGearFactory(viewHero, saveHero, condRules, setViewHero) {
     if (copy.gear[slot] && copy.gear[slot].name !== 'Empty Slot') {
       copy.inventory.push(copy.gear[slot]);
     }
-    copy.gear[slot] = it;
+    // For Blessed Aura, apply canonical mods/effect so stats update immediately
+    let equipItem = it;
+    if (slot === 'Blessed Aura') {
+      const canonical = churchBlessedAuras.find(a => a.id === it.id);
+      if (canonical) {
+        const { effects: _drop, ...rest } = it;
+        equipItem = { ...rest,
+          mods: canonical.mods ? { ...canonical.mods } : {},
+          description: canonical.effect || '',
+          effect: canonical.effect || '',
+          name: canonical.name.replace(/\s*\(.*\)$/, ''),
+        };
+      }
+    }
+
+    copy.gear[slot] = equipItem;
     copy.inventory = copy.inventory.filter(i => String(i.id) !== String(id));
 
     // Break old 2H mirror if present
     if (isHandSlot) {
       const other = slot === 'Main Hand' ? 'Off Hand' : 'Main Hand';
-      if (copy.gear[other] && copy.gear[other].id === it.id && it.twoHanded !== true) {
+      if (copy.gear[other] && copy.gear[other].id === equipItem.id && equipItem.twoHanded !== true) {
         copy.gear[other] = { id: `empty-${other.replace(/\s+/g, '').toLowerCase()}`, name: 'Empty Slot', slot: other };
       }
     }

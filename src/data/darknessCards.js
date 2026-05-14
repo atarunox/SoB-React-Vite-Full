@@ -10,7 +10,8 @@ export const DARKNESS_CARDS = [
     name: "Legions of the Damned",
     tags: ["Darkness", "Boost", "Soldier"],
     effect: "All Soldier Enemies are now +1 Initiative and +2 Health.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Soldier", effects: { initiative: 1, health: 2 } }
   },
   {
     name: "Hunted Through the Void",
@@ -34,19 +35,22 @@ export const DARKNESS_CARDS = [
     name: "Sinister Legions",
     tags: ["Darkness", "Boost", "Construct"],
     effect: "All Construct Enemies are +1 Combat and +1 Defense. All Enemies on the next Threat Card drawn gain the Keyword Construct.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Construct", effects: { combat: 1, defense: 1 } }
   },
   {
     name: "Chill of the Grave",
     tags: ["Darkness", "Boost", "Undead"],
     effect: "All Undead Enemies are now +1 Initiative and +1 Combat.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Undead", effects: { initiative: 1, combat: 1 } }
   },
   {
     name: "Power of the Void",
     tags: ["Darkness", "Boost", "Void"],
     effect: "All Void Enemies are now +1 Combat.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Void", effects: { combat: 1 } }
   },
   {
     name: "“Do you hear that?”",
@@ -58,7 +62,8 @@ export const DARKNESS_CARDS = [
     name: "Savage Attack",
     tags: ["Darkness"],
     effect: "During the next Fight, all Enemies are -1 Defense but gain +2 Combat/Shots for their Attacks. If drawn during a Fight, this goes into effect immediately.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "__ALL__", effects: { defense: -1, combat: 2 } }
   },
   {
     name: "Lost in the Cosmos",
@@ -70,7 +75,8 @@ export const DARKNESS_CARDS = [
     name: "Demonic Speed",
     tags: ["Darkness", "Boost", "Demon"],
     effect: "All Demon Enemies are now +1 Initiative and +2 Move.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Demon", effects: { initiative: 1, move: 2 } }
   },
   {
     name: "Swarm of Rats",
@@ -88,7 +94,8 @@ export const DARKNESS_CARDS = [
     name: "Wanted Men",
     tags: ["Darkness", "Boost", "Outlaw"],
     effect: "All Outlaw Enemies are +2 Health and +1 Damage with their Attacks. All Enemies on the next Threat Card drawn gain the Keyword Outlaw.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Outlaw", effects: { health: 2, damage: 1 } }
   },
   {
     name: "Dark Possession",
@@ -148,13 +155,15 @@ export const DARKNESS_CARDS = [
     name: "Relentless Assault",
     tags: ["Darkness", "Boost", "Tribal"],
     effect: "All Tribal Enemies are +1 Combat and +1 Initiative.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Tribal", effects: { combat: 1, initiative: 1 } }
   },
   {
     name: "In the Shadow of Darkness",
     tags: ["Darkness"],
     effect: "While the Hero Posse marker is below the Darkness marker on the Depth Track, all Enemies gain +2 Health and +1 Damage with their Attacks.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "__ALL__", effects: { health: 2, damage: 1 } }
   },
   {
     name: "Hopeless",
@@ -190,7 +199,8 @@ export const DARKNESS_CARDS = [
     name: "Restless Dead",
     tags: ["Darkness", "Boost", "Undead"],
     effect: "All Undead Enemies are now +1 Initiative and +2 Move.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Undead", effects: { initiative: 1, move: 2 } }
   },
   {
     name: "Hell Siege",
@@ -226,19 +236,22 @@ export const DARKNESS_CARDS = [
     name: "Strength of the Void",
     tags: ["Darkness", "Boost", "Void"],
     effect: "All Void Enemies are now +1 Defense.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Void", effects: { defense: 1 } }
   },
   {
     name: "Always Watching",
     tags: ["Darkness", "Boost", "Alien"],
     effect: "All Alien Enemies are +1 Initiative and +1 Damage on Ranged Attacks.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Alien", effects: { initiative: 1, damage: 1 } }
   },
   {
     name: "Fueled by Dark Stone",
     tags: ["Darkness", "Boost", "Mutant"],
     effect: "All Mutant Enemies are +1 Initiative and +2 Damage with their Attacks. All Enemies on the next Threat Card drawn gain the Keyword Mutant.",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Mutant", effects: { initiative: 1, damage: 2 } }
   },
   {
     name: "Winds of Change",
@@ -262,7 +275,8 @@ export const DARKNESS_CARDS = [
     name: "Demonic Assault",
     tags: ["Darkness", "Boost", "Demon"],
     effect: "All Demon Enemies are +1 Initiative. They also gain +1 Combat for every 2 points higher their Initiative is than the target (or each point higher against a Holy Hero).",
-    remainsInPlay: true
+    remainsInPlay: true,
+    statModifiers: { keywordFilter: "Demon", effects: { initiative: 1 } }
   },
   {
     name: "Eruption of the Dead",

@@ -1,6 +1,7 @@
 // src/utils/locationHandlers/sheriffsOfficeServices.js
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { calculateCurrentStats } from '../../utils/calculateStats';
+import { resolveDefensePerHitThenArmorPerWound } from '../../utils/combatResolution';
 
 import { d6 as D6, rollND } from '../../utils/diceHelpers';
 const D8 = () => rollND(1, 8)[0];
@@ -45,109 +46,6 @@ function pushUpdate(actions, patch) {
   actions.push({ type: 'update', ...patch });
 }
 
-/* ---------- Defense-per-hit, Armor-per-wound resolver (auto-detect Armor) ---------- */
-function parsePlusTarget(v) {
-  if (v == null) return NaN;
-  if (typeof v === 'string') {
-    const m = v.match(/\d+/);
-    return m ? Number(m[0]) : NaN;
-  }
-  if (typeof v === 'number') return v;
-  return NaN;
-}
-
-/**
- * Resolve damage when Defense is rolled per Hit (each success ignores 1 hit),
- * and Armor is rolled per Wound (each success ignores 1 wound).
- * - Auto-detects Armor target from totals (no "Do you have Armor?" prompt)
- */
-export async function resolveDefensePerHitThenArmorPerWound({
-  ui, hero, hits, woundsPerHit, getStat,
-}) {
-  let incomingHits = Math.max(0, Math.floor(hits));
-
-  // ----- DEFENSE (per hit) -----
-  if (incomingHits > 0) {
-    const defTargetGuess =
-      parsePlusTarget(getStat(hero, 'Defense')) ||
-      parsePlusTarget(hero?.defense) ||
-      parsePlusTarget(hero?.stats?.Defense) ||
-      NaN;
-
-    const doAutoDef = await ui.promptYesNo?.({
-      message:
-        `Defense (per Hit): ${incomingHits} incoming hit${incomingHits === 1 ? '' : 's'}.\n` +
-        `Auto-roll Defense now${Number.isFinite(defTargetGuess) ? ` (target ${defTargetGuess}+)` : ''}?`,
-    });
-
-    if (doAutoDef) {
-      const target = Number.isFinite(defTargetGuess)
-        ? defTargetGuess
-        : (Number(await ui.promptNumber?.({
-            title: 'Defense Target',
-            message: 'Enter your Defense target number (e.g., 4 for 4+):',
-            min: 2, max: 6, defaultValue: 4,
-          })) || 4);
-
-      const rolls = await ui.roll(incomingHits, 6, `Defense — ${incomingHits}d6 vs ${target}+ (1 success ignores 1 hit)`);
-      const arr = Array.isArray(rolls) ? rolls : [rolls];
-      const blocks = arr.filter(n => n >= target).length;
-      incomingHits = Math.max(0, incomingHits - blocks);
-      await ui.toast?.(`Defense blocked ${blocks} hit(s). Hits getting through: ${incomingHits}.`);
-    } else {
-      // Manual: ask how many Defense FAILED (i.e., hits that still get through)
-      const fails = Number(await ui.promptNumber?.({
-        title: 'Manual Defense',
-        message: `How many Defense rolls FAILED (of ${incomingHits})?`,
-        min: 0, max: incomingHits, defaultValue: incomingHits,
-      })) || incomingHits;
-      incomingHits = Math.max(0, Math.min(incomingHits, fails));
-      await ui.toast?.(`Manual Defense: Hits getting through = ${incomingHits}.`);
-    }
-  }
-
-  // Convert remaining hits into wounds
-  let pendingWounds = incomingHits * Math.max(0, Math.floor(woundsPerHit));
-
-  // ----- ARMOR (per wound) — auto-detect presence/target -----
-  if (pendingWounds > 0) {
-    // Pull Armor from derived totals first (e.g., "5+"); fall back to hero fields.
-    const armorTargetGuess =
-      parsePlusTarget(getStat(hero, 'Armor')) ||
-      parsePlusTarget(hero?.armor) ||
-      parsePlusTarget(hero?.stats?.Armor) ||
-      NaN;
-
-    if (Number.isFinite(armorTargetGuess)) {
-      const doAutoArmor = await ui.promptYesNo?.({
-        message: `Armor detected (${armorTargetGuess}+). Auto-roll Armor for ${pendingWounds} wound(s)?`,
-      });
-
-      if (doAutoArmor) {
-        const rolls = await ui.roll(pendingWounds, 6, `Armor — ${pendingWounds}d6 vs ${armorTargetGuess}+ (each success ignores 1 wound)`);
-        const arr = Array.isArray(rolls) ? rolls : [rolls];
-        const ignores = arr.filter(n => n >= armorTargetGuess).length;
-        pendingWounds = Math.max(0, pendingWounds - ignores);
-        await ui.toast?.(`Armor ignored ${ignores} wound(s). Final Wounds: ${pendingWounds}.`);
-      } else {
-        const armorBlocks = Number(await ui.promptNumber?.({
-          title: 'Manual Armor',
-          message: `How many Armor rolls SUCCEEDED (of ${pendingWounds})?`,
-          min: 0, max: pendingWounds, defaultValue: 0,
-        })) || 0;
-        pendingWounds = Math.max(0, pendingWounds - armorBlocks);
-        await ui.toast?.(`Manual Armor: Final Wounds = ${pendingWounds}.`);
-      }
-    } else {
-      // No Armor detected; continue without asking.
-      await ui.toast?.('No Armor detected on your sheet. Skipping Armor rolls.');
-    }
-  }
-
-  return pendingWounds;
-}
-
-
 /* -------------------------------- main executor -------------------------------- */
 export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) {
   const meId = hero?.id || hero?.localId;
@@ -156,6 +54,12 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
   const actions = [];
   const log = [];
   let endsVisit = !!svc?.endsVisit;
+
+  // Result prompt helper (same pattern as handler showResult but uses ui)
+  const showResult = async (title, lines) => {
+    const body = Array.isArray(lines) ? lines.join('\n') : lines;
+    await ui.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+  };
 
   const addGold = (delta, why) => {
     if (!Number.isFinite(delta) || delta === 0) return;
@@ -181,7 +85,7 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
   };
 
   switch (svc?.id) {
-    /* ---------------- Sheriff’s Bounty ---------------- */
+    /* ---------------- Sheriff's Bounty ---------------- */
     case 'so_sheriffs_bounty': {
       // Draw Low Threat enemy if your UI supports it
       let target = null;
@@ -324,6 +228,13 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
 
     /* ---------------- Become Deputized ---------------- */
     case 'so_become_deputized': {
+      // Not available to Law or Holy heroes
+      const heroKw = Array.isArray(hero?.keywords) ? hero.keywords : [];
+      if (heroKw.includes('Law') || heroKw.includes('Holy')) {
+        log.push('Not available to Law or Holy Heroes.');
+        return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
+      }
+
       if ((hero?.xp ?? 0) < 50) {
         log.push('Not enough XP (need 50).');
         return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
@@ -331,7 +242,7 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
 
       addXP(-50, 'Deputized fee');
 
-      const kw = Array.isArray(hero?.keywords) ? [...hero.keywords] : [];
+      const kw = [...heroKw];
       if (!kw.includes('Law')) kw.push('Law');
 
       const cond = hero?.conditions || {};
@@ -340,25 +251,40 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
         id: 'deputized_cunning_plus1',
         name: 'Deputized',
         type: 'temporary',
-        effect: '+1 Cunning while deputized',
+        effect: '+1 Cunning and Keyword Law. At end of each Adventure, roll D6 — on 1-3 lose this bonus.',
         statMods: { Cunning: +1 },
         active: true,
         expires: 'endOfAdventureCheck',
+        expiryRoll: { die: 6, loseOn: [1, 2, 3] },
         addedAt: Date.now(),
       });
 
       pushUpdate(actions, { keywords: kw, conditions: { ...cond, temporary } });
-      log.push('You are now Deputized: gained the Law keyword and +1 Cunning (temporary).');
+      log.push('You are now Deputized: gained the Law keyword and +1 Cunning. At the end of each Adventure, roll D6 — on 1, 2, or 3 you lose this bonus.');
       return { actions, log, ui: { title: svc.name, outcome: log.slice() } };
     }
 
     /* ---------------- Join a Manhunt (verbatim + full shootout/defense/armor) ---------------- */
     case 'so_join_manhunt': {
+      // Check if "We need Six Men!" event doubled rewards today
+      const tsManhunt = loadTownState() || {};
+      const doubleRewards = !!(tsManhunt.sheriffsOfficeFlags?.manhuntDoubleRewardsToday);
+      const rewardMult = doubleRewards ? 2 : 1;
+
       const flavor = [
-        '<i>You ride with the Law through the badlands, tracking sign and asking questions at lonely ranches.</i>',
-        '<i>Rumors lead to a canyon hideout — the posse circles wide as the sun dips low…</i>',
+        'You ride with the Law through the badlands, tracking sign and asking questions at lonely ranches.',
+        'Rumors lead to a canyon hideout — the posse circles wide as the sun dips low…',
       ];
+      if (doubleRewards) flavor.push('"We need Six Men!" — Double XP & Gold rewards today!');
       log.push(...flavor);
+
+      // Show intro prompt
+      await showResult('JOIN A MANHUNT', [
+        ...flavor,
+        '',
+        `Make a Cunning 5+ test. For each 5+ rolled, gain 20 XP${doubleRewards ? ' (doubled!)' : ''}.`,
+        'If at least one 6 is rolled, you track down the Outlaw for a shootout!',
+      ]);
 
       const C = getStat(hero, 'Cunning', totals);
       const dice = Math.max(1, C);
@@ -367,22 +293,34 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const successes = arr.filter((n) => n >= 5).length;
       const hasSix = arr.some((n) => n === 6);
 
+      const rollLine = `Rolled [${arr.join(', ')}] — ${successes} success${successes !== 1 ? 'es' : ''} (5+).`;
+      log.push(rollLine);
+
       if (successes > 0) {
-        const xp = successes * 20;
-        addXP(xp, 'Manhunt reward');
-        log.push(`You ran down ${successes} of the outlaw’s crew: +${xp} XP.`);
+        const xp = successes * 20 * rewardMult;
+        addXP(xp, `Manhunt reward${doubleRewards ? ' (doubled)' : ''}`);
+        log.push(`You ran down ${successes} of the outlaw's crew: +${xp} XP${doubleRewards ? ' (doubled!)' : ''}.`);
       } else {
         log.push('You comb the hills to no avail — the trail goes cold.');
       }
 
       if (!hasSix) {
-        log.push('No sign of the main outlaw himself this time — you return to town.');
+        const outcome = 'No sign of the main outlaw himself this time — you return to town.';
+        log.push(outcome);
+        await showResult('MANHUNT — Result', [rollLine, '', successes > 0 ? `+${successes * 20 * rewardMult} XP from tracking.` : 'No XP earned.', '', outcome]);
         endsVisit = true;
         return { actions, log, ui: { title: svc.name, outcome: log.slice() }, endsVisit };
       }
 
       // ---- SHOOTOUT TRIGGERED (rolled at least one 6) ----
-      log.push('<b>The outlaw springs the ambush!</b> A gunfight erupts among the rocks.');
+      await showResult('MANHUNT — Shootout!', [
+        rollLine,
+        '',
+        'You tracked the outlaw to his hideout — but he springs an ambush!',
+        'A gunfight erupts among the rocks.',
+      ]);
+
+      log.push('The outlaw springs the ambush! A gunfight erupts among the rocks.');
       const shootoutRolls = await ui.roll(2, 6, 'Manhunt Shootout — 2D6 hits');
       const total = Array.isArray(shootoutRolls)
         ? shootoutRolls.reduce((a, b) => a + b, 0)
@@ -392,43 +330,50 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
       const hits = Math.max(0, total - initiative);
 
       const level = Number(hero?.level ?? 1);
-      const perHit =
-        level <= 4 ? 4 :
-        level <= 8 ? 8 :
-        12; // optional if you support higher tiers
+      const perHit = level >= 5 ? 8 : 4;
 
-      log.push(
-        `Shootout: rolled ${Array.isArray(shootoutRolls) ? shootoutRolls.join(' + ') : shootoutRolls} = ${total}. ` +
-        `Subtract Initiative ${initiative} → <b>${hits} hit(s)</b>.`
-      );
+      const shootLine = `Shootout: rolled [${Array.isArray(shootoutRolls) ? shootoutRolls.join(', ') : shootoutRolls}] = ${total}. Subtract Initiative ${initiative} → ${hits} hit(s).`;
+      log.push(shootLine);
 
+      let finalWounds = 0;
       if (hits > 0) {
         log.push(`Each hit deals ${perHit} Wounds (pre-Defense).`);
 
-        const finalWounds = await resolveDefensePerHitThenArmorPerWound({
+        const defResult = await resolveDefensePerHitThenArmorPerWound({
           ui, hero,
           hits,
           woundsPerHit: perHit,
           getStat: (h, s) => getStat(h, s, totals),
         });
+        finalWounds = defResult?.wounds ?? defResult ?? 0;
 
         if (finalWounds > 0) {
-          log.push(`<b>Damage taken:</b> ${finalWounds} Wounds after Defense/Armor.`);
-          // ✅ Apply to currentHealth so it shows up on the sheet
+          log.push(`Damage taken: ${finalWounds} Wounds after Defense/Armor.`);
           const hpNow = Number(hero?.currentHealth ?? 0);
           pushUpdate(actions, { currentHealth: Math.max(0, hpNow - finalWounds) });
         } else {
-          log.push('<b>No damage</b> after Defense/Armor — you shrug off the ambush!');
+          log.push('No damage after Defense/Armor — you shrug off the ambush!');
         }
       } else {
         log.push('You duck behind cover — no hits get through!');
       }
 
-      // A small bonus if you did well
-      if (successes > 0 && hits <= 1) {
-        addXP(25, 'Captured the outlaw');
-        addGold(100, 'Outlaw bounty');
-        log.push('<b>Captured!</b> +25 XP and $100 for bringing the outlaw in alive.');
+      // Unless KO'd, you capture the Outlaw! Gain 25 XP and D6 × $100.
+      const hpAfter = Number(hero?.currentHealth ?? 0) - finalWounds;
+      const knockedOut = hpAfter <= 0;
+      if (!knockedOut) {
+        const bountyRoll = D6();
+        const bountyGold = bountyRoll * 100 * rewardMult;
+        const captureXP = 25 * rewardMult;
+        addXP(captureXP, `Captured the outlaw${doubleRewards ? ' (doubled)' : ''}`);
+        addGold(bountyGold, `Outlaw bounty (${bountyRoll} × $100${doubleRewards ? ' × 2' : ''})`);
+        const captureLine = `Captured! +${captureXP} XP and $${bountyGold} (rolled [${bountyRoll}] × $100${doubleRewards ? ' × 2' : ''}).${doubleRewards ? ' (Doubled!)' : ''}`;
+        log.push(captureLine);
+        await showResult('MANHUNT — Victory!', [shootLine, '', `Wounds taken: ${finalWounds}`, '', captureLine]);
+      } else {
+        const koLine = 'You were knocked out in the shootout — the outlaw escapes!';
+        log.push(koLine);
+        await showResult('MANHUNT — Knocked Out', [shootLine, '', `Wounds taken: ${finalWounds}`, '', koLine]);
       }
 
       endsVisit = true;
@@ -437,36 +382,54 @@ export async function performSheriffsOfficeService({ hero, svc, ui, posseApi }) 
 
     /* ---------------- Escort Prisoner Transfer ---------------- */
     case 'so_escort_prisoner': {
+      // Check if Legendary Outlaw event (roll 12) upgraded this service today
+      const tsEscort = loadTownState() || {};
+      const legendaryBonus = !!(tsEscort.sheriffsOfficeFlags?.escortLegendaryBonusToday);
+      const escortTarget = legendaryBonus ? 6 : 5;
+      const escortPayPerPip = legendaryBonus ? 100 : 25;
+
+      // Show intro prompt
+      await showResult('ESCORT PRISONER TRANSFER', [
+        legendaryBonus
+          ? 'Legendary Outlaw "Sparky" Scafford is your prisoner today! Lore 6+ test required, but the reward is D8×$100.'
+          : 'You are escorting a prisoner to the federal Marshals. Make a Lore 5+ test to follow the best roads.',
+        '',
+        `Lore ${escortTarget}+ test. Success: D8 × $${escortPayPerPip}. Failure: lose all Grit.`,
+        'For each 1 rolled, roll a Travel Hazard.',
+      ]);
+
       const L = getStat(hero, 'Lore', totals);
       const dice = Math.max(1, L);
-      const rolls = await ui.roll(dice, 6, `Escort — Lore ${L} (roll ${dice}d6 vs 5+)`);
+      const rolls = await ui.roll(dice, 6, `Escort — Lore ${L} (roll ${dice}d6 vs ${escortTarget}+)${legendaryBonus ? ' [Legendary Outlaw!]' : ''}`);
       const arr = Array.isArray(rolls) ? rolls : [rolls];
-      const successes = arr.filter(n => n >= 5).length;
+      const successes = arr.filter(n => n >= escortTarget).length;
       const ones = arr.filter(n => n === 1).length;
 
+      const rollLine = `Rolled [${arr.join(', ')}] — ${successes} success${successes !== 1 ? 'es' : ''} (Lore ${escortTarget}+).`;
+      log.push(rollLine);
+
       if (successes > 0) {
-        let d8 = D8();
-        if (typeof ui.promptText === 'function') {
-          const raw = await ui.promptText({
-            message: `Escort success! Enter your D8 roll for payout (blank for auto = ${d8}).`,
-            defaultValue: '',
-          });
-          const n = Math.floor(Number(raw));
-          if (Number.isFinite(n) && n >= 1 && n <= 8) d8 = n;
-        }
-        const payout = d8 * 25;
-        addGold(payout, `Escort payoff (${d8} × $25)`);
-        addXP(successes * 10, 'Escort experience');
-        log.push('You safely completed the transfer.');
+        const d8 = D8();
+        const payout = d8 * escortPayPerPip;
+        addGold(payout, `Escort payoff (${d8} × $${escortPayPerPip})`);
+        const successLine = `You safely delivered the prisoner. Gained $${payout} (D8 [${d8}] × $${escortPayPerPip}).${legendaryBonus ? ' (Legendary Outlaw bonus!)' : ''}`;
+        log.push(successLine);
+        await showResult('ESCORT — Success!', [rollLine, '', successLine]);
       } else {
-        log.push('Ambushed on the road — the transfer yields no payout.');
+        // Failed: ambushed by the prisoner's gang. Lose all Grit.
+        pushUpdate(actions, { currentGrit: 0 });
+        const failLine = 'Ambushed by the prisoner\'s gang! Surrounded, you have no choice but to let him Escape and return to Town empty-handed. You lose all Grit you currently have.';
+        log.push(failLine);
+        await showResult('ESCORT — Failed!', [rollLine, '', failLine]);
       }
 
       if (ones > 0) {
         for (let i = 0; i < ones; i++) {
-          if (typeof ui.promptYesNo === 'function') {
-            await ui.promptYesNo({ message: 'A die showed <b>1</b>. Roll a <b>Travel Hazard</b> now? (DM resolves)' });
-          }
+          await showResult('ESCORT — Travel Hazard', [
+            `A die showed 1 (${i + 1} of ${ones}).`,
+            '',
+            'Roll a Travel Hazard for the escort route.',
+          ]);
           log.push('DM: Roll a Travel Hazard for the escort route (due to a 1).');
         }
       }

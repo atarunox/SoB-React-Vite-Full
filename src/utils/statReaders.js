@@ -86,7 +86,9 @@ export function getBaseValue(hero, stat) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function applyGearModifiers(hero, results) {
-  const gear = hero.gear || [];
+  const raw = hero.gear || [];
+  // gear can be an array or an object keyed by slot name
+  const gear = Array.isArray(raw) ? raw : Object.values(raw);
   for (const item of gear) {
     if (!item?.effects) continue;
 

@@ -4,12 +4,13 @@
 const churchBlessedAuras = [
   {
     id: 'church_aura_endurance',
-    name: 'Aura of Endurance (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Endurance (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura', 'Shield'],
     cost: 200,
     effect: 'Armor 5+ (next Adventure).',
     test: 'Spirit 4+',
+    mods: { Armor: '5+' },
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -20,12 +21,13 @@ const churchBlessedAuras = [
   },
   {
     id: 'church_aura_wrath',
-    name: 'Aura of Wrath (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Wrath (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura'],
     cost: 100,
-    effect: '+D6 Damage to one Hit (next Adventure).',
+    effect: 'Once during the next Adventure, you may add a single D6 to one of your Hits.',
     test: 'Spirit 4+',
+    // No stat mods — one-time damage bonus handled during combat
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -35,12 +37,13 @@ const churchBlessedAuras = [
   },
   {
     id: 'church_aura_fortitude',
-    name: 'Aura of Fortitude (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Fortitude (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura', 'Shield'],
     cost: 150,
     effect: 'Spirit Armor 5+ (next Adventure).',
     test: 'Spirit 4+',
+    mods: { 'Spirit Armor': '5+' },
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -51,12 +54,13 @@ const churchBlessedAuras = [
   },
   {
     id: 'church_aura_protection',
-    name: 'Aura of Protection (Spirit 4+ Test to Obtain)',
+    name: 'Aura of Protection (Spirit 4+)',
     category: 'Service',
     tags: ['Blessed Aura', 'Shield'],
     cost: 250,
     effect: 'Armor 6+ / Spirit Armor 6+ (next Adventure).',
     test: 'Spirit 4+',
+    mods: { Armor: '6+', 'Spirit Armor': '6+' },
     rules: {
       test: { stat: 'Spirit', target: 4, die: 'D6' },
       duration: 'Next Adventure',
@@ -136,9 +140,11 @@ export async function redeemGiftOfBlessing(ctx = {}, heroId, opts = {}) {
       id: sel.id,
       name: sel.name.replace(/\s*\(.*\)$/,''),
       type: 'Aura',
-      tags: Array.isArray(sel.tags) ? sel.tags : ['Blessed Aura'],
-      description: sel.effect,
-      rules: sel.rules,
+      slot: 'Blessed Aura',
+      tags: Array.isArray(sel.tags) ? [...sel.tags] : ['Blessed Aura'],
+      description: sel.effect || '',
+      mods: sel.mods ? { ...sel.mods } : {},
+      rules: sel.rules ? { ...sel.rules } : {},
       oneUse: true,
       scope: 'nextAdventure',
     });

@@ -32,7 +32,7 @@ for (const h of heroes) {
 const newResults = {};
 heroes.forEach(h => {
   if (lodging[h.id] === 'Camp') {
-    const roll = Math.ceil(Math.random() * 6);
+    const roll = Math.floor(Math.random() * 6) + 1;
     newResults[h.id] = CAMP_EVENT_CHART[roll - 1];
   }
 });

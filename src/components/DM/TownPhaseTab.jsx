@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { travelHazardChart } from '../../data/charts/travelHazardChart';
 import { townTraitsChart } from '../../data/charts/townTraitsChart';
 import TownVisitPanel from './TownVisitPanel';
+import TownStayManager from './TownStayManager';
 
-export default function TownPhaseTab({ posse = [], world = 'Frontier Town' }) {
+export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier Town' }) {
   const [hazardRolled, setHazardRolled] = useState(null);
   const [traitRolled, setTraitRolled] = useState(null);
 
@@ -19,6 +20,8 @@ export default function TownPhaseTab({ posse = [], world = 'Frontier Town' }) {
   return (
     <div className="p-4 bg-white rounded shadow space-y-4">
       <h2 className="text-xl font-bold">Town Phase</h2>
+
+      {/* Travel Hazard / Town Trait rolls */}
       <div className="flex gap-2 flex-wrap">
         <button className="btn btn-primary" onClick={rollHazard}>Roll Travel Hazard</button>
         <button className="btn btn-secondary" onClick={rollTrait}>Roll Town Trait</button>
@@ -33,6 +36,11 @@ export default function TownPhaseTab({ posse = [], world = 'Frontier Town' }) {
           <strong>Town Trait:</strong> {traitRolled.name} — <span className="italic">{traitRolled.effect}</span>
         </div>
       )}
+
+      {/* Town Stay Manager (day counter, darkness, debug mode) */}
+      <TownStayManager posse={posse} updateHero={updateHero} />
+
+      {/* Hero visit assignment */}
       <TownVisitPanel posse={posse} world={world} />
     </div>
   );

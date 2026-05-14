@@ -76,7 +76,7 @@ export const mutationChart = [
     name: "Glowing Skin",
     flavor: "You glow with an eerie light.",
     effect:
-      "Immune to Voices in the Dark, but Enemies also Hit you on ‘To Hit’ rolls of 1.",
+      "Immune to Voices in the Dark, but Enemies also Hit you on 'To Hit' rolls of 1.",
     effects: {},
     rules: {}
   },
@@ -136,7 +136,7 @@ export const mutationChart = [
     name: "Prehensile Tail",
     flavor: "Your tail can grip and carry.",
     effect:
-      "You now have 1 extra ‘hand’ to use per turn. You can now hold 1 fewer Corruption Point before you get a Mutation.",
+      "You now have 1 extra 'hand' to use per turn. You can now hold 1 fewer Corruption Point before you get a Mutation.",
     effects: {},
     rules: { extraHandPerTurn: true, handsAvailableDelta: +1, corruptionCapacityDelta: -1 }
   },
@@ -153,7 +153,7 @@ export const mutationChart = [
     name: "Tail with a Mouth",
     flavor: "It bites anything nearby.",
     effect:
-      "Any time you or another model adjacent to you rolls a 1 on a ‘To Hit’ roll, that model takes 1 Wound, ignoring Defense (no XP).",
+      "Any time you or another model adjacent to you rolls a 1 on a 'To Hit' roll, that model takes 1 Wound, ignoring Defense (no XP).",
     effects: {},
     rules: {}
   },

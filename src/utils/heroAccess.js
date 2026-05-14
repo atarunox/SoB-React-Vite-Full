@@ -125,15 +125,16 @@ export function applyWounds(heroId, amount, ctx = {}) {
   if (!heroId || !ctx.updateHero) return;
   ctx.updateHero(heroId, (h) => ({
     ...h,
-    wounds: safeNum(h.wounds, 0) + Math.abs(amount),
+    currentHealth: Math.max(0, safeNum(h.currentHealth ?? h.maxHealth, 10) - Math.abs(amount)),
   }));
 }
 
 export function healWounds(heroId, amount, ctx = {}) {
   if (!heroId || !ctx.updateHero) return;
   ctx.updateHero(heroId, (h) => {
-    const newWounds = safeNum(h.wounds, 0) - Math.abs(amount);
-    return { ...h, wounds: Math.max(0, newWounds) };
+    const max = safeNum(h.maxHealth, 10);
+    const cur = safeNum(h.currentHealth, max);
+    return { ...h, currentHealth: Math.min(max, cur + Math.abs(amount)) };
   });
 }
 
@@ -141,7 +142,7 @@ export function adjustCorruption(heroId, delta, ctx = {}) {
   if (!heroId || !ctx.updateHero) return;
   ctx.updateHero(heroId, (h) => ({
     ...h,
-    corruption: safeNum(h.corruption, 0) + safeNum(delta),
+    currentCorruption: Math.max(0, safeNum(h.currentCorruption ?? h.corruption, 0) + safeNum(delta)),
   }));
 }
 

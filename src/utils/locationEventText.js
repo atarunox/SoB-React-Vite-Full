@@ -17,6 +17,14 @@ import saloon             from '../data/townLocations/saloon.js';
 import smugglersDen       from '../data/townLocations/smugglersDen.js';
 import streetMarket       from '../data/townLocations/streetMarket.js';
 
+// Blasted Wastes Town
+import miningOperation   from '../data/townLocations/miningOperation.js';
+import wastelandWorkshop from '../data/townLocations/wastelandWorkshop.js';
+import desertMarketplace from '../data/townLocations/desertMarketplace.js';
+import temple            from '../data/townLocations/temple.js';
+import gladiatorArena    from '../data/townLocations/gladiatorArena.js';
+import scavengerDoc      from '../data/townLocations/scavengerDoc.js';
+
 // Map by id so getEventDisplay(shopId, roll) can find events easily
 const DATA = {
   [campSite.id]: campSite,
@@ -33,6 +41,13 @@ const DATA = {
   [saloon.id]: saloon,
   [smugglersDen.id]: smugglersDen,
   [streetMarket.id]: streetMarket,
+  // Blasted Wastes Town
+  [miningOperation.id]: miningOperation,
+  [wastelandWorkshop.id]: wastelandWorkshop,
+  [desertMarketplace.id]: desertMarketplace,
+  [temple.id]: temple,
+  [gladiatorArena.id]: gladiatorArena,
+  [scavengerDoc.id]: scavengerDoc,
 };
 
 // Common UI ↔ data id mismatches (extend as needed)
@@ -44,10 +59,14 @@ const ALIASES = {
   doc: 'docsOffice',
   outpost: 'frontierOutpost',
   tradingPost: 'indianTradingPost',
+  generalStore: 'general_store',
   // convenience
   smith: 'blacksmith',
   market: 'streetMarket',
   smugglers: 'smugglersDen',
+  // Blasted Wastes aliases
+  mining: 'miningOperation',
+  workshop: 'wastelandWorkshop',
 };
 
 function _resolveShopIdInternal(id) {
@@ -100,6 +119,18 @@ function splitTitleEffect(text) {
 }
 
 function buildEventIndex(events) {
+  // Handle object-form events: [{ roll, name, lore, effect }, ...]
+  if (Array.isArray(events) && events.length && typeof events[0] === 'object') {
+    return events.map((e) => ({
+      range: [Number(e.roll) || 2, Number(e.roll) || 2],
+      raw: '',
+      title: e.name ?? null,
+      effect: e.effect ?? null,
+      lore: e.lore ?? null,
+    }));
+  }
+
+  // String-form events (legacy)
   const arr = Array.isArray(events) ? events.map(String) : [];
   const allHavePrefix = arr.every((s) => RANGE_RE.test(s));
 
@@ -112,7 +143,7 @@ function buildEventIndex(events) {
     }));
   }
 
-  // Prefix map (“2:” or “4–5:”)
+  // Prefix map ("2:" or "4–5:")
   return arr.map((raw) => {
     const m = raw.match(RANGE_RE);
     if (!m) return { range: [2, 12], raw, ...splitTitleEffect(raw) };

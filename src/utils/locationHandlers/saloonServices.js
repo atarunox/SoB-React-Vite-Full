@@ -1,17 +1,37 @@
 // src/utils/locationHandlers/saloonServices.js
 import gearCards from '../../data/items/gearCards.js';
 import { d6, d3 } from '../../utils/diceHelpers';
+import { loadTownState } from '../townState.js';
+import { calculateCurrentStats } from '../calculateStats';
 
-// Read a stat off the hero, falling back across shapes
+// Read a stat off the hero using calculateCurrentStats + locationVisitBuffs
 const readStat = (h, name, fallback = 1) => {
-  const direct = Number(h?.[name]);
-  if (Number.isFinite(direct)) return direct;
-  const fromStats = Number(h?.stats?.[name]);
-  if (Number.isFinite(fromStats)) return fromStats;
-  const fromDerived = Number(h?.derived?.[name]);
-  if (Number.isFinite(fromDerived)) return fromDerived;
-  return fallback;
+  let val = fallback;
+  if (h) {
+    try {
+      const { stats: merged = {} } = calculateCurrentStats(h);
+      val = Number(merged[name] ?? h?.stats?.[name] ?? 0) || fallback;
+    } catch {
+      val = Number(h?.stats?.[name] ?? 0) || fallback;
+    }
+    // Apply location visit buffs (e.g., Saloon "Aces and Eights" +2 Luck/Cunning)
+    const visitBuffs = h.locationVisitBuffs;
+    if (visitBuffs && typeof visitBuffs === 'object') {
+      const buffVal = Number(visitBuffs[name] ?? 0);
+      if (buffVal > 0) val += buffVal;
+    }
+  }
+  return val;
 };
+
+// Saloon Event (12) doubles gambling winnings this visit
+function getGamblingMultiplier() {
+  const s = loadTownState() || {};
+  return s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
+}
+function applyGamblingMultiplier(amount) {
+  return amount * getGamblingMultiplier();
+}
 
 // Roll N dS using the UI roller when available (so prompts show stat numbers)
 async function rollND(ui, n, sides, label) {
@@ -68,16 +88,23 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
   switch (String(serviceId)) {
     // ------------------- Gambling -------------------
     case 'saloon_casual_poker': {
+      const mult = getGamblingMultiplier();
+      if (mult > 1) log.push('<b>Hero of the People — Gambling winnings doubled!</b>');
       const n = Math.max(1, stat('Cunning', 1));
       const rolls = await rollND(ui, n, 6, `Poker — Cunning ${n}d6`);
       const wins = rolls.filter((r) => r >= 5).length;
       log.push(`Cunning rolls: <b>${rolls.join(', ')}</b>`);
 
       if (wins > 0) {
-        const take = wins * 50;
+        const base = wins * 50;
+        const take = base * mult;
         const baseGold = Number(hero.gold || 0);
         pushUpdate({ gold: baseGold + take });
-        log.push(`You leave the table up <b>$${take}</b>.`);
+        if (mult > 1) {
+          log.push(`You leave the table up <b>$${take}</b> (base $${base} × ${mult}).`);
+        } else {
+          log.push(`You leave the table up <b>$${take}</b>.`);
+        }
       } else {
         log.push('Cold cards tonight. You leave with nothing.');
       }
@@ -85,16 +112,23 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
     }
 
     case 'saloon_brimstone_craps': {
+      const mult = getGamblingMultiplier();
+      if (mult > 1) log.push('<b>Hero of the People — Gambling winnings doubled!</b>');
       const n = Math.max(1, stat('Luck', 1));
       const rolls = await rollND(ui, n, 6, `Craps — Luck ${n}d6`);
       const wins = rolls.filter((r) => r >= 5).length;
       log.push(`Luck rolls: <b>${rolls.join(', ')}</b>`);
 
       if (wins > 0) {
-        const take = wins * 100;
+        const base = wins * 100;
+        const take = base * mult;
         const baseGold = Number(hero.gold || 0);
         pushUpdate({ gold: baseGold + take });
-        log.push(`Hot streak! You pocket <b>$${take}</b>.`);
+        if (mult > 1) {
+          log.push(`Hot streak! You pocket <b>$${take}</b> (base $${base} × ${mult}).`);
+        } else {
+          log.push(`Hot streak! You pocket <b>$${take}</b>.`);
+        }
       } else {
         log.push('The dice turn against you. Nothing gained.');
       }
@@ -123,7 +157,7 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
           hero?.currentGrit ?? hero?.grit ?? 0
         );
         const next = Math.min(maxGrit, cur + 1);
-        pushUpdate({ currentGrit: next, grit: next });
+        pushUpdate({ currentGrit: next });
         log.push('Recovered <b>+1 Grit</b> for use in Town.');
       } else {
         log.push('Applause… but no Grit this time.');
@@ -170,7 +204,20 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
     }
 
     case 'saloon_troupe_pickpocket': {
-      // Agility test: per-die 4–5 = $10, per 6 = draw a Gear card
+      // Take D3 Corruption Hits first (cost of attempting) — with Willpower saves
+      const corruptionHits = d3();
+      const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const wpRolls = await rollND(ui, corruptionHits, 6, `Willpower ${wpTarget}+ saves vs ${corruptionHits} Corruption Hits`);
+      const wpBlocked = wpRolls.filter(r => r >= wpTarget).length;
+      const unblockedCorruption = Math.max(0, corruptionHits - wpBlocked);
+      log.push(`Pickpocket: ${corruptionHits} Corruption Hit(s) (D3). Willpower [${wpRolls.join(', ')}] vs ${wpTarget}+ — ${wpBlocked} blocked, ${unblockedCorruption} taken.`);
+      if (unblockedCorruption > 0) {
+        const curCorruption = Number(hero.currentCorruption ?? hero.corruption ?? 0);
+        pushUpdate({ currentCorruption: curCorruption + unblockedCorruption });
+      }
+
+      // Agility 4+ test: per-die 4–5 = $10, per 6 = draw a Gear card
       const ag = Math.max(1, stat('Agility', 1));
       const rolls = await rollND(
         ui,

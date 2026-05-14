@@ -24,11 +24,11 @@ export default function BlacksmithUpgradeReward({ listedUpgrade, onDone }) {
   const eligibleItems = useMemo(() => {
     if (!hero) return [];
     const equip = Object.entries(hero?.gear ?? {})
-      .map(([slot, it]) => (it ? { ...it, _where: 'gear', _slot: slot } : null))
+      .map(([slot, it]) => (it ? { ...it, _where: 'gear', _slot: slot, _key: `gear_${slot}` } : null))
       .filter(Boolean);
 
     const inv = (hero?.inventory ?? [])
-      .map(it => (it ? { ...it, _where: 'inventory' } : null))
+      .map((it, idx) => (it ? { ...it, _where: 'inventory', _key: `inv_${idx}_${it.id || idx}` } : null))
       .filter(Boolean);
 
     return [...equip, ...inv].filter(canAcceptUpgrade);
@@ -38,10 +38,10 @@ export default function BlacksmithUpgradeReward({ listedUpgrade, onDone }) {
     if (!itemId || !hero) return;
 
     const all = [
-      ...Object.entries(hero?.gear ?? {}).map(([slot, it]) => (it ? { ...it, _where: 'gear', _slot: slot } : null)).filter(Boolean),
-      ...(hero?.inventory ?? []).map(it => (it ? { ...it, _where: 'inventory' } : null)).filter(Boolean),
+      ...Object.entries(hero?.gear ?? {}).map(([slot, it]) => (it ? { ...it, _where: 'gear', _slot: slot, _key: `gear_${slot}` } : null)).filter(Boolean),
+      ...(hero?.inventory ?? []).map((it, idx) => (it ? { ...it, _where: 'inventory', _key: `inv_${idx}_${it.id || idx}` } : null)).filter(Boolean),
     ];
-    const target = all.find(i => String(i.id) === String(itemId));
+    const target = all.find(i => i._key === itemId);
     if (!target) return;
 
     const nextHero = {
@@ -55,8 +55,8 @@ export default function BlacksmithUpgradeReward({ listedUpgrade, onDone }) {
       const cur = nextHero.gear[target._slot];
       nextHero.gear[target._slot] = applyUpgrade(cur, listedUpgrade);
     } else {
-      const idx = nextHero.inventory.findIndex(i => String(i?.id) === String(target.id));
-      if (idx >= 0) nextHero.inventory[idx] = applyUpgrade(nextHero.inventory[idx], listedUpgrade);
+      const invIdx = parseInt(target._key.split('_')[1], 10);
+      if (invIdx >= 0 && invIdx < nextHero.inventory.length) nextHero.inventory[invIdx] = applyUpgrade(nextHero.inventory[invIdx], listedUpgrade);
     }
 
     // Persist using both (harmless if same function underneath)
@@ -114,7 +114,7 @@ export default function BlacksmithUpgradeReward({ listedUpgrade, onDone }) {
         >
           <option value="">Select item…</option>
           {eligibleItems.map(it => (
-            <option key={it.id} value={it.id}>
+            <option key={it._key} value={it._key}>
               {it.name} {it._where === 'gear' ? `(Equipped: ${it._slot})` : '(Inventory)'} · slots left {slotsRemaining(it)}
             </option>
           ))}

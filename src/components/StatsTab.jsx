@@ -1,8 +1,9 @@
 // src/components/StatsTab.jsx
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import formatStatLabel from '../utils/formatStatLabel';
 import { useHero } from '../context/HeroContext';
 import { usePosse } from '../context/PosseContext';
+import { useUIScale } from '../context/UIScaleContext';
 import { calculateCurrentStats } from '../utils/calculateStats';
 
 /* ------------------------------- helpers -------------------------------- */
@@ -266,6 +267,43 @@ const deriveKeywords = (hero) => {
   return Array.from(out);
 };
 
+/* ---------------------- default tile positions (responsive grid) ---------------------- */
+
+const STAT_ORDER_FOR_GRID = [
+  'Agility', 'Cunning', 'Spirit', 'Strength', 'Lore',
+  'Luck', 'Initiative', 'Melee', 'Ranged', 'Defense',
+  'Willpower', 'Armor', 'Spirit Armor', 'Health', 'Sanity',
+  'Grit', 'Corruption', 'Special', 'Move', 'Combat',
+];
+
+const TILE_GAP = 8;
+
+function computeGridLayout(containerWidth) {
+  if (!containerWidth || containerWidth <= 0) {
+    // Fallback for SSR / initial render
+    return { cols: 5, tileW: 128, tileH: 96, colW: 140, rowH: 108 };
+  }
+  let cols;
+  if (containerWidth < 280) cols = 3;
+  else if (containerWidth < 400) cols = 4;
+  else cols = 5;
+
+  const tileW = Math.floor((containerWidth - TILE_GAP * (cols + 1)) / cols);
+  const tileH = Math.floor(tileW * 0.75);
+  const colW = tileW + TILE_GAP;
+  const rowH = tileH + TILE_GAP;
+  return { cols, tileW, tileH, colW, rowH };
+}
+
+function buildDefaultPositions(cols, colW, rowH) {
+  return Object.fromEntries(
+    STAT_ORDER_FOR_GRID.map((label, i) => [
+      label,
+      { x: TILE_GAP + (i % cols) * colW, y: TILE_GAP + Math.floor(i / cols) * rowH },
+    ])
+  );
+}
+
 /* -------------------------------- component -------------------------------- */
 
 export default function StatsTab({
@@ -278,6 +316,22 @@ export default function StatsTab({
 }) {
   const { hero: activeHero, updateHero } = useHero();
   const { updateHero: updateHeroPosse } = usePosse();
+  const { statsScale, setStatsScale, layoutEditMode } = useUIScale();
+
+  // ---- Undo / Redo history for stat changes ----
+  const MAX_UNDO = 30;
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  // Reset stacks when switching heroes
+  const heroIdRef = useRef(activeHero?.id || activeHero?.localId);
+  useEffect(() => {
+    const cur = activeHero?.id || activeHero?.localId;
+    if (cur !== heroIdRef.current) {
+      heroIdRef.current = cur;
+      setUndoStack([]);
+      setRedoStack([]);
+    }
+  }, [activeHero?.id, activeHero?.localId]);
 
   // IMPORTANT: pass the hero through unchanged; let calculateCurrentStats
   // handle bucketed conditions internally.
@@ -294,10 +348,24 @@ export default function StatsTab({
   );
 
   // recompute totals whenever gear signature or hero changes
-  const { stats: mergedStats = {}, breakdown = {} } = React.useMemo(
+  const { stats: rawMergedStats = {}, breakdown = {} } = React.useMemo(
     () => calculateCurrentStats(normalizedHero || {}),
     [gearSig, activeHero?.id, activeHero?.localId, normalizedHero]
   );
+
+  // Apply location visit buffs (e.g., Saloon "Aces and Eights" +2 Luck/Cunning)
+  const visitBuffs = activeHero?.locationVisitBuffs;
+  const mergedStats = React.useMemo(() => {
+    if (!visitBuffs || typeof visitBuffs !== 'object') return rawMergedStats;
+    const patched = { ...rawMergedStats };
+    for (const [stat, val] of Object.entries(visitBuffs)) {
+      const buffVal = Number(val ?? 0);
+      if (buffVal > 0 && typeof patched[stat] === 'number') {
+        patched[stat] = patched[stat] + buffVal;
+      }
+    }
+    return patched;
+  }, [rawMergedStats, visitBuffs]);
 
   const heroKeywords = React.useMemo(
     () => deriveKeywords(activeHero),
@@ -305,7 +373,34 @@ export default function StatsTab({
   );
 
   const dragAreaRef = useRef();
-  const [localPositions, setLocalPositions] = useState(activeHero?.statPositions || {});
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = dragAreaRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const gridLayout = useMemo(
+    () => computeGridLayout(containerWidth),
+    [containerWidth]
+  );
+
+  const defaultPositions = useMemo(
+    () => buildDefaultPositions(gridLayout.cols, gridLayout.colW, gridLayout.rowH),
+    [gridLayout.cols, gridLayout.colW, gridLayout.rowH]
+  );
+
+  const [localPositions, setLocalPositions] = useState(() => {
+    const saved = activeHero?.statPositions;
+    return saved && Object.keys(saved).length > 0 ? saved : {};
+  });
   const [draggingLabel, setDraggingLabel] = useState(null);
   const [dragStart, setDragStart] = useState(null);
 
@@ -326,7 +421,8 @@ export default function StatsTab({
   const [showKeywordsBox, setShowKeywordsBox] = useState(false);
 
   useEffect(() => {
-    setLocalPositions(activeHero?.statPositions || {});
+    const saved = activeHero?.statPositions;
+    setLocalPositions(saved && Object.keys(saved).length > 0 ? saved : {});
   }, [activeHero?.statPositions, activeHero?.id, activeHero?.localId]);
 
   // Persist details toggle per hero
@@ -351,7 +447,7 @@ export default function StatsTab({
   }, [draggingLabel, localPositions]);
 
   // Update BOTH: Posse (source of truth) and HeroContext (instant UI)
-  const updateHeroFunc = (changes) => {
+  const applyHeroUpdate = (changes) => {
     if (!activeHero) return;
     const id = activeHero.id || activeHero.localId;
     const payload = { id, ...changes, updatedAt: Date.now() };
@@ -359,16 +455,58 @@ export default function StatsTab({
     if (typeof updateHero === 'function') updateHero(payload);
   };
 
+  // Wrapped version that pushes an undo snapshot before applying
+  const updateHeroFunc = (changes) => {
+    if (!activeHero) return;
+    // Capture the previous values only for the keys being changed
+    const snapshot = {};
+    for (const key of Object.keys(changes)) {
+      if (key === 'id' || key === 'updatedAt') continue;
+      snapshot[key] = activeHero[key];
+    }
+    setUndoStack((prev) => [...prev.slice(-(MAX_UNDO - 1)), snapshot]);
+    setRedoStack([]); // clear redo on new action
+    applyHeroUpdate(changes);
+  };
+
+  const handleUndo = () => {
+    if (!undoStack.length || !activeHero) return;
+    const snapshot = undoStack[undoStack.length - 1];
+    // Save current state for redo before reverting
+    const redoSnapshot = {};
+    for (const key of Object.keys(snapshot)) {
+      redoSnapshot[key] = activeHero[key];
+    }
+    setRedoStack((prev) => [...prev, redoSnapshot]);
+    setUndoStack((prev) => prev.slice(0, -1));
+    applyHeroUpdate(snapshot);
+  };
+
+  const handleRedo = () => {
+    if (!redoStack.length || !activeHero) return;
+    const snapshot = redoStack[redoStack.length - 1];
+    // Save current state for undo
+    const undoSnapshot = {};
+    for (const key of Object.keys(snapshot)) {
+      undoSnapshot[key] = activeHero[key];
+    }
+    setUndoStack((prev) => [...prev, undoSnapshot]);
+    setRedoStack((prev) => prev.slice(0, -1));
+    applyHeroUpdate(snapshot);
+  };
+
   if (!activeHero) return <div>No hero loaded</div>;
 
   const handleResetLayout = () => {
+    setLocalPositions({});
+    updateHeroFunc({ statPositions: {} });
     if (resetLayout) resetLayout();
-    else setLocalPositions({});
   };
 
   const handlePointerDown = (e, label) => {
     if (dragLocked) return;
     const { left, top } = e.currentTarget.getBoundingClientRect();
+    // Store offset in screen space — we'll convert when moving
     setDraggingLabel(label);
     setDragStart({ x: e.clientX - left, y: e.clientY - top });
   };
@@ -376,8 +514,10 @@ export default function StatsTab({
   const handlePointerMove = (e) => {
     if (!draggingLabel || !dragStart) return;
     const rect = dragAreaRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - dragStart.x;
-    const y = e.clientY - rect.top - dragStart.y;
+    // Convert screen-space coordinates to local (unscaled) coordinates
+    const s = statsScale || 1;
+    const x = (e.clientX - rect.left - dragStart.x) / s;
+    const y = (e.clientY - rect.top - dragStart.y) / s;
     setLocalPositions((pos) => ({ ...pos, [draggingLabel]: { x, y } }));
   };
 
@@ -595,17 +735,55 @@ export default function StatsTab({
 
   return (
     <div onPointerMove={handlePointerMove}>
-      <div className="flex justify-end mb-2 gap-2 flex-wrap">
-        <button className="btn btn-sm" onClick={() => setDragLocked?.(!dragLocked)}>
-          {dragLocked ? 'Unlock Drag' : 'Lock Drag'}
-        </button>
-        <button className="btn btn-sm" onClick={handleResetLayout}>
-          Reset Layout
-        </button>
-        <button className="btn btn-sm" onClick={() => setShowDetails((v) => !v)}>
-          {showDetails ? 'Hide Details' : 'Detailed Stats'}
-        </button>
-      </div>
+      {layoutEditMode && (
+        <div className="flex justify-end mb-2 gap-2 flex-wrap">
+          <button
+            className="btn btn-sm"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            title="Undo last stat change"
+          >
+            Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+          </button>
+          <button
+            className="btn btn-sm"
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
+            title="Redo last undone change"
+          >
+            Redo
+          </button>
+          <button className="btn btn-sm" onClick={() => setDragLocked?.(!dragLocked)}>
+            {dragLocked ? 'Unlock Drag' : 'Lock Drag'}
+          </button>
+          <button className="btn btn-sm" onClick={handleResetLayout}>
+            Reset Layout
+          </button>
+          <button className="btn btn-sm" onClick={() => setShowDetails((v) => !v)}>
+            {showDetails ? 'Hide Details' : 'Detailed Stats'}
+          </button>
+          {/* Tile scale controls */}
+          <div className="flex items-center gap-1 ml-auto">
+            <button
+              className="btn btn-sm px-2"
+              onClick={() => setStatsScale(Math.round((statsScale - 0.01) * 100) / 100)}
+              disabled={statsScale <= 0.5}
+              title="Shrink stat tiles"
+            >
+              -
+            </button>
+            <span className="text-xs font-medium w-10 text-center">{Math.round(statsScale * 100)}%</span>
+            <button
+              className="btn btn-sm px-2"
+              onClick={() => setStatsScale(Math.round((statsScale + 0.01) * 100) / 100)}
+              disabled={statsScale >= 1.5}
+              title="Enlarge stat tiles"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Top panel: Detailed Breakdown (Base / Gear / Skills / Conditions / Total) */}
       {showDetails && (
@@ -620,6 +798,9 @@ export default function StatsTab({
                   <th className="py-2 pr-3 text-right">Gear</th>
                   <th className="py-2 pr-3 text-right">Skills</th>
                   <th className="py-2 pr-3 text-right">Conditions</th>
+                  {visitBuffs && Object.keys(visitBuffs).length > 0 && (
+                    <th className="py-2 pr-3 text-right">Buffs</th>
+                  )}
                   <th className="py-2 pr-3 text-right">Total</th>
                 </tr>
               </thead>
@@ -644,6 +825,9 @@ export default function StatsTab({
                   let gear = readBucket(breakdown?.gear, lookupKey);
                   let skills = readBucket(breakdown?.skills, lookupKey);
                   let conditions = readBucket(breakdown?.conditions, lookupKey);
+                  const buffVal = visitBuffs && typeof visitBuffs === 'object'
+                    ? Number(visitBuffs[lookupKey] ?? 0) || 0
+                    : 0;
 
                   // fallback base from hero if still null
                   if (base == null) base = baseFromHero(lookupKey, activeHero);
@@ -654,6 +838,7 @@ export default function StatsTab({
                     gear != null ||
                     skills != null ||
                     conditions != null ||
+                    buffVal > 0 ||
                     mergedVal != null;
 
                   const isCoreStat = statOrder.includes(rawKey);
@@ -719,6 +904,11 @@ export default function StatsTab({
                       <td className="py-1 pr-3 text-right tabular-nums text-rose-200">
                         {fmt(conditions)}
                       </td>
+                      {visitBuffs && Object.keys(visitBuffs).length > 0 && (
+                        <td className="py-1 pr-3 text-right tabular-nums text-yellow-300">
+                          {buffVal > 0 ? `+${buffVal}` : fmt(null)}
+                        </td>
+                      )}
                       <td className="py-1 pr-3 text-right tabular-nums font-semibold text-amber-200">
                         {fmt(mergedTotal)}
                       </td>
@@ -769,25 +959,33 @@ export default function StatsTab({
       <div
         className="relative border-2 border-[#5C3A21] rounded-xl shadow-inner touch-none"
         ref={dragAreaRef}
-        style={{ minHeight: '400px' }}
+        style={{
+          minHeight: `${(gridLayout.rowH * Math.ceil(statOrder.length / gridLayout.cols) + TILE_GAP * 2) * statsScale}px`,
+        }}
       >
         {statOrder.map((label) => {
           const value = getStatValue(label);
-          const pos = localPositions[label] || { x: 0, y: 0 };
+          const pos = localPositions[label] || defaultPositions[label] || { x: 0, y: 0 };
           const displayLabel =
             label === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(label);
 
           return (
             <div
               key={label}
-              className="absolute w-28 h-20 sm:w-32 sm:h-24 rounded-2xl bg-gradient-to-b from-[#ede2c6] to-[#d4c3a1] p-2 border border-[#8b6b46] text-center cursor-grab flex flex-col justify-center items-center transition-transform duration-200 ease-in-out shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
-              style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
+              className="absolute rounded-2xl bg-gradient-to-b from-[#ede2c6] to-[#d4c3a1] p-1 border border-[#8b6b46] text-center cursor-grab flex flex-col justify-center items-center transition-transform duration-200 ease-in-out shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
+              style={{
+                left: pos.x * statsScale,
+                top: pos.y * statsScale,
+                width: `${gridLayout.tileW * statsScale}px`,
+                height: `${gridLayout.tileH * statsScale}px`,
+                touchAction: 'none',
+              }}
               onPointerDown={(e) => handlePointerDown(e, label)}
             >
-              <div className="font-bold text-xs sm:text-sm text-[#3b2f1d] tracking-tight drop-shadow-sm">
+              <div className="font-bold text-[#3b2f1d] tracking-tight drop-shadow-sm leading-snug" style={{ fontSize: `${Math.max(9, gridLayout.tileW * 0.12) * statsScale}px` }}>
                 {displayLabel}
               </div>
-              <div className="text-xl sm:text-2xl font-black text-[#1f1f1f] leading-tight drop-shadow">
+              <div className="font-black text-[#1f1f1f] leading-tight drop-shadow" style={{ fontSize: `${Math.max(14, gridLayout.tileW * 0.22) * statsScale}px` }}>
                 {displayVal(value)}
               </div>
             </div>
@@ -796,18 +994,18 @@ export default function StatsTab({
       </div>
 
       {/* Resource Trackers */}
-      <div className="mt-6 w-full max-w-xl mx-auto flex flex-col gap-3">
+      <div className="mt-6 w-full flex flex-col gap-3">
         {/* Health & Sanity */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {/* Health */}
-          <div className="flex-1 p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-lg">Health</div>
-            <div className="text-2xl font-black my-2 text-[#1f1f1f]">
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
+            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Health</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
               {toNum(activeHero.currentHealth ?? 0)} / {toNum(maxHealth)}
             </div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() =>
                   updateHeroFunc({
                     currentHealth: Math.max(0, toNum(activeHero.currentHealth ?? 0) - 1),
@@ -818,7 +1016,7 @@ export default function StatsTab({
                 -
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => {
                   const cur = toNum(activeHero.currentHealth ?? 0);
                   updateHeroFunc({ currentHealth: Math.min(maxHealth, cur + 1) });
@@ -831,14 +1029,14 @@ export default function StatsTab({
           </div>
 
           {/* Sanity */}
-          <div className="flex-1 p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-lg">Sanity</div>
-            <div className="text-2xl font-black my-2 text-[#1f1f1f]">
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
+            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Sanity</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
               {toNum(activeHero.currentSanity ?? 0)} / {toNum(maxSanity)}
             </div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() =>
                   updateHeroFunc({
                     currentSanity: Math.max(0, toNum(activeHero.currentSanity ?? 0) - 1),
@@ -849,7 +1047,7 @@ export default function StatsTab({
                 -
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => {
                   const cur = toNum(activeHero.currentSanity ?? 0);
                   updateHeroFunc({ currentSanity: Math.min(maxSanity, cur + 1) });
@@ -863,16 +1061,16 @@ export default function StatsTab({
         </div>
 
         {/* Grit & Corruption */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {/* Grit */}
-          <div className="flex-1 p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-lg">Grit</div>
-            <div className="text-2xl font-black my-2 text-[#1f1f1f]">
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
+            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Grit</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
               {curGrit} / {toNum(maxGrit)}
             </div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() =>
                   updateHeroFunc({
                     currentGrit: Math.max(0, toNum(activeHero.currentGrit ?? 0) - 1),
@@ -883,7 +1081,7 @@ export default function StatsTab({
                 -
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => {
                   const cur = toNum(activeHero.currentGrit ?? 0);
                   updateHeroFunc({ currentGrit: Math.min(maxGrit, cur + 1) });
@@ -896,14 +1094,14 @@ export default function StatsTab({
           </div>
 
           {/* Corruption */}
-          <div className="flex-1 p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-lg">Corruption</div>
-            <div className="text-2xl font-black my-2 text-[#1f1f1f]">
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
+            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Corruption</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
               {toNum(activeHero.currentCorruption ?? 0)} / {toNum(maxCor)}
             </div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => {
                   const newHero = handleCorruptionOverflow(
                     {
@@ -922,7 +1120,7 @@ export default function StatsTab({
                 -
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => {
                   const newHero = handleCorruptionOverflow(
                     {
@@ -942,21 +1140,21 @@ export default function StatsTab({
         </div>
 
         {/* Dark Stone & Gold */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {/* Dark Stone */}
-          <div className="flex-1 p-3 rounded-xl border border-[#535359] bg-[#ebebf2] shadow-md text-center">
-            <div className="font-bold text-[#353552] text-lg">Dark Stone</div>
-            <div className="text-2xl font-black my-2 text-[#222238]">{curDS}</div>
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#535359] bg-[#ebebf2] shadow-md text-center">
+            <div className="font-bold text-[#353552] text-sm sm:text-base md:text-lg">Dark Stone</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#222238]">{curDS}</div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ darkStone: Math.max(0, curDS - 1) })}
                 disabled={curDS <= 0}
               >
                 -1
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ darkStone: curDS + 1 })}
               >
                 +1
@@ -965,19 +1163,19 @@ export default function StatsTab({
           </div>
 
           {/* Gold */}
-          <div className="flex-1 p-3 rounded-xl border border-[#bfa439] bg-[#faf1da] shadow-md text-center">
-            <div className="font-bold text-[#bfa439] text-lg">Gold</div>
-            <div className="text-2xl font-black my-2 text-[#ad9400]">{curGold}</div>
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#bfa439] bg-[#faf1da] shadow-md text-center">
+            <div className="font-bold text-[#bfa439] text-sm sm:text-base md:text-lg">Gold</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#ad9400]">{curGold}</div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ gold: Math.max(0, curGold - 10) })}
                 disabled={curGold <= 0}
               >
                 -10
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ gold: curGold + 10 })}
               >
                 +10
@@ -987,21 +1185,21 @@ export default function StatsTab({
         </div>
 
         {/* Scrap & Tech */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {/* Scrap */}
-          <div className="flex-1 p-3 rounded-xl border border-[#757575] bg-[#e3e3e3] shadow-md text-center">
-            <div className="font-bold text-[#474747] text-lg">Scrap</div>
-            <div className="text-2xl font-black my-2 text-[#313131]">{curScrap}</div>
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#757575] bg-[#e3e3e3] shadow-md text-center">
+            <div className="font-bold text-[#474747] text-sm sm:text-base md:text-lg">Scrap</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#313131]">{curScrap}</div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ scrap: Math.max(0, curScrap - 1) })}
                 disabled={curScrap <= 0}
               >
                 -1
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ scrap: curScrap + 1 })}
               >
                 +1
@@ -1010,19 +1208,19 @@ export default function StatsTab({
           </div>
 
           {/* Tech */}
-          <div className="flex-1 p-3 rounded-xl border border-[#0a5a8a] bg-[#e0f3fb] shadow-md text-center">
-            <div className="font-bold text-[#0a5a8a] text-lg">Tech</div>
-            <div className="text-2xl font-black my-2 text-[#145672]">{curTech}</div>
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#0a5a8a] bg-[#e0f3fb] shadow-md text-center">
+            <div className="font-bold text-[#0a5a8a] text-sm sm:text-base md:text-lg">Tech</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#145672]">{curTech}</div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ tech: Math.max(0, curTech - 1) })}
                 disabled={curTech <= 0}
               >
                 -1
               </button>
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ tech: curTech + 1 })}
               >
                 +1
@@ -1033,18 +1231,18 @@ export default function StatsTab({
 
         {/* XP */}
         <div className="flex">
-          <div className="flex-1 p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-lg">XP</div>
-            <div className="text-2xl font-black my-2 text-[#1f1f1f]">{curXP}</div>
+          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
+            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">XP</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">{curXP}</div>
             <div className="flex justify-center gap-2">
               <button
-                className="btn btn-sm px-3"
+                className="btn btn-sm px-2 sm:px-3"
                 onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - 5) })}
                 disabled={curXP <= 0}
               >
                 -5
               </button>
-              <button className="btn btn-sm px-3" onClick={() => updateHeroFunc({ xp: curXP + 5 })}>
+              <button className="btn btn-sm px-2 sm:px-3" onClick={() => updateHeroFunc({ xp: curXP + 5 })}>
                 +5
               </button>
             </div>

@@ -1,13 +1,19 @@
 // src/components/TownTab/index.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   loadTownState,
+  isHeroEjected,
   resetTownState,
   saveTownState,
+  isLocationDestroyed,
+  isDebugMode,
+  resetAllLocationEvents,
+  resetVisitsForToday,
 } from '../../utils/townState';
 import { usePosse } from '../../context/PosseContext';
 import { calculateCurrentStats } from '../../utils/calculateStats';
-import { shopDataById } from '../../data/shopDataByID';
+import { shopDataById, BLASTED_WASTES_TOWN_IDS, FRONTIER_TOWN_IDS } from '../../data/shopDataByID';
+import { useWorld } from '../../context/WorldContext';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
 import { tabsByShop } from '../../data/townLocations/tabsByShop.js';
 import { makeLocEventCtx } from '../../utils/locationEventContext';
@@ -15,12 +21,13 @@ import { makeLocEventCtx } from '../../utils/locationEventContext';
 import { applyChurchRitual } from '../../data/townLocations/FrontierTown/Church/churchRituals.js';
 
 import BlackMarketPanel from './BlackMarketPanel';
-import { hasKeyword } from '../../utils/keywords';
+import { hasKeyword, removeKeyword } from '../../utils/keywords';
 
 // --- Service Executors ---
 import { performSaloonService } from '../../utils/locationHandlers/saloonServices.js';
 import { performGamblingHallService } from '../../utils/locationHandlers/gamblingHallServices.js';
 import { performSheriffsOfficeService } from '../../utils/locationHandlers/sheriffsOfficeServices.js';
+import { performMiningOperationService } from '../../utils/locationHandlers/miningOperationServices.js';
 
 import {
   canUseTribalTent,
@@ -34,6 +41,7 @@ import {
 import { performOutpostBankService } from '../../utils/locationHandlers/frontierOutpostBankServices';
 import { performOutpostTrainingService } from '../../utils/locationHandlers/frontierOutpostTrainingServices';
 import { performFrontierOutpostBounty } from "../../utils/locationHandlers/frontierOutpostBountiesHandler";
+import { offerGritReroll } from '../../utils/diceHelpers.js';
 
 
 
@@ -48,6 +56,7 @@ import {
   getEventState as _getLocEventState,
   resolveEvent as resolveLocEvent,
   setEventRoll as setLocEventRoll,
+  resetAllEvents as resetAllEngineEvents,
 } from '../../utils/locationEventsEngine';
 
 import {
@@ -55,6 +64,9 @@ import {
   performBlackMarketGoods,
   performDownDarkRoad,
   performBuyRoundOfShots,
+  performBankHeist,
+  performRustleCattle,
+  performShadyContacts,
 } from '../../utils/locationHandlers/smugglersDenServices';
 
 import {
@@ -73,6 +85,8 @@ import {
 // UI pieces
 import TownEventCard from './TownEventCard';
 import RareFindPanel from './RareFindPanel';
+import BlacksmithUpgradeReward from '../BlacksmithUpgradeReward';
+import { FREE_ATTACK_UPGRADE } from '../../utils/locationHandlers/blacksmithHandler';
 
 // icons / helpers
 import {
@@ -98,6 +112,109 @@ import {
   getMutationList,
   nextSideBag,
 } from './townTabHelpers';
+
+// Apply shopMods (priceDelta / saleActive) to a cost object for any location
+// ---- Town Status Tracker (visible banner for active town flags) ----
+function TownStatusTracker({ state }) {
+  if (!state) return null;
+
+  const track = state.darknessTrack || 1;
+  const max = state.darknessMax || 6;
+  const endsToday = state.townStayEndsToday;
+  const nextAdv = state.nextAdventure;
+  const noGrit = state.globalRules?.noGritNextAdventure;
+  const allWanted = state.globalRules?.allWantedThisStay;
+  const hasAlerts = endsToday || nextAdv || noGrit || allWanted;
+
+  // Darkness track pips
+  const pips = [];
+  for (let i = 1; i <= max; i++) {
+    const isCurrent = i <= track;
+    pips.push(
+      <div
+        key={i}
+        className={`w-6 h-6 rounded border flex items-center justify-center text-xs font-bold ${
+          i === track
+            ? 'bg-purple-700 border-purple-900 text-white'
+            : isCurrent
+            ? 'bg-purple-200 border-purple-400 text-purple-700'
+            : 'bg-gray-100 border-gray-300 text-gray-400'
+        }`}
+      >
+        {i}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded p-2 mb-2 bg-gray-50 space-y-1.5">
+      {/* Darkness / Town Event Track */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-bold text-gray-700">Town Event Track:</span>
+        <div className="flex gap-0.5">{pips}</div>
+        <span className="text-xs text-gray-500">
+          (D6 ≤ {track} = Town Event)
+        </span>
+      </div>
+
+      {/* Active alerts */}
+      {hasAlerts && (
+        <div className="space-y-1">
+          {endsToday && (
+            <div className="text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">
+              TOWN STAY ENDS TODAY — Heroes must leave at end of current day.
+              {nextAdv === 'Town:Jailbreak' && ' Next Adventure: Jailbreak.'}
+              {noGrit && ' All Heroes start next Adventure with NO Grit.'}
+            </div>
+          )}
+          {!endsToday && noGrit && (
+            <div className="text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">
+              NO GRIT — All Heroes start next Adventure with 0 Grit.
+            </div>
+          )}
+          {allWanted && (
+            <div className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-300 rounded px-2 py-1">
+              ALL HEROES WANTED — Until end of this Town Stay.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Day info */}
+      <div className="text-xs text-gray-500">
+        Day {state.day || 1} — Town Stay {state.townStayActive === false ? 'Ended' : 'Active'}
+      </div>
+    </div>
+  );
+}
+
+const SHOPS_WITH_PRICE_MODS = {
+  blacksmith:        { saleFloor: 10 },
+  streetMarket:      { saleFloor: 25 },
+  indianTradingPost: { saleFloor: 0 },
+  smugglersDen:      { saleFloor: 0 },
+};
+
+function applyShopPriceMods(costRaw, townState, shopId) {
+  const cfg = SHOPS_WITH_PRICE_MODS[shopId];
+  if (!cfg) return costRaw;
+  const mods = townState?.shopMods?.[shopId];
+  if (!mods || (!mods.priceDelta && !mods.saleActive)) return costRaw;
+  if (costRaw == null || typeof costRaw === 'string') return costRaw;
+  const delta = Number(mods.priceDelta || 0);
+  const floor = cfg.saleFloor || 0;
+  if (typeof costRaw === 'number') {
+    let g = costRaw + delta;
+    if (floor > 0 && costRaw > 0) g = Math.max(floor, g);
+    return Math.max(0, g);
+  }
+  if (typeof costRaw === 'object') {
+    let g = Number(costRaw.gold || 0) + delta;
+    if (floor > 0 && Number(costRaw.gold || 0) > 0) g = Math.max(floor, g);
+    return { ...costRaw, gold: Math.max(0, g) };
+  }
+  return costRaw;
+}
 
 // --- Derived stat reader (uses calculateCurrentStats, with debug logs)
 function getStatTotal(hero, statName) {
@@ -179,7 +296,7 @@ const foRateFromEvent = (ev) => {
   return 25; // default D6 × $25
 };
 
-// Per-hero Doc’s Office modifiers (4–5 : outcome −1 min 0, 9–10 : outcome +1)
+// Per-hero Doc's Office modifiers (4–5 : outcome −1 min 0, 9–10 : outcome +1)
 function getDocsOfficeModsForHero() {
   const rec = getLocEventState('docsOffice');
   const r = Number(rec?.roll);
@@ -492,7 +609,19 @@ function FrontierOutpostArtifactOfferPanel({ townStateApi, posseApi, uiApi }) {
 
 export default function TownTab({ heroId }) {
   const { posse, activeHeroId, updateHero } = usePosse();
+  const { world } = useWorld();
   const resolvedHeroId = heroId ?? activeHeroId;
+
+  // Determine which town to show based on the current world
+  const isBlastedWastesTown = world === 'Blasted Wastes' || world === 'Canyons' || world === 'The Canyons';
+  const activeTownIds = isBlastedWastesTown ? BLASTED_WASTES_TOWN_IDS : FRONTIER_TOWN_IDS;
+  const townLabel = isBlastedWastesTown ? 'Blasted Wastes Town' : 'Frontier Town';
+
+  // Roll mode: 'auto' (digital dice) or 'manual' (physical dice, enter results)
+  // Persisted in localStorage so the player's preference sticks across sessions.
+  const rollModeRef = useRef(
+    (() => { try { return localStorage.getItem('sob_rollMode') || null; } catch { return null; } })()
+  );
 
   const hero = useMemo(
     () =>
@@ -647,7 +776,8 @@ const foWorldArtifactOffer =
 
   if (!hero) return <div className="p-4">Loading hero data…</div>;
 
-  const canVisit = !hero.chosenLocation && !!hero.lodging;
+  const ejected = isHeroEjected(state, resolvedHeroId);
+  const canVisit = !hero.chosenLocation && !!hero.lodging && !ejected;
 
   const handleOpenLocation = (shopId) => {
     setOpenLocationId(shopId);
@@ -673,14 +803,51 @@ const foWorldArtifactOffer =
   const handleVisit = (shopId) => {
     if (hero.chosenLocation) return;
 
+    // Destroyed locations cannot be visited
+    if (isLocationDestroyed(shopId)) {
+      window.alert('This location has been destroyed and cannot be visited this town stay.');
+      return;
+    }
+
     // Smuggler's Den: Law heroes get a warning but can still visit (look only)
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       window.alert(
-        'Law heroes are not welcome in the Smuggler’s Den.\n\nYou may look around, but you cannot buy anything or use its services.'
+        "Law heroes are not welcome in the Smuggler's Den.\n\nYou may look around, but you cannot buy anything or use its services."
       );
     }
 
-    const id = hero.id || hero.localId;
+    // Saloon: Conversion check — D6 roll, on 1-2 lose the blessing
+    const heroId = hero.id || hero.localId;
+    if (shopId === 'saloon' && hero.gear?.['Blessing']?.id === 'ch_conversion') {
+      const goAhead = window.confirm(
+        'You have been Converted (Holy).\n\n' +
+        'Visiting the Saloon means rolling a D6 — on a 1 or 2 you lose\n' +
+        'your Conversion bonus (+1 Spirit and the Holy keyword).\n\n' +
+        'Do you still want to visit the Saloon?'
+      );
+      if (!goAhead) return;
+
+      const roll = Math.floor(Math.random() * 6) + 1;
+      if (roll <= 2) {
+        // Lost the Conversion
+        const gear = { ...(hero.gear || {}) };
+        delete gear['Blessing'];
+        const keywords = removeKeyword(hero, 'Holy');
+        updateHero({ id: heroId, gear, keywords });
+        window.alert(
+          `Saloon Conversion Check: Rolled ${roll}\n\n` +
+          `You have lost your Conversion!\n` +
+          `-1 Spirit and the Holy keyword removed.`
+        );
+      } else {
+        window.alert(
+          `Saloon Conversion Check: Rolled ${roll}\n\n` +
+          `Your faith holds. You keep your Conversion blessing.`
+        );
+      }
+    }
+
+    const id = heroId;
     setVisitPurchases((v) => ({ ...v, [id]: v[id] || {} }));
     updateHero({ id, chosenLocation: shopId, isDone: true });
 
@@ -844,19 +1011,39 @@ const foWorldArtifactOffer =
   };
 
   const promptRoll = async (n, sides, label) => {
-    const choice = window.prompt(
-      `${label || 'Roll'}:\n` +
-        `- Enter ${n} value(s) 1–${sides} (comma-separated)\n` +
-        `- Accepts "3+" → 3, "1d6" / "d6" → auto\n` +
-        `- Leave blank for auto-roll`,
-      ''
-    );
-
     const auto = () =>
       Array.from(
         { length: n },
         () => Math.floor(Math.random() * sides) + 1
       );
+
+    // On the very first roll, ask the player how they want to handle dice
+    if (!rollModeRef.current) {
+      const pick = window.prompt(
+        'How would you like to handle dice rolls?\n\n' +
+          '1. Auto-roll — app rolls digital dice automatically\n' +
+          '2. Manual — roll physical dice and enter the results\n\n' +
+          'Enter 1 or 2:',
+        '1'
+      );
+      const mode = String(pick).trim() === '2' ? 'manual' : 'auto';
+      rollModeRef.current = mode;
+      try { localStorage.setItem('sob_rollMode', mode); } catch {}
+    }
+
+    // Auto mode: roll digitally, no prompt
+    if (rollModeRef.current === 'auto') {
+      return auto();
+    }
+
+    // Manual mode: describe the roll, let the player enter their physical dice results
+    const choice = window.prompt(
+      `${label || 'Roll'}:\n\n` +
+        `Roll ${n}d${sides} with your dice.\n` +
+        `Enter ${n} value${n > 1 ? 's' : ''} (1–${sides}, comma-separated):`,
+      ''
+    );
+
     if (!choice) return auto();
 
     const rawParts = choice
@@ -905,8 +1092,8 @@ const foWorldArtifactOffer =
     addToken: (id, tokenName) => {
       const target =
         posse.find((h) => (h.id || h.localId) === id) || {};
-      const sideBag = nextSideBag(target, tokenName, 1);
-      updateHero({ id, sideBag });
+      const sidebags = nextSideBag(target, tokenName, 1);
+      updateHero({ id, sidebags });
     },
     getHeroesAtShop: (sid) => {
       if (!sid) return [resolvedHeroId].filter(Boolean);
@@ -965,11 +1152,19 @@ const foWorldArtifactOffer =
       return Array.isArray(r) ? r[0] : r;
     },
     promptChoice: async (title, options) => {
+      // Single-option prompts: just show an alert (no number entry)
+      if (Array.isArray(options) && options.length === 1) {
+        const only = options[0];
+        const label = (only && (only.label || only)) || 'Continue';
+        try { window.alert(`${title}\n\n${label}`); } catch {}
+        return 0;
+      }
       const msg =
         `${title}\n\n${options
           .map((o, i) => `${i + 1}. ${o.label || o}`)
           .join('\n')}\n\nEnter a number:`;
       const pick = window.prompt(msg, '1');
+      if (pick == null) return -1;
       const idx = Number.parseInt(pick, 10) - 1;
       if (!Number.isFinite(idx) || idx < 0 || idx >= options.length)
         return -1;
@@ -998,6 +1193,7 @@ const foWorldArtifactOffer =
         }\n` +
         `Allowed: ${allowed.join(', ')}\n\nEnter -1, 0, or 1:`;
       const raw = window.prompt(msg, '0');
+      if (raw == null) return 0;
       const n = Number(raw);
       return allowed.includes(n) ? n : 0;
     },
@@ -1031,7 +1227,7 @@ const foWorldArtifactOffer =
           const lose = Number.isFinite(a.amount) ? a.amount : 1;
           updateHero({
             id: heroId,
-            grit: Math.max(0, (hero?.grit ?? 0) - lose),
+            currentGrit: Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0) - lose),
           });
           break;
         }
@@ -1040,7 +1236,7 @@ const foWorldArtifactOffer =
           const add = Number.isFinite(a.amount) ? a.amount : 1;
           updateHero({
             id: heroId,
-            grit: Math.max(0, (hero?.grit ?? 0) + add),
+            currentGrit: Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0) + add),
           });
           break;
         }
@@ -1199,18 +1395,22 @@ const foWorldArtifactOffer =
           ...uiApi,
           roll: async (n, sides, label) =>
             promptRoll(n, sides, label || 'Roll'),
-          rollCunning: async () =>
-            promptRoll(
-              1,
+          rollCunning: async () => {
+            const n = Math.max(1, heroView.Cunning || 1);
+            return promptRoll(
+              n,
               6,
-              `Cunning test (1d6) — Cunning: ${heroView.Cunning}`
-            ),
-          rollLuck: async () =>
-            promptRoll(
-              1,
+              `Cunning test (${n}d6) — Cunning: ${heroView.Cunning}`
+            );
+          },
+          rollLuck: async () => {
+            const n = Math.max(1, heroView.Luck || 1);
+            return promptRoll(
+              n,
               6,
-              `Luck test (1d6) — Luck: ${heroView.Luck}`
-            ),
+              `Luck test (${n}d6) — Luck: ${heroView.Luck}`
+            );
+          },
           rollAgilityMany: async (count) => {
             const n = Number.isFinite(count)
               ? Math.max(1, count)
@@ -1231,12 +1431,14 @@ const foWorldArtifactOffer =
               `Storytelling (Lore) — Lore: ${heroView.Lore} (rolling ${n}d6)`
             );
           },
-          rollAgility: async () =>
-            promptRoll(
-              1,
+          rollAgility: async () => {
+            const n = Math.max(1, heroView.Agility || 1);
+            return promptRoll(
+              n,
               6,
-              `Agility test (1d6) — Agility: ${heroView.Agility}`
-            ),
+              `Agility test (${n}d6) — Agility: ${heroView.Agility}`
+            );
+          },
         },
       };
 
@@ -1348,7 +1550,7 @@ const foWorldArtifactOffer =
               injuries.length + mutations.length === 0;
             alert(
               lockedOnly
-                ? 'All current Injuries/Mutations are “Too Far Gone”. None can be operated on.'
+                ? 'All current Injuries/Mutations are "Too Far Gone". None can be operated on.'
                 : 'No Injuries or Mutations found on this hero.'
             );
             return null;
@@ -1515,7 +1717,7 @@ const foWorldArtifactOffer =
               injuries.length + mutations.length === 0;
             alert(
               lockedOnly
-                ? 'All current Injuries/Mutations are marked as “Too Far Gone” (surgeryLocked). None can be operated on.'
+                ? 'All current Injuries/Mutations are marked as "Too Far Gone" (surgeryLocked). None can be operated on.'
                 : 'No Injuries or Mutations found on this hero.'
             );
             return null;
@@ -1770,7 +1972,7 @@ const foWorldArtifactOffer =
       // Heroes without access may look, but cannot use services
       if (hasKeyword(hero, 'Law')) {
         alert(
-          'Law heroes may not make deals in the Smuggler’s Den. You can look around, but cannot use these services.'
+          "Law heroes may not make deals in the Smuggler's Den. You can look around, but cannot use these services."
         );
         return;
       }
@@ -1827,7 +2029,7 @@ const foWorldArtifactOffer =
               injuries.length + mutations.length === 0;
             alert(
               lockedOnly
-                ? 'All current Injuries/Mutations are “Too Far Gone”. None can be operated on.'
+                ? 'All current Injuries/Mutations are "Too Far Gone". None can be operated on.'
                 : 'No Injuries or Mutations found on this hero.'
             );
             return null;
@@ -1923,6 +2125,48 @@ const foWorldArtifactOffer =
         return;
       }
 
+      if (svc?.id === 'join_bank_heist') {
+        const res = await performBankHeist({
+          hero,
+          posseApi,
+          ui: io,
+        });
+        applyActions(res?.actions);
+        setServiceUi(
+          res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
+        );
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'rustle_cattle') {
+        const res = await performRustleCattle({
+          hero,
+          posseApi,
+          ui: io,
+        });
+        applyActions(res?.actions);
+        setServiceUi(
+          res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
+        );
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'shady_contacts') {
+        const res = await performShadyContacts({
+          hero,
+          posseApi,
+          ui: io,
+        });
+        applyActions(res?.actions);
+        setServiceUi(
+          res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
+        );
+        setState(loadTownState());
+        return;
+      }
+
       setServiceUi({
         title: svc.name,
         description: Array.isArray(svc?.rules?.text)
@@ -1981,12 +2225,17 @@ const foWorldArtifactOffer =
         // stat reader used by fallback doSkillCheck
         getEffectiveStat: (_id, stat) => getStat(stat),
 
-        // logging
+        // logging — use visible toast from uiApi, not just console
         toast: (msg) => {
-          try {
-            console.log('[GamblingHall]', msg);
-          } catch {}
+          if (typeof uiApi.toast === 'function') {
+            uiApi.toast(msg);
+          } else {
+            try { console.log('[GamblingHall]', msg); } catch {}
+          }
         },
+
+        // choice prompt (needed for High Stakes Bet world/artifact selection)
+        promptChoice: uiApi.promptChoice,
 
         // simple numeric prompt helper, matches ctx.promptNumber(msg, key?)
         promptNumber: async (message /*, key */) => {
@@ -2004,23 +2253,119 @@ const foWorldArtifactOffer =
           return res;
         },
 
-        // very simple generic skill check (1d6 ≥ target)
-        doSkillCheck: async (_heroId, { stat, target = 4 } = {}) => {
-          const statVal = getStat(stat);
-          const label = `${stat} test (1d6) — ${stat}: ${statVal} (target ${target}+)`;
-          const rolls = await promptRoll(1, 6, label);
-          const roll = Array.isArray(rolls) ? rolls[0] : rolls;
-          return roll >= target;
+        // skill check — roll dice equal to the hero's stat value
+        doSkillCheck: async (_heroId, { stat, target = 4, message = '', returnDetails = false } = {}) => {
+          const statVal = Math.max(1, getStat(stat) || 1);
+          const mechLabel = `${stat} ${target}+ test (${statVal}d6)`;
+          const label = message ? `${message}\n\n${mechLabel}` : mechLabel;
+          const rolls = await promptRoll(statVal, 6, label);
+          let arr = Array.isArray(rolls) ? rolls : [rolls];
+
+          // Offer grit reroll
+          const gritResult = await offerGritReroll(arr, heroView, {
+            promptChoice: uiApi.promptChoice,
+            updateHero: (id, patchOrFn) => ghCtx.updateHero(id, patchOrFn),
+            heroId: heroView.id || heroView.localId,
+            sides: 6,
+          });
+          arr = gritResult.rolls;
+
+          const successes = arr.filter((r) => r >= target).length;
+          const passed = successes > 0;
+          if (returnDetails) return { passed, rolls: arr, successes, gritRerolled: gritResult.rerolled };
+          return passed;
         },
       };
 
-      const res = await performGamblingHallService(
-        svc.id || svc.name,
-        {},
-        ghCtx
-      );
+      // If the service has its own exec() (e.g. games from gamblingHallGames),
+      // call it directly so it gets the full uiApi and posseApi
+      let res;
+      if (typeof svc.exec === 'function') {
+        res = await svc.exec(heroView, posseApi, uiApi);
+      } else {
+        res = await performGamblingHallService(
+          svc.id || svc.name,
+          {},
+          ghCtx
+        );
+      }
 
       applyActions(res?.actions);
+
+      // High Stakes Bet (event 12): if poker was won, award bonus artifact
+      const isPokerGame = /poker/i.test(svc.id || svc.name || '');
+      const pokerWon = isPokerGame && Array.isArray(res?.log) && res.log.some(l => /SUCCESS/i.test(l));
+      if (pokerWon) {
+        const ts = loadTownState() || {};
+        if (ts.gamblingHallFlags?.firstPokerWinAwardsArtifact) {
+          // Build world → artifact map from imported data
+          const worldMap = {};
+          for (const art of (otherWorldArtifacts || [])) {
+            const w = art?.world || 'Unknown';
+            if (!worldMap[w]) worldMap[w] = [];
+            worldMap[w].push(art);
+          }
+          const worlds = Object.keys(worldMap).filter(w => worldMap[w]?.length);
+
+          if (worlds.length) {
+            // Randomly draw a World card
+            const chosenWorld = worlds[Math.floor(Math.random() * worlds.length)];
+            const pool = worldMap[chosenWorld] || [];
+            const artifact = pool[Math.floor(Math.random() * pool.length)];
+
+            if (artifact) {
+              const artName = artifact.name || artifact.id || 'Artifact';
+              const heroId = heroView.id || heroView.localId;
+              const currentHero = posse.find(h => (h.id || h.localId) === heroId) || heroView;
+              const inv = Array.isArray(currentHero.inventory) ? [...currentHero.inventory] : [];
+              inv.push({
+                ...artifact,
+                id: artifact.id || `art_${Date.now()}`,
+                name: artName,
+                slot: artifact.slot || 'Misc',
+                type: artifact.type || 'Artifact',
+                originWorld: chosenWorld,
+                source: 'High Stakes Bet',
+              });
+              updateHero({ id: heroId, inventory: inv });
+
+              // Format artifact details for display
+              const detailLines = [];
+              if (artifact.effects && typeof artifact.effects === 'object') {
+                const stats = Object.entries(artifact.effects)
+                  .map(([k, v]) => `${k}: ${v > 0 ? '+' : ''}${v}`)
+                  .join(', ');
+                if (stats) detailLines.push(`Stats: ${stats}`);
+              }
+              if (artifact.range != null) detailLines.push(`Range: ${artifact.range}`);
+              if (artifact.shots != null) detailLines.push(`Shots: ${artifact.shots}`);
+              if (Array.isArray(artifact.rules) && artifact.rules.length) detailLines.push(...artifact.rules);
+              if (artifact.weight != null) detailLines.push(`Weight: ${artifact.weight}`);
+              if (artifact.darkStone) detailLines.push('Contains Dark Stone');
+              if (artifact.upgradeSlots) detailLines.push(`Upgrade Slots: ${artifact.upgradeSlots}`);
+              const artDetails = detailLines.join('\n');
+
+              if (res.log) res.log.push(`High Stakes Bet: Drew ${chosenWorld} Artifact — ${artName}.`);
+              uiApi.toast?.(`High Stakes Bet: Drew ${artName} from ${chosenWorld}!`);
+
+              await uiApi.promptChoice?.(
+                `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${artDetails}`,
+                [{ label: 'Continue' }]
+              );
+            }
+          }
+
+          // Clear the flag (one-time reward)
+          saveTownState({
+            ...ts,
+            gamblingHallFlags: {
+              ...(ts.gamblingHallFlags || {}),
+              firstPokerWinAwardsArtifact: false,
+            },
+          });
+        }
+      }
+
       if (res?.log?.length) console.log(res.log.join('\n'));
       setServiceUi(
         res?.ui || {
@@ -2072,6 +2417,41 @@ const foWorldArtifactOffer =
       if (res?.log?.length) console.log(res.log.join('\n'));
       setServiceUi(
         res?.ui || { title: svc.name, outcome: ['Performed.'] }
+      );
+      setState(loadTownState());
+      return;
+    }
+
+    // ---------- Mining Operation ----------
+    if (shopId === 'miningOperation') {
+      const moId = hero.id || hero.localId;
+
+      // Enforce "1 of 3 Work Down in the Tunnels per Location Visit"
+      const workIds = ['mo_work_refinery', 'mo_work_fungus_farms', 'mo_work_mines'];
+      if (workIds.includes(svc.id)) {
+        const usedAny = workIds.some((wid) => (getVisitCount(wid) || 0) > 0);
+        if (usedAny) {
+          alert('You may only do 1 of the 3 "Work Down in the Tunnels" services per visit.');
+          return;
+        }
+      }
+
+      const moCtx = {
+        ui: uiApi,
+        getActiveHeroId: () => moId,
+        getHeroById: (hid) => posse.find((x) => (x.id || x.localId) === hid) || null,
+        getHero: (hid) => posse.find((x) => (x.id || x.localId) === hid) || null,
+        updateHero: posseApi.updateHero,
+      };
+      const res = await performMiningOperationService(svc.id, {}, moCtx);
+      applyActions(res?.actions);
+      if (workIds.includes(svc.id)) {
+        // Mark all 3 as used so the UI grays them out
+        workIds.forEach((wid) => incVisitCount(wid));
+      }
+      if (res?.log?.length) console.log(res.log.join('\n'));
+      setServiceUi(
+        res?.ui || { title: svc.name, outcome: res?.log || ['Performed.'] }
       );
       setState(loadTownState());
       return;
@@ -2143,7 +2523,7 @@ const foWorldArtifactOffer =
     // Smuggler's Den — heroes without access may look but cannot buy
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       alert(
-        'Law heroes may not buy from the Smuggler’s Den. You can look around, but cannot purchase anything here.'
+        "Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here."
       );
       return;
     }
@@ -2198,7 +2578,7 @@ const foWorldArtifactOffer =
       return;
     }
 
-    // Rituals attempted via “Buy” -> route to Perform
+    // Rituals attempted via "Buy" -> route to Perform
     if (
       isRitualService(item) ||
       isBanishCorruptionService(item) ||
@@ -2242,7 +2622,9 @@ const foWorldArtifactOffer =
     }
 
     const itemId = getItemId(item, idx);
-    let costObj = normalizeCostObject(getCost(item));
+    const costBase = getCost(item);
+    const costAdjusted = applyShopPriceMods(costBase, state, openLocationId);
+    let costObj = normalizeCostObject(costAdjusted);
 
     // Smuggler's Den — Black Market pricing (for tagged Black Market goods)
     if (openLocationId === 'smugglersDen') {
@@ -2345,14 +2727,14 @@ const foWorldArtifactOffer =
       const tech =
         (hero.tech ?? 0) - (costObj.tech ?? 0);
 
-      const sideBag = nextSideBag(hero, type, amount);
+      const sidebags = nextSideBag(hero, type, amount);
       updateHero({
         id: hero.id || hero.localId,
         gold,
         darkStone,
         scrap,
         tech,
-        sideBag,
+        sidebags,
       });
 
       incVisitCount(itemId);
@@ -2452,10 +2834,18 @@ const foWorldArtifactOffer =
     );
   };
 
-  // allowed shops by lodging (Camp limitation only — Smuggler's Den always visible)
-  const allowedShops = Object.entries(shopDataById).filter(([id]) =>
-    hero.lodging === 'Camp' ? CAMP_SHOPS.includes(id) : true
-  );
+  // allowed shops: filter by current town (world), then by lodging (Camp limitation)
+  const allowedShops = Object.entries(shopDataById).filter(([id, s]) => {
+    // Camp Site is always available if staying at Camp
+    if (id === 'campSiteTents') {
+      return hero.lodging === 'Camp';
+    }
+    // Only show locations belonging to the active town
+    if (!activeTownIds.includes(id)) return false;
+    // Camp lodging restricts to camp only
+    if (hero.lodging === 'Camp') return CAMP_SHOPS.includes(id);
+    return true;
+  });
 
   // derive subshop + categories
   const shop = openLocationId
@@ -2487,11 +2877,44 @@ const foWorldArtifactOffer =
     categories[0];
   const entries = activeCat?.entries || [];
 
+  const debugMode = isDebugMode(state);
+
+  const handleDebugResetDay = () => {
+    const s = loadTownState();
+    const day = s.day || 1;
+    s.visitByDay[day] = {};
+    s.dailyEventByDay[day] = { drawn: false, card: null, drawerId: null, at: null };
+    s.dayMods = {};
+    saveTownState(s);
+    resetAllLocationEvents();
+    resetAllEngineEvents();
+    posse.forEach((h) => {
+      const id = h.id || h.localId;
+      if (id) updateHero({ id, chosenLocation: '', isDone: false, lodging: '' });
+    });
+    setOpenLocationId(null);
+    setOpenSubshopId(null);
+    setOpenSubcatId(null);
+    setServiceUi(null);
+    setVisitPurchases({});
+    setState(loadTownState());
+  };
+
   return (
     <div className="p-4 space-y-4">
-      <h2 className="text-xl font-bold">
-        Town Visit
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">
+          {townLabel}
+        </h2>
+        {debugMode && (
+          <button
+            onClick={handleDebugResetDay}
+            className="px-3 py-1 text-xs font-bold rounded bg-red-600 text-white hover:bg-red-700 border border-red-800"
+          >
+            Reset Day (Debug)
+          </button>
+        )}
+      </div>
       <p className="italic text-sm mb-2">
         {hero.name
           ? `Welcome, ${hero.name}. `
@@ -2500,6 +2923,9 @@ const foWorldArtifactOffer =
         <strong>
           {hero.lodging || 'Undecided'}
         </strong>
+        {ejected && (
+          <span className="text-red-600 font-bold"> | ⚠️ EJECTED FROM TOWN</span>
+        )}
         {hero.gold !== undefined && (
           <span> | Gold: ${hero.gold}</span>
         )}
@@ -2539,6 +2965,9 @@ const foWorldArtifactOffer =
         )}
       </p>
 
+      {/* ====== TOWN STATUS TRACKER ====== */}
+      <TownStatusTracker state={state} />
+
       {/* Lodging selection */}
       {!hero.lodging && (
         <div className="border p-3 rounded bg-yellow-50 shadow mb-3">
@@ -2549,9 +2978,9 @@ const foWorldArtifactOffer =
             <b>Hotel</b>: Visit any Town
             location.
             <br />
-            <b>Camp</b>: Next day you’re
+            <b>Camp</b>: Next day you're
             limited to the Camp Site, but
-            you’ll roll Camp Events.
+            you'll roll Camp Events.
           </p>
           <div className="flex gap-2">
             <button
@@ -2592,12 +3021,15 @@ const foWorldArtifactOffer =
           const isVisited = hero.chosenLocation === sid;
           const isSmugglers = sid === 'smugglersDen';
           const lawWarning = isSmugglers && hasKeyword(hero, 'Law');
+          const isDestroyed = isLocationDestroyed(sid);
 
           return (
             <button
               key={sid}
               className={`btn justify-between ${
-                isVisited
+                isDestroyed
+                  ? 'btn-outline opacity-50 line-through'
+                  : isVisited
                   ? 'btn-success'
                   : lawWarning
                   ? 'btn-outline border-red-400 text-red-700'
@@ -2605,13 +3037,20 @@ const foWorldArtifactOffer =
               }`}
               onClick={() => handleOpenLocation(sid)}
               title={
-                lawWarning
+                isDestroyed
+                  ? 'This location is destroyed and cannot be visited this town stay.'
+                  : lawWarning
                   ? 'Law heroes are not welcome here. You may look around, but cannot buy anything or use services.'
                   : ''
               }
             >
               <span>{s.name}</span>
-              {isVisited && (
+              {isDestroyed && (
+                <span className="ml-2 text-xs text-red-600">
+                  (Closed)
+                </span>
+              )}
+              {isVisited && !isDestroyed && (
                 <span className="ml-2 text-xs">
                   (Visited)
                 </span>
@@ -2652,6 +3091,7 @@ const foWorldArtifactOffer =
                 <button
                   className="btn btn-primary"
                   disabled={!canVisit}
+                  title={ejected ? "You have been ejected from town and cannot visit locations" : !hero.lodging ? "Choose lodging first" : ""}
                   onClick={() =>
                     handleVisit(
                       openLocationId
@@ -2883,7 +3323,8 @@ const foWorldArtifactOffer =
                 outlawTagged &&
                 !heroIsOutlaw;
 
-              const costRaw = getCost(item);
+              const costBase = getCost(item);
+              const costRaw = applyShopPriceMods(costBase, state, openLocationId);
               const costObj =
                 typeof costRaw ===
                   'number' ||
@@ -3360,7 +3801,7 @@ const foWorldArtifactOffer =
                           }
                           title={
                             gatedByLaw
-                              ? 'Law heroes may not use the Smuggler’s Den.'
+                              ? "Law heroes may not use the Smuggler's Den."
                               : gatedOutlaw
                               ? 'Outlaw only.'
                               : !hero
@@ -3378,33 +3819,56 @@ const foWorldArtifactOffer =
                         >
                           Buy
                         </button>
-                      ) : (
-                        <button
-                          className="btn btn-sm btn-primary"
-                          disabled={
-                            hero.chosenLocation !==
-                              openLocationId ||
+                      ) : (() => {
+                          const tunnelIds = ['mo_work_refinery', 'mo_work_fungus_farms', 'mo_work_mines'];
+                          const isTunnelWork = openLocationId === 'miningOperation' && tunnelIds.includes(item?.id);
+                          const tunnelWorkUsed = isTunnelWork && tunnelIds.some((wid) => (getVisitCount(wid) || 0) > 0);
+                          const blockedSvc = !!state?.blockedServices?.[item?.id];
+                          const performDisabled =
+                            hero.chosenLocation !== openLocationId ||
                             gatedByLaw ||
-                            gatedOutlaw
-                          }
-                          title={
-                            gatedByLaw
-                              ? 'Law heroes may not use the Smuggler’s Den.'
-                              : gatedOutlaw
-                              ? 'Outlaw only.'
-                              : ''
-                          }
-                          onClick={() =>
-                            handlePerform(
-                              openLocationId,
-                              item,
-                              idx
-                            )
-                          }
-                        >
-                          Perform
-                        </button>
-                      )}
+                            gatedOutlaw ||
+                            blockedSvc ||
+                            tunnelWorkUsed;
+                          const performTitle = gatedByLaw
+                            ? "Law heroes may not use the Smuggler's Den."
+                            : gatedOutlaw
+                            ? 'Outlaw only.'
+                            : blockedSvc
+                            ? 'Blocked today by a Location Event.'
+                            : tunnelWorkUsed
+                            ? 'You may only do 1 of the 3 Tunnels Work services per visit.'
+                            : '';
+                          return (
+                            <button
+                              className="btn btn-sm btn-primary"
+                              disabled={performDisabled}
+                              title={performTitle}
+                              onClick={() =>
+                                handlePerform(
+                                  openLocationId,
+                                  item,
+                                  idx
+                                )
+                              }
+                            >
+                              Perform
+                            </button>
+                          );
+                        })()}
+                      {openLocationId === 'miningOperation' &&
+                        ['mo_work_refinery', 'mo_work_fungus_farms', 'mo_work_mines'].includes(item?.id) && (
+                          <>
+                            {state?.blockedServices?.[item?.id] && (
+                              <span className="text-[10px] text-red-700 bg-red-50 border border-red-200 rounded px-2 py-0.5">
+                                Closed today (Location Event)
+                              </span>
+                            )}
+                            <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                              Pick 1 of 3 per visit
+                            </span>
+                          </>
+                        )}
 
                       {restrictionsLabel && (
                         <span className="text-[10px] text-red-700 bg-red-50 border border-red-200 rounded px-2 py-0.5">
@@ -3428,6 +3892,24 @@ const foWorldArtifactOffer =
                 handleBuyRareFind(openLocationId)
               }
             />
+          )}
+
+          {/* Blacksmith Unique Forging (Roll 12) */}
+          {openLocationId === 'blacksmith' && state?.shopMods?.blacksmith?.uniqueForging && (
+            <div className="mt-3">
+              <BlacksmithUpgradeReward
+                listedUpgrade={FREE_ATTACK_UPGRADE}
+                onDone={() => {
+                  const s = loadTownState();
+                  const cur = s.shopMods?.blacksmith || {};
+                  const next = { ...cur };
+                  delete next.uniqueForging;
+                  s.shopMods = { ...(s.shopMods || {}), blacksmith: next };
+                  saveTownState(s);
+                  setState(loadTownState());
+                }}
+              />
+            </div>
           )}
 
           {/* Frontier Outpost — Trading Post Artifact Offer */}
@@ -3472,7 +3954,7 @@ const foWorldArtifactOffer =
     // Smuggler's Den: Law heroes may look but cannot buy
     if (shopId === 'smugglersDen' && hasKeyword(hero, 'Law')) {
       alert(
-        'Law heroes may not buy from the Smuggler’s Den. You can look around, but cannot purchase anything here.'
+        "Law heroes may not buy from the Smuggler's Den. You can look around, but cannot purchase anything here."
       );
       return;
     }

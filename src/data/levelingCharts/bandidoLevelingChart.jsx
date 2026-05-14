@@ -6,7 +6,7 @@ const bandidoLevelingChart = [
     label: "+1 Strength. +D6 Health/Sanity",
     statMod: { stat: "Strength", amount: 1 },
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxHealth: (hero.maxHealth || hero.health || 0) + roll,
@@ -21,7 +21,7 @@ const bandidoLevelingChart = [
     // You could offer a prompt or toggle for which stat to increase
     statMod: { stat: "Cunning", amount: 1 },
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxHealth: (hero.maxHealth || hero.health || 0) + roll,
@@ -33,7 +33,7 @@ const bandidoLevelingChart = [
   {
     label: "+D6 Health and +3 Sanity",
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxHealth: (hero.maxHealth || hero.health || 0) + roll,
@@ -47,7 +47,7 @@ const bandidoLevelingChart = [
     label: "+1 Lore or +1 Luck. +D6 Sanity",
     statMod: { stat: "Lore", amount: 1 },
     onRoll: (hero, setHero) => {
-      const roll = Math.ceil(Math.random() * 6);
+      const roll = Math.floor(Math.random() * 6) + 1;
       const updated = {
         ...hero,
         maxSanity: (hero.maxSanity || hero.sanity || 0) + roll,
@@ -65,6 +65,3 @@ const bandidoLevelingChart = [
 ];
 
 export default bandidoLevelingChart;
-
-
-export default function Placeholder() { return null; }

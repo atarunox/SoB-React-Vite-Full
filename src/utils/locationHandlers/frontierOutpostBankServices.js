@@ -298,8 +298,7 @@ async function performBankHoldUp({ hero, posseApi, townStateApi, io, forcedRolls
             // Prefer currentHealth if you track it; otherwise 'health'
             const cur = Number(h.currentHealth ?? h.health ?? h.maxHealth ?? 0);
             const after = Math.max(0, cur - damageTaken);
-            if ('currentHealth' in h || !('health' in h)) next.currentHealth = after;
-            else next.health = after;
+            next.currentHealth = after;
           }
           return next;
         })
@@ -396,9 +395,9 @@ async function performBankHoldUp({ hero, posseApi, townStateApi, io, forcedRolls
 
   const actions = [];
   if (posseApi?.updateHero && hid) {
-    actions.push(posseApi.updateHero(hid, (h) => ({ ...h, health: 0, currentHealth: 0, isDead: true })));
+    actions.push(posseApi.updateHero(hid, (h) => ({ ...h, currentHealth: 0, isDead: true })));
   } else {
-    actions.push({ type: 'HERO_UPDATE', heroId: hid, patch: { health: 0, currentHealth: 0, isDead: true } });
+    actions.push({ type: 'HERO_UPDATE', heroId: hid, patch: { currentHealth: 0, isDead: true } });
   }
 
   io?.toast?.('You failed to escape the noose. Hero is killed.');

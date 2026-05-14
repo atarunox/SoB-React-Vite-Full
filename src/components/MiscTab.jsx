@@ -5,6 +5,7 @@ import { usePosse } from '../context/PosseContext';
 import { useCombatState } from '../hooks/useCombatState';
 import ReferenceLibrary from './ReferenceLibrary';
 import CreateHero from './CreateHero';
+import { useUIScale, BUTTON_SIZES } from '../context/UIScaleContext';
 
 // ---------- helpers ----------
 const storageKeyFromId = (id) => `hero_${id}`;
@@ -26,53 +27,19 @@ function timestampOf(h) {
   return Number(h.updatedAt || h.createdAt || h.timestamp || 0);
 }
 
-// --- NEW: Firestore delete (best-effort; safe if Firebase isn't present) ---
+// --- Firestore delete (best-effort; safe if Firebase isn't present) ---
+import { db, localMode } from '../firebase/firebaseConfig';
+import { doc as fsDoc, deleteDoc } from 'firebase/firestore';
+
 async function deleteHeroFromCloud(id) {
-  if (!id) return false;
+  if (!id || localMode || !db) return false;
 
-  // Try v9 modular
   try {
-    const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
-    let db;
-    try {
-      const { getApp } = await import('firebase/app');
-      db = getFirestore(getApp());
-    } catch {
-      db = getFirestore();
-    }
-
-    // Try top-level heroes/<id> and per-user users/<uid>/heroes/<id>
-    const paths = [];
-    paths.push(['heroes', id]);
-    try {
-      const { getAuth } = await import('firebase/auth');
-      const uid = getAuth()?.currentUser?.uid;
-      if (uid) paths.push(['users', uid, 'heroes', id]);
-    } catch {}
-
-    let deleted = false;
-    for (const segs of paths) {
-      try { await deleteDoc(doc(db, ...segs)); deleted = true; } catch {}
-    }
-    return deleted;
-  } catch (_) {
-    // Fallback: compat API
-    try {
-      const compatApp = (await import('firebase/compat/app')).default;
-      await import('firebase/compat/firestore');
-      await import('firebase/compat/auth');
-      const db = compatApp.firestore();
-      const user = compatApp.auth?.()?.currentUser;
-      const batch = db.batch();
-      batch.delete(db.collection('heroes').doc(id));
-      if (user?.uid) {
-        batch.delete(db.collection('users').doc(user.uid).collection('heroes').doc(id));
-      }
-      await batch.commit();
-      return true;
-    } catch {}
+    await deleteDoc(fsDoc(db, 'heroes', id));
+    return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 // --- NEW (keys): strictly-unique, stable key factory ---
@@ -91,6 +58,7 @@ export default function MiscTab() {
   const { hero, setHero } = useHero();
   const { posse, addHero, removeHero } = usePosse();
   const { darkness, growingDread } = useCombatState();
+  const { scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale, layoutEditMode, setLayoutEditMode } = useUIScale();
 
   // UI state
   const [heroList, setHeroList] = useState([]);            // [{...hero, _lsKey}]
@@ -391,6 +359,174 @@ export default function MiscTab() {
   // ---------- render ----------
   return (
     <div className="p-4 space-y-6">
+      {/* UI Scale & Button Size */}
+      <div className="border rounded-xl p-4 bg-white/80 space-y-4">
+        {/* --- UI Scale --- */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-sm">UI Scale</span>
+            <span className="text-sm font-medium text-gray-700">{Math.round(scale * 100)}%</span>
+          </div>
+
+          {/* Preset buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { label: '75%', value: 0.75 },
+              { label: '90%', value: 0.9 },
+              { label: '100%', value: 1 },
+              { label: '110%', value: 1.1 },
+              { label: '125%', value: 1.25 },
+            ].map((preset) => (
+              <button
+                key={preset.value}
+                className={`px-3 py-1 rounded-md border text-sm font-medium transition-colors ${
+                  Math.round(scale * 100) === Math.round(preset.value * 100)
+                    ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                    : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+                }`}
+                onClick={() => setScale(preset.value)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Slider with - / + buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-[#5c3a1e]/40 bg-[#f5f0da] text-[#5c3a1e] font-bold text-lg hover:bg-[#f6e7c1]"
+              onClick={() => setScale(Math.round((scale - 0.05) * 100) / 100)}
+              disabled={scale <= 0.5}
+            >
+              &minus;
+            </button>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.05"
+              value={scale}
+              onChange={(e) => setScale(Number(e.target.value))}
+              className="flex-1 accent-[#5c3a1e]"
+            />
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-[#5c3a1e]/40 bg-[#f5f0da] text-[#5c3a1e] font-bold text-lg hover:bg-[#f6e7c1]"
+              onClick={() => setScale(Math.round((scale + 0.05) * 100) / 100)}
+              disabled={scale >= 1.5}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[#5c3a1e]/20" />
+
+        {/* --- Button Size --- */}
+        <div className="space-y-2">
+          <span className="font-bold text-sm">Button Size</span>
+          <div className="flex items-center gap-2">
+            {BUTTON_SIZES.map((size) => (
+              <button
+                key={size}
+                className={`px-4 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                  buttonSize === size
+                    ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                    : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+                }`}
+                onClick={() => setButtonSize(size)}
+              >
+                {size === 'sm' ? 'Small' : size === 'md' ? 'Medium' : 'Large'}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">Changes the size of all buttons throughout the app.</p>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[#5c3a1e]/20" />
+
+        {/* --- Stats Scale --- */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-sm">Stats Box Scale</span>
+            <span className="text-sm font-medium text-gray-700">{Math.round(statsScale * 100)}%</span>
+          </div>
+
+          {/* Preset buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { label: '75%', value: 0.75 },
+              { label: '90%', value: 0.9 },
+              { label: '100%', value: 1 },
+              { label: '110%', value: 1.1 },
+              { label: '125%', value: 1.25 },
+            ].map((preset) => (
+              <button
+                key={preset.value}
+                className={`px-3 py-1 rounded-md border text-sm font-medium transition-colors ${
+                  Math.round(statsScale * 100) === Math.round(preset.value * 100)
+                    ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                    : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+                }`}
+                onClick={() => setStatsScale(preset.value)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Slider with - / + buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-[#5c3a1e]/40 bg-[#f5f0da] text-[#5c3a1e] font-bold text-lg hover:bg-[#f6e7c1]"
+              onClick={() => setStatsScale(Math.round((statsScale - 0.05) * 100) / 100)}
+              disabled={statsScale <= 0.5}
+            >
+              &minus;
+            </button>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.05"
+              value={statsScale}
+              onChange={(e) => setStatsScale(Number(e.target.value))}
+              className="flex-1 accent-[#5c3a1e]"
+            />
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-[#5c3a1e]/40 bg-[#f5f0da] text-[#5c3a1e] font-bold text-lg hover:bg-[#f6e7c1]"
+              onClick={() => setStatsScale(Math.round((statsScale + 0.05) * 100) / 100)}
+              disabled={statsScale >= 1.5}
+            >
+              +
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">Scales the stat boxes on the Stats tab.</p>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[#5c3a1e]/20" />
+
+        {/* --- Change Layout toggle --- */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-sm">Stats Layout Editing</span>
+            <button
+              className={`px-4 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                layoutEditMode
+                  ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                  : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+              }`}
+              onClick={() => setLayoutEditMode(!layoutEditMode)}
+            >
+              {layoutEditMode ? 'Editing On' : 'Change Layout'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">Shows undo/redo, drag lock, reset, and scale controls on the Stats tab.</p>
+        </div>
+      </div>
+
       {/* tiny diagnostics */}
       <div className="text-xs text-gray-300">
         Heroes found: {heroList.length}&nbsp;

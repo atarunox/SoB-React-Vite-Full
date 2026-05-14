@@ -19,7 +19,7 @@ export default {
       roll: 3,
       name: '“You a’ Cheatin’ Us?!”',
       effect:
-        'Make a Cunning 6+ test to talk your way out OR an Agility 4+ test to escape. Fail: the mob beats you down; roll once on the Injury chart.',
+        'Make a Cunning 6+ test to talk your way out OR an Agility 4+ test to escape. Fail: the mob roughs you up and throws you out the door; roll once on the Injury chart. Visit ends.',
       lore:
         'Accused of cheating at cards, you suddenly have a very angry crowd closing in.',
     },

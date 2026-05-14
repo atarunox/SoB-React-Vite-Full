@@ -1,5 +1,6 @@
 // src/utils/locationHandlers/streetMarketServices.js
 import { rollPeril, rollD6, rollND, sum } from '../diceHelpers';
+import { loadTownState } from '../townState';
 
 // Optional: will no-op if your engine isn't wired yet for this location
 import {
@@ -8,12 +9,11 @@ import {
 } from '../locationEventsEngine';
 
 /* -------------------- small UI helpers (non-breaking) -------------------- */
-// Use uiApi when present; otherwise fall back to window.* or params.
+// Use uiApi when present; otherwise fall back to params or sensible defaults.
 
 async function promptYesNo(ui, message, def = false, paramsKey, params = {}) {
   if (ui?.promptYesNo) return !!(await ui.promptYesNo({ message, defaultValue: def }));
-  if (typeof window !== 'undefined' && window.confirm) return !!window.confirm(message);
-  if (paramsKey in (params || {})) return !!params[paramsKey];
+  if (paramsKey && paramsKey in (params || {})) return !!params[paramsKey];
   return def;
 }
 
@@ -29,14 +29,7 @@ async function promptNumber(
     if (v == null || Number.isNaN(Number(v))) return def;
     return Math.max(min, Math.min(max, Math.round(Number(v) / step) * step));
   }
-  if (typeof window !== 'undefined' && window.prompt) {
-    const raw = window.prompt(message, String(def));
-    if (raw == null) return def;
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return def;
-    return Math.max(min, Math.min(max, Math.round(n / step) * step));
-  }
-  if (paramsKey in (params || {})) {
+  if (paramsKey && paramsKey in (params || {})) {
     const v = Number(params[paramsKey]);
     if (!Number.isFinite(v)) return def;
     return Math.max(min, Math.min(max, Math.round(v / step) * step));
@@ -49,11 +42,7 @@ async function promptText(ui, message, def = '', paramsKey, params = {}) {
     const v = await ui.promptText({ message, defaultValue: def });
     return (v ?? def).trim();
   }
-  if (typeof window !== 'undefined' && window.prompt) {
-    const raw = window.prompt(message, def);
-    return (raw ?? def).trim();
-  }
-  if (paramsKey in (params || {})) return String(params[paramsKey]).trim();
+  if (paramsKey && paramsKey in (params || {})) return String(params[paramsKey]).trim();
   return def;
 }
 
@@ -131,7 +120,7 @@ export async function performBathHouse({ hero, ui = {}, params = {} }) {
   );
   let gritDelta = 0;
   if (tryParasites) {
-    const grit0 = Number(hero?.grit ?? 0);
+    const grit0 = Number(hero?.currentGrit ?? hero?.grit ?? 0);
     const maxAttempts = grit0; // 1 grit each
     const attempts = await promptNumber(
       ui,
@@ -154,9 +143,9 @@ export async function performBathHouse({ hero, ui = {}, params = {} }) {
   actions.push({
     type: 'update',
     gold,
-    grit: Math.max(0, (hero?.grit ?? 0) + gritDelta),
-    health: { ...(hero?.health || {}), current: newHCur, max: hero?.health?.max ?? hero?.maxHealth },
-    sanity: { ...(hero?.sanity || {}), current: newSCur, max: hero?.sanity?.max ?? hero?.maxSanity },
+    currentGrit: Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0) + gritDelta),
+    currentHealth: newHCur,
+    currentSanity: newSCur,
   });
 
   return {
@@ -204,169 +193,254 @@ export async function performSellDarkStone({ hero, ui = {}, params = {} }) {
   };
 }
 
-/* ------------------------- Street Gambling (HOLD flow + mobile toggles) ------------------------- */
+/* ------------------------- Street Gambling (improved UX) ------------------------- */
 export async function performStreetGambling({ hero, townState, posseApi = {}, ui = {}, params = {} }) {
   const log = [];
   const actions = [];
-  const locationId = 'streetMarket';
+  const heroName = hero?.name || 'Hero';
 
   log.push('Street Gambling (Limit 2 times per Visit).');
 
-  // Ensure today’s event for #11
-  let eventState = params?.eventState;
+  // Check Lucky Streak via globalRules (set by event #11 handler)
+  let hasLuckyEvent = false;
   try {
-    await _ensureLocEventRolled?.({ locationId });
-    eventState = eventState || _getLocEventState?.({ locationId });
+    const ts = loadTownState();
+    hasLuckyEvent = !!ts?.globalRules?.streetGamblingLuckyStreak;
   } catch {}
-  const hasLuckyEvent = eventState && Number(eventState.roll) === 11;
+  // Also check event state as fallback
+  if (!hasLuckyEvent) {
+    try {
+      const eventState = params?.eventState || _getLocEventState?.('streetMarket');
+      hasLuckyEvent = eventState && Number(eventState.roll) === 11;
+    } catch {}
+  }
 
   // Entry fee ($25)
   let gold = Math.max(0, (hero?.gold ?? 0) - 25);
-  let grit = Math.max(0, (hero?.grit ?? 0));
+  let grit = Math.max(0, (hero?.currentGrit ?? hero?.grit ?? 0));
 
-  // Helper: mobile-friendly HOLD selector (toggle UI if available; fallback to CSV)
-  const selectHeldIndexes = async (dice, label) => {
-    // Try a multi-select UI if your app exposes one
-    if (typeof ui?.promptMultiSelect === 'function') {
-      const options = dice.map((d, i) => ({
-        label: `Die ${i + 1}: ${d}`,
-        value: i + 1,  // 1-based in UI
-        selected: false,
-      }));
-      const chosen = await ui.promptMultiSelect({
-        title: label,
-        options,
-        // subtitle helps on small screens
-        description: 'Tap to HOLD dice. Continue to re-roll the rest.',
-      });
-      // Expecting an array of 1-based values
-      const held = Array.isArray(chosen) ? chosen
-        .map((v) => Number(v))
-        .filter((n) => Number.isInteger(n) && n >= 1 && n <= 4)
-        .map((n) => n - 1) : [];
-      return held;
-    }
+  // Format dice for display
+  const fmtDice = (d) => d.map((v, i) => `  Die ${i + 1}: [${v}]`).join('\n');
+  const fmtDiceInline = (d) => `[${d.join('] [')}]`;
 
-    // Fallback: number entry (CSV)
-    const lines = dice.map((d, i) => `${i + 1}: ${d}`).join('\n');
+  // Prompt to select which dice to RE-ROLL (not hold), more intuitive
+  const selectRerollIndexes = async (dice, label, costInfo) => {
+    const diceDisplay = fmtDice(dice);
+    const straightHint = checkNearWin(dice);
     const msg =
-      `${label}\n` +
-      `Indexes → values:\n${lines}\n\n` +
-      `Enter the indexes to HOLD (comma-separated, 1-4). Leave blank to hold none.`;
-    const heldCSV = await promptText(ui, msg, '', 'hold', params);
-    return parseIndexes(heldCSV);
+      `STREET GAMBLING — ${label}\n\n` +
+      `Your dice:\n${diceDisplay}\n\n` +
+      (straightHint ? `${straightHint}\n\n` : '') +
+      (costInfo ? `Cost: ${costInfo}\n\n` : '') +
+      `Enter which dice to RE-ROLL (1-4, comma-separated).\n` +
+      `Leave blank to keep all dice as they are.`;
+    const raw = await promptText(ui, msg, '');
+    if (raw == null || raw.trim() === '') return [];
+    return raw.split(',')
+      .map(s => Number(s.trim()))
+      .filter(n => Number.isInteger(n) && n >= 1 && n <= 4)
+      .map(n => n - 1);
   };
 
-  // Show dice vertically and ask which to HOLD; re-roll the others
-  const showDiceAndHold = async (dice, label) => {
-    const before = [...dice];
-    const held = await selectHeldIndexes(dice, label);
-
+  // Reroll selected dice
+  const rerollDice = (dice, indexes) => {
     const next = [...dice];
-    for (let i = 0; i < 4; i++) {
-      if (!held.includes(i)) next[i] = rollD6();
+    for (const i of indexes) {
+      if (i >= 0 && i < 4) next[i] = rollD6();
     }
-
-    // vertical delta log:
-    const deltaLines = next
-      .map((v, i) => (v === before[i] ? `${i + 1}: ${v} (held)` : `${i + 1}: ${before[i]} → ${v}`))
-      .join('\n');
-
-    log.push(`${label} result:\n${deltaLines}`);
     return next;
   };
 
-  // Pay for a re-roll with Gold or Grit (player choice if possible)
-  const payForReroll = async (costGold, label) => {
-    let useGrit = false;
-    const canUseGrit = grit > 0 && (ui?.allowGritForStreetGambling ?? true);
+  // Show near-win hints
+  function checkNearWin(dice) {
+    const sorted = [...new Set(dice)].sort((a, b) => a - b);
+    const counts = {};
+    dice.forEach(d => counts[d] = (counts[d] || 0) + 1);
 
-    if (canUseGrit) {
-      if (typeof ui?.promptSelect === 'function') {
-        const pick = await ui.promptSelect({
-          title: label,
-          options: [
-            { label: `Pay $${costGold}`, value: 'gold' },
-            { label: 'Spend 1 Grit', value: 'grit' },
-          ],
-          defaultValue: 'gold',
-        });
-        useGrit = String(pick).toLowerCase() === 'grit';
-      } else {
-        const ch = await promptText(
-          ui,
-          `${label}\nPay with GOLD ($${costGold}) or spend 1 GRIT?\nType "gold" or "grit".`,
-          'gold',
-          'payWith',
-          params
-        );
-        useGrit = String(ch).toLowerCase().startsWith('grit');
+    // Check if already a winning hand
+    if (isStraight4(dice)) return 'Hint: You already have a Straight!';
+    if (fourOfAKindFace(dice)) return `Hint: You already have a Set (four ${fourOfAKindFace(dice)}s)!`;
+
+    const hints = [];
+    // Check for 3-of-a-kind
+    for (const [face, cnt] of Object.entries(counts)) {
+      if (cnt === 3) hints.push(`3 of a Kind (${face}s) — one more ${face} for a Set!`);
+    }
+    // Check for 3-in-a-row
+    if (sorted.length >= 3) {
+      for (let i = 0; i <= sorted.length - 3; i++) {
+        if (sorted[i+1] === sorted[i]+1 && sorted[i+2] === sorted[i]+2) {
+          const lo = sorted[i] - 1;
+          const hi = sorted[i+2] + 1;
+          const needs = [];
+          if (lo >= 1) needs.push(lo);
+          if (hi <= 6) needs.push(hi);
+          if (needs.length) hints.push(`3 in a row (${sorted[i]}-${sorted[i+1]}-${sorted[i+2]}) — need a ${needs.join(' or ')} for Straight!`);
+        }
       }
     }
-
-    if (useGrit) {
-      grit = Math.max(0, grit - 1);
-      log.push(`Paid 1 Grit for ${label}.`);
-    } else {
-      gold = Math.max(0, gold - costGold);
-      log.push(`Paid $${costGold} for ${label}.`);
-    }
-  };
+    return hints.length ? `Hint: ${hints.join(' ')}` : '';
+  }
 
   // Initial 4 dice
   let dice = rollND(4, 6);
-  log.push(`Initial roll: [${dice.join(', ')}]`);
-  dice = await showDiceAndHold(dice, 'Choose holds for the first re-roll');
+  log.push(`Initial roll: ${fmtDiceInline(dice)}`);
 
-  // First paid re-roll (optional)
-  const want1 = await promptYesNo(ui, 'Re-roll again? (Cost $25 or 1 Grit)', false, 'reroll1', params);
-  if (want1) {
-    await payForReroll(25, 'Re-roll #1');
-    dice = await showDiceAndHold(dice, 'Choose holds for Re-roll #1');
+  // Show initial dice and rules in log
+  log.push(`Entry fee: $25 paid. Gold remaining: $${gold}`);
+  log.push(`Goal: Straight (4 in a row) = $300, Set (4 of a kind) = $100 × face value.`);
+  if (hasLuckyEvent) log.push('★ LUCKY STREAK ACTIVE — After all re-rolls, you may add or subtract 1 from one die!');
+
+  // First re-roll opportunity (free — part of the initial roll)
+  let rerollIdxs = await selectRerollIndexes(dice, 'Initial Re-roll (free)', 'Free');
+  if (rerollIdxs.length > 0) {
+    dice = rerollDice(dice, rerollIdxs);
+    log.push(`Free re-roll: ${fmtDiceInline(dice)}`);
   }
 
-  // Up to 3 more @ $50 or 1 Grit each
-  for (let i = 2; i <= 4; i++) {
-    const key = `reroll${i}`;
-    const want = await promptYesNo(ui, `Re-roll again? (${i - 1}/3 so far) (Cost $50 or 1 Grit)`, false, key, params);
-    if (!want) break;
-    await payForReroll(50, `Re-roll #${i}`);
-    dice = await showDiceAndHold(dice, `Choose holds for Re-roll #${i}`);
-  }
-
-  // Event 11: +/-1 to a single die if it converts to a winner, and Recover 1 Grit
-  if (hasLuckyEvent) {
-    grit = grit + 1;
-    const adjusted = tryLuckyAdjust(dice);
-    if (adjusted.changed) {
-      dice = adjusted.dice;
-      log.push('[Event 11] Adjusted one die by ±1 to complete a winner. (+1 Grit recovered.)');
+  // Second re-roll: $25 or 1 Grit
+  let keepGoing = true;
+  if (keepGoing) {
+    const canGrit = grit > 0;
+    const costLabel = canGrit ? '$25 or 1 Grit' : '$25';
+    const wantMore = await promptYesNo(
+      ui,
+      `STREET GAMBLING\n\n` +
+      `Current dice:\n${fmtDice(dice)}\n\n` +
+      (checkNearWin(dice) ? `${checkNearWin(dice)}\n\n` : '') +
+      `Re-roll again? (Cost: ${costLabel})\n` +
+      `Gold: $${gold} | Grit: ${grit}`,
+      false
+    );
+    if (wantMore) {
+      let useGrit = false;
+      if (canGrit) {
+        useGrit = await promptYesNo(
+          ui,
+          `Pay with Grit instead of Gold?\n\nSpend 1 Grit instead of $25 Gold?`,
+          false
+        );
+      }
+      if (useGrit) {
+        grit = Math.max(0, grit - 1);
+        log.push('Paid 1 Grit for Re-roll #1.');
+      } else {
+        gold = Math.max(0, gold - 25);
+        log.push('Paid $25 for Re-roll #1.');
+      }
+      rerollIdxs = await selectRerollIndexes(dice, 'Re-roll #1', useGrit ? '1 Grit' : '$25');
+      if (rerollIdxs.length > 0) {
+        dice = rerollDice(dice, rerollIdxs);
+        log.push(`Re-roll #1: ${fmtDiceInline(dice)}`);
+      }
     } else {
-      log.push('[Event 11] (+1 Grit recovered.)');
+      keepGoing = false;
     }
+  }
+
+  // Up to 3 more re-rolls @ $50 or 1 Grit each
+  for (let r = 2; r <= 4 && keepGoing; r++) {
+    const canGrit = grit > 0;
+    const costLabel = canGrit ? '$50 or 1 Grit' : '$50';
+    const wantMore = await promptYesNo(
+      ui,
+      `STREET GAMBLING\n\n` +
+      `Current dice:\n${fmtDice(dice)}\n\n` +
+      (checkNearWin(dice) ? `${checkNearWin(dice)}\n\n` : '') +
+      `Re-roll #${r}? (${r - 1}/3 extra re-rolls used)\nCost: ${costLabel}\n` +
+      `Gold: $${gold} | Grit: ${grit}`,
+      false
+    );
+    if (!wantMore) break;
+
+    let useGrit = false;
+    if (canGrit) {
+      useGrit = await promptYesNo(
+        ui,
+        `Pay with Grit instead of Gold?\n\nSpend 1 Grit instead of $50 Gold?`,
+        false
+      );
+    }
+    if (useGrit) {
+      grit = Math.max(0, grit - 1);
+      log.push(`Paid 1 Grit for Re-roll #${r}.`);
+    } else {
+      gold = Math.max(0, gold - 50);
+      log.push(`Paid $50 for Re-roll #${r}.`);
+    }
+    rerollIdxs = await selectRerollIndexes(dice, `Re-roll #${r}`, useGrit ? '1 Grit' : '$50');
+    if (rerollIdxs.length > 0) {
+      dice = rerollDice(dice, rerollIdxs);
+      log.push(`Re-roll #${r}: ${fmtDiceInline(dice)}`);
+    }
+  }
+
+  // Event 11 Lucky Streak: player may manually adjust one die by ±1
+  if (hasLuckyEvent) {
+    const luckyMsg =
+      `★ LUCKY STREAK ★\n\n` +
+      `Current dice:\n${fmtDice(dice)}\n\n` +
+      `You may add or subtract 1 from ANY one die.\n\n` +
+      `Enter which die to adjust (1-4), or leave blank to skip:`;
+    const dieChoice = await promptText(ui, luckyMsg, '');
+    if (dieChoice && dieChoice.trim() !== '') {
+      const dieIdx = Number(dieChoice.trim()) - 1;
+      if (dieIdx >= 0 && dieIdx < 4) {
+        const curVal = dice[dieIdx];
+        const dirMsg =
+          `Die ${dieIdx + 1} is currently [${curVal}].\n\n` +
+          (curVal > 1 && curVal < 6
+            ? `Enter "+" to make it ${curVal + 1}, or "-" to make it ${curVal - 1}:`
+            : curVal === 1
+            ? `Enter "+" to make it 2:`
+            : `Enter "-" to make it 5:`);
+        const dir = await promptText(ui, dirMsg, '+');
+        if (dir != null) {
+          const delta = dir.trim().startsWith('-') ? -1 : 1;
+          const newVal = curVal + delta;
+          if (newVal >= 1 && newVal <= 6) {
+            dice[dieIdx] = newVal;
+            log.push(`[Lucky Streak] Die ${dieIdx + 1}: ${curVal} → ${newVal}`);
+          } else {
+            log.push(`[Lucky Streak] Can't adjust Die ${dieIdx + 1} (${curVal}) by ${delta > 0 ? '+1' : '-1'} — out of range.`);
+            ui.toast?.(`Can't adjust Die ${dieIdx + 1} (${curVal}) by ${delta > 0 ? '+1' : '-1'} — out of range.`);
+          }
+        }
+      }
+    }
+    log.push('[Lucky Streak] Active.');
   }
 
   // Resolve outcome
   const straight = isStraight4(dice);
   const fourFace = fourOfAKindFace(dice);
   let goldDelta = 0;
+  let resultMsg;
 
   if (fourFace) {
     const payout = 100 * fourFace;
     goldDelta += payout;
-    log.push(`WIN — 4 of a Kind (${fourFace}s). You gain $${payout}. Final: [${dice.join(', ')}]`);
+    resultMsg = `WIN — Set! Four ${fourFace}s!\nYou win $${payout}!`;
+    log.push(`WIN — 4 of a Kind (${fourFace}s). +$${payout}. Final: ${fmtDiceInline(dice)}`);
   } else if (straight) {
     goldDelta += 300;
-    log.push(`WIN — Straight! You gain $300. Final: [${dice.join(', ')}]`);
+    resultMsg = `WIN — Straight! ${fmtDiceInline(dice)}\nYou win $300!`;
+    log.push(`WIN — Straight! +$300. Final: ${fmtDiceInline(dice)}`);
   } else {
-    log.push(`No win. Final: [${dice.join(', ')}]`);
+    resultMsg = `No win. Better luck next time.`;
+    log.push(`No win. Final: ${fmtDiceInline(dice)}`);
   }
 
-  // Single 'update' action so your TownTab.applyActions merges cleanly
+  const finalGold = Math.max(0, gold + goldDelta);
+  log.push(`Result: ${resultMsg}`);
+  log.push(`Gold: $${finalGold} | Grit: ${grit}`);
+  ui.toast?.(`Street Gambling — ${resultMsg}`);
+
+  // Single 'update' action
   actions.push({
     type: 'update',
-    gold: Math.max(0, gold + goldDelta),
-    grit: Math.max(0, grit),
+    gold: finalGold,
+    currentGrit: Math.max(0, grit),
   });
 
   return {
@@ -374,35 +448,7 @@ export async function performStreetGambling({ hero, townState, posseApi = {}, ui
     actions,
     ui: {
       title: 'Street Gambling',
-      body: `Final dice: [${dice.join(', ')}]`,
+      outcome: [resultMsg, `Final dice: ${fmtDiceInline(dice)}`, `Gold: $${finalGold}`],
     },
   };
-}
-
-/* ----------------------- HOLD/adjust helpers ----------------------- */
-
-function parseIndexes(csv) {
-  if (!csv) return [];
-  return csv
-    .split(',')
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 4)
-    .map((n) => n - 1);
-}
-
-function tryLuckyAdjust(dice) {
-  // Try +1/-1 on a single die if it converts to 4-kind or straight.
-  for (let i = 0; i < 4; i++) {
-    const d = dice[i];
-    for (const delta of [+1, -1]) {
-      const nv = d + delta;
-      if (nv < 1 || nv > 6) continue;
-      const cand = [...dice];
-      cand[i] = nv;
-      if (isFourOfAKind(cand) || isStraight4(cand)) {
-        return { changed: true, dice: cand };
-      }
-    }
-  }
-  return { changed: false, dice };
 }

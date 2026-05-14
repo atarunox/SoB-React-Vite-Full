@@ -155,9 +155,27 @@ function parseEffectsList(effects = []) {
 
 function addMod(bucket, rawKey, delta) {
   const key = canonStatKey(rawKey);
+
+  // Handle threshold string values like '5+' for Armor / Spirit Armor etc.
+  if (typeof delta === 'string' && /^\d+\+$/.test(delta.trim())) {
+    const newThresh = parseInt(delta, 10);
+    const existing = bucket[key];
+    if (typeof existing === 'string' && /^\d+\+$/.test(existing)) {
+      // Keep the better (lower number) threshold
+      const exNum = parseInt(existing, 10);
+      if (newThresh < exNum) bucket[key] = delta.trim();
+    } else {
+      bucket[key] = delta.trim();
+    }
+    return;
+  }
+
   const v = toNumber(delta, 0);
   if (!v) return;
-  bucket[key] = (bucket[key] || 0) + v;
+  // Don't overwrite a threshold string with a numeric delta
+  const existing = bucket[key];
+  if (typeof existing === 'string' && /^\d+\+$/.test(existing)) return;
+  bucket[key] = (toNumber(existing, 0)) + v;
 }
 
 /* ---------------------- collectors: gear/skills/conditions ---------------------- */
@@ -327,11 +345,22 @@ function applyDeltas(base, { gear = {}, skills = {}, conditions = {} }) {
       const v = toNumber(rawVal, 0);
 
       if (THRESH_KEYS.has(key)) {
+        // Check if rawVal is an absolute threshold string like '5+'
+        const rawThresh = parseThreshNum(typeof rawVal === 'string' ? rawVal : '');
+
         const current = out[key] ?? defaultThresholds[key] ?? '—';
         const curText = typeof current === 'string' ? current : String(current);
         const curNum = parseThreshNum(curText);
 
-        if (curNum != null) {
+        if (rawThresh != null) {
+          // Absolute threshold from gear/skill/condition (e.g. Armor '5+')
+          // Take the better (lower number) of current and new
+          if (curNum != null) {
+            out[key] = `${Math.min(curNum, rawThresh)}+`;
+          } else {
+            out[key] = `${rawThresh}+`;
+          }
+        } else if (curNum != null) {
           // v is a delta: +1 makes 4+ -> 3+
           const improved = Math.max(2, curNum - v);
           out[key] = `${improved}+`;
@@ -340,7 +369,7 @@ function applyDeltas(base, { gear = {}, skills = {}, conditions = {} }) {
           if (Number.isFinite(v) && v >= 2 && v <= 6) {
             // Treat as an absolute threshold (e.g. Armor: 4 => "4+")
             out[key] = `${v}+`;
-          } else if (Number.isFinite(v)) {
+          } else if (Number.isFinite(v) && v !== 0) {
             // Treat as improvement from a 6+ worst-case base
             const improved = Math.max(2, 6 - v);
             out[key] = `${improved}+`;

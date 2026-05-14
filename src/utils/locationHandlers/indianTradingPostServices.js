@@ -81,9 +81,9 @@ function addXp(hero, amt) {
   return { ...hero, xp: xp0 + Math.max(0, asNumber(amt, 0)) };
 }
 function addGrit(hero, amt) {
-  const g0 = asNumber(hero?.grit, 0);
+  const g0 = asNumber(hero?.currentGrit ?? hero?.grit, 0);
   const maxG = asNumber(hero?.maxGrit, 2);
-  return { ...hero, grit: Math.min(maxG, g0 + Math.max(0, asNumber(amt, 0))) };
+  return { ...hero, currentGrit: Math.min(maxG, g0 + Math.max(0, asNumber(amt, 0))) };
 }
 function refreshOncePerAdventure(hero) {
   const opa = Array.isArray(hero?.oncePerAdventure)

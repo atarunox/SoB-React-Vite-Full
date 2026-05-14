@@ -28,7 +28,13 @@ function ItemDetails({ card }) {
     weight,
   } = card;
 
-  const effectsList = Array.isArray(effects) ? effects : effects ? [effects] : [];
+  const effectsList = Array.isArray(effects)
+    ? effects
+    : effects && typeof effects === "object"
+      ? Object.entries(effects).map(([k, v]) => `${v >= 0 ? "+" : ""}${v} ${k}`)
+      : effects
+        ? [effects]
+        : [];
 
   const metaParts = [
     type || null,
@@ -91,7 +97,7 @@ const resourceField = (tok) => {
   return null;
 };
 const rollDie = (sides) =>
-  Math.max(1, Math.ceil(Math.random() * Math.max(2, Number(sides) || 6)));
+  Math.floor(Math.random() * Math.max(2, Number(sides) || 6)) + 1;
 
 function resolvePayoutFromName(name = "") {
   if (!name) return null;
@@ -274,6 +280,25 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
     return deckDef[Math.floor(Math.random() * deckDef.length)];
   }
 
+  function redrawCard(idx) {
+    const old = lootPool[idx];
+    if (!old || old.claimedBy) return;
+    if (old._isExpanded && old.id) deck.release(old.id);
+    const deckDef = LOOT_DECKS[world] || LOOT_DECKS["Mines"] || [];
+    if (!deckDef.length) return;
+    const base = deckDef[Math.floor(Math.random() * deckDef.length)];
+    const replacement = preExpandCard(base, old.drawnFor, world);
+    setLootPool((prev) => {
+      const copy = [...prev];
+      copy[idx] = replacement;
+      return copy;
+    });
+    setLootHistory((prev) => [
+      ...prev,
+      { action: "redraw", card: replacement, from: old.name, to: null, time: Date.now() },
+    ]);
+  }
+
   function revertResourcesForCard(hero, card) {
     const res = card?.resolvedResources;
     if (!res) return hero;
@@ -348,6 +373,34 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
           ? `Claimed ${card.type}: ${card.name}`
           : (card.resolvedResources?.breakdown || undefined),
       },
+    ]);
+  }
+
+  function sendToTreasurePool(idx) {
+    const card = lootPool[idx];
+    if (!card) return;
+
+    const item = {
+      ...card,
+      id: card._instanceId || card.id || `loot_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      _droppedBy: card.drawnFor || 'Loot Pool',
+      _droppedAt: Date.now(),
+    };
+    delete item.claimedBy;
+    delete item.resolvedResources;
+    delete item.drawnFor;
+
+    try {
+      const key = 'sob:treasurePool';
+      const pool = JSON.parse(localStorage.getItem(key) || '[]');
+      pool.push(item);
+      localStorage.setItem(key, JSON.stringify(pool));
+    } catch {}
+
+    setLootPool((prev) => prev.filter((_, i) => i !== idx));
+    setLootHistory((prev) => [
+      ...prev,
+      { action: 'treasure', card, from: 'pool', to: 'Treasure Pool', time: Date.now() },
     ]);
   }
 
@@ -522,15 +575,29 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
                   </div>
                 </>
               ) : (
-                posse.map((h) => (
+                <>
+                  {posse.map((h) => (
+                    <button
+                      key={h.id || h.localId}
+                      className="btn btn-xs btn-outline"
+                      onClick={() => claimLoot(idx, h.id || h.localId)}
+                    >
+                      Claim as {h.name}
+                    </button>
+                  ))}
                   <button
-                    key={h.id || h.localId}
-                    className="btn btn-xs btn-outline"
-                    onClick={() => claimLoot(idx, h.id || h.localId)}
+                    className="btn btn-xs btn-accent"
+                    onClick={() => sendToTreasurePool(idx)}
                   >
-                    Claim as {h.name}
+                    → Treasure Pool
                   </button>
-                ))
+                  <button
+                    className="btn btn-xs btn-warning"
+                    onClick={() => redrawCard(idx)}
+                  >
+                    Redraw
+                  </button>
+                </>
               )}
             </div>
 

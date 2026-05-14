@@ -17,6 +17,12 @@ import blacksmith from '../data/townLocations/blacksmith.js';
 import saloon from '../data/townLocations/saloon.js';
 import smugglersDen from '../data/townLocations/smugglersDen.js';
 import streetMarket from '../data/townLocations/streetMarket.js';
+import desertMarketplace from '../data/townLocations/desertMarketplace.js';
+import temple from '../data/townLocations/temple.js';
+import gladiatorArena from '../data/townLocations/gladiatorArena.js';
+import scavengerDoc from '../data/townLocations/scavengerDoc.js';
+import miningOperation from '../data/townLocations/miningOperation.js';
+import wastelandWorkshop from '../data/townLocations/wastelandWorkshop.js';
 
 // Normalizer so 'gamblingHall' → 'gambling', etc.
 import { resolveShopId } from './locationEventText';
@@ -37,6 +43,12 @@ import { handleBlacksmithEvent } from './locationHandlers/blacksmithHandler';
 import { handleSaloonEvent } from './locationHandlers/saloonHandler';
 import { handleSmugglersDenEvent } from './locationHandlers/smugglersDenHandler';
 import { handleStreetMarketEvent } from './locationHandlers/streetMarketHandler';
+import { handleDesertMarketplaceEvent } from './locationHandlers/desertMarketplaceHandler';
+import { handleTempleEvent } from './locationHandlers/templeHandler';
+import { handleGladiatorArenaEvent } from './locationHandlers/gladiatorArenaHandler';
+import { handleScavengerDocEvent } from './locationHandlers/scavengerDocHandler';
+import { handleMiningOperationEvent } from './locationHandlers/miningOperationHandler';
+import { handleWastelandWorkshopEvent } from './locationHandlers/wastelandWorkshopHandler';
 
 import { calculateCurrentStats } from './calculateStats';
 import { withConditionAppended } from './mergeConditions';
@@ -136,6 +148,12 @@ const REGISTRY = {
   [saloon.id]:          { data: saloon,                    handler: handleSaloonEvent },
   [smugglersDen.id]:    { data: smugglersDen,              handler: handleSmugglersDenEvent },
   [streetMarket.id]:    { data: streetMarket,              handler: handleStreetMarketEvent },
+  [desertMarketplace.id]: { data: desertMarketplace,      handler: handleDesertMarketplaceEvent },
+  [temple.id]:            { data: temple,                  handler: handleTempleEvent },
+  [gladiatorArena.id]:    { data: gladiatorArena,          handler: handleGladiatorArenaEvent },
+  [scavengerDoc.id]:      { data: scavengerDoc,            handler: handleScavengerDocEvent },
+  [miningOperation.id]:   { data: miningOperation,         handler: handleMiningOperationEvent },
+  [wastelandWorkshop.id]: { data: wastelandWorkshop,       handler: handleWastelandWorkshopEvent },
 };
 
 // ---------------------------------------------------------------------------
@@ -177,6 +195,12 @@ addAlias(blacksmith.id, 'blacksmith');
 addAlias(saloon.id, 'saloon');
 addAlias(smugglersDen.id, 'smugglersDen', "smuggler's den");
 addAlias(streetMarket.id, 'streetMarket', 'street market', 'market', 'street_market');
+addAlias(desertMarketplace.id, 'desertMarketplace', 'desert marketplace', 'desert_marketplace');
+addAlias(temple.id, 'temple', 'barter town temple');
+addAlias(scavengerDoc.id, 'scavengerDoc', 'scavenger doc', 'scavenger_doc');
+addAlias(gladiatorArena.id, 'gladiatorArena', 'gladiator arena', 'gladiator_arena');
+addAlias(miningOperation.id, 'miningOperation', 'mining operation', 'mining_operation', 'mining');
+addAlias(wastelandWorkshop.id, 'wastelandWorkshop', 'wasteland workshop', 'wasteland_workshop', 'workshop');
 
 // Normalize any incoming shop key to the canonical registry id.
 function normalizeShopKey(raw) {
@@ -442,6 +466,8 @@ export async function resolveEvent(shopKey, context = {}) {
   }
 
   if (!reg || typeof reg.handler !== 'function') {
+    // Mark resolved even without a handler
+    rolled.resolved = true;
     const out = {
       actions: [],
       townState: context.townState,
@@ -464,6 +490,9 @@ export async function resolveEvent(shopKey, context = {}) {
   }
 
   const result = await reg.handler({ ...context, forcedRoll: roll, ...extra });
+
+  // Mark event as resolved so the UI shows the correct status
+  rolled.resolved = true;
 
   const out = {
     ...result,

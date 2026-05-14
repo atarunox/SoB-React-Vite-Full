@@ -1,11 +1,45 @@
-// Indian Trading Post helper utilities (no services in this file).
+// Indian Trading Post helper utilities + location event handler.
 // Exports: canUseTribalTent, normalizeINDIAN_TP_Item, clampArrowStack, applyArrowConsumption
-// Optional: handleIndianTradingPostEvent (reads data file)
+// Main: handleIndianTradingPostEvent (full game-logic handler)
 
-import indianTradingPost from '../../data/townLocations/FrontierTown/IndianTradingPost/indianTradingPost.js'; // for event reader only
+import indianTradingPost from '../../data/townLocations/FrontierTown/IndianTradingPost/indianTradingPost.js';
+import { loadTownState, saveTownState } from '../townState';
+import { d6, d3, roll2d6 } from '../diceHelpers';
 
 const asStr = (v) => String(v ?? '').toLowerCase();
 const asNum = (v, fb = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fb);
+
+const shopId = 'indianTradingPost';
+
+// ---- shopMods helpers ------------------------------------------------
+function patchShopMods(patch) {
+  const s = loadTownState();
+  const cur = s.shopMods?.[shopId] || {};
+  const next = { ...cur, ...patch };
+  const updated = { ...s, shopMods: { ...(s.shopMods || {}), [shopId]: next } };
+  saveTownState(updated);
+}
+
+// ---- hero keyword helpers --------------------------------------------
+function hasKeyword(hero, kw) {
+  const kws = Array.isArray(hero?.keywords) ? hero.keywords.map(asStr) : [];
+  return kws.includes(asStr(kw));
+}
+
+// ---------- result helpers (shared pattern — see CLAUDE.md) ----------
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+  }
+  return null;
+}
+
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+}
 
 // ---------- Tribal Tent gating ----------
 export function canUseTribalTent(hero) {
@@ -48,21 +82,240 @@ export function normalizeINDIAN_TP_Item(item) {
   return item;
 }
 
-// ---------- Event passthrough (optional; no side-effects here) ----------
-export async function handleIndianTradingPostEvent(roll, _ctx = {}) {
-  const n = Math.max(2, Math.min(12, Number.isFinite(roll) ? roll : 2));
-  const idx = n - 2;
+// ---------- Event display text (from data file) -----------------------
+function display(roll) {
+  const idx = Math.max(0, Math.min(10, roll - 2));
   const ev = Array.isArray(indianTradingPost?.events) ? indianTradingPost.events[idx] : null;
+  if (!ev) return { title: 'Indian Trading Post Event', lore: '', effect: 'No Event.' };
+  return { title: ev.name, lore: ev.lore, effect: ev.effect };
+}
 
-  if (!ev) {
-    return { ok: false, roll: n, log: '[IndianTradingPost] No event data found.' };
+// ---------- Game-logic handler ----------------------------------------
+/**
+ * ctx methods (standard handler interface):
+ * - getActiveHeroId(), getHeroById(id), updateHero(id, patchOrFn)
+ * - doSkillCheck(id, { stat, target, message, returnDetails }), enqueueChartRoll(id, chartType)
+ * - addKeyword(id, keyword), addToken(id, tokenName)
+ * - promptChoice(title, options[]), promptNumber(msg, label), toast(msg)
+ * - getHeroesAtShop(shopId)
+ */
+async function apply(roll, ctx) {
+  const id = ctx.getActiveHeroId();
+  if (!id) return { log: [] };
+
+  const info = display(roll);
+  const log = [];
+
+  // Every event starts with its title and lore/flavor text
+  log.push(`[Indian Trading Post] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
+
+  // 2: Spirits Running Amok — Darkness +D3, every hero takes 2D6 Horror Hits
+  if (roll === 2) {
+    const darknessRoll = d3();
+    const s = loadTownState();
+    const darkness = Number(s.darknessTrack ?? 0) + darknessRoll;
+    saveTownState({ ...s, darknessTrack: darkness });
+
+    const darknessLine = `Rolled [${darknessRoll}] for Darkness (D3). Track moves forward ${darknessRoll} steps.`;
+    log.push(darknessLine);
+
+    // Apply horror hits to all heroes in town
+    const heroIds = ctx.getHeroesAtShop?.(shopId) || [id];
+    const hitLines = [];
+    for (const hid of heroIds) {
+      if (!hid) continue;
+      const die1 = d6();
+      const die2 = d6();
+      const horrorHits = die1 + die2;
+      ctx.updateHero(hid, h => {
+        const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
+        const nextSanity = Math.max(0, curSanity - horrorHits);
+        return { ...h, currentSanity: nextSanity };
+      });
+      const hero = ctx.getHeroById?.(hid) || {};
+      const hitLine = `${hero.name || 'Hero'}: Rolled [${die1}, ${die2}] = ${horrorHits} Horror Hits.`;
+      log.push(hitLine);
+      hitLines.push(hitLine);
+    }
+
+    await showResult(ctx, 'SPIRITS RUNNING AMOK — Result', [
+      darknessLine,
+      '',
+      ...hitLines,
+      '',
+      'A tribal ceremony erupts in chaos as vengeful spirits pour out and lash out at everyone nearby!',
+    ]);
+    ctx.toast?.(`Spirits Running Amok: Darkness +${darknessRoll}, Horror Hits applied!`);
+    return { log };
   }
+
+  // 3: Possessed Shaman — No Spirit Cleansing/Quests; Lore 6+ test for grit+XP
+  if (roll === 3) {
+    patchShopMods({ spiritCleansingDisabled: true, visionQuestsDisabled: true });
+    log.push('The Shaman is possessed by a powerful demon! Spirit Cleansing and Vision Quests are unavailable today.');
+
+    const hero = ctx.getHeroById?.(id) || {};
+    const heroLore = Number(hero?.stats?.Lore ?? hero?.Lore ?? 0);
+    if (heroLore >= 3) {
+      const lore3 = `POSSESSED SHAMAN\n${info.lore}\nThe shaman writhes and screams as the demon twists inside him. Only someone wise in the old ways can help.`;
+      const result = await ctx.doSkillCheck(id, {
+        stat: 'Lore', target: 6, returnDetails: true,
+        message: `${lore3}\nYou step forward and begin reciting ancient rites to drive out the demon...`,
+      });
+      const checkLine = formatCheckResult(result, 'Lore', 6);
+      if (checkLine) log.push(checkLine);
+      const passed = result?.passed ?? result;
+      if (passed) {
+        ctx.updateHero(id, h => {
+          const maxGrit = Number(h.maxGrit ?? h.stats?.Grit ?? 2);
+          const curGrit = Number(h.currentGrit ?? h.grit ?? 0);
+          return {
+            ...h,
+            currentGrit: Math.min(maxGrit, curGrit + 1),
+            xp: (h.xp || 0) + 25,
+          };
+        });
+        const outcome = `${hero.name || 'Hero'} drives out the demon with ancient knowledge! Recover 1 Grit, +25 XP.`;
+        log.push(outcome);
+        await showResult(ctx, 'POSSESSED SHAMAN — Result', [checkLine, '', outcome]);
+        ctx.toast?.(`${hero.name || 'Hero'} drives out the demon: +1 Grit, +25 XP.`);
+      } else {
+        const horrorRoll = d6();
+        ctx.updateHero(id, h => {
+          const curSanity = Number(h.currentSanity ?? h.sanity ?? 0);
+          const nextSanity = Math.max(0, curSanity - horrorRoll);
+          return { ...h, currentSanity: nextSanity };
+        });
+        const horrorLine = `Rolled [${horrorRoll}] for Horror Hits (D6).`;
+        log.push(horrorLine);
+        const outcome = `${hero.name || 'Hero'} fails to contain the demon and takes ${horrorRoll} Horror Hits as it lashes out.`;
+        log.push(outcome);
+        await showResult(ctx, 'POSSESSED SHAMAN — Result', [checkLine, horrorLine, '', outcome]);
+        ctx.toast?.(`${hero.name || 'Hero'} fails the Lore test: ${horrorRoll} Horror Hits.`);
+      }
+    } else {
+      const outcome = `${hero.name || 'Hero'} does not have Lore 3+ and cannot attempt to drive out the demon.`;
+      log.push(outcome);
+      await showResult(ctx, 'POSSESSED SHAMAN — Result', ['Spirit Cleansing and Vision Quests unavailable today.', '', outcome]);
+      ctx.toast?.(`${hero.name || 'Hero'} lacks Lore 3+ — cannot attempt the test.`);
+    }
+    return { log };
+  }
+
+  // 4-5: Unfriendly Welcome — +$50 prices for non-Tribal heroes
+  if (roll === 4 || roll === 5) {
+    const hero = ctx.getHeroById?.(id) || {};
+    const isTribal = hasKeyword(hero, 'Tribal');
+    let outcome;
+    if (!isTribal) {
+      const cur = loadTownState().shopMods?.[shopId] || {};
+      patchShopMods({ priceDelta: (cur.priceDelta || 0) + 50 });
+      outcome = `Tension with the local Cavalry has the tribe on edge. ${hero.name || 'Hero'} lacks the Tribal keyword — all prices here are +$50.`;
+      ctx.toast?.('Unfriendly Welcome: All prices +$50 (no Tribal keyword).');
+    } else {
+      outcome = `${hero.name || 'Hero'} has the Tribal keyword and is welcomed as one of their own. Prices are unaffected.`;
+      ctx.toast?.('Unfriendly Welcome: Tribal keyword — prices unaffected.');
+    }
+    log.push(outcome);
+    await showResult(ctx, 'UNFRIENDLY WELCOME — Result', [outcome]);
+    return { log };
+  }
+
+  // 6-8: No Event
+  if (roll >= 6 && roll <= 8) {
+    const outcome = 'The night is filled with drums, chanting, and firelight. A good time for everyone — no event.';
+    log.push(outcome);
+    await showResult(ctx, 'DRUMMING, DANCING, AND A BONFIRE — Result', [outcome]);
+    ctx.toast?.('Drumming, Dancing, and a Bonfire: No Event.');
+    return { log };
+  }
+
+  // 9-10: Trade Opportunities — sell gear for extra D6×$25 each, DS for $100/shard
+  if (roll === 9 || roll === 10) {
+    patchShopMods({ tradeOpportunities: true, dsSellPrice: 100 });
+    const outcome = 'The tribe is gearing up for war and paying top dollar! Sell Gear/Artifacts for an extra D6×$25 each. Dark Stone sells for $100/shard (this visit).';
+    log.push(outcome);
+    await showResult(ctx, 'TRADE OPPORTUNITIES — Result', [outcome]);
+    ctx.toast?.('Trade Opportunities: Extra D6×$25 per Gear/Artifact, Dark Stone $100/shard.');
+    return { log };
+  }
+
+  // 11: Animal Messenger — Spirit Armor 5+ next adventure, first KO no Injury/Madness
+  if (roll === 11) {
+    ctx.updateHero(id, h => ({
+      ...h,
+      adventureBuffs: {
+        ...(h.adventureBuffs || {}),
+        spiritArmor: '5+',
+        firstKONoInjuryMadness: true,
+        source: 'Animal Messenger (Indian Trading Post)',
+      },
+    }));
+    const outcome = 'An owl watches you with knowing eyes, and you feel the spirits guiding your path.';
+    const buff = 'Buff applied: Spirit Armor 5+ for your next Adventure. First KO will not cause Injury or Madness.';
+    log.push(outcome);
+    log.push(buff);
+    await showResult(ctx, 'ANIMAL MESSENGER — Result', [outcome, '', buff]);
+    ctx.toast?.('Animal Messenger: Spirit Armor 5+ next Adventure. First KO safe.');
+    return { log };
+  }
+
+  // 12: One With the Spirits — gain Tribal keyword, or Spirit 4+ test for +Sanity
+  if (roll === 12) {
+    const hero = ctx.getHeroById?.(id) || {};
+    const isTribal = hasKeyword(hero, 'Tribal');
+
+    if (!isTribal) {
+      ctx.addKeyword?.(id, 'Tribal');
+      const outcome = `For your deeds, the tribe offers ${hero.name || 'Hero'} full acceptance. You gain the Tribal keyword!`;
+      log.push(outcome);
+      await showResult(ctx, 'ONE WITH THE SPIRITS — Result', [outcome]);
+      ctx.toast?.(`${hero.name || 'Hero'} gains the Tribal keyword — accepted into the tribe!`);
+    } else {
+      const lore12 = `ONE WITH THE SPIRITS\n${info.lore}\nYou already belong to the tribe, so the elders offer deeper spiritual insight.`;
+      const result = await ctx.doSkillCheck(id, {
+        stat: 'Spirit', target: 4, returnDetails: true,
+        message: `${lore12}\nYou close your eyes and open your mind to the spirit world...`,
+      });
+      const checkLine = formatCheckResult(result, 'Spirit', 4);
+      if (checkLine) log.push(checkLine);
+      const passed = result?.passed ?? result;
+      if (passed) {
+        ctx.updateHero(id, h => ({
+          ...h,
+          currentSanity: (Number(h.currentSanity ?? h.sanity ?? 0)) + 1,
+          maxSanity: (h.maxSanity || h.sanity || 4) + 1,
+        }));
+        const outcome = `${hero.name || 'Hero'} communes with the spirits and gains deeper understanding. +1 Sanity!`;
+        log.push(outcome);
+        await showResult(ctx, 'ONE WITH THE SPIRITS — Result', [checkLine, '', outcome]);
+        ctx.toast?.(`${hero.name || 'Hero'} communes with spirits: +1 Sanity!`);
+      } else {
+        const outcome = `${hero.name || 'Hero'} reaches out to the spirits but cannot find the connection. No extra Sanity gained.`;
+        log.push(outcome);
+        await showResult(ctx, 'ONE WITH THE SPIRITS — Result', [checkLine, '', outcome]);
+        ctx.toast?.(`${hero.name || 'Hero'} fails the Spirit test. No Sanity gained.`);
+      }
+    }
+    return { log };
+  }
+
+  return { log };
+}
+
+// ---------- Named wrapper matching handler interface ------------------
+export async function handleIndianTradingPostEvent(ctx = {}) {
+  const roll = ctx.forcedRoll ?? roll2d6();
+  const result = await apply(roll, ctx);
   return {
-    ok: true,
-    roll: n,
-    name: ev.name,
-    lore: ev.lore,
-    effect: ev.effect,
-    log: `[IndianTradingPost ${n}] ${ev.name} — ${ev.effect}`,
+    actions: [],
+    townState: ctx.townState,
+    log: result?.log || [`Indian Trading Post Event Roll: ${roll}`],
+    eventRoll: roll,
+    eventIndex: Math.max(0, roll - 2),
   };
 }
+
+// Expose object export
+export const indianTradingPostHandler = { display, apply };

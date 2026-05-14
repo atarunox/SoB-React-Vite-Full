@@ -28,7 +28,7 @@ export default {
   4: {
     name: "Cost Increase",
     effect:
-      "There’s more work than one blacksmith can handle! All purchase prices are +$100. Cancels out ‘Forging Sale’.",
+      "There's more work than one blacksmith can handle! All purchase prices are +$100. Cancels out 'Forging Sale'.",
     log: [
       "Apply shop modifier: +$100 to all Blacksmith items.",
       "Cancels any active 'Forging Sale'.",
@@ -38,7 +38,7 @@ export default {
   5: {
     name: "Cost Increase",
     effect:
-      "There’s more work than one blacksmith can handle! All purchase prices are +$100. Cancels out ‘Forging Sale’.",
+      "There's more work than one blacksmith can handle! All purchase prices are +$100. Cancels out 'Forging Sale'.",
     log: [
       "Same as roll 4: price increase.",
     ],
@@ -65,7 +65,7 @@ export default {
   9: {
     name: "Forging Sale!",
     effect:
-      "Business is slow, since the creatures attacked the other night. All purchase prices are reduced by –$50 (to a minimum of $10). Cancels out ‘Cost Increase’.",
+      "Business is slow, since the creatures attacked the other night. All purchase prices are reduced by –$50 (to a minimum of $10). Cancels out 'Cost Increase'.",
     log: [
       "Apply shop modifier: –$50 to all Blacksmith items (min $10).",
       "Cancels any active 'Cost Increase'.",
@@ -75,7 +75,7 @@ export default {
   10: {
     name: "Forging Sale!",
     effect:
-      "Business is slow, since the creatures attacked the other night. All purchase prices are reduced by –$50 (to a minimum of $10). Cancels out ‘Cost Increase’.",
+      "Business is slow, since the creatures attacked the other night. All purchase prices are reduced by –$50 (to a minimum of $10). Cancels out 'Cost Increase'.",
     log: [
       "Same as roll 9: sale active.",
     ],
@@ -94,7 +94,7 @@ export default {
   12: {
     name: "Unique Forging",
     effect:
-      "Recognizing your virtue as a hunter, the blacksmith pulls out an old looking piece of parchment from a chest. He tells you that it has been waiting for the ‘Chosen’ Hero to come through town and he believes you to be that one. The ancient runic depiction on the parchment is unique and powerful, but also dangerous. If you are willing, he will forge it onto one of your items for free, changing one of your items with an empty Upgrade Slot. That Upgrade Slot is filled and the item now has the following: Free Attack – Once per Adventure, do D6 Damage to every adjacent Enemy, ignoring Defense.",
+      "Recognizing your virtue as a hunter, the blacksmith pulls out an old looking piece of parchment from a chest. He tells you that it has been waiting for the 'Chosen' Hero to come through town and he believes you to be that one. The ancient runic depiction on the parchment is unique and powerful, but also dangerous. If you are willing, he will forge it onto one of your items for free, changing one of your items with an empty Upgrade Slot. That Upgrade Slot is filled and the item now has the following: Free Attack – Once per Adventure, do D6 Damage to every adjacent Enemy, ignoring Defense.",
     log: [
       "Choose one item you own that has an empty Upgrade Slot.",
       "Slot is filled with: Free Attack (Once per Adventure → D6 Damage to all adjacent Enemies, ignoring Defense).",

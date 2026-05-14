@@ -9,7 +9,7 @@ export function getShopModsSafe(shopId) {
 /**
  * Compute final gold price with shop modifiers.
  * - priceDelta is applied directly (+100 for Cost Increase, -50 for Sale)
- * - When priceDelta < 0 (a sale), enforce min $10 (per event text)
+ * - When priceDelta < 0 (a sale), enforce min $25 (per Street Market event #9)
  */
 export function priceGoldWithMods(item, shopId) {
   const baseGold =
@@ -20,9 +20,9 @@ export function priceGoldWithMods(item, shopId) {
   const mods = getShopModsSafe(shopId);
   let price = baseGold + (mods.priceDelta || 0);
 
-  // Enforce sale minimum only when the delta is negative
+  // Enforce sale minimum only when the delta is negative (minimum $25 per event text)
   if ((mods.priceDelta || 0) < 0) {
-    price = Math.max(10, price);
+    price = Math.max(25, price);
   }
 
   return Math.max(0, Math.floor(price));

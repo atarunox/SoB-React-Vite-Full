@@ -394,7 +394,6 @@ export async function performTreatCorruption({ hero, io }) {
       gold: nextGold,
       currentCorruption: nextCor,
       currentHealth: nextHealth,
-      health: nextHealth, // keep both in sync
     },
   ];
 
@@ -471,10 +470,10 @@ export async function performInjectionPurchase({ hero, item, townState, io = {} 
         patch.maxHealth = maxHealth;
         note(`${name} — Max Health +${amt}.`);
       }
-      // +1 Corruption (Hit)
+      // +N Corruption (injection side effect — direct, no Willpower save)
       if (/\+?\d+\s*corruption/.test(s)) {
         const amt = parseInt(s, 10) || 1;
-        patch.corruption = safeNumber(hero?.corruption, 0) + amt;
+        patch.currentCorruption = safeNumber(hero?.currentCorruption ?? hero?.corruption, 0) + amt;
         note(`${name} — +${amt} Corruption.`);
       }
     }

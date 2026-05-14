@@ -1,10 +1,61 @@
 // src/utils/locationHandlers/gamblingHallServices.js
 // Executors for Gambling Hall services (Entertainment + Cashier + Specials)
-// Keep prompts for dice/choices; no autoroll unless user leaves blank.
+// Player-controlled rolls use pre-filled auto-roll; uncontrollable rolls auto-roll directly.
 
 import { loadTownState, saveTownState } from '../townState.js';
 
 import { d6 as D6 } from '../../utils/diceHelpers';
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
+
+// ---------- world artifact helpers (for High Stakes Bet event 12) ----------
+const randFrom = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
+
+/** Format an artifact's stats/rules into readable text for display prompts. */
+function formatArtifactDetails(artifact) {
+  const lines = [];
+  if (artifact.effects && typeof artifact.effects === 'object') {
+    const stats = Object.entries(artifact.effects)
+      .map(([k, v]) => `${k}: ${v > 0 ? '+' : ''}${v}`)
+      .join(', ');
+    if (stats) lines.push(`Stats: ${stats}`);
+  }
+  if (artifact.range != null) lines.push(`Range: ${artifact.range}`);
+  if (artifact.shots != null) lines.push(`Shots: ${artifact.shots}`);
+  if (Array.isArray(artifact.rules) && artifact.rules.length) {
+    lines.push(...artifact.rules);
+  }
+  if (artifact.weight != null) lines.push(`Weight: ${artifact.weight}`);
+  if (artifact.darkStone) lines.push('Contains Dark Stone');
+  if (artifact.upgradeSlots) lines.push(`Upgrade Slots: ${artifact.upgradeSlots}`);
+  return lines.join('\n');
+}
+
+function normalizeWorldArtifacts(db) {
+  if (!db) return {};
+  if (db && typeof db === 'object' && !Array.isArray(db)) {
+    const out = {}; for (const [k, v] of Object.entries(db)) { if (Array.isArray(v)) out[k] = v; } return out;
+  }
+  if (Array.isArray(db)) {
+    const out = {};
+    for (const it of db) {
+      const w = it?.tags?.find(t => /Jargono|Targa|Cynder|Trederra|Derelict Ship|Blasted Wastes|The Canyons/i.test(t))
+             || it?.world || it?.originWorld || 'Unknown';
+      const world =
+        /jargono/i.test(w) ? 'Jargono' :
+        /targa/i.test(w) ? 'Targa Plateau' :
+        /cynder/i.test(w) ? 'Caverns of Cynder' :
+        /trederra/i.test(w) ? 'Trederra' :
+        /derelict/i.test(w) ? 'Derelict Ship' :
+        /wastes/i.test(w) ? 'Blasted Wastes' :
+        /canyon/i.test(w) ? 'The Canyons' : w;
+      if (!out[world]) out[world] = [];
+      out[world].push(it);
+    }
+    return out;
+  }
+  return {};
+}
+const WORLD_ARTS = normalizeWorldArtifacts(otherWorldArtifacts);
 
 // ----- context helpers (mirror Saloon style) -----
 const getActiveHero = (ctx = {}) => {
@@ -49,10 +100,12 @@ const addUA = (ctx, heroId, n = 1) =>
   ctx.addCondition?.(heroId, { type: 'UnwantedAttention', delta: +n });
 
 // Saloon Event (12) doubles gambling winnings this visit
-function applyGamblingMultiplier(amount) {
+function getGamblingMultiplier() {
   const s = loadTownState() || {};
-  const dbl = s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
-  return amount * dbl;
+  return s?.saloonVisitFlags?.doubleGambling ? 2 : 1;
+}
+function applyGamblingMultiplier(amount) {
+  return amount * getGamblingMultiplier();
 }
 
 /**
@@ -78,6 +131,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
 
   // ---------- Five Card Draw Poker ----------
   if (serviceId === 'gh_five_card_draw_poker') {
+    const mult = getGamblingMultiplier();
+    if (mult > 1) log.push('Hero of the People — Gambling winnings doubled!');
     const baseCost = 50;
     if (!canAffordGold(hero, baseCost)) {
       toast?.('Not enough gold.');
@@ -110,7 +165,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       }));
     } else if (ctx.doSkillCheck) {
       // fallback: simple Cunning 5+ test
-      success = !!(await ctx.doSkillCheck(id, { stat: 'Cunning', target: 5, prompt: true }));
+      const result = await ctx.doSkillCheck(id, { stat: 'Cunning', target: 5, returnDetails: true, message: 'Poker — Fallback Cunning test' });
+      success = !!(result?.passed ?? result);
     }
 
     if (!success) {
@@ -120,24 +176,66 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     }
 
     // Winnings: D6×$25 + 2×Extra Bet, then multiplied by Saloon(12) if active
-    const die =
-      (await ctx.promptNumber?.('Poker payout roll (D6) [leave blank to auto-roll]', 'die')) ??
-      D6();
+    const die = D6();
+    toast?.(`Poker payout roll: [${die}]`);
 
-    let payout = die * 25 + (extra ? extra * 2 : 0);
-    payout = applyGamblingMultiplier(payout);
+    const basePayout = die * 25 + (extra ? extra * 2 : 0);
+    const payout = basePayout * mult;
 
     addGold(ctx, id, payout);
-    toast?.(`Poker win: +$${payout}.`);
-    log.push(`Poker payout: D6(${die})×25 + 2×$${extra} => $${payout}.`);
+    if (mult > 1) {
+      toast?.(`Poker win: +$${payout} (doubled from $${basePayout}).`);
+      log.push(`Poker payout: D6(${die})×25 + 2×$${extra} = $${basePayout} × ${mult} => $${payout}.`);
+    } else {
+      toast?.(`Poker win: +$${payout}.`);
+      log.push(`Poker payout: D6(${die})×25 + 2×$${extra} => $${payout}.`);
+    }
 
-    // Optional: bonus World+Artifact if some external flag is set
+    // High Stakes Bet (event 12): first Poker win draws a World card then an Artifact from that World
     const state = loadTownState() || {};
-    if (state.gamblingHallFlags?.firstPokerWinAwardsArtifact && ctx.drawWorldThenArtifact) {
-      await ctx.drawWorldThenArtifact(id);
-      toast?.('Bonus: Draw a World, then an Artifact (event bonus).');
-      log.push('Awarded bonus World+Artifact (event 12).');
+    if (state.gamblingHallFlags?.firstPokerWinAwardsArtifact) {
+      const worlds = Object.keys(WORLD_ARTS).filter(w => WORLD_ARTS[w]?.length);
+      if (worlds.length) {
+        // Randomly draw a World card
+        const chosenWorld = randFrom(worlds);
+        const pool = WORLD_ARTS[chosenWorld] || [];
+        const artifact = randFrom(pool);
 
+        if (artifact) {
+          const artName = artifact.name || artifact.title || artifact.id || 'Artifact';
+          // Add artifact to hero inventory
+          const artItem = {
+            ...artifact,
+            id: artifact.id || `art_${Date.now()}`,
+            name: artName,
+            slot: artifact.slot || 'Misc',
+            type: artifact.type || 'Artifact',
+            originWorld: chosenWorld,
+            source: 'High Stakes Bet',
+          };
+          ctx.updateHero?.(id, (h) => {
+            const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
+            inv.push(artItem);
+            return { ...h, inventory: inv };
+          });
+          const details = formatArtifactDetails(artifact);
+          toast?.(`High Stakes Bet: Drew ${artName} from ${chosenWorld}!`);
+          log.push(`High Stakes Bet: Drew ${chosenWorld} Artifact — ${artName}.`);
+
+          await ctx.promptChoice?.(
+            `HIGH STAKES BET — ARTIFACT DRAWN!\n\nWorld: ${chosenWorld}\nArtifact: ${artName}\n\n${details}`,
+            [{ label: 'Continue' }]
+          );
+        } else {
+          toast?.(`High Stakes Bet: No artifacts available for ${chosenWorld}.`);
+          log.push(`High Stakes Bet: No artifacts found for ${chosenWorld}.`);
+        }
+      } else {
+        toast?.('High Stakes Bet: No world artifact data available.');
+        log.push('High Stakes Bet: No world artifact data available.');
+      }
+
+      // Clear the flag so it only applies to the first win
       saveTownState({
         ...state,
         gamblingHallFlags: {
@@ -169,17 +267,24 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
       );
       successes = Math.max(0, Number(n || 0));
     } else if (ctx.doSkillCheck) {
-      const ok = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5, prompt: true });
-      successes = ok ? 1 : 0;
+      const result = await ctx.doSkillCheck(id, { stat: 'Luck', target: 5, returnDetails: true, message: 'Dice Games — Fallback Luck test' });
+      successes = (result?.passed ?? result) ? 1 : 0;
     }
 
-    let payout = successes * 100;
-    payout = applyGamblingMultiplier(payout);
+    const mult = getGamblingMultiplier();
+    if (mult > 1 && log.length === 1) log.push('Hero of the People — Gambling winnings doubled!');
+    const basePay = successes * 100;
+    const payout = basePay * mult;
 
     if (payout > 0) {
       addGold(ctx, id, payout);
-      toast?.(`Craps: +$${payout}.`);
-      log.push(`Craps: ${successes} successes, payout $${payout}.`);
+      if (mult > 1) {
+        toast?.(`Craps: +$${payout} (doubled from $${basePay}).`);
+        log.push(`Craps: ${successes} successes, payout $${basePay} × ${mult} = $${payout}.`);
+      } else {
+        toast?.(`Craps: +$${payout}.`);
+        log.push(`Craps: ${successes} successes, payout $${payout}.`);
+      }
     } else {
       toast?.('Craps: no winnings.');
       log.push('Craps: no payout.');
@@ -207,11 +312,8 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     if (jackpot) {
       const here = ctx.getHeroesAtShop?.('gamblingHall') || [id];
       const others = here.filter((hid) => hid !== id);
-      const die =
-        (await ctx.promptNumber?.(
-          'Jackpot payout roll for others (D6) [leave blank to auto-roll]',
-          'die',
-        )) ?? D6();
+      const die = D6();
+      toast?.(`Jackpot payout roll: [${die}]`);
       const gift = die * 25;
 
       for (const hid of others) addGold(ctx, hid, gift);
@@ -260,11 +362,13 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
 
     if (!passed) {
       // Arrested at dawn — Lore 4+ to escape and flee Town (end visit), +20 XP, become Wanted
-      const escaped = !!(await ctx.doSkillCheck?.(id, {
+      const escapeResult = await ctx.doSkillCheck?.(id, {
         stat: 'Lore',
         target: 4,
-        prompt: true,
-      }));
+        returnDetails: true,
+        message: 'Rob the Cashier — Arrested!\nYou attempt to talk your way out of jail.',
+      });
+      const escaped = !!(escapeResult?.passed ?? escapeResult);
 
       addXP(ctx, id, 20);
       ctx.updateHero?.(id, (h) => ({
@@ -296,11 +400,7 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     );
 
     for (let i = 0; i < sixes; i++) {
-      const die =
-        (await ctx.promptNumber?.(
-          'Payout roll (D6) for each 6 [leave blank to auto-roll]',
-          'die',
-        )) ?? D6();
+      const die = D6();
       const payout = die * 100;
       addGold(ctx, id, payout);
       addUA(ctx, id, 1);
@@ -308,14 +408,10 @@ export async function performGamblingHallService(serviceId, params = {}, ctx = {
     }
 
     for (let i = 0; i < ones; i++) {
-      const hits =
-        (await ctx.promptNumber?.(
-          'Shootout Hits (D6) for each 1 [leave blank to auto-roll]',
-          'die',
-        )) ?? D6();
+      const hits = D6();
       ctx.updateHero?.(id, (h) => ({
         ...h,
-        wounds: (h.wounds || 0) + hits,
+        currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - hits),
       }));
       log.push(`Robbery: 1 → D6(${hits}) Hits.`);
     }
@@ -394,7 +490,7 @@ export async function performGamblingHallHighStakes(ctx = {}) {
   const state = loadTownState() || {};
   const flags = { ...(state.gamblingHallFlags || {}) };
 
-  flags.highStakesActive = true;
+  flags.firstPokerWinAwardsArtifact = true;
 
   saveTownState({
     ...state,

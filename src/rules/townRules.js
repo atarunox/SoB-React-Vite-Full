@@ -49,7 +49,7 @@ export function drawDailyEvent(td) {
 }
 
 // Visit a shop; enforces one shop per day per posse and triggers first-visit event
-export function visitShop(td, shopName, willpowerRoll = () => Math.ceil(Math.random()*6)) {
+export function visitShop(td, shopName, willpowerRoll = () => Math.floor(Math.random()*6) + 1) {
   const firstVisit = td.visited.size === 0;
   if (td.visited.has(shopName)) {
     return { ok: false, reason: 'Already visited this shop today.' };

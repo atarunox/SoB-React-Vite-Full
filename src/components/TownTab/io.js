@@ -7,15 +7,28 @@ export const promptNumber = async (label, { min = 0, max = 9999, step = 1, initi
   return Math.max(min, Math.min(max, Math.round(v / step) * step));
 };
 
+// Roll mode helper: reads from localStorage
+function getRollMode() {
+  try { return localStorage.getItem('sob_rollMode') || null; } catch { return null; }
+}
+
 export const promptRoll = async (n, sides, label) => {
-  const choice = window.prompt(`${label || 'Roll'}: Enter ${n}d${sides} (comma-separated) or leave blank for auto-roll`);
-  if (!choice) return Array.from({ length: n }, () => Math.floor(Math.random() * sides) + 1);
+  const auto = () => Array.from({ length: n }, () => Math.floor(Math.random() * sides) + 1);
+  const mode = getRollMode();
+  if (mode === 'auto') return auto();
+
+  // Manual or unset: prompt for input
+  const choice = window.prompt(
+    `${label || 'Roll'}:\n\nRoll ${n}d${sides} with your dice.\nEnter ${n} value${n > 1 ? 's' : ''} (1–${sides}, comma-separated):`,
+    ''
+  );
+  if (!choice) return auto();
   const parts = choice
     .split(',')
     .map((s) => Number(s.trim()))
     .filter((x) => Number.isFinite(x) && x >= 1 && x <= sides);
   if (parts.length === n) return parts;
-  return Array.from({ length: n }, () => Math.floor(Math.random() * sides) + 1);
+  return auto();
 };
 
 export const promptPay = async (_hero, amount, label = 'Pay') => {

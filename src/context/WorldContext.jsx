@@ -4,18 +4,31 @@ import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const WorldContext = createContext();
 
+const STORAGE_KEY = 'sob_world';
+const DEFAULT_WORLD = 'City of the Ancients';
+
+function loadSavedWorld() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || DEFAULT_WORLD;
+  } catch {
+    return DEFAULT_WORLD;
+  }
+}
+
 export function WorldProvider({ children }) {
-  const [world, setWorld] = useState('City of the Ancients');
+  const [world, setWorld] = useState(loadSavedWorld);
   const skipNextWrite = useRef(false);
+  const worldRef_ = useRef(world);
+  worldRef_.current = world;
 
   // Firestore listener
   useEffect(() => {
     if (!db?.localMode) {
-      const worldRef = doc(db, 'shared', 'world');
-      return onSnapshot(worldRef, (snap) => {
+      const worldDocRef = doc(db, 'shared', 'world');
+      return onSnapshot(worldDocRef, (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          if (data?.name && data.name !== world) {
+          if (data?.name && data.name !== worldRef_.current) {
             skipNextWrite.current = true;
             setWorld(data.name);
           }
@@ -24,8 +37,12 @@ export function WorldProvider({ children }) {
     }
   }, []);
 
-  // Save to Firestore when world changes
+  // Save to localStorage + Firestore when world changes
   useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, world);
+    } catch { /* quota or private mode */ }
+
     if (!db?.localMode && !skipNextWrite.current) {
       const worldRef = doc(db, 'shared', 'world');
       setDoc(worldRef, { name: world }).catch((e) =>

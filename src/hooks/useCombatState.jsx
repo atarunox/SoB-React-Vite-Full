@@ -6,7 +6,12 @@ const CombatContext = createContext();
 const LS_KEY = "sob_combat_state_v4";
 
 function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
+  const a = [...array];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 export function CombatProvider({ children }) {
@@ -29,10 +34,15 @@ export function CombatProvider({ children }) {
     } catch { return shuffle([...GROWING_DREAD_CARDS]); }
   });
   const [growingDreadHand, setGrowingDreadHand] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadHand : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadHand ?? [] : []; } catch { return []; }
   });
   const [growingDreadActive, setGrowingDreadActive] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadActive : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDreadActive ?? [] : []; } catch { return []; }
+  });
+
+  // --- DM Hand (persistent card tray) ---
+  const [dmHand, setDmHand] = useState(() => {
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).dmHand ?? [] : []; } catch { return []; }
   });
 
   // --- Darkness persistent state ---
@@ -43,10 +53,10 @@ export function CombatProvider({ children }) {
     } catch { return shuffle([...DARKNESS_CARDS]); }
   });
   const [darknessHeld, setDarknessHeld] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessHeld : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessHeld ?? [] : []; } catch { return []; }
   });
   const [darknessActive, setDarknessActive] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessActive : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darknessActive ?? [] : []; } catch { return []; }
   });
 
   // --- Persist all relevant state ---
@@ -62,14 +72,25 @@ export function CombatProvider({ children }) {
         growingDreadActive,
         darknessDeck,
         darknessHeld,
-        darknessActive
+        darknessActive,
+        dmHand,
       })
     );
   }, [
     combatGroups, darkness, growingDread,
     growingDreadDeck, growingDreadHand, growingDreadActive,
-    darknessDeck, darknessHeld, darknessActive
+    darknessDeck, darknessHeld, darknessActive, dmHand
   ]);
+
+  // --- DM Hand utilities ---
+  const addToHand = (card) => setDmHand((prev) => [
+    ...prev, { ...card, _handId: Date.now().toString() + Math.random().toString(36).slice(2, 6) }
+  ]);
+  const removeFromHand = (handId) => setDmHand((prev) => prev.filter((c) => c._handId !== handId));
+  const updateHandCard = (handId, updates) => setDmHand((prev) =>
+    prev.map((c) => c._handId === handId ? { ...c, ...updates } : c)
+  );
+  const clearHand = () => setDmHand([]);
 
   // --- Utilities for groups, modifiers, etc. (as before) ---
   const addGroup = (group) => setCombatGroups((prev) => [
@@ -91,6 +112,8 @@ export function CombatProvider({ children }) {
       darknessDeck, setDarknessDeck,
       darknessHeld, setDarknessHeld,
       darknessActive, setDarknessActive,
+      // DM Hand
+      dmHand, setDmHand, addToHand, removeFromHand, updateHandCard, clearHand,
     }}>
       {children}
     </CombatContext.Provider>

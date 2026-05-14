@@ -1,6 +1,7 @@
 // src/utils/sanitizeHero.js
 import getLevelingChart from '../data/getLevelingChart';
 import { gearCards } from '../data/items/gearCards';
+import churchBlessedAuras from '../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
 // small helpers
 const isEmptySlot = (x) =>
@@ -62,7 +63,8 @@ export function sanitizeHero(inputHero) {
     fixedGear = { ...hero.gear };
   }
 
-  // Fill missing slots with explicit Empty Slot placeholders
+  // Fill missing standard slots with explicit Empty Slot placeholders
+  // BUT also preserve any extra slots (Blessed Aura, Necklace, Ring, Belt, etc.)
   const gear = {};
   for (const slot of standardSlots) {
     const item = fixedGear[slot];
@@ -74,6 +76,40 @@ export function sanitizeHero(inputHero) {
           slot,
         };
   }
+  // Preserve non-standard slots that have real items (e.g. Blessed Aura, Ring, Belt, etc.)
+  for (const [slot, item] of Object.entries(fixedGear)) {
+    if (standardSlots.includes(slot)) continue; // already handled
+    if (item && item.id && !isEmptySlot(item)) {
+      gear[slot] = { ...item, slot };
+    }
+  }
+
+  // ---- Fix stale Blessed Aura data: ensure mods/name match the canonical aura definition ----
+  const isAuraItem = (it) =>
+    it && !isEmptySlot(it) && (
+      String(it.id || '').startsWith('church_aura_') ||
+      (Array.isArray(it.tags) && it.tags.includes('Blessed Aura') && it.name !== 'Empty Slot')
+    );
+
+  const fixAura = (item) => {
+    if (!item) return item;
+    const auraList = Array.isArray(churchBlessedAuras) ? churchBlessedAuras : [];
+    // Match by id first, then by name substring
+    const canonical = auraList.find(a => a.id === item.id) ||
+      auraList.find(a => item.name && item.name.includes(a.name.replace(/\s*\(.*\)$/, '')));
+    if (canonical) {
+      item.mods = canonical.mods ? { ...canonical.mods } : {};
+      item.description = canonical.effect || '';
+      item.effect = canonical.effect || '';
+      item.name = canonical.name.replace(/\s*\(.*\)$/, '');
+      item.slot = 'Blessed Aura';
+      delete item.effects;
+    }
+    return item;
+  };
+
+  const auraInGear = gear['Blessed Aura'];
+  if (isAuraItem(auraInGear)) fixAura(auraInGear);
 
   // ---------------- Inventory normalization ----------------
   let inventory = [];
@@ -81,6 +117,13 @@ export function sanitizeHero(inputHero) {
     inventory = hero.inventory.filter(i => i && typeof i === 'object');
   } else if (hero.inventory && typeof hero.inventory === 'object') {
     inventory = Object.values(hero.inventory).filter(i => i && typeof i === 'object');
+  }
+
+  // Fix stale aura items in inventory too
+  for (let i = 0; i < inventory.length; i++) {
+    if (isAuraItem(inventory[i])) {
+      inventory[i] = fixAura({ ...inventory[i] });
+    }
   }
 
   // ---------------- Starting items (one-time auto-equip) ----------------
@@ -170,6 +213,12 @@ export function sanitizeHero(inputHero) {
     maxCorruption,
     currentCorruption,
     corruption: currentCorruption,
+
+    gold: hero.gold ?? 0,
+    darkStone: hero.darkStone ?? 0,
+    scrap: hero.scrap ?? 0,
+    tech: hero.tech ?? 0,
+    xp: hero.xp ?? 0,
 
     grit: hero.currentGrit ?? 0,
     heroClass: (hero.heroClass ?? 'Unknown').replace(/\s+/g, ''),

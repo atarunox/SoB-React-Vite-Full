@@ -75,8 +75,9 @@ export default [
     limit: 'oncePerVisit',
     rules: {
       text: [
-        'Make an Agility test (roll dice equal to your Agility).',
-        'For each 4 or 5: gain $10. If any die is a 6: draw one Gear card to your inventory.',
+        'Take D3 Corruption Hits.',
+        'Make an Agility 4+ test (roll dice equal to your Agility).',
+        'For each 4 or 5: gain $10. For each 6: draw a Gear card.',
       ],
     },
   },

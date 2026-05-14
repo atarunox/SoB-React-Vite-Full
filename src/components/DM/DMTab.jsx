@@ -12,6 +12,10 @@ import TownPhaseTab from './TownPhaseTab';
 import DMLootPoolPanel from './DMLootPoolPanel';
 import DMTradePanel from './DMTradePanel';
 import DMItemGenerator from './DMItemGenerator';
+import DMHandPanel from './DMHandPanel';
+import DMScanCards from './DMScanCards';
+import DMTurnTracker from './DMTurnTracker';
+import DMAdventureTracker from './DMAdventureTracker';
 
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
@@ -114,6 +118,8 @@ function OptionsPanel({
 // ---------------------------- Tabs list ------------------------------------
 const TABS = [
   { id: 'players',      label: 'Players',          component: PlayersWithConditions },
+  { id: 'adventure',    label: 'Adventure',        component: DMAdventureTracker },
+  { id: 'initiative',   label: 'Initiative',       component: DMTurnTracker },
   { id: 'enemies',      label: 'Enemies',          component: DMEnemyPanel },
   { id: 'darkness',     label: 'Darkness',         component: DMDarknessDrawer },
   { id: 'growingDread', label: 'Growing Dread',    component: DMGrowingDreadDrawer },
@@ -124,6 +130,7 @@ const TABS = [
   { id: 'itemGen',      label: 'Item Generator',   component: DMItemGenerator },
   { id: 'charts',       label: 'Charts',           component: DMChartPanel },
   { id: 'townPhase',    label: 'Town Phase',       component: TownPhaseTab },
+  { id: 'scan',         label: 'Scan Cards',       component: DMScanCards },
   { id: 'options',      label: 'Options',          component: OptionsPanel },
 ];
 
@@ -313,6 +320,9 @@ export default function DMTab({ showEndOfDayButton = false }) {
           );
         })()}
       </div>
+
+      {/* DM Hand - always visible when cards are held */}
+      <DMHandPanel globalModifiers={getActiveModifiers(combat)?.list || []} />
 
       {/* Tabs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 justify-center mb-4 border-b pb-2">

@@ -282,8 +282,7 @@ export async function performMqProphet({ hero, ui }) {
       const nextSan = Math.max(0, curSan - totalSanityDmg);
       actions.push({
         type: 'update',
-        sanity: { ...(hero?.sanity || {}), current: nextSan, max: hero?.sanity?.max ?? hero?.maxSanity ?? 0 },
-        currentSanity: nextSan, // keep both in sync
+        currentSanity: nextSan,
       });
       note(`Took ${totalSanityDmg} Sanity Damage.`);
     } else {

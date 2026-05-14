@@ -288,29 +288,29 @@ export async function performBackAlleyDoc({ hero, posseApi, ui }) {
   };
 
   if (r === 1) {
-    log.push('<b>Dead!</b> Your hero dies on the table.');
-    ui?.notify?.('Back-Alley Doc: Catastrophic failure — the hero has died.');
+    log.push('<b>Dead!</b> Your Hero dies on the table during the attempt.');
+    ui?.notify?.('Back-Alley Doc: Dead! Your Hero dies on the table during the attempt.');
     const patch = { dead: true, currentHealth: 0, health: { ...(hero.health || {}), current: 0 } };
     return { log, actions: [{ type: 'update', ...patch }], ui: { title: 'Back-Alley Doc', outcome: log } };
   }
   if (r === 2 || r === 3) {
     decMaxHealth();
-    ui?.notify?.('Back-Alley Doc: Failure — -1 Max Health (permanent).');
-    log.push('Failed — Injury/Mutation is not healed. <b>−1 Max Health</b> permanently.');
+    ui?.notify?.('Back-Alley Doc: Failed \u2014 The Injury/Mutation is not Healed, and you come away a bit butchered. Lose 1 Health permanently.');
+    log.push('<b>Failed!</b> The Injury/Mutation is not Healed, and you come away a bit butchered. <b>Lose 1 Health permanently.</b>');
     return { log, actions: [], ui: { title: 'Back-Alley Doc', outcome: log } };
   }
   if (r === 4) {
     const removed = removePickedCondition();
     decMaxHealth();
-    if (removed) ui?.notify?.('Surgery success — condition removed.');
-    else ui?.notify?.('Surgery partial — no condition found to remove, -1 Max Health.');
-    log.push('Success… sort of — Condition healed, but <b>−1 Max Health</b> permanently.');
+    if (removed) ui?.notify?.('Back-Alley Doc: Success\u2026 Sort Of \u2014 The Injury/Mutation is Healed, but it is a sloppy job. Lose 1 Health permanently.');
+    else ui?.notify?.('Back-Alley Doc: Success\u2026 Sort Of \u2014 no condition found to remove. Lose 1 Health permanently.');
+    log.push('<b>Success\u2026 Sort Of</b> \u2014 The Injury/Mutation is Healed, but it is a sloppy job. <b>Lose 1 Health permanently.</b>');
     return { log, actions: [], ui: { title: 'Back-Alley Doc', outcome: log } };
   }
   const removed = removePickedCondition();
-  if (removed) ui?.notify?.('Surgery success — condition removed.');
-  else ui?.notify?.('Surgery completed — no condition found to remove.');
-  log.push('Well done! Condition healed with no negative effects.');
+  if (removed) ui?.notify?.('Back-Alley Doc: Well Done! The Injury/Mutation is Healed, with no negative effects.');
+  else ui?.notify?.('Back-Alley Doc: Well Done! No condition found to remove.');
+  log.push('<b>Well Done!</b> The Injury/Mutation is Healed, with no negative effects.');
   return { log, actions: [], ui: { title: 'Back-Alley Doc', outcome: log } };
 }
 
@@ -320,6 +320,10 @@ export async function performBuyRoundOfShots({ hero, posseApi, ui }) {
   if (!id) {
     return { actions: [], ui: { title: 'Buy a Round of Shots', outcome: ['No active hero.'] } };
   }
+
+  // Cost: D6×$5
+  const costRoll = d6();
+  const cost = costRoll * 5;
 
   const wounds = rollD3();
 
@@ -331,22 +335,27 @@ export async function performBuyRoundOfShots({ hero, posseApi, ui }) {
   const maxHP = Number(hero?.health?.max ?? hero?.maxHealth ?? curHP);
   const nextHP = Math.max(0, curHP - wounds);
 
+  const curGold = num(hero?.gold, 0);
+  const nextGold = Math.max(0, curGold - cost);
+
   const actions = [{
     type: 'update',
-    grit: nextGrit,                                // current/usable grit
+    gold: nextGold,
+    currentGrit: nextGrit,
     currentHealth: nextHP,
-    health: { ...(hero?.health || {}), current: nextHP, max: maxHP },
   }];
 
-  ui?.notify?.(`Shots taken: +1 Grit (now ${nextGrit}/${maxGrit}); took ${wounds} Wounds (ignores Defense).`);
+  ui?.notify?.(`Buy a Round of Shots: You buy a round of Brimstone Sunrise shots for the rowdy group of bandits. With a roaring cheer, you toss one back and feel the burn. Paid $${cost} (D6=${costRoll} \u00D7 $5). Recover 1 Grit (now ${nextGrit}/${maxGrit}). Took ${wounds} Wounds, ignoring Defense.`);
 
   return {
     actions,
     ui: {
       title: 'Buy a Round of Shots',
       outcome: [
-        `Recovered <b>+1 Grit</b> (now ${nextGrit}/${maxGrit}).`,
-        `Took <b>${wounds}</b> Wounds (ignores Defense).`,
+        'You buy a round of <i>Brimstone Sunrise</i> shots for the rowdy group of bandits. With a roaring cheer, you toss one back and feel the burn.',
+        `Paid <b>$${cost}</b> (D6=${costRoll} \u00D7 $5).`,
+        `Recover <b>1 Grit</b> (now ${nextGrit}/${maxGrit}).`,
+        `Took <b>${wounds} Wounds</b>, ignoring Defense.`,
       ],
     },
   };
@@ -371,7 +380,7 @@ export async function performDownDarkRoad({ hero, posseApi, ui }) {
     permanent: true,
     active: true,
     effects: { Luck: 1 },
-    note: 'Gained at Smuggler’s Den. Also grants the Outlaw keyword.',
+    note: "Gained at Smuggler's Den. Also grants the Outlaw keyword.",
     addedAt: Date.now(),
   };
 
@@ -383,13 +392,17 @@ export async function performDownDarkRoad({ hero, posseApi, ui }) {
 
   return {
     actions,
-    ui: { title: 'Down a Dark Road', outcome: ['+1 Luck (permanent) added as a condition.', 'Keyword granted: Outlaw.'] },
+    ui: { title: 'Down a Dark Road', outcome: [
+      '\u201CWelcome to the club!\u201D',
+      'Gain <b>+1 Luck</b> and the Keyword <b>Outlaw</b>.',
+      'Any time you visit the Church (or Church Tent), you must roll a D6. On a 1 or 2, you have second thoughts about these bad influences, losing this bonus.',
+    ] },
   };
 }
 
 /* ------------------------- NEW: Outlaw Actions -------------------------- */
 
-// Bank Heist — Agility 5+ test, 1’s cause D6 Hits (defendable), payout = successes × Luck × $50.
+// Bank Heist — Agility 5+ test, 1's cause D6 Hits (defendable), payout = successes × Luck × $50.
 // If 0 successes: arrested; simple escape test (Agility 4+) → +25 XP & end stay; else mark “Awaiting Hanging”.
 export async function performBankHeist({ hero, posseApi, ui }) {
   const log = [];
@@ -400,21 +413,20 @@ export async function performBankHeist({ hero, posseApi, ui }) {
   let consumedExplosive = false;
   if (heroHasExplosive(hero)) {
     const use = await (ui?.promptYesNo
-      ? ui.promptYesNo({ message: 'Use an Explosive for +3 Cunning on the heist setup roll?', defaultValue: true })
+      ? ui.promptYesNo({ message: 'JOIN A BANK HEIST\n\nMake a Cunning 5+ test to rob the Town\u2019s bank with a local group of Outlaws.\n\nYou have an Explosive \u2014 you may discard it to gain +3 Cunning for this roll (limit 1).\n\nUse the Explosive?', defaultValue: true })
       : Promise.resolve(true));
     if (use) { bonus += 3; consumedExplosive = true; }
   }
 
-  const baseAgi = clamp(getStat(hero, 'Agility'), 0, 6);
-  const diceCount = clamp(baseAgi, 0, 6);
+  const baseCun = clamp(getStat(hero, 'Cunning'), 0, 6);
+  const diceCount = clamp(baseCun + bonus, 1, 12);
 
-  // Prompted initial skill test
-  const dice = (await ui?.roll?.(diceCount, 6, 'Bank Heist — Agility 5+ test')) || rollND(diceCount, 6);
+  const dice = (await ui?.roll?.(diceCount, 6, `Bank Heist \u2014 Cunning 5+ test${bonus ? ` (+${bonus} from Explosive)` : ''}`)) || rollND(diceCount, 6);
 
   const successes = dice.filter((v) => v >= 5).length;
   const ones = dice.filter((v) => v === 1).length;
 
-  log.push(`Bank Heist — Agility dice (${diceCount}): [${dice.join(', ')}], successes (5+) = ${successes}, 1’s = ${ones}.`);
+  log.push(`Bank Heist — Cunning dice (${diceCount}${bonus ? ` incl. +${bonus} Explosive` : ''}): [${dice.join(', ')}], successes (5+) = ${successes}, 1's = ${ones}.`);
 
   // Consume explosive if used
   if (consumedExplosive) {
@@ -493,52 +505,69 @@ export async function performBankHeist({ hero, posseApi, ui }) {
     posseApi.updateHero(id, (prev) => ({ ...prev, ...setGoldPatch(prev, payout) }));
     endStay();
     ui?.notify?.(`Bank Heist success: +$${payout}. Your Town Stay ends.`);
-    log.push(`Score! Gained <b>$${payout}</b> (${successes} successes × Luck(${luck}) × $50). <i>Town Stay ends.</i>`);
+    log.push(`Score! Gained <b>$${payout}</b> (${successes} successes \u00D7 Luck(${luck}) \u00D7 $50). <i>Town Stay ends.</i>`);
     return { log, actions: [], ui: { title: 'Bank Heist', outcome: log } };
   }
 
-  // Arrested → simple escape test (Agility 4+ on Agility dice)
+  // Arrested — Agility 4+ to escape
   const agi = clamp(getStat(hero, 'Agility'), 0, 6);
-  const escapeRolls = (await ui?.roll?.(agi, 6, 'Escape the Noose — Agility 4+')) || rollND(agi, 6);
+  log.push('Failed! You are arrested and set to hang. Make an Agility 4+ test to slip the noose and escape into the crowd.');
+  const escapeRolls = (await ui?.roll?.(agi, 6, 'Escape the Noose \u2014 Agility 4+')) || rollND(agi, 6);
   const escaped = escapeRolls.some((v) => v >= 4);
-  log.push(`Arrested! Escape test — Agility dice (${agi}): [${escapeRolls.join(', ')}] → ${escaped ? 'ESCAPED' : 'FAILED'}.`);
+  log.push(`Escape test \u2014 Agility dice (${agi}): [${escapeRolls.join(', ')}] \u2192 ${escaped ? 'ESCAPED' : 'FAILED'}.`);
 
   if (escaped) {
     posseApi.updateHero(id, (prev) => ({ ...prev, xp: num(prev?.xp, 0) + 25 }));
     endStay();
-    ui?.notify?.('Bank Heist: Escaped the noose! +25 XP. Your Town Stay ends.');
-    log.push('Escaped the hanging: +25 XP. <i>Town Stay ends.</i>');
+    ui?.notify?.('Bank Heist: You slip the noose and escape into the crowd, fleeing Town! +25 XP. Your Town Stay is over.');
+    log.push('You slip the noose and escape into the crowd, fleeing Town! +25 XP. <i>Town Stay ends.</i>');
   } else {
     posseApi.updateHero(id, (prev) => {
       const note = { id: `awaiting_hanging_${Date.now()}`, name: 'Awaiting Hanging', type: 'Status', active: true, addedAt: Date.now() };
       return { ...prev, ...addPermanentCondition(prev, note) };
     });
     endStay();
-    ui?.notify?.('Bank Heist: Caught — marked as "Awaiting Hanging". Your Town Stay ends.');
-    log.push('Caught — marked with Status: Awaiting Hanging. <i>Town Stay ends.</i>');
+    ui?.notify?.('Bank Heist: You swing from the gallows\u2026 your Hero is killed (though your Hero Posse may play the Hanging High Town Adventure to rescue you).');
+    log.push('You swing from the gallows\u2026 your Hero is killed (though your Hero Posse may play the Hanging High Town Adventure to rescue you). <i>Town Stay ends.</i>');
   }
   return { log, actions: [], ui: { title: 'Bank Heist', outcome: log } };
 }
 
-// Rustle Cattle — Agility dice, 5’s pay $50, 6’s pay $200; fail → 2D6 Wounds (ignores Defense)
+// Rustle Cattle — Agility dice, 5's pay $50, 6's pay $200; fail → 2D6 Wounds (ignores Defense)
 export async function performRustleCattle({ hero, posseApi, ui }) {
   const log = [];
   const id = hero?.id || hero?.localId;
   if (!id) return { log: ['No active hero.'] };
 
+  // Take 1 Corruption Hit (with Willpower save)
+  const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
+  const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+  const saveRolls = (await ui?.roll?.(1, 6, `Willpower ${wpTarget}+ save vs 1 Corruption Hit`)) || rollND(1, 6);
+  const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
+  const blocked = wpArr.filter(n => n >= wpTarget).length;
+  const unblocked = Math.max(0, 1 - blocked);
+  log.push(`Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${blocked ? 'blocked!' : `${unblocked} corruption taken.`}`);
+  if (unblocked > 0) {
+    posseApi.updateHero(id, (prev) => ({
+      ...prev,
+      currentCorruption: num(prev?.currentCorruption ?? prev?.corruption, 0) + unblocked,
+    }));
+    log.push('Took <b>1 Corruption Hit</b>.');
+  }
+
   const hasTransport = heroHasTransport(hero);
   const baseAgi = clamp(getStat(hero, 'Agility'), 0, 6);
-  const diceCount = clamp(baseAgi + (hasTransport ? 2 : 0), 0, 6);
+  const diceCount = clamp(baseAgi + (hasTransport ? 2 : 0), 1, 12);
 
-  // Prompted initial skill test
-  const dice = (await ui?.roll?.(diceCount, 6, `Rustle Cattle — Agility dice (5+${hasTransport ? ' with +2 dice (Transport)' : ''})`)) || rollND(diceCount, 6);
+  log.push('Make an Agility 5+ test to ride out with a local group of Rustlers and steal cattle in the night!' + (hasTransport ? ' You have a Transport item \u2014 +2 Agility for this test.' : ''));
+  const dice = (await ui?.roll?.(diceCount, 6, `Rustle Cattle \u2014 Agility 5+${hasTransport ? ' (+2 from Transport)' : ''}`)) || rollND(diceCount, 6);
 
   const fives = dice.filter((v) => v === 5).length;
   const sixes = dice.filter((v) => v === 6).length;
   const successes = fives + sixes;
   const payout = fives * 50 + sixes * 200;
 
-  log.push(`Rustle Cattle — Agility dice (${diceCount}${hasTransport ? ' with +2 (Transport)' : ''}): [${dice.join(', ')}].`);
+  log.push(`Agility dice (${diceCount}${hasTransport ? ' incl. +2 Transport' : ''}): [${dice.join(', ')}].`);
 
   // Always end the town stay after the rustle attempt
   const endStay = () => {
@@ -553,17 +582,17 @@ export async function performRustleCattle({ hero, posseApi, ui }) {
   if (successes > 0) {
     posseApi.updateHero(id, (prev) => ({ ...prev, ...setGoldPatch(prev, payout) }));
     endStay();
-    ui?.notify?.(`Rustle Cattle success: +$${payout}. Your Town Stay ends.`);
-    log.push(`Haul secured: <b>$${payout}</b> ($50×${fives} + $200×${sixes}). <i>Town Stay ends.</i>`);
+    ui?.notify?.(`Rustle Cattle success! +$${payout} ($50 per 5+, $200 per 6+). Your Town Stay ends.`);
+    log.push(`Haul secured: <b>$${payout}</b> ($50\u00D7${fives} fives + $200\u00D7${sixes} sixes). <i>Town Stay ends.</i>`);
     return { log, actions: [], ui: { title: 'Rustle Cattle', outcome: log } };
   }
 
-  const wRolls = (await ui?.roll?.(2, 6, 'Rustle Cattle — Wounds on failure (2D6), ignores Defense')) || rollND(2, 6);
+  const wRolls = (await ui?.roll?.(2, 6, 'Rustle Cattle \u2014 Failed! The cattle rancher gets off some good shots (2D6 Wounds, ignores Defense)')) || rollND(2, 6);
   const wounds = wRolls.reduce((a, b) => a + b, 0);
   posseApi.updateHero(id, (prev) => ({ ...prev, ...decHealthIgnoringDefense(prev, wounds) }));
   endStay();
-  ui?.notify?.(`Rustle Cattle failed: took ${wounds} Wounds (ignores Defense). Your Town Stay ends.`);
-  log.push(`The cattle scatter! 2D6 = [${wRolls.join(', ')}] → Took <b>${wounds}</b> Wounds (ignores Defense). <i>Town Stay ends.</i>`);
+  ui?.notify?.(`Rustle Cattle failed! The cattle rancher gets off some good shots, driving you away! Took ${wounds} Wounds, ignoring Defense. Your Town Stay ends.`);
+  log.push(`The cattle rancher gets off some good shots, driving you away! 2D6 = [${wRolls.join(', ')}] \u2192 Took <b>${wounds}</b> Wounds, ignoring Defense. <i>Town Stay ends.</i>`);
   return { log, actions: [], ui: { title: 'Rustle Cattle', outcome: log } };
 }
 
@@ -575,14 +604,14 @@ export async function performShadyContacts({ hero, posseApi, ui }) {
 
   const r = d6();
   const n = Math.max(0, r - 2);
-  log.push(`Shady Contacts — you may look at the top <b>${n}</b> Daily Event card(s) and reorder them. (+10 XP)`);
+  log.push(`You ask around to get the word on the street. You may look at the top <b>${n}</b> card(s) of the Daily Event deck. Place those cards back on top of the deck in any order. Gain <b>10 XP</b>.`);
   posseApi.updateHero(id, (prev) => ({ ...prev, xp: num(prev?.xp, 0) + 10 }));
 
   const s = loadTownState() || {};
   s._shadyContactsPeek = { count: n, time: Date.now(), heroId: id };
   saveTownState(s);
 
-  ui?.notify?.(`Shady Contacts: peek ${n} Daily Event card(s) & +10 XP.`);
+  ui?.notify?.(`Shady Contacts: You ask around to get the word on the street. Peek at top ${n} Daily Event card(s) and reorder them. +10 XP.`);
   return { log, actions: [], ui: { title: 'Shady Contacts', outcome: log } };
 }
 

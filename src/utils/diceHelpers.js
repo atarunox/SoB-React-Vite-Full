@@ -97,6 +97,66 @@ export function applyRerollFlex(result, isReroll, opts = {}) {
 /**
  * Async variant that truly awaits a UI chooser if provided.
  */
+/**
+ * Offer the player a chance to spend Grit to reroll dice from a skill check.
+ * Returns { rolls, rerolled } where rolls is the (possibly updated) array
+ * and rerolled is true if a grit was spent.
+ *
+ * @param {number[]} rolls     - The original dice results
+ * @param {object}   hero      - Hero object (needs currentGrit/grit)
+ * @param {object}   opts
+ * @param {Function} opts.promptChoice - async (title, options) => index
+ * @param {Function} opts.updateHero   - (id, patchOrFn) => void
+ * @param {string}   opts.heroId       - Hero ID for updateHero
+ * @param {number}   [opts.sides=6]    - Die sides (default 6)
+ */
+export async function offerGritReroll(rolls, hero, { promptChoice, updateHero, heroId, sides = 6 } = {}) {
+  if (!rolls || !rolls.length || !hero || typeof promptChoice !== 'function') {
+    return { rolls, rerolled: false };
+  }
+
+  const curGrit = Number(hero.currentGrit ?? hero.grit ?? 0);
+  if (curGrit <= 0) return { rolls, rerolled: false };
+
+  // Ask if they want to spend a grit
+  const spendIdx = await promptChoice(
+    `Spend a Grit to reroll?\nCurrent Grit: ${curGrit}\n\nDice: [${rolls.join(', ')}]`,
+    [{ label: 'Yes — spend 1 Grit to reroll' }, { label: 'No — keep these dice' }]
+  );
+
+  if (spendIdx !== 0) return { rolls, rerolled: false };
+
+  // Build options for which dice to reroll
+  const diceOptions = rolls.map((v, i) => ({ label: `Die ${i + 1}: [${v}]` }));
+  diceOptions.push({ label: 'Reroll ALL dice' });
+
+  const pickIdx = await promptChoice(
+    'Which die to reroll? (pick one, or reroll all)',
+    diceOptions
+  );
+
+  if (pickIdx < 0) return { rolls, rerolled: false };
+
+  const newRolls = [...rolls];
+  if (pickIdx === rolls.length) {
+    // Reroll all
+    for (let i = 0; i < newRolls.length; i++) {
+      newRolls[i] = Math.floor(Math.random() * sides) + 1;
+    }
+  } else if (pickIdx >= 0 && pickIdx < rolls.length) {
+    // Reroll single die
+    newRolls[pickIdx] = Math.floor(Math.random() * sides) + 1;
+  }
+
+  // Deduct grit
+  const newGrit = Math.max(0, curGrit - 1);
+  if (typeof updateHero === 'function' && heroId) {
+    updateHero(heroId, (h) => ({ ...h, currentGrit: newGrit }));
+  }
+
+  return { rolls: newRolls, rerolled: true };
+}
+
 export async function applyRerollFlexAsync(result, isReroll, opts = {}) {
   if (!isReroll) return result;
 

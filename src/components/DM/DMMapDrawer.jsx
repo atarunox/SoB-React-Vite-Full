@@ -4,10 +4,15 @@ import DrawnMapTilesRow from './DrawnMapTilesRow';
 import { mineCards } from '../../data/maps/mineCards';
 import { blastedWastesCards } from '../../data/maps/blastedWastesCards';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
+import { canyonEncounters } from '../../data/encounters/canyonEncounters';
 
 function shuffle(arr) {
-  // non-mutating wrapper (we clone before sorting)
-  return [...arr].sort(() => Math.random() - 0.5);
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 const WORLD_TO_MAP_CARDS = {
@@ -17,7 +22,7 @@ const WORLD_TO_MAP_CARDS = {
 
 const WORLD_TO_ENCOUNTERS = {
   'Blasted Wastes': blastedWastesEncounters,
-  // Add more as needed
+  'Canyons': canyonEncounters,
 };
 
 function computeRemainingDeck(allCards, drawn) {
@@ -63,9 +68,12 @@ export default function DMMapDrawer({ world = 'Mines' }) {
   const drawCard = () => {
     setDeck(prevDeck => {
       if (prevDeck.length === 0) return prevDeck;
-      const top = prevDeck[0];
-      setDrawn(prevDrawn => [top, ...prevDrawn]);
       return prevDeck.slice(1);
+    });
+    setDrawn(prevDrawn => {
+      const currentDeck = deck;
+      if (currentDeck.length === 0) return prevDrawn;
+      return [currentDeck[0], ...prevDrawn];
     });
   };
 
@@ -159,10 +167,37 @@ export default function DMMapDrawer({ world = 'Mines' }) {
                 <h3 className="text-lg font-bold mb-2 text-yellow-900 drop-shadow">
                   Advanced Encounter: {enlarged.encounter.name}
                 </h3>
+                {enlarged.encounter.flavor && (
+                  <p className="italic text-gray-700 mb-2 text-sm">{enlarged.encounter.flavor}</p>
+                )}
+                {enlarged.encounter.test && typeof enlarged.encounter.test === 'object' ? (
+                  <div className="mb-2 p-2 bg-white/60 rounded border border-gray-200">
+                    <p className="font-semibold text-sm">{enlarged.encounter.test.stat} {enlarged.encounter.test.target}</p>
+                    {enlarged.encounter.test.success?.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-green-700 text-xs font-bold">SUCCESS: </span>
+                        {enlarged.encounter.test.success.join('; ')}
+                      </div>
+                    )}
+                    {enlarged.encounter.test.fail?.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-red-700 text-xs font-bold">FAIL: </span>
+                        {enlarged.encounter.test.fail.join('; ')}
+                      </div>
+                    )}
+                  </div>
+                ) : enlarged.encounter.test ? (
+                  <div className="mb-2"><strong>Test:</strong> {enlarged.encounter.test}</div>
+                ) : null}
                 {enlarged.encounter.effect && (
                   <div className="mb-2 text-gray-900">
                     <strong>Effect:</strong> {enlarged.encounter.effect}
                   </div>
+                )}
+                {enlarged.encounter.effects?.length > 0 && (
+                  <ul className="list-disc list-inside text-sm mb-2">
+                    {enlarged.encounter.effects.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
                 )}
               </div>
             )}

@@ -340,30 +340,39 @@ export function PosseProvider({ children }) {
         return;
       }
 
-      if (!db || db?.localMode) {
-        // Local-only mode
-        setPosse((prev) => {
-          const exists = prev.some(
-            (h) =>
+      // Sync posseRef immediately so back-to-back writes in the same
+      // tick (e.g. writeHero({gold}) then writeHero({corruption}))
+      // each see the previous write's result.
+      posseRef.current = posseRef.current.map((h) =>
+        normalizeDocId(h.id) === id || normalizeDocId(h.localId) === id
+          ? merged
+          : h
+      );
+
+      // Always update React state immediately for responsive UI
+      setPosse((prev) => {
+        const exists = prev.some(
+          (h) =>
+            normalizeDocId(h.id) === id ||
+            normalizeDocId(h.localId) === id
+        );
+        const next = exists
+          ? prev.map((h) =>
               normalizeDocId(h.id) === id ||
               normalizeDocId(h.localId) === id
-          );
-          const next = exists
-            ? prev.map((h) =>
-                normalizeDocId(h.id) === id ||
-                normalizeDocId(h.localId) === id
-                  ? merged
-                  : h
-              )
-            : [...prev, merged];
+                ? merged
+                : h
+            )
+          : [...prev, merged];
 
-          try {
-            localStorage.setItem('posse', JSON.stringify(next));
-          } catch {}
-          return next;
-        });
-      } else {
-        // Firestore mode
+        try {
+          localStorage.setItem('posse', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      if (db && !db.localMode) {
+        // Also persist to Firestore
         const ref = doc(db, 'heroes', id);
         await setDoc(ref, strip(merged), { merge: true });
       }

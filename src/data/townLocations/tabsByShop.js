@@ -50,8 +50,10 @@ const orTags = (...tags) => (entry) =>
   Array.isArray(entry?.tags) && tags.some((t) => entry.tags.includes(t));
 
 // ============================================================================
-// IMPORTS — FRONTIER TOWN ONLY
+// IMPORTS
 // ============================================================================
+
+// ====================== FRONTIER TOWN =======================================
 
 // ---------------- Church ----------------
 import churchRituals from './FrontierTown/Church/churchRituals.js';
@@ -97,9 +99,11 @@ import frontierOutpostBank from './FrontierTown/FrontierOutpost/frontierOutpostB
 import frontierOutpostTraining from './FrontierTown/FrontierOutpost/frontierOutpostTraining.js';
 import frontierOutpostTradingPost from './FrontierTown/FrontierOutpost/frontierOutpostTradingPost.js';
 
-// ---------------- Sheriff’s Office ----------------
+// ---------------- Sheriff's Office ----------------
 import sheriffsOfficeServices from './FrontierTown/SheriffsOffice/sheriffsOfficeServices.js';
 import sheriffsOfficeItems from './FrontierTown/SheriffsOffice/sheriffsOfficeItems.js';
+import sheriffsOfficeBounties from './FrontierTown/SheriffsOffice/sheriffsOfficeBounties.js';
+import sheriffsOfficeLawOnly from './FrontierTown/SheriffsOffice/sheriffsOfficeLawOnly.js';
 
 // ---------------- Smuggler's Den ----------------
 import smugglersDenItems from './FrontierTown/SmugglersDen/smugglersDenItems.js';
@@ -111,6 +115,32 @@ import smugglersDenOutlawGear from './FrontierTown/SmugglersDen/smugglersDenOutl
 import mutantQuarterItems from './FrontierTown/MutantQuarter/mutantQuarterItems.js';
 import mutantQuarterCommunity from './FrontierTown/MutantQuarter/mutantQuarterCommunity.js';
 import mutantQuarterServices from './FrontierTown/MutantQuarter/mutantQuarterServices.js';
+
+// ====================== BLASTED WASTES TOWN =================================
+
+// ---------------- Mining Operation ----------------
+import miningOperationItems from './BlastedWastesTown/MiningOperation/miningOperationItems.js';
+import miningOperationFungus from './BlastedWastesTown/MiningOperation/miningOperationFungus.js';
+import miningOperationServices from './BlastedWastesTown/MiningOperation/miningOperationServices.js';
+
+// ---------------- Desert Marketplace ----------------
+import desertMarketplaceTokens from './BlastedWastesTown/DesertMarketplace/desertMarketplaceTokens.js';
+import desertMarketplaceBackAlleys from './BlastedWastesTown/DesertMarketplace/desertMarketplaceBackAlleys.js';
+import desertMarketplaceItems from './BlastedWastesTown/DesertMarketplace/desertMarketplaceItems.js';
+import desertMarketplaceTransports from './BlastedWastesTown/DesertMarketplace/desertMarketplaceTransports.js';
+
+// ---------------- Scavenger Doc ----------------
+import scavengerDocItems from './BlastedWastesTown/ScavengerDoc/scavengerDocItems.js';
+import scavengerDocServices from './BlastedWastesTown/ScavengerDoc/scavengerDocServices.js';
+import scavengerDocResearch from './BlastedWastesTown/ScavengerDoc/scavengerDocResearch.js';
+
+// ---------------- Wasteland Workshop ----------------
+import wastelandWorkshopItems from './BlastedWastesTown/WastelandWorkshop/wastelandWorkshopItems.js';
+import wastelandWorkshopArmor from './BlastedWastesTown/WastelandWorkshop/wastelandWorkshopArmor.js';
+import wastelandWorkshopUpgrades from './BlastedWastesTown/WastelandWorkshop/wastelandWorkshopUpgrades.js';
+
+// ---------------- Temple ----------------
+import templeServices from './BlastedWastesTown/Temple/templeServices.js';
 
 // ============================================================================
 // MAKE TABS BY SHOP (ctx aware)
@@ -179,6 +209,8 @@ export const makeTabsByShop = (ctx) => ({
 
   sheriffsOffice: catList(
     cat('so_services', 'Services', sheriffsOfficeServices, ctx),
+    cat('so_bounties', 'Bounties & Wanted Posters', sheriffsOfficeBounties, ctx),
+    cat('so_law', 'Law and Order', sheriffsOfficeLawOnly, ctx),
     cat('so_items', 'Clothing, Badges & Guns', sheriffsOfficeItems, ctx),
   ),
 
@@ -202,6 +234,36 @@ export const makeTabsByShop = (ctx) => ({
     cat('community', 'Community', mutantQuarterCommunity, ctx),
     cat('items', 'Mutant Gear', mutantQuarterItems, ctx),
     cat('services', 'Services', mutantQuarterServices, ctx),
+  ),
+
+  // ── Blasted Wastes Town ────────────────────────────────────────────────
+  miningOperation: catList(
+    cat('mo_items', 'Mining Gear & Explosives', miningOperationItems, ctx),
+    cat('mo_fungus', 'Fungus Crops', miningOperationFungus, ctx),
+    cat('mo_work', 'Work Down in the Tunnels', miningOperationServices, ctx),
+  ),
+
+  temple: catList(
+    cat('temple_services', 'Blessings, Items, and Services', templeServices, ctx),
+  ),
+
+  scavengerDoc: catList(
+    cat('scav_items', 'Medical Supplies', scavengerDocItems, ctx),
+    cat('scav_services', 'Doc Services — Healing', scavengerDocServices, ctx),
+    cat('scav_research', 'Scientific Research', scavengerDocResearch, ctx),
+  ),
+
+  wastelandWorkshop: catList(
+    cat('ww_items', 'Rust Items & Equipment', wastelandWorkshopItems, ctx),
+    cat('ww_armor', 'Wasteland Scrap Armor', wastelandWorkshopArmor, ctx),
+    cat('ww_upgrades', 'Wasteland Rust Forge — Upgrades', wastelandWorkshopUpgrades, ctx),
+  ),
+
+  desertMarketplace: catList(
+    cat('dm_tokens', 'Side Bag Tokens', desertMarketplaceTokens, ctx),
+    cat('dm_alleys', 'Market Back Alleys', desertMarketplaceBackAlleys, ctx),
+    cat('dm_items', 'Alien Clothing & Equipment', desertMarketplaceItems, ctx),
+    cat('dm_transports', 'Transports', desertMarketplaceTransports, ctx),
   ),
 });
 

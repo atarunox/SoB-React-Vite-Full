@@ -1,234 +1,218 @@
 // src/utils/locationHandlers/campSiteHandler.js
+import { loadTownState, saveTownState, ejectHero } from '../../utils/townState';
+import { d6 as _d6 } from '../../utils/diceHelpers';
+import { getEventDisplay } from '../locationEventText';
 
-/**
- * Camp Site visit handler
- * ---------------------------------------------------------
- * Pure logic. No direct UI. Returns:
- *  - actions[]  : side-effect intents your app can execute (modify gold, add grit, etc.)
- *  - townState  : updated state with day flags (e.g., soberMorning)
- *  - log[]      : human-readable steps for your activity feed
- *
- * Usage:
- * const { actions, townState, log } = await handleCampSiteVisit({ hero, townState, io });
- * actions.forEach(dispatchAction) // your app applies them
- */
+// Use ctx.d6 when available (respects manual roll mode); fallback to auto-roll
+const ctxD6 = async (ctx, label) => (typeof ctx?.d6 === 'function') ? ctx.d6(label) : _d6();
 
-import { d6 as D6, rollND, sum, roll2d6, idxFrom2d6 } from '../../utils/diceHelpers';
-const D = (sides) => Math.floor(Math.random() * sides) + 1;
-export { roll2d6, idxFrom2d6 };
+const shopId = 'campSite';
 
-/**
- * Optional I/O hooks to integrate with your UI.
- * Provide any subset; missing hooks fall back to defaults.
- *
- * io = {
- *   // dice/inputs:
- *   roll: (n, sides, label) => number[] | Promise<number[]>,
- *   inputNumber: ({ title, message, min, max, defaultValue }) => number | Promise<number>,
- *   promptChoice: ({ title, message, choices }) => string | Promise<string>, // returns choices[i].key
- *   notify: (msg) => void | Promise<void>,
- *
- *   // knowledge checks (Luck, etc.)
- *   test: ({ hero, key, target, label }) => boolean | Promise<boolean>, // e.g., Luck 4+
- * }
- */
+// ---------- result formatting helper ----------
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+  }
+  return null;
+}
 
-/**
- * Actions your app should handle:
- *  - { type: 'MODIFY_GOLD', heroId, delta, reason }
- *  - { type: 'ADD_GRIT', heroId, amount, reason }
- *  - { type: 'LOSE_RANDOM_ITEM', heroId, reason }
- *  - { type: 'MODIFY_DARK_STONE', heroId, delta, reason } // negative to lose
- *  - { type: 'TRIGGER_SOLO_ADVENTURE', heroId, adventureId: 'HighNoonDuel', reason }
- *  - { type: 'FORCE_LEAVE_TOWN', heroId, reason }
- *  - { type: 'DRAW_GEAR_CARD', heroId, into: 'inventory', reason }
- *  - { type: 'FLAG_DAY_MOD', key: 'soberMorning', value: { targetShops: [...], mod: +1 }, reason }
- */
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+}
 
-export async function handleCampSiteVisit({
-  hero,
-  townState,
-  io = {},
-  forcedRoll = null, // allow injecting a predetermined 2d6 for tests
-}) {
+// ---------- display (title / lore / effect) ----------
+export function display(roll) {
+  return getEventDisplay(shopId, roll) || { title: 'Camp Site Event', lore: '', effect: 'No Event.' };
+}
+
+// ---------- mechanics (Resolve) ----------
+export async function apply(roll, ctx) {
+  const id = ctx.getActiveHeroId?.();
+  if (!id) return { log: [] };
+
+  const info = display(roll);
   const log = [];
-  const actions = [];
-  const hId = hero?.id || hero?.localId;
 
-  const safeRoll = async (n, sides, label) => {
-    if (typeof io.roll === 'function') {
-      const r = await io.roll(n, sides, label);
-      if (Array.isArray(r) && r.length === n) return r.map((x) => Number(x) || 1);
-    }
-    return rollND(n, sides);
-  };
+  // Every event starts with its title and lore/flavor text
+  log.push(`[Camp Site] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
 
-  const note = async (msg) => {
-    log.push(msg);
-    if (typeof io.notify === 'function') await io.notify(msg);
-  };
-
-  const askChoice = async (opts) => {
-    if (typeof io.promptChoice === 'function') return io.promptChoice(opts);
-    // default: pick first choice
-    return opts?.choices?.[0]?.key;
-  };
-
-  const askNumber = async (opts) => {
-    if (typeof io.inputNumber === 'function') return io.inputNumber(opts);
-    return opts?.defaultValue ?? opts?.min ?? 0;
-  };
-
-  const doTest = async ({ hero, key, target, label }) => {
-    if (typeof io.test === 'function') return !!(await io.test({ hero, key, target, label }));
-    // default RNG if no test hook
-    const roll = D6();
-    return roll >= target;
-  };
-
-  // --- 1) Roll Camp Event (2–12) ------------------------------------------
-  const roll = forcedRoll ?? sum(await safeRoll(2, 6, 'Camp Site Event'));
-  const idx = idxFrom2d6(roll);
-  await note(`Camp Site Event Roll: ${roll}`);
-
-  // --- 2) Resolve by band (branch on roll) --------------------------------
-
-  // 2: Just My Luck — lose one item OR 2D6 Dark Stone
+  // 2: Just My Luck — Choose: lose one item OR lose 2D6 Dark Stone
   if (roll === 2) {
-    const choice = await askChoice({
-      title: 'Just My Luck',
-      message: 'Robbery/accident! Choose what to lose:',
-      choices: [
-        { key: 'item', label: 'Lose one item' },
-        { key: 'darkstone', label: 'Lose 2D6 Dark Stone' },
-      ],
-    });
+    const choice = await ctx.promptChoice?.(
+      `JUST MY LUCK\n${info.effect}\n\nChoose what to lose:`,
+      [
+        { label: 'Lose one item' },
+        { label: 'Lose 2D6 Dark Stone' },
+      ]
+    );
 
-    if (choice === 'item') {
-      actions.push({ type: 'LOSE_RANDOM_ITEM', heroId: hId, reason: 'Camp Site: Just My Luck' });
-      await note('You lose 1 random item.');
+    if (choice === 0) {
+      const outcome = 'You lose 1 item of your choice. Remove it from your inventory.';
+      log.push(outcome);
+      await showResult(ctx, 'JUST MY LUCK — Result', [outcome]);
+      ctx.toast?.('Just My Luck: lose 1 item.');
     } else {
-      const ds = sum(await safeRoll(2, 6, 'Lose Dark Stone (2D6)'));
-      actions.push({
-        type: 'MODIFY_DARK_STONE',
-        heroId: hId,
-        delta: -ds,
-        reason: 'Camp Site: Just My Luck',
-      });
-      await note(`You lose ${ds} Dark Stone.`);
+      const ds1 = await ctxD6(ctx, 'Just My Luck — Roll D6 #1 for Dark Stone lost');
+      const ds2 = await ctxD6(ctx, 'Just My Luck — Roll D6 #2 for Dark Stone lost');
+      const dsTotal = ds1 + ds2;
+      const dsLine = `Rolled [${ds1}, ${ds2}] for Dark Stone lost = ${dsTotal}.`;
+      log.push(dsLine);
+      ctx.updateHero?.(id, (h) => ({
+        ...h,
+        darkStone: Math.max(0, (h.darkStone || 0) - dsTotal),
+      }));
+      const outcome = `You lose ${dsTotal} Dark Stone.`;
+      log.push(outcome);
+      await showResult(ctx, 'JUST MY LUCK — Result', [dsLine, '', outcome]);
+      ctx.toast?.(`Just My Luck: lose ${dsTotal} Dark Stone.`);
     }
+    return { log };
   }
 
-  // 3: “My Friend Doesn’t Like You Much!” — High Noon Duel or leave Town
-  else if (roll === 3) {
-    const choice = await askChoice({
-      title: '“My Friend Doesn’t Like You Much!”',
-      message: 'Face a Solo Town Adventure "High Noon Duel", or leave Town immediately?',
-      choices: [
-        { key: 'duel', label: 'Face High Noon Duel (Solo Adventure)' },
-        { key: 'leave', label: 'Leave Town immediately' },
-      ],
-    });
+  // 3: "My Friend Doesn't Like You Much!" — High Noon Duel or leave Town
+  if (roll === 3) {
+    const choice = await ctx.promptChoice?.(
+      `"MY FRIEND DOESN'T LIKE YOU MUCH!"\n${info.effect}\n\nWhat do you do?`,
+      [
+        { label: 'Face High Noon Duel (Solo Adventure)' },
+        { label: 'Leave Town immediately' },
+      ]
+    );
 
-    if (choice === 'duel') {
-      actions.push({
-        type: 'TRIGGER_SOLO_ADVENTURE',
-        heroId: hId,
-        adventureId: 'HighNoonDuel',
-        reason: 'Camp Site',
-      });
-      await note('Triggered Solo Adventure: High Noon Duel.');
+    if (choice === 0) {
+      const outcome = 'You accept the challenge! Triggered Solo Adventure: High Noon Duel.';
+      log.push(outcome);
+      await showResult(ctx, '"MY FRIEND DOESN\'T LIKE YOU MUCH!" — Result', [outcome]);
+      ctx.toast?.('Triggered Solo Adventure: High Noon Duel.');
     } else {
-      actions.push({ type: 'FORCE_LEAVE_TOWN', heroId: hId, reason: 'Camp Site: Told to leave' });
-      await note('You leave Town immediately.');
+      // Eject this hero from town (can't visit locations for rest of stay)
+      ejectHero(id);
+      ctx.updateHero?.(id, (h) => ({ ...h, isDone: true }));
+      const outcome = 'You decide discretion is the better part of valor and leave Town immediately. You are ejected from town for the rest of this stay.';
+      log.push(outcome);
+      await showResult(ctx, '"MY FRIEND DOESN\'T LIKE YOU MUCH!" — Result', [outcome]);
+      ctx.toast?.('You leave Town immediately — ejected for this stay.');
     }
+    return { log };
   }
 
-  // 4–5: “Step Right Up!” — Pay D6×$20 to gain +1 Grit
-  else if (roll === 4 || roll === 5) {
-    const costDie = (await safeRoll(1, 6, 'Step Right Up cost D6'))[0];
-    const cost = costDie * 20;
+  // 4–5: "Step Right Up!" — Pay D6×$20 to gain +1 Grit
+  if (roll === 4 || roll === 5) {
+    const costRoll = await ctxD6(ctx, '"Step Right Up!" — Roll D6 for cost (×$20)');
+    const cost = costRoll * 20;
+    const costLine = `Rolled [${costRoll}] × $20 = $${cost} cost.`;
+    log.push(costLine);
 
-    // Ask user to confirm/commit if you want; here we assume they accept the pitch.
-    actions.push({ type: 'MODIFY_GOLD', heroId: hId, delta: -cost, reason: 'Step Right Up!' });
-    actions.push({ type: 'ADD_GRIT', heroId: hId, amount: 1, reason: 'Step Right Up!' });
-    await note(`“Step Right Up!” You pay $${cost} and gain +1 Grit.`);
+    ctx.updateHero?.(id, (h) => {
+      const maxGrit = Number(h.maxGrit ?? h.stats?.Grit ?? 2);
+      const curGrit = Number(h.currentGrit ?? h.grit ?? 0);
+      const nextGrit = Math.min(maxGrit, curGrit + 1);
+      return {
+        ...h,
+        gold: Math.max(0, (h.gold || 0) - cost),
+        currentGrit: nextGrit,
+      };
+    });
+
+    const outcome = `You pay $${cost} and gain +1 Grit.`;
+    log.push(outcome);
+    await showResult(ctx, '"STEP RIGHT UP!" — Result', [costLine, '', outcome]);
+    ctx.toast?.(`"Step Right Up!" -$${cost}, +1 Grit.`);
+    return { log };
   }
 
   // 6–8: No Event
-  else if (roll >= 6 && roll <= 8) {
-    await note('A Sad Collection of the Poor and Scruffy — No Event.');
+  if (roll >= 6 && roll <= 8) {
+    const outcome = 'A sad collection of the poor and scruffy. Nothing of note happens.';
+    log.push(outcome);
+    await showResult(ctx, 'NO EVENT', [outcome]);
+    return { log };
   }
 
-  // 9–10: Dirty Poker — Luck 4+, +$25 per success; lose $50 per roll of 1
-  else if (roll === 9 || roll === 10) {
-    const nRolls = await askNumber({
-      title: 'Dirty Poker',
-      message:
-        'How many hands will you play? (Each is a Luck 4+ test; success earns $25; a natural 1 loses $50.)',
-      min: 1,
-      max: 10,
-      defaultValue: 3,
+  // 9–10: Dirty Poker — Luck 4+ test. Gain $25 per success, lose $50 per roll of 1.
+  if (roll === 9 || roll === 10) {
+    const lore = `DIRTY POKER\n${info.effect}\nYou sit down at a rickety table and join a game of cards...`;
+    const result = await ctx.doSkillCheck(id, {
+      stat: 'Luck', target: 4, returnDetails: true,
+      message: `${lore}\nMake a Luck 4+ test. Gain $25 for each success, lose $50 for each natural 1.`,
     });
+    const checkLine = formatCheckResult(result, 'Luck', 4);
+    if (checkLine) log.push(checkLine);
 
-    let wins = 0;
-    let lossOnes = 0;
+    let successes = 0;
+    let ones = 0;
 
-    for (let i = 0; i < nRolls; i++) {
-      // If your test system can report natural 1s, use that; otherwise simulate with a raw D6 for the "1" penalty
-      const raw = D6();
-      const success = raw >= 4; // Luck 4+ baseline
-      if (success) wins++;
-      if (raw === 1) lossOnes++;
+    if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+      successes = result.rolls.filter(r => r >= 4).length;
+      ones = result.rolls.filter(r => r === 1).length;
+    } else {
+      successes = (result?.passed ?? result) ? 1 : 0;
     }
 
-    const delta = wins * 25 - lossOnes * 50;
-    if (delta !== 0) {
-      actions.push({
-        type: 'MODIFY_GOLD',
-        heroId: hId,
-        delta,
-        reason: 'Camp Site: Dirty Poker',
-      });
+    const winnings = successes * 25;
+    const losses = ones * 50;
+    const net = winnings - losses;
+
+    if (net !== 0) {
+      ctx.updateHero?.(id, (h) => ({
+        ...h,
+        gold: Math.max(0, (h.gold || 0) + net),
+      }));
     }
-    await note(
-      `Dirty Poker: ${nRolls} hands → ${wins} wins (+$${wins * 25}), ${lossOnes} ones (-$${lossOnes * 50}). Net: $${delta}.`
-    );
+
+    const outcome = `${successes} success${successes !== 1 ? 'es' : ''} (+$${winnings}), ${ones} natural 1${ones !== 1 ? 's' : ''} (-$${losses}). Net: ${net >= 0 ? '+' : ''}$${net}.`;
+    log.push(outcome);
+    await showResult(ctx, 'DIRTY POKER — Result', [checkLine, '', outcome]);
+    ctx.toast?.(`Dirty Poker: net ${net >= 0 ? '+' : ''}$${net}.`);
+    return { log };
   }
 
-  // 11: Sober Morning — +1 to Doc’s & Church tents today
-  else if (roll === 11) {
-    const dayMods = {
-      ...(townState?.dayMods || {}),
-      soberMorning: { targetShops: ['campDocsTent', 'campChurchTent'], mod: +1 },
-    };
-    townState = { ...(townState || {}), dayMods };
-    actions.push({
-      type: 'FLAG_DAY_MOD',
-      key: 'soberMorning',
-      value: dayMods.soberMorning,
-      reason: 'Camp Site: Sober Morning',
-    });
-    await note('Sober Morning — Doc’s Tent and Church Tent rolls are +1 today.');
+  // 11: Sober Morning — Doc's and Church tent rolls are +1 today
+  if (roll === 11) {
+    const s = loadTownState() || {};
+    const dayMods = { ...(s.dayMods || {}), soberMorning: { targetShops: ['campDocsTent', 'campChurchTent'], mod: +1 } };
+    saveTownState({ ...s, dayMods });
+
+    const outcome = 'A clear head this morning gives you sharper focus at the medical and spiritual tents.';
+    const buff = 'Day Mod applied: All rolls at Doc\'s Tent and Church Tent are +1 today.';
+    log.push(outcome);
+    log.push(buff);
+    await showResult(ctx, 'SOBER MORNING — Result', [outcome, '', buff]);
+    ctx.toast?.('Sober Morning: Doc\'s & Church tent rolls +1 today.');
+    return { log };
   }
 
-  // 12: “What Have We Here?” — draw 1 Gear
-  else if (roll === 12) {
-    actions.push({
-      type: 'DRAW_GEAR_CARD',
-      heroId: hId,
-      into: 'inventory',
-      reason: 'Camp Site: What Have We Here?',
-    });
-    await note('“What Have We Here?” — You draw 1 Gear card.');
+  // 12: "What Have We Here?" — Draw 1 Gear card
+  if (roll === 12) {
+    const outcome = 'You rummage through some old crates at the edge of camp and find something useful! Draw 1 Gear card.';
+    log.push(outcome);
+    await showResult(ctx, '"WHAT HAVE WE HERE?" — Result', [outcome]);
+    ctx.toast?.('"What Have We Here?" — Draw 1 Gear card.');
+    return { log };
   }
 
-  return { actions, townState, log, eventRoll: roll, eventIndex: idx };
+  return { log };
 }
 
-/**
- * Convenience: run handler with a specified roll (for testing or scripted outcomes).
- */
-export async function handleCampSiteVisitWithRoll(args, exactRoll) {
-  return handleCampSiteVisit({ ...args, forcedRoll: exactRoll });
+// --------- Dispatcher compatible with locationEventsEngine ---------------
+export async function handleCampSiteEvent(ctx = {}) {
+  const roll = ctx.forcedRoll ?? (_d6() + _d6());
+  const result = await apply(roll, ctx);
+  return {
+    actions: [],
+    townState: ctx.townState,
+    log: result?.log || [`Camp Site Event Roll: ${roll}`],
+    eventRoll: roll,
+    eventIndex: Math.max(0, roll - 2),
+  };
 }
+
+// Legacy alias — locationEventsEngine imports this name
+export { handleCampSiteEvent as handleCampSiteVisit };
+
+export const campSiteHandler = { display, apply };
+export default campSiteHandler;

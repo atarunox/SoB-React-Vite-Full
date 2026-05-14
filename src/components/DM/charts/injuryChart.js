@@ -173,15 +173,15 @@ export const injuryChart = [
   {
     roll: 51,
     name: "Swollen Eye",
-    flavor: "You have a massive headache and you can’t blink out of one side of your face.",
+    flavor: "You have a massive headache and you can't blink out of one side of your face.",
     effect:
-      "Until the end of the Adventure, your Line of Sight is restricted to the direction your model is facing. It costs 1 Move to change your model’s facing during your Activation."
+      "Until the end of the Adventure, your Line of Sight is restricted to the direction your model is facing. It costs 1 Move to change your model's facing during your Activation."
   },
   {
     roll: 52,
     name: "Pulled Muscle",
     flavor:
-      "Hot damn, that’ll do it. You’ll be fine in a few hours, but dangit if that ain’t a charley horse.",
+      "Hot damn, that'll do it. You'll be fine in a few hours, but dangit if that ain't a charley horse.",
     effect:
       "Until the end of the Adventure, you are at half-movement (rounded down ) on the turn after you take any Wounds"
   },
@@ -189,52 +189,52 @@ export const injuryChart = [
     roll: 53,
     name: "Twisted Ankle",
     flavor:
-      "It’s not the worst pain you’ve ever felt, but you’ll have to watch how you walk on that foot for a bit.",
+      "It's not the worst pain you've ever felt, but you'll have to watch how you walk on that foot for a bit.",
     effect: "Until the end of the Adventure, you may not move your Hero diagonally."
   },
   {
     roll: 54,
     name: "Sprained Wrist",
     flavor:
-      " You feel like a pansy for even complainin’ about it, but it’s sure hard as hell to hold a gun straight now.",
+      " You feel like a pansy for even complainin' about it, but it's sure hard as hell to hold a gun straight now.",
     effect:
-      " Until the end of the Adventure, you are -1 to all Ranged ‘To Hit’ rolls (minimum of 1 ).",
+      " Until the end of the Adventure, you are -1 to all Ranged 'To Hit' rolls (minimum of 1 ).",
     effects: { "Ranged To-Hit": -1 }
   },
   {
     roll: 55,
     name: "Dislocated Shoulder",
     flavor:
-      " Until you get a free second to get your arm placed back in its socket you definitely ain’t gonna be hittin’ as hard.",
+      " Until you get a free second to get your arm placed back in its socket you definitely ain't gonna be hittin' as hard.",
     effect:
-      "Until the end of the Adventure, you are -1 to all Melee ‘To Hit’ rolls (minimum of 1 )",
+      "Until the end of the Adventure, you are -1 to all Melee 'To Hit' rolls (minimum of 1 )",
     effects: { "Melee To-Hit": -1 }
   },
   {
     roll: 56,
     name: "Rattled",
     flavor:
-      " The room is wobbling some all around you like you was drunk, but you’ll manage... somehow.",
+      " The room is wobbling some all around you like you was drunk, but you'll manage... somehow.",
     effect:
       "Until the end of the Adventure, you are -1 to all Skill Test rolls (minimum of 1 )."
   },
   {
     roll: 61,
     name: "Photophobia",
-    flavor: " Somethin’ hit you and now all the lights are too bright",
+    flavor: " Somethin' hit you and now all the lights are too bright",
     effect:
-      "You are -1 to all ‘To Hit’ rolls if you are on the same Map Tile as the Posse’s Light Source (minimum of 1 )."
+      "You are -1 to all 'To Hit' rolls if you are on the same Map Tile as the Posse's Light Source (minimum of 1 )."
   },
   {
     roll: 62,
     name: "Breathing Difficulties",
-    flavor: " You can’t seem to move much without yer’ lungs hurtin’.",
+    flavor: " You can't seem to move much without yer' lungs hurtin'.",
     effect: " You cannot spend Grit to add to your Movement."
   },
   {
     roll: 63,
     name: "Puncture Wound",
-    flavor: " That got you good, but you’ll live. Suck it up hombre",
+    flavor: " That got you good, but you'll live. Suck it up hombre",
     effect: "Until the end of the Adventure, you are -1 Combat.",
     effects: { Combat: -1 }
   },
@@ -242,7 +242,7 @@ export const injuryChart = [
     roll: 64,
     name: "Busted Jaw",
     flavor:
-      " It’s hard for you to talk now, though your friends appreciate the silence",
+      " It's hard for you to talk now, though your friends appreciate the silence",
     effect:
       " Until the start of your next Mission, you must pay +$25 for all Purchase Items or Services."
   },
@@ -257,7 +257,7 @@ export const injuryChart = [
     roll: 66,
     name: "Scarring",
     flavor:
-      " It might look bad, but you don’t feel a thing. If anything, it’s made you more pissed than you were before.",
+      " It might look bad, but you don't feel a thing. If anything, it's made you more pissed than you were before.",
     effect: "+1 Max Grit.",
     effects: { Grit: +1 }
   }

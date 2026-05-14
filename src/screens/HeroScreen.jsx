@@ -12,6 +12,7 @@ import DMTab from '../components/DM/DMTab';
 import MiscTab from '../components/MiscTab';
 import PosseTab from '../components/PosseTab';
 import HeroSelector from '../components/HeroSelector';
+import AdventureTrackView from '../components/AdventureTrackView';
 
 export default function HeroScreen({
   dragLocked,
@@ -89,7 +90,7 @@ export default function HeroScreen({
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex justify-around items-center gap-1 border-y-2 border-leather bg-gradient-to-b from-parchment-dark to-parchment py-3 px-2 shadow-inner-dark">
+      <div className="flex flex-wrap justify-center items-center gap-1 border-y-2 border-leather bg-gradient-to-b from-parchment-dark to-parchment py-2 px-2 shadow-inner-dark">
         {TABS.map(tab => (
           <button
             key={tab}
@@ -110,6 +111,12 @@ export default function HeroScreen({
           </button>
         ))}
       </div>
+
+      {/* Adventure Track (visible to all players when active) */}
+      <div className="px-3 pt-2">
+        <AdventureTrackView />
+      </div>
+
 
       {/* Tab Content */}
       <div className="flex-1 overflow-auto p-3">

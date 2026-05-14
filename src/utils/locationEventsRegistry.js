@@ -16,6 +16,12 @@ import { handleBlacksmithEvent }          from './locationHandlers/blacksmithHan
 import { handleSaloonEvent }              from './locationHandlers/saloonHandler';
 import { handleSmugglersDenEvent }        from './locationHandlers/smugglersDenHandler';
 import { handleStreetMarketEvent }        from './locationHandlers/streetMarketHandler';
+import { handleScavengerDocEvent }       from './locationHandlers/scavengerDocHandler';
+import { handleMiningOperationEvent }    from './locationHandlers/miningOperationHandler';
+import { handleWastelandWorkshopEvent } from './locationHandlers/wastelandWorkshopHandler';
+import { handleDesertMarketplaceEvent } from './locationHandlers/desertMarketplaceHandler';
+import { handleTempleEvent }            from './locationHandlers/templeHandler';
+import { handleGladiatorArenaEvent }    from './locationHandlers/gladiatorArenaHandler';
 
 // Context + display helpers
 import { makeLocEventCtx } from './locationEventContext';
@@ -109,6 +115,12 @@ export const locationEventHandlers = {
   saloon:           { apply: (roll, ctx) => runHandler('saloon', handleSaloonEvent, roll, ctx) },
   smugglersDen:     { apply: (roll, ctx) => runHandler('smugglersDen', handleSmugglersDenEvent, roll, ctx) },
   streetMarket:     { apply: (roll, ctx) => runHandler('streetMarket', handleStreetMarketEvent, roll, ctx) },
+  scavengerDoc:     { apply: (roll, ctx) => runHandler('scavengerDoc', handleScavengerDocEvent, roll, ctx) },
+  miningOperation:  { apply: (roll, ctx) => runHandler('miningOperation', handleMiningOperationEvent, roll, ctx) },
+  wastelandWorkshop:{ apply: (roll, ctx) => runHandler('wastelandWorkshop', handleWastelandWorkshopEvent, roll, ctx) },
+  desertMarketplace:{ apply: (roll, ctx) => runHandler('desertMarketplace', handleDesertMarketplaceEvent, roll, ctx) },
+  temple:           { apply: (roll, ctx) => runHandler('temple', handleTempleEvent, roll, ctx) },
+  gladiatorArena:   { apply: (roll, ctx) => runHandler('gladiatorArena', handleGladiatorArenaEvent, roll, ctx) },
 
   // Aliases
   gamblingHall:     { apply: (roll, ctx) => runHandler('gambling', handleGamblingHallEvent, roll, ctx) },
@@ -123,4 +135,6 @@ export const locationEventHandlers = {
   smith:            { apply: (roll, ctx) => runHandler('blacksmith', handleBlacksmithEvent, roll, ctx) },
   market:           { apply: (roll, ctx) => runHandler('streetMarket', handleStreetMarketEvent, roll, ctx) },
   smugglers:        { apply: (roll, ctx) => runHandler('smugglersDen', handleSmugglersDenEvent, roll, ctx) },
+  mining:           { apply: (roll, ctx) => runHandler('miningOperation', handleMiningOperationEvent, roll, ctx) },
+  workshop:         { apply: (roll, ctx) => runHandler('wastelandWorkshop', handleWastelandWorkshopEvent, roll, ctx) },
 };

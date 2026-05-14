@@ -1,384 +1,527 @@
 // src/utils/locationHandlers/gamblingHallHandler.js
 //
-// Modernized Gambling Hall Location Events handler.
-// - Uses Frontier Town Gambling Hall event text
-// - Compatible with locationEventsEngine (forcedRoll-based)
-// - Safe with existing Poker/Craps/Devil’s Wheel services
-// - Still exposes performGamblingHallHighStakes + highStakes flag
+// Gambling Hall Location Events handler.
+// Follows canonical handler conventions (see saloonHandler.js).
+// Uses ctx.doSkillCheck, ctx.promptChoice, ctx.updateHero, ctx.toast.
 //
 
 import { loadTownState, saveTownState } from '../townState.js';
 import { performGamblingHallHighStakes } from './gamblingHallServices.js';
-import { withConditionAppended } from '../mergeConditions.js';
-import { d6 as D6 } from '../../utils/diceHelpers';
+import { d6 } from '../../utils/diceHelpers';
 
-/**
- * Try to figure out which heroes are actually at the Gambling Hall.
- * - Prefer posseApi.getHeroesAtShop(shopId)
- * - Fallback to active hero
- * - Last resort: whole posse
- */
+// ---------- gear / artifact collection helpers ----------
+function isGearOrArtifact(it) {
+  if (!it) return false;
+  const t = String(it?.type || '').toLowerCase();
+  const hasTag = Array.isArray(it?.tags) &&
+    it.tags.some((tag) => /^(gear|artifact)/i.test(tag));
+  return hasTag || t === 'gear' || t.startsWith('gear ') || t === 'artifact' || t.startsWith('artifact ');
+}
+
+// Build a compact stat summary for an item (mods/effects)
+function itemStatSummary(it) {
+  if (!it) return '';
+  const parts = [];
+  // mods: { Armor: "4+", Strength: 2 }
+  const mods = it.mods || it.effects;
+  if (mods && typeof mods === 'object' && !Array.isArray(mods)) {
+    for (const [k, v] of Object.entries(mods)) {
+      if (typeof v === 'number' && v !== 0) parts.push(`${k} ${v > 0 ? '+' : ''}${v}`);
+      else if (/^\d+\+$/.test(v)) parts.push(`${k} ${v}`);
+    }
+  }
+  // description/effect as fallback
+  if (!parts.length && it.description) parts.push(it.description);
+  else if (!parts.length && it.effect) parts.push(it.effect);
+  return parts.length ? ` [${parts.join(', ')}]` : '';
+}
+
+function collectGearAndArtifacts(hero) {
+  const results = [];
+
+  // inventory items
+  const inv = Array.isArray(hero?.inventory) ? hero.inventory : [];
+  inv.forEach((it, idx) => {
+    if (isGearOrArtifact(it)) {
+      results.push({
+        source: 'inventory', idx, it,
+        label: `${it?.name || it?.id || 'Item'} (${String(it?.type || 'Gear')})${itemStatSummary(it)}`,
+      });
+    }
+  });
+
+  // equipped / gear slots
+  const pushEquipped = (slotKey, it) => {
+    if (!isGearOrArtifact(it)) return;
+    results.push({
+      source: 'slot', slot: slotKey, it,
+      label: `${it?.name || it?.id || 'Item'} (equipped: ${slotKey})${itemStatSummary(it)}`,
+    });
+  };
+
+  if (hero?.equipped && typeof hero.equipped === 'object') {
+    Object.entries(hero.equipped).forEach(([k, it]) => pushEquipped(k, it));
+  }
+  if (hero?.gear && typeof hero.gear === 'object' && !Array.isArray(hero.gear)) {
+    Object.entries(hero.gear).forEach(([k, it]) => pushEquipped(k, it));
+  }
+  if (hero?.gearSlots && typeof hero.gearSlots === 'object') {
+    Object.entries(hero.gearSlots).forEach(([k, it]) => pushEquipped(k, it));
+  }
+  if (Array.isArray(hero?.slots)) {
+    hero.slots.forEach((entry) => {
+      const slotKey = entry?.slot || entry?.name || 'Slot';
+      const it = entry?.item || entry?.equipped || null;
+      pushEquipped(slotKey, it);
+    });
+  } else if (hero?.slots && typeof hero.slots === 'object') {
+    Object.entries(hero.slots).forEach(([slotKey, maybe]) => {
+      const it = maybe && typeof maybe === 'object' && 'item' in maybe ? maybe.item : maybe;
+      pushEquipped(slotKey, it);
+    });
+  }
+
+  return results;
+}
+
+function removeItemFromHero(ctx, heroId, picked) {
+  ctx.updateHero?.(heroId, (h) => {
+    const next = { ...h };
+    if (picked.source === 'inventory') {
+      const inv = Array.isArray(h.inventory) ? [...h.inventory] : [];
+      inv.splice(picked.idx, 1);
+      next.inventory = inv;
+    } else if (picked.source === 'slot') {
+      const slot = picked.slot;
+      const emptySlot = { id: `empty-${slot}`, name: 'Empty Slot', slot };
+      // Unequip: set slot to Empty Slot placeholder (matching GearTab convention)
+      if (next.equipped?.[slot]) {
+        next.equipped = { ...next.equipped, [slot]: emptySlot };
+      } else if (next.gear?.[slot] && typeof next.gear === 'object' && !Array.isArray(next.gear)) {
+        next.gear = { ...next.gear, [slot]: emptySlot };
+        // If it was a two-handed weapon, also clear the other hand
+        const it = picked.it;
+        const isTwoHanded = it?.twoHanded || (Array.isArray(it?.keywords) && it.keywords.some(k => /two.?hand/i.test(k)));
+        if (isTwoHanded) {
+          const otherHand = slot === 'Main Hand' ? 'Off Hand' : slot === 'Off Hand' ? 'Main Hand' : null;
+          if (otherHand && next.gear[otherHand]?.name === it?.name) {
+            next.gear[otherHand] = { id: `empty-${otherHand}`, name: 'Empty Slot', slot: otherHand };
+          }
+        }
+      } else if (next.gearSlots?.[slot]) {
+        next.gearSlots = { ...next.gearSlots, [slot]: emptySlot };
+      }
+    }
+    return next;
+  });
+}
+
+// ---------- result formatting helper ----------
+function formatCheckResult(result, stat, target) {
+  if (result && typeof result === 'object' && Array.isArray(result.rolls)) {
+    const diceStr = result.rolls.join(', ');
+    const sCount = result.successes ?? result.rolls.filter(r => r >= target).length;
+    return `Rolled [${diceStr}] — ${result.passed ? 'PASSED' : 'FAILED'} (${stat} ${target}+, ${sCount} success${sCount !== 1 ? 'es' : ''})`;
+  }
+  return null;
+}
+
+async function showResult(ctx, title, lines) {
+  const body = Array.isArray(lines) ? lines.join('\n') : lines;
+  await ctx.promptChoice?.(`${title}\n\n${body}`, [{ label: 'Continue' }]);
+}
+
+// ---------- display (title / lore / effect) ----------
+export function display(roll) {
+  switch (roll) {
+    case 2:
+      return {
+        title: 'Assassination Attempt',
+        lore: 'A rival has caught up to you and takes a shot while your back is turned.',
+        effect:
+          'Make a Cunning 5+ test to see it coming or a Lore 6+ test to dodge the fatal blow. If failed, roll once on the Injury Chart with only a single D6 (instead of the normal 2D6).',
+      };
+    case 3:
+      return {
+        title: '"I Say You\'re Cheatin\' Me!"',
+        lore: 'The angry bandido sitting across from you throws back his chair and draws his pistol.',
+        effect:
+          'Make a Luck 4+ test to escape (ending your Location Visit and taking an extra Unwanted Attention marker), or try to get the jump on him by drawing your own weapon — roll a D6. If the roll is less than your Initiative (6 always fails), you drop him and collect your winnings of D6 × $50. If you fail at either option, he shoots you — roll once on the Injury Chart.',
+      };
+    case 4:
+    case 5:
+      return {
+        title: '"Sorry Mister"',
+        lore: 'A drunken patron bumps into you as they stumble toward the door. Patting your pocket as you turn around, you realize that something is missing!',
+        effect: 'You must lose $200, 2 Dark Stone, or 1 Gear or Artifact.',
+      };
+    case 6:
+    case 7:
+    case 8:
+      return {
+        title: 'Laughter, Cheers, and Sadness',
+        lore: 'Smoke fills the air and the cheering thrill of winners roars through the hall, while the empty despair of the drunk and down on their luck lingers in the shadows.',
+        effect: 'No Event.',
+      };
+    case 9:
+    case 10:
+      return {
+        title: "Everyone's a Winner",
+        lore: "The Devil's Wheel strikes a jackpot and everyone cheers!",
+        effect: 'Every Hero at the Gambling Hall immediately gains D6 × $25.',
+      };
+    case 11:
+      return {
+        title: 'Drinks and Cigars All Around',
+        lore: 'A high roller spreads the wealth!',
+        effect:
+          'Every Hero at the Gambling Hall may immediately gain 1 Whiskey Token and 1 Fine Cigar Token for free.',
+      };
+    case 12:
+      return {
+        title: 'High Stakes Bet',
+        lore: 'The gambler sitting across from you places his most prized possession on the table to cover his bet!',
+        effect:
+          'If you play Five Card Draw Poker during this Location Visit and win during the first game, you may also draw a World card and then an Artifact card from that World as an extra reward.',
+      };
+    default:
+      return { title: 'Quiet Night', lore: '', effect: 'No Event.' };
+  }
+}
+
+// ---------- helper: get heroes at Gambling Hall ----------
 function getHeroesAtGamblingHall(ctx = {}) {
-  const { posseApi = {}, shopId } = ctx;
-
-  // 1) Location-aware list (preferred)
-  if (shopId && typeof posseApi.getHeroesAtShop === 'function') {
-    const ids = posseApi.getHeroesAtShop(shopId) || [];
-    return ids
-      .map((id) =>
-        typeof posseApi.getHero === 'function' ? posseApi.getHero(id) : null
-      )
-      .filter(Boolean);
+  // 1) Location-aware list
+  if (ctx.getHeroesAtShop) {
+    const list = ctx.getHeroesAtShop('gamblingHall') || ctx.getHeroesAtShop('gambling_hall') || [];
+    if (list.length) {
+      return list.map(hid => {
+        if (typeof hid === 'object') return hid;
+        return (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? null;
+      }).filter(Boolean);
+    }
   }
 
-  // 2) Single active hero
-  if (
-    typeof posseApi.getActiveHeroId === 'function' &&
-    typeof posseApi.getHero === 'function'
-  ) {
-    const id = posseApi.getActiveHeroId();
-    const h = id ? posseApi.getHero(id) : null;
+  // 2) Active hero
+  const id = ctx.getActiveHeroId?.();
+  if (id) {
+    const h = (ctx.getHeroById ?? ctx.getHero)?.(id);
     if (h) return [h];
-  }
-
-  // 3) Whole posse as fallback
-  if (typeof posseApi.listHeroes === 'function') {
-    const list = posseApi.listHeroes() || [];
-    return Array.isArray(list) ? list : [];
   }
 
   return [];
 }
 
-function updateHero(ctx = {}, heroId, patch) {
-  const { posseApi = {} } = ctx;
-  if (!heroId || typeof posseApi.updateHero !== 'function') return;
+// ---------- mechanics (apply) ----------
+export async function apply(roll, ctx) {
+  const id = ctx.getActiveHeroId?.();
+  if (!id) return { log: [] };
 
-  posseApi.updateHero(heroId, {
-    ...patch,
-    updatedAt: patch.updatedAt ?? Date.now(),
-  });
-}
-
-function addUnwantedAttention(ctx = {}, hero, count = 1) {
-  const { posseApi = {}, uiApi = {} } = ctx;
-  if (!hero || typeof posseApi.updateHero !== 'function') return;
-
-  const id = hero.id || hero.localId;
-  const cur = Number(hero.unwantedAttention || 0) || 0;
-
-  posseApi.updateHero(id, {
-    unwantedAttention: cur + count,
-    updatedAt: Date.now(),
-  });
-
-  uiApi.toast?.(
-    `${hero.name || 'Hero'} gains ${count} Unwanted Attention marker${
-      count === 1 ? '' : 's'
-    }.`
-  );
-}
-
-// Generic "did the test pass?" helper.
-// Player/DM rolls dice physically or via DM tools; we just capture result.
-async function askPassFail(ctx = {}, { title, message }) {
-  const { uiApi = {} } = ctx;
-  if (typeof uiApi.choose !== 'function') return null;
-
-  const pick = await uiApi.choose({
-    title,
-    message,
-    options: [
-      { id: 'pass', label: 'Passed' },
-      { id: 'fail', label: 'Failed' },
-    ],
-  });
-
-  if (!pick) return null;
-  return pick.id === 'pass';
-}
-
-async function coreHandle(ctx = {}) {
-  const { uiApi = {}, forcedRoll } = ctx;
-
-  const roll = Number.isFinite(forcedRoll) ? Number(forcedRoll) : D6() + D6();
-  const heroes = getHeroesAtGamblingHall(ctx);
+  const info = display(roll);
   const log = [];
 
-  if (!heroes.length) {
-    log.push(
-      `[Gambling Hall] Location Event roll ${roll}, but no hero was found at this location.`
+  log.push(`[Gambling Hall] (${roll}) ${info.title} — ${info.lore}`);
+  log.push(`Effect: ${info.effect}`);
+
+  // 2: Assassination Attempt — Cunning 5+ OR Lore 6+
+  if (roll === 2) {
+    const lore2 = `ASSASSINATION ATTEMPT\n${info.lore}`;
+    const testChoice = await ctx.promptChoice?.(
+      `ASSASSINATION ATTEMPT\n${info.lore}\n\nChoose how to react:`,
+      [
+        { label: 'See it coming (Cunning 5+ test)' },
+        { label: 'Dodge the fatal blow (Lore 6+ test)' },
+      ]
     );
-    return { actions: [], log, eventRoll: roll, eventIndex: Math.max(0, roll - 2) };
+    let result;
+    let checkLine;
+    if (testChoice === 1) {
+      result = await ctx.doSkillCheck(id, {
+        stat: 'Lore', target: 6, returnDetails: true,
+        message: `${lore2}\nYou try to dodge the fatal blow at the last second!`,
+      });
+      checkLine = formatCheckResult(result, 'Lore', 6);
+    } else {
+      result = await ctx.doSkillCheck(id, {
+        stat: 'Cunning', target: 5, returnDetails: true,
+        message: `${lore2}\nYou try to sense the danger before the shot rings out!`,
+      });
+      checkLine = formatCheckResult(result, 'Cunning', 5);
+    }
+    if (checkLine) log.push(checkLine);
+    const passed = result?.passed ?? result;
+    if (passed) {
+      const outcome = 'Your instincts save your life! You dodge the shot just in time. No further effect.';
+      log.push(outcome);
+      await showResult(ctx, 'ASSASSINATION ATTEMPT — Result', [checkLine, '', outcome]);
+      ctx.toast?.('Assassination Attempt avoided!');
+    } else {
+      const outcome = 'The shot catches you off guard! Roll once on the Injury Chart with only a single D6 (instead of the normal 2D6).';
+      log.push(outcome);
+      await showResult(ctx, 'ASSASSINATION ATTEMPT — Result', [checkLine, '', outcome]);
+      ctx.toast?.('Hit! Roll on the Injury Chart (single D6).');
+      await ctx.enqueueChartRoll?.(id, 'injury');
+    }
+    return { log };
   }
 
-  // Most events talk to "you" singular – treat first hero as primary.
-  // Events that say "Every Hero at the Gambling Hall" iterate over `heroes`.
-  const primary = heroes[0];
-  const pname = primary.name || 'Hero';
+  // 3: "I Say You're Cheatin' Me!" — Luck 4+ to escape OR draw weapon (D6 vs Initiative)
+  if (roll === 3) {
+    const lore3 = `"I SAY YOU'RE CHEATIN' ME!"\n${info.lore}`;
+    const pathChoice = await ctx.promptChoice?.(
+      `"I SAY YOU'RE CHEATIN' ME!"\n${info.lore}\n\nThe bandido draws his pistol! Choose how to react:`,
+      [
+        { label: 'Try to escape (Luck 4+ test — ends Location Visit, +1 Unwanted Attention)' },
+        { label: 'Draw your own weapon (D6 vs Initiative — drop him and collect D6 × $50)' },
+      ]
+    );
 
-  switch (roll) {
-    // ---------------------------------------------------------
-    // 2 — Assassination Attempt
-    // ---------------------------------------------------------
-    case 2: {
-      log.push(
-        `[Gambling Hall] (2) Assassination Attempt — ${pname} must make a Cunning 5+ OR Lore 6+ test.`
+    if (pathChoice === 1) {
+      // Draw weapon path: D6 vs Initiative (6 always fails)
+      const hero = (ctx.getHeroById ?? ctx.getHero)?.(id);
+      const initiative = Number(hero?.initiative ?? hero?.stats?.Initiative ?? 0);
+      const rawRoll = await ctx.promptNumber?.(
+        `Draw your weapon! Roll a D6 vs your Initiative (${initiative}).\n6 always fails.\n\nEnter your D6 roll:`,
+        'initiativeRoll',
       );
+      const weaponRoll = Math.max(1, Math.min(6, Number(rawRoll) || d6()));
+      const weaponLine = `Rolled [${weaponRoll}] vs Initiative ${initiative} (6 always fails).`;
+      log.push(weaponLine);
 
-      const passed = await askPassFail(ctx, {
-        title: 'Assassination Attempt',
-        message:
-          `${pname} must make a Cunning 5+ or Lore 6+ test.\n\n` +
-          `Resolve the roll at the table, then choose whether they Passed or Failed.`,
-      });
-
-      if (passed === false) {
-        // Card: "If failed, roll once on the Injury Chart."
-        // We append a pending Injury for the DM to resolve using the real chart UI.
-        const nextConditions = withConditionAppended(
-          primary.conditions,
-          'injury',
-          {
-            id: `gh_assassination_${Date.now()}_${primary.id || primary.localId}`,
-            type: 'injury',
-            name: 'Pending Injury (Assassination Attempt)',
-            text:
-              'From Gambling Hall Location Event 2 — roll once on the Injury Chart and record the result.',
-            pending: true,
-            source: 'Gambling Hall Event #2',
-          }
-        );
-
-        updateHero(ctx, primary.id || primary.localId, {
-          conditions: nextConditions,
-        });
-
-        log.push(
-          `→ ${pname} failed the test and now has a pending Injury from the Assassination Attempt.`
-        );
-      } else if (passed === true) {
-        log.push(`→ ${pname} spotted/dodged the attack. No further effect.`);
+      if (weaponRoll < initiative && weaponRoll !== 6) {
+        // Success: drop him and collect winnings
+        const winDie = d6();
+        const winnings = winDie * 50;
+        const winLine = `Rolled [${winDie}] × $50 = $${winnings} in winnings!`;
+        log.push(winLine);
+        ctx.updateHero?.(id, (h) => ({ ...h, gold: (h.gold || 0) + winnings }));
+        const outcome = `You get the jump on the bandido and drop him! You collect $${winnings} in winnings.`;
+        log.push(outcome);
+        await showResult(ctx, '"I SAY YOU\'RE CHEATIN\' ME!" — Result', [weaponLine, winLine, '', outcome]);
+        ctx.toast?.(`Dropped the bandido! +$${winnings}.`);
       } else {
-        log.push(
-          `→ Pass/Fail was not chosen in UI. Remember: if ${pname} failed, they must roll once on the Injury Chart.`
-        );
+        // Failed: he shoots you
+        const outcome = 'The bandido is faster! He shoots you before you can draw. Roll once on the Injury Chart.';
+        log.push(outcome);
+        await showResult(ctx, '"I SAY YOU\'RE CHEATIN\' ME!" — Result', [weaponLine, '', outcome]);
+        ctx.toast?.('Shot by the bandido! Roll on the Injury Chart.');
+        await ctx.enqueueChartRoll?.(id, 'injury');
       }
-      break;
-    }
-
-    // ---------------------------------------------------------
-    // 3 — “I Say You’re Cheatin’ Me!”
-    // ---------------------------------------------------------
-    case 3: {
-      log.push(
-        `[Gambling Hall] (3) "I Say You're Cheatin' Me!" — ${pname} must make a Luck 4+ test.`
-      );
-
-      const passed = await askPassFail(ctx, {
-        title: `"I Say You're Cheatin' Me!"`,
-        message:
-          `${pname} must make a Luck 4+ test.\n\n` +
-          `Resolve the roll at the table, then choose whether they Passed or Failed.`,
+    } else {
+      // Escape path: Luck 4+
+      const result = await ctx.doSkillCheck(id, {
+        stat: 'Luck', target: 4, returnDetails: true,
+        message: `${lore3}\nHis first drunken shot hits the post behind you — time to run!`,
       });
+      const checkLine = formatCheckResult(result, 'Luck', 4);
+      if (checkLine) log.push(checkLine);
+      const passed = result?.passed ?? result;
 
-      if (passed === true) {
-        // Pass: he ends his Location Visit taking an extra Unwanted Attention marker.
-        addUnwantedAttention(ctx, primary, 1);
-        log.push(
-          `→ ${pname} passes the Luck 4+ test. The bandido storms off; ${pname} gains 1 Unwanted Attention and ends their Location Visit.`
-        );
-      } else if (passed === false) {
-        // Fail: DM resolves the D6 vs Initiative and possible Injury.
-        log.push(
-          `→ ${pname} fails the Luck 4+ test.\n` +
-            `Now roll 1D6 and compare to their Initiative:\n` +
-            `  • If the roll is less than Initiative, they drop him with no further effect.\n` +
-            `  • Otherwise, ${pname} must roll once on the Injury Chart.\n` +
-            `Record any Injury result on the hero's Conditions tab.`
-        );
+      if (passed) {
+        // Escape: end visit + Unwanted Attention
+        ctx.updateHero?.(id, (h) => ({
+          ...h,
+          isDone: true,
+          unwantedAttention: (h.unwantedAttention || 0) + 1,
+        }));
+        const outcome = `The shot misses! You escape the Gambling Hall, but draw attention on the way out. +1 Unwanted Attention. Location Visit ends.`;
+        log.push(outcome);
+        await showResult(ctx, '"I SAY YOU\'RE CHEATIN\' ME!" — Result', [checkLine, '', outcome]);
+        ctx.toast?.('Escaped! +1 Unwanted Attention. Visit ends.');
       } else {
-        log.push(
-          `→ Pass/Fail was not chosen in UI. Remember to complete the Luck 4+ test and 1D6 vs Initiative check as per the card.`
-        );
+        const outcome = 'You can\'t dodge in time — the bandido shoots you! Roll once on the Injury Chart.';
+        log.push(outcome);
+        await showResult(ctx, '"I SAY YOU\'RE CHEATIN\' ME!" — Result', [checkLine, '', outcome]);
+        ctx.toast?.('Shot by the bandido! Roll on the Injury Chart.');
+        await ctx.enqueueChartRoll?.(id, 'injury');
       }
-      break;
+    }
+    return { log };
+  }
+
+  // 4-5: "Sorry Mister" — lose $200, 2 Dark Stone, or 1 Gear/Artifact
+  if (roll === 4 || roll === 5) {
+    const choice = await ctx.promptChoice?.(
+      `"SORRY MISTER"\n${info.lore}\n\nYou must lose ONE of the following:`,
+      [
+        { label: 'Lose $200' },
+        { label: 'Lose 2 Dark Stone' },
+        { label: 'Lose 1 Gear or Artifact' },
+      ]
+    );
+
+    if (choice === 0) {
+      ctx.updateHero?.(id, (h) => ({ ...h, gold: Math.max(0, (h.gold || 0) - 200) }));
+      const outcome = 'Your pocket has been picked! You lose $200.';
+      log.push(outcome);
+      await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
+      ctx.toast?.('Pickpocketed! -$200.');
+    } else if (choice === 1) {
+      ctx.updateHero?.(id, (h) => ({ ...h, darkStone: Math.max(0, (h.darkStone || 0) - 2) }));
+      const outcome = 'Your Dark Stone pouch feels lighter! You lose 2 Dark Stone.';
+      log.push(outcome);
+      await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
+      ctx.toast?.('Pickpocketed! -2 Dark Stone.');
+    } else {
+      // Collect gear and artifact items from the hero
+      const hero = (ctx.getHeroById ?? ctx.getHero)?.(id);
+      const lossItems = collectGearAndArtifacts(hero);
+
+      if (lossItems.length === 0) {
+        const outcome = 'You have no Gear or Artifacts to lose! The thief finds nothing of value.';
+        log.push(outcome);
+        await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
+        ctx.toast?.('No Gear or Artifacts to lose.');
+      } else {
+        const itemChoice = await ctx.promptChoice?.(
+          `"SORRY MISTER"\n\nChoose a Gear or Artifact to lose:`,
+          lossItems.map((it) => ({ label: it.label }))
+        );
+        const picked = lossItems[itemChoice ?? 0];
+        if (picked) {
+          removeItemFromHero(ctx, id, picked);
+          const outcome = `Something is missing from your pack! You lost: ${picked.label}.`;
+          log.push(outcome);
+          await showResult(ctx, '"SORRY MISTER" — Result', [outcome]);
+          ctx.toast?.(`Pickpocketed! Lost ${picked.label}.`);
+        }
+      }
+    }
+    return { log };
+  }
+
+  // 6-8: Laughter, Cheers, and Sadness — No Event
+  if (roll >= 6 && roll <= 8) {
+    const outcome = 'The usual buzz of the Gambling Hall. No event.';
+    log.push(outcome);
+    await showResult(ctx, 'LAUGHTER, CHEERS, AND SADNESS — Result', [outcome]);
+    return { log };
+  }
+
+  // 9-10: Everyone's a Winner — Every hero at the Hall gains D6 × $25
+  if (roll === 9 || roll === 10) {
+    const heroes = getHeroesAtGamblingHall(ctx);
+    const results = [];
+
+    for (const h of heroes) {
+      const hid = h.id || h.localId;
+      const hName = h.name || 'Hero';
+      const die = d6();
+      const winnings = die * 25;
+      ctx.updateHero?.(hid, (hero) => ({ ...hero, gold: (hero.gold || 0) + winnings }));
+      const line = `${hName} rolled [${die}] × $25 = +$${winnings}.`;
+      log.push(line);
+      results.push(line);
     }
 
-    // ---------------------------------------------------------
-    // 4–5 — “Sorry Mister”
-    // ---------------------------------------------------------
-    case 4:
-    case 5: {
-      log.push(
-        `[Gambling Hall] (${roll}) "Sorry Mister" — A drunken patron bumps into ${pname}.`
-      );
-      log.push(
-        `→ ${pname} must lose ONE of the following (player's choice):\n` +
-          `   • $200\n` +
-          `   • 2 Dark Stone\n` +
-          `   • 1 Gear or Artifact\n` +
-          `Adjust the hero's gold / Dark Stone / inventory manually to match the choice.`
-      );
-      break;
+    if (!heroes.length) {
+      // Fallback: just the active hero
+      const die = d6();
+      const winnings = die * 25;
+      ctx.updateHero?.(id, (h) => ({ ...h, gold: (h.gold || 0) + winnings }));
+      const line = `Rolled [${die}] × $25 = +$${winnings}.`;
+      log.push(line);
+      results.push(line);
     }
 
-    // ---------------------------------------------------------
-    // 6–8 — Laughter, Cheers, and Sadness (No Event)
-    // ---------------------------------------------------------
-    case 6:
-    case 7:
-    case 8: {
-      log.push(
-        `[Gambling Hall] (${roll}) Laughter, Cheers, and Sadness — No Event. ` +
-          `${pname} watches winners and losers pass by without incident.`
-      );
-      break;
-    }
+    await showResult(ctx, "EVERYONE'S A WINNER — Result", [
+      "The Devil's Wheel strikes a jackpot and everyone cheers!",
+      '',
+      ...results,
+    ]);
+    ctx.toast?.("Everyone's a Winner! Each hero gains D6 × $25.");
+    return { log };
+  }
 
-    // ---------------------------------------------------------
-    // 9–10 — Everyone’s a Winner (Every hero at the Hall gains D6 × $25)
-    // ---------------------------------------------------------
-    case 9:
-    case 10: {
-      log.push(
-        `[Gambling Hall] (${roll}) Everyone's a Winner — The Devil's Wheel hits a jackpot!`
-      );
+  // 11: Drinks and Cigars All Around — each hero gains 1 Whiskey + 1 Fine Cigar
+  if (roll === 11) {
+    // Get hero IDs at the gambling hall directly (avoid stale object resolution)
+    let heroIds = ctx.getHeroesAtShop?.('gamblingHall') || [];
+    if (!heroIds.length) heroIds = ctx.getHeroesAtShop?.('gambling_hall') || [];
+    if (!heroIds.length) heroIds = [id]; // fallback to active hero
 
-      const { posseApi = {} } = ctx;
+    const results = [];
 
-      for (const h of heroes) {
-        const hName = h.name || 'Hero';
-        const id = h.id || h.localId;
+    for (const hid of heroIds) {
+      const rawId = typeof hid === 'object' ? (hid.id || hid.localId) : hid;
+      if (!rawId) continue;
+      const hero = (ctx.getHeroById ?? ctx.getHero)?.(rawId);
+      const hName = hero?.name || 'Hero';
 
-        let die = D6();
-        if (typeof uiApi.roll === 'function') {
-          try {
-            const rolls = await uiApi.roll(
-              1,
-              6,
-              "Everyone's a Winner (D6 × $25)"
-            );
-            if (Array.isArray(rolls) && rolls.length) {
-              const n = Number(rolls[0]);
-              if (Number.isFinite(n)) die = n;
+      // Add both tokens in a single update using structured sidebags format
+      ctx.updateHero?.(rawId, (h) => {
+        const sb = h.sidebags && typeof h.sidebags === 'object' ? h.sidebags : { capacity: 6, items: [] };
+        const items = Array.isArray(sb.items) ? [...sb.items] : [];
+
+        // Also migrate legacy flat sideBag data if items are empty
+        if (items.length === 0) {
+          const legacy = h.sideBag || h.sideBagTokens;
+          if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+            for (const [name, count] of Object.entries(legacy)) {
+              const qty = Math.max(0, Number(count) || 0);
+              if (qty > 0 && name) items.push({ id: `token_${Date.now()}_${name}`, name, qty });
             }
-          } catch {
-            // fall back to random D6
           }
         }
 
-        const winnings = die * 25;
-        const curGold = Number(h.gold || 0);
-        const nextGold = curGold + winnings;
-
-        updateHero(ctx, id, { gold: nextGold });
-
-        uiApi.toast?.(
-          `${hName} wins $${winnings} (rolled ${die}) — now at $${nextGold}.`
-        );
-        log.push(
-          `→ ${hName} rolls ${die} and gains $${winnings}, for a new total of $${nextGold}.`
-        );
-      }
-      break;
-    }
-
-    // ---------------------------------------------------------
-    // 11 — Drinks and Cigars All Around
-    // ---------------------------------------------------------
-    case 11: {
-      log.push(
-        `[Gambling Hall] (11) Drinks and Cigars All Around — A high roller spreads the wealth.`
-      );
-
-      const { posseApi = {} } = ctx;
-      const hasAddToken = typeof posseApi.addToken === 'function';
-
-      for (const h of heroes) {
-        const id = h.id || h.localId;
-        const hName = h.name || 'Hero';
-
-        if (hasAddToken) {
-          try {
-            posseApi.addToken(id, 'Whiskey');
-            posseApi.addToken(id, 'Fine Cigar');
-            uiApi.toast?.(
-              `${hName} gains 1 Whiskey token and 1 Fine Cigar token.`
-            );
-          } catch {
-            log.push(
-              `→ Give ${hName}: 1 Whiskey token and 1 Fine Cigar token (manually, if needed).`
-            );
+        const addOrIncrement = (tokenName) => {
+          const idx = items.findIndex(i => (i.name || '').toLowerCase() === tokenName.toLowerCase());
+          if (idx >= 0) {
+            items[idx] = { ...items[idx], qty: (items[idx].qty ?? 1) + 1 };
+          } else {
+            items.push({ id: `token_${Date.now()}_${tokenName}`, name: tokenName, qty: 1 });
           }
-        } else {
-          log.push(
-            `→ Give ${hName}: 1 Whiskey token and 1 Fine Cigar token (add them manually to their Side Bag).`
-          );
-        }
-      }
-      break;
+        };
+        addOrIncrement('Whiskey');
+        addOrIncrement('Fine Cigar');
+
+        return { ...h, sidebags: { ...sb, items } };
+      });
+      const line = `${hName} gains 1 Whiskey Token and 1 Fine Cigar Token.`;
+      log.push(line);
+      results.push(line);
     }
 
-    // ---------------------------------------------------------
-    // 12 — High Stakes Bet
-    // ---------------------------------------------------------
-    case 12: {
-      log.push(
-        `[Gambling Hall] (12) High Stakes Bet — A gambler places their most prized possession on the table.`
-      );
-      log.push(
-        `→ For this Town Stay: If ${pname} (or another hero here) plays Five Card Draw Poker and wins during their FIRST game, they draw:\n` +
-          `   • 1 World card\n` +
-          `   • 1 Artifact card from that World\n` +
-          `as an extra reward.`
-      );
-
-      // Keep the original behavior: flag this in townState so the Poker service can detect it.
-      const state = loadTownState() || {};
-      state.gamblingHallFlags = state.gamblingHallFlags || {};
-      state.gamblingHallFlags.highStakesActive = true;
-      saveTownState(state);
-
-      uiApi.toast?.(
-        'High Stakes Bet is active: the first Poker win this visit grants a bonus World + Artifact draw.'
-      );
-      break;
-    }
-
-    // ---------------------------------------------------------
-    // Fallback
-    // ---------------------------------------------------------
-    default: {
-      log.push(
-        `[Gambling Hall] Event roll ${roll} has no specialized handler; falling back to text-only behavior.`
-      );
-      break;
-    }
+    await showResult(ctx, 'DRINKS AND CIGARS ALL AROUND — Result', [
+      'A high roller spreads the wealth!',
+      '',
+      ...results,
+    ]);
+    ctx.toast?.('Drinks and Cigars All Around!');
+    return { log };
   }
 
+  // 12: High Stakes Bet — first Poker win grants bonus World + Artifact
+  if (roll === 12) {
+    const state = loadTownState() || {};
+    state.gamblingHallFlags = state.gamblingHallFlags || {};
+    state.gamblingHallFlags.firstPokerWinAwardsArtifact = true;
+    saveTownState(state);
+
+    const outcome = 'High Stakes Bet is active! If you play Five Card Draw Poker during this Location Visit and win during the first game, draw a World card and then an Artifact card from that World as an extra reward.';
+    log.push(outcome);
+    await showResult(ctx, 'HIGH STAKES BET — Result', [outcome]);
+    ctx.toast?.('High Stakes Bet active: first Poker win grants bonus World + Artifact draw.');
+    return { log };
+  }
+
+  return { log };
+}
+
+// --------- Dispatcher compatible with locationEventsEngine ---------------
+export async function handleGamblingHallEvent(ctx = {}) {
+  const roll = ctx.forcedRoll ?? (d6() + d6());
+  const result = await apply(roll, ctx);
   return {
     actions: [],
-    log,
+    townState: ctx.townState,
+    log: result?.log || [`Gambling Hall Event Roll: ${roll}`],
     eventRoll: roll,
     eventIndex: Math.max(0, roll - 2),
   };
 }
 
-// Backwards-compatible "apply" API (old code sometimes called gamblingHallHandler.apply)
-async function apply(roll, ctx = {}) {
-  return coreHandle({ ...ctx, forcedRoll: roll });
-}
-
-// Public handler used by locationEventsEngine
-export async function handleGamblingHallEvent(ctx = {}) {
-  return coreHandle(ctx);
-}
-
-export const gamblingHallHandler = {
-  apply,
-  handleGamblingHallEvent,
-};
+export const gamblingHallHandler = { display, apply, handleGamblingHallEvent };
 
 // Keep exporting this so Poker services can import it from here if needed
 export { performGamblingHallHighStakes } from './gamblingHallServices.js';

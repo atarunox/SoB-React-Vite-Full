@@ -22,15 +22,19 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
       case 'ADD_GRIT': {
         const h = getHero(a.heroId);
         if (!h) break;
-        const grit = Math.max(0, (h.grit ?? 0) + (a.amount ?? 0));
-        updateHero?.(a.heroId, { grit });
+        const curGrit = h.currentGrit ?? h.grit ?? 0;
+        const newGrit = Math.max(0, curGrit + (a.amount ?? 0));
+        updateHero?.(a.heroId, { currentGrit: newGrit });
         break;
       }
 
       case 'HEAL_TO_FULL': {
         const h = getHero(a.heroId);
         if (!h) break;
-        updateHero?.(a.heroId, { health: h.maxHealth ?? h.health, sanity: h.maxSanity ?? h.sanity });
+        updateHero?.(a.heroId, {
+          currentHealth: h.maxHealth ?? h.currentHealth ?? 10,
+          currentSanity: h.maxSanity ?? h.currentSanity ?? 10,
+        });
         break;
       }
 
@@ -58,8 +62,8 @@ export async function applyLocationActions(actions = [], { posseApi, townState, 
       case 'APPLY_WOUNDS': {
         const h = getHero(a.heroId);
         if (!h) break;
-        const health = Math.max(0, (h.health ?? 0) - (a.amount ?? 0));
-        updateHero?.(a.heroId, { health });
+        const cur = h.currentHealth ?? h.maxHealth ?? 10;
+        updateHero?.(a.heroId, { currentHealth: Math.max(0, cur - (a.amount ?? 0)) });
         break;
       }
 
