@@ -63,6 +63,12 @@ export default function AdventureTrackView() {
     return activeHero ? getLanternInfo(activeHero) : null;
   }, [activeHero]);
 
+  const lanternBearerName = useMemo(() => {
+    if (!state.lanternBearerId) return null;
+    const hero = posse.find(h => (h.id || h.localId) === state.lanternBearerId);
+    return hero?.name || null;
+  }, [state.lanternBearerId, posse]);
+
   const usesPerilDie = lanternItem?.id === 'mine_void_lantern';
 
   if (!state.active) return null;
@@ -70,12 +76,6 @@ export default function AdventureTrackView() {
   const missionFailed = state.darkness <= 0;
   const lastRoll = state.lastRoll;
   const rollRecent = lastRoll && (Date.now() - (lastRoll.timestamp || 0)) < 60000;
-
-  const lanternBearerName = useMemo(() => {
-    if (!state.lanternBearerId) return null;
-    const hero = posse.find(h => (h.id || h.localId) === state.lanternBearerId);
-    return hero?.name || null;
-  }, [state.lanternBearerId, posse]);
 
   return (
     <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 space-y-2">
