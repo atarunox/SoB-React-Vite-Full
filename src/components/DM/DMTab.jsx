@@ -12,6 +12,7 @@ import TownPhaseTab from './TownPhaseTab';
 import DMLootPoolPanel from './DMLootPoolPanel';
 import DMTradePanel from './DMTradePanel';
 import DMItemGenerator from './DMItemGenerator';
+import DMTurnTracker from './DMTurnTracker';
 
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
@@ -124,6 +125,7 @@ const TABS = [
   { id: 'itemGen',      label: 'Item Generator',   component: DMItemGenerator },
   { id: 'charts',       label: 'Charts',           component: DMChartPanel },
   { id: 'townPhase',    label: 'Town Phase',       component: TownPhaseTab },
+  { id: 'turnTracker',  label: 'Turn Tracker',     component: DMTurnTracker },
   { id: 'options',      label: 'Options',          component: OptionsPanel },
 ];
 
