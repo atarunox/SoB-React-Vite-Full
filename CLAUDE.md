@@ -1,10 +1,10 @@
-# Shadows of Brimstone — Hero Tracker App
+# Shadows of Brimstone — Campaign Tracker App
 
-## Project Overview
+React + Vite app for tracking Heroes, Town Visits, and game state for *Shadows of Brimstone* by Flying Frog Productions. Firebase for cloud persistence, localStorage as fallback. Mobile-first.
 
-React + Vite app for tracking Heroes, Town Visits, and game state for the *Shadows of Brimstone* board game by Flying Frog Productions. Firebase for cloud persistence, localStorage as fallback. Tailwind CSS v4 for styling. Mobile-first target audience.
+**Tech stack:** React 18, Vite 8, Tailwind CSS 4.1, Firebase (Firestore), Framer Motion, react-router-dom v6, react-grid-layout, tesseract.js (OCR), uuid.
 
-**Tech stack:** React 18, Vite 5, Tailwind CSS 4.1, Firebase (Firestore), framer-motion, react-router-dom v6.
+**Dev server:** `npm run dev` → `https://localhost:5173` or `https://<LAN-IP>:5173` (HTTPS via `@vitejs/plugin-basic-ssl` — browser will warn on first load, click Advanced → Proceed).
 
 ---
 
@@ -12,9 +12,9 @@ React + Vite app for tracking Heroes, Town Visits, and game state for the *Shado
 
 ### Canonical Hero Fields
 
-`sanitizeHero.js` is the single source of truth. Every hero object passes through it on load/save. Fields not in the canonical schema are silently ignored or overwritten.
+`sanitizeHero.js` is the single source of truth. Every hero passes through it on load/save. Fields not in the canonical schema are silently dropped.
 
-**Resource pools (read/write these):**
+**Resource pools (always read/write these exact field names):**
 | Field | Meaning | Default |
 |---|---|---|
 | `currentHealth` | Current HP | 10 |
@@ -42,322 +42,481 @@ React + Vite app for tracking Heroes, Town Visits, and game state for the *Shado
 | `Move` | Numeric | 0 |
 
 **Threshold stats (inside `hero.stats`, "X+" format, lower is better):**
-| Stat | Default |
-|---|---|
-| `Melee To-Hit` | 4+ |
-| `Ranged To-Hit` | 4+ |
-| `Defense` | 4+ |
-| `Willpower` | 5+ |
-| `Armor` | — |
-| `Spirit Armor` | — |
+`Melee To-Hit`, `Ranged To-Hit`, `Defense`, `Willpower`, `Armor`, `Spirit Armor`
 
-**Conditions:** `injuries[]`, `madness[]`, `mutations[]` (top-level arrays of objects).
+**Conditions:** `injuries[]`, `madness[]`, `mutations[]` — top-level arrays of objects.
 
-**Gear:** `hero.gear` is a slot-keyed object with 13 standard slots: `Main Hand`, `Off Hand`, `Head`, `Torso`, `Coat`, `Gloves`, `Hands`, `Pants`, `Feet`, `Shoulders`, `Face`, `Extra 1`, `Extra 2`.
+**Gear:** `hero.gear` is a slot-keyed object. 13 standard slots: `Main Hand`, `Off Hand`, `Head`, `Torso`, `Coat`, `Gloves`, `Hands`, `Pants`, `Feet`, `Shoulders`, `Face`, `Extra 1`, `Extra 2`.
 
 ### CRITICAL: Field Name Bugs to Avoid
 
-The sanitizer (line 172) mirrors `corruption: currentCorruption` as a **read-only alias**. This means:
-- Writing to `corruption` is **silently dropped** on next sanitize pass
-- Writing to `corruptionHits` does **nothing** (not a real field)
-- Writing to `wounds` does **nothing** (not a real field)
-- Writing to `health` is **silently dropped** (overwritten by `currentHealth`)
+The sanitizer mirrors `corruption: currentCorruption` as a **read-only alias**. Writing to it is silently dropped.
 
-**Always write to the canonical field:**
 ```js
-// CORRECT — corruption
-ctx.updateHero(id, h => ({
-  ...h,
-  currentCorruption: (h.currentCorruption ?? 0) + amount,
-}));
+// CORRECT
+ctx.updateHero(id, h => ({ ...h, currentCorruption: (h.currentCorruption ?? 0) + amount }));
+ctx.updateHero(id, h => ({ ...h, currentHealth: Math.max(0, (h.currentHealth ?? 10) - wounds) }));
+ctx.updateHero(id, h => ({ ...h, currentHealth: Math.min(h.maxHealth ?? 10, (h.currentHealth ?? 0) + heal) }));
 
-// CORRECT — damage (reduce health)
-ctx.updateHero(id, h => ({
-  ...h,
-  currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - wounds),
-}));
-
-// CORRECT — healing
-ctx.updateHero(id, h => ({
-  ...h,
-  currentHealth: Math.min(h.maxHealth ?? 10, (h.currentHealth ?? 0) + healAmount),
-}));
-
-// WRONG — silently dropped
-ctx.updateHero(id, h => ({ ...h, corruption: X }));   // ← dropped
-ctx.updateHero(id, h => ({ ...h, wounds: X }));        // ← dropped  
-ctx.updateHero(id, h => ({ ...h, health: X }));        // ← dropped
-ctx.updateHero(id, h => ({ ...h, corruptionHits: X }));// ← dropped
+// WRONG — silently dropped by sanitizer
+ctx.updateHero(id, h => ({ ...h, corruption: X }));     // ← dropped
+ctx.updateHero(id, h => ({ ...h, wounds: X }));          // ← dropped
+ctx.updateHero(id, h => ({ ...h, health: X }));          // ← dropped
+ctx.updateHero(id, h => ({ ...h, corruptionHits: X }));  // ← dropped
 ```
 
 ### Willpower Save Pattern for Corruption Hits
 
-Reference implementation: `miningOperationHandler.js:215-228`.
-
-Every source of Corruption Hits **must** allow Willpower saves unless the card text explicitly says "ignoring Willpower":
+Reference: `miningOperationHandler.js:215-228`. Every Corruption Hit source **must** allow Willpower saves unless card text says "ignoring Willpower":
 
 ```js
 const h = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
 const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
 const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-const saveRolls = await ctx.roll?.(hitCount, 6,
-  `Willpower ${wpTarget}+ saves vs ${hitCount} Corruption Hits`) || [];
-const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-const blocks = arr.filter(n => n >= wpTarget).length;
+const saveRolls = await ctx.roll?.(hitCount, 6, `Willpower ${wpTarget}+ saves`) || [];
+const blocks = (Array.isArray(saveRolls) ? saveRolls : [saveRolls]).filter(n => n >= wpTarget).length;
 const unblocked = Math.max(0, hitCount - blocks);
-if (unblocked > 0) {
-  ctx.updateHero?.(id, hh => ({
-    ...hh,
-    currentCorruption: (hh.currentCorruption ?? 0) + unblocked,
-  }));
-}
+if (unblocked > 0) ctx.updateHero?.(id, hh => ({ ...hh, currentCorruption: (hh.currentCorruption ?? 0) + unblocked }));
 ```
 
 ### Stat Calculation Pipeline
 
 `calculateStats.js` merges: base stats → gear mods → skill mods → condition mods.
-- Threshold stats (Defense, Willpower, etc.) are improved by **subtracting** the delta (e.g., Defense 4+ with +1 → 3+).
-- `conditionRules.js` aggregates non-numeric rules: `forbidSlots`, `noCrit`, `dsAllergy`, `gritCap`, `noGuns`, etc.
+- Threshold stats (Defense, Willpower, etc.) improve by **subtracting** delta (e.g., Defense 4+ with +1 → 3+).
+- `conditionRules.js` aggregates non-numeric rules: `forbidSlots`, `noCrit`, `dsAllergy`, `gritCap`, `noGuns`.
 
 ---
 
-## Verified Shadows of Brimstone Rules Reference
+## Routes
 
-*Sources: City of the Ancients Rulebook, Swamps of Death Rulebook, Official FAQ (Nov 2019), Esoteric Order of Gamers rules summary v1.2, Shadows of Brimstone Wiki, Brimstone Mission Generator Reference.*
+| Path | Component | Purpose |
+|------|-----------|---------|
+| `/` | `HeroScreen` | Main hero view (8 tabs) |
+| `/dm` | `DMTab` | DM panel — enemies, loot, card decks, maps, turn tracker |
+| `/active-enemies` | `ActiveEnemyStatsPage` | Currently-engaged enemy stats |
+| `/enemies` | `EnemyStatsPage` | All-enemies searchable reference |
 
-### Combat
+**HeroScreen tabs:** Stats → Gear → Town → Upgrade → Conditions → Posse → Misc → DM
 
-**Attack rolls:**
-- Roll dice equal to **Combat** stat (or weapon dice). Each die hitting the weapon's **To Hit** target (Melee or Ranged) scores a Hit.
-- **Critical Hit:** Natural 6 on an attack die **ignores Defense** — no Defense save allowed.
+---
 
-**Defense (HP path):**
-1. Roll 1 Defense die per incoming Hit. Success (meeting Defense target) blocks the entire Hit.
-2. Each unblocked Hit deals the weapon's Damage in Wounds.
-3. If hero has Armor, roll 1 Armor die per Wound. Success ignores that Wound.
+## Context Provider Tree
 
-**Willpower (Sanity path):**
-1. Roll 1 Willpower die per Horror Hit. Success blocks 1 Hit.
-2. Each unblocked Hit deals Sanity damage.
-3. If hero has Spirit Armor, roll per Sanity Wound to ignore.
-
-**"Ignoring Defense"** = no Defense save at all; Hits go straight to Damage.
-**"Ignoring Willpower"** = no Willpower save; Hits go straight to Sanity damage.
-These are **separate flags** — one does not imply the other.
-
-### Corruption
-
-**Corruption Hit vs Corruption Point — CRITICAL DISTINCTION:**
-- A **Corruption Hit** is an incoming event → Hero rolls **Willpower save** (1 die per Hit).
-- Failed saves become **Corruption Points** added to the tracker.
-- Some effects explicitly "ignore Willpower" — only then are points applied directly.
-
-**Overflow → Mutation:**
-- When Corruption Points **reach Max Corruption** (default 5), discard all points to 0 and roll on the **Mutation Chart**. Mutation is permanent.
-
-**Dark Stone end-of-adventure roll (two-stage):**
-1. For each Dark Stone carried, roll D6. On **1-3**, take a Corruption Hit.
-2. Willpower save as normal against each Hit.
-3. **No Grit rerolls** on the D6 roll itself. Grit **can** be used on the Willpower save.
-
-### Grit
-
-- **Start of each Mission:** 1 Grit (regardless of max).
-- **Max Grit:** Printed per Hero class (often 2-3). Increased by level-ups/items.
-- **Usage:** Spend 1 Grit to **reroll any number of failed dice** from a single roll. Cannot reroll the same die twice.
-- **Restriction:** Grit **cannot** reroll anything rolled **on a chart** (Injury, Madness, Mutation, Town Event, Exploration, Travel, Trap charts). It CAN reroll attack/defense/save dice even if prompted by a chart result.
-- **Recovery:** Skip exploration action (heal D6 or recover 1 Grit), level up (+1), specific abilities/events.
-
-### Health, Sanity, and KO
-
-- **Knocked Out (KO'd):** Health or Sanity reaches 0 during a Fight.
-- **End of Fight recovery:** Roll on **Injury Chart** (if HP hit 0) or **Madness Chart** (if Sanity hit 0), then heal **2D6** (split between Wounds and Sanity as desired).
-- **Killed / Permanent Madness:** Specific chart results that remove the Hero permanently.
-- **Heavy Wounds:** Injury chart results that are cumulative and permanent until cured.
-
-### Town Visits
-
-**Structure:**
-- Each Day, each Hero visits **1 Town Location**.
-- On visit: roll event (typically D12 for location event chart, entries 1-12).
-- Then resolve services (purchases, healing, gambling, etc.).
-
-**Town Event Track (Darkness in Town):**
-- Day Marker starts at 1. End of each Day: roll D6. If roll ≤ Day Marker, a Town Event triggers (reset marker to 1). Otherwise advance marker +1.
-- Longer stays → events become near-certain → pressure to leave.
-
-**Ending Town Stay:**
-- Voluntary (declare at start of new Day) or forced by Town Event.
-- Resolve upkeep, then pick next Mission.
-
-**Core Frontier Town locations:** Doc's Office, Saloon, General Store, Sheriff's Office, Frontier Outpost, Gambling Hall, Blacksmith, Indian Trading Post, Street Market, Mutant Quarter, Smuggler's Den, Church (expansion), plus others per expansion.
-
-### XP and Advancement
-
-- **Level thresholds:** 500, 1000, 2000, 3000, 4500, 6000, 8000 XP (Levels 2-8).
-- **On level up:** Remove all Wound/Sanity counters, regain 1 Grit, choose one advancement from class-specific chart.
-- **Skill Trees:** Four upgrade paths per class; each node requires prior nodes.
-
-### Dark Stone
-
-- Carried Dark Stone = risk (end-of-adventure corruption roll).
-- Dark Stone weapons grant bonus attack dice but increase corruption exposure.
-- Items with `darkStone: true` flag count for end-of-adventure rolls.
-
-### Mutations, Injuries, Madness
-
-- **Mutation Chart:** D66 (36 entries). Permanent stat/rule changes. Some forbid gear slots, change hands available, grant/remove abilities.
-- **Injury Chart:** D66 (36 entries). Heavy Wounds, stat losses, equipment restrictions. Cumulative.
-- **Madness Chart:** D66 (36 entries). Behavioral rules, stat changes.
-- All three are career-permanent unless specifically cured.
+```
+<ErrorBoundary>
+  <Router>
+    <DeckRegistryProvider>   # item lookup tables (gear, artifacts)
+      <WorldProvider>        # campaign world name, Firestore sync
+        <CombatProvider>     # darkness/dread/combat groups
+          <PosseProvider>    # posse roster, real-time listeners
+            <HeroProvider>   # active hero, localStorage/Firestore sync
+              <AdventureProvider>  # adventure track, depth, lantern
+                <UIScaleProvider> # global UI scale
+```
 
 ---
 
 ## File Structure Map
 
-### Core Architecture
 ```
 src/
-├── utils/
-│   ├── sanitizeHero.js          — Canonical hero schema (SOURCE OF TRUTH)
-│   ├── calculateStats.js        — Stat pipeline: base + gear + skills + conditions
-│   ├── conditionRules.js        — Non-numeric rule aggregation (forbidSlots, noCrit, etc.)
-│   ├── combatResolution.js      — Defense/Armor + Willpower/SpiritArmor resolution
-│   ├── heroAccess.js            — Helper functions (adjustGrit, applyWounds, etc.)
-│   ├── heroUtils.js             — Utility reads
-│   ├── promptApi.js             — Dice roll/prompt UI bridge
-│   ├── diceHelpers.js           — d6, d3, 2d6, Peril die
-│   ├── townState.js             — Town visit state (localStorage)
-│   ├── townStateAccess.js       — Town state readers/writers
-│   └── locationHandlers/        — 26 handler files (see below)
-├── data/
-│   ├── items/gearCards.js       — 100+ gear items with slots/effects/mods
-│   ├── items/mineArtifacts.js   — Mine artifact loot table
-│   ├── items/otherWorldArtifacts.js — OtherWorld artifact loot
-│   ├── heroClassCards.js        — Hero class definitions
-│   ├── getExperienceForLevel.js — XP thresholds
-│   ├── getLevelingChart.js      — Per-class level-up charts
-│   ├── levelingCharts/          — Detailed per-class progression
-│   ├── enemyCards/              — Enemy stat blocks per world
-│   └── charts/                  — Mutation/Injury/Madness D66 tables
-├── components/
-│   ├── StatsTab.jsx             — Hero stats display + gear mod aggregation
-│   ├── GearTab.jsx              — Slot-based equipment management
-│   ├── ConditionsTab.jsx        — Injuries/Madness/Mutations viewer
-│   ├── MiscTab.jsx              — XP, Gold, Skills, Level tracking
-│   ├── PosseTab.jsx             — Multi-hero posse management
-│   ├── SidebagsTab.jsx          — Side Bag token tracking
-│   ├── TownPhaseTab.jsx         — Town visit flow
-│   ├── TownTab/                 — Town UI components
-│   ├── Town/                    — Location event modal + visit panel
-│   ├── DM/                      — DM tools (enemy panels, charts, loot)
-│   └── Shops/                   — Shop/service UI
+├── App.jsx                      # Router + provider tree
 ├── context/
-│   ├── HeroContext.jsx          — Hero state + Firebase sync
-│   └── PosseContext.jsx         — Multi-hero collection management
+│   ├── HeroContext.jsx          # Active hero + Firestore/localStorage sync (200ms debounce)
+│   ├── PosseContext.jsx         # Party roster, real-time onSnapshot listeners
+│   ├── WorldContext.jsx         # Campaign world name
+│   ├── DeckRegistryContext.jsx  # Item lookup maps (gear, mine artifacts, OW artifacts by world)
+│   ├── AdventureContext.jsx     # Adventure track, depth track, HBtD, lantern
+│   └── UIScaleContext.jsx       # Global UI scale factor
+├── hooks/
+│   ├── useCombatState.jsx       # Darkness deck, growing dread, enemy groups (localStorage key: sob_combat_state_v4)
+│   ├── useLootPool.jsx
+│   └── usePersistentMapDrawn.js
+├── screens/
+│   ├── HeroScreen.jsx           # Tab router + AdventureTrackView
+│   └── EnemyStatsPage.jsx
+├── components/
+│   ├── DM/                      # DMTab, DMTurnTracker, DMEnemyPanel, DMLootPoolPanel, DMMapDrawer, etc.
+│   ├── TownTab/                 # Town phase UI + LocationPanel
+│   ├── Town/                    # Town event drawers, travel hazards
+│   ├── Shops/                   # Shop/service UI
+│   ├── StatsTab.jsx             # Hero attributes + draggable stat blocks (react-grid-layout)
+│   ├── GearTab.jsx              # Slot-based equipment management
+│   ├── ConditionsTab.jsx        # Injuries/Madness/Mutations + Spirit Guide buffs
+│   ├── UpgradeTab.jsx           # Skill trees, perks
+│   ├── MiscTab.jsx              # XP, Gold, Skills, Level tracking
+│   ├── PosseTab.jsx             # Multi-hero posse management
+│   ├── SidebagsTab.jsx          # Side Bag token tracking
+│   └── ErrorBoundary.jsx
+├── utils/
+│   ├── sanitizeHero.js          # CANONICAL HERO SCHEMA — source of truth
+│   ├── calculateStats.js        # Stat pipeline: base + gear + skills + conditions
+│   ├── conditionRules.js        # Non-numeric rule aggregation
+│   ├── combatResolution.js      # Defense/Armor + Willpower/SpiritArmor resolution
+│   ├── heroAccess.js            # adjustGrit, applyWounds, etc.
+│   ├── diceHelpers.js           # rollD6, rollND, d3, 2d6
+│   ├── promptApi.js             # UI-layer dice/prompt bridge
+│   ├── TownEngine.js            # Town phase orchestration
+│   ├── townState.js             # Town visit state (localStorage)
+│   └── locationHandlers/        # 26+ handler files (one per location)
+│       ├── blacksmithHandler.js
+│       ├── campSiteHandler.js
+│       ├── churchHandler.js
+│       ├── docsOfficeHandler.js + docsOfficeServices.js
+│       ├── frontierOutpostHandler.js + bank/bounties/training
+│       ├── gamblingHallHandler.js + gamblingHallServices.js
+│       ├── generalStoreHandler.js
+│       ├── indianTradingPostHandler.js + services
+│       ├── mutantQuarterHandler.js + services
+│       ├── saloonHandler.js + saloonServices.js
+│       ├── sheriffsOfficeHandler.js + services
+│       ├── smugglersDenHandler.js + smugglersDenServices.js
+│       └── streetMarketHandler.js + services + backAlleyServices
+├── data/
+│   ├── heroes.jsx               # 14 character class definitions
+│   ├── items/                   # gearCards.js, mineArtifacts.js, otherWorldArtifacts.js
+│   ├── enemies/ + enemyCards/   # Enemy stat blocks per world (13 worlds)
+│   ├── townLocations/           # 13/15 locations implemented
+│   ├── skillTrees/              # 16 classes, 4 levels each
+│   ├── levelingCharts/          # XP→stat tables per class
+│   ├── cards/                   # Encounter, darkness, growing dread, loot, threat, world cards
+│   └── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
 └── firebase/
-    └── firebaseConfig.js        — Firebase init with local-only fallback
+    └── firebaseConfig.js        # Env key reading, Firestore init, long-polling, emulator config
 ```
 
-### Location Handlers
-Each file exports an async handler that receives a context object (`ctx`) with `updateHero`, `roll`, `promptChoice`, `doSkillCheck`, `toast`, `showResult`, etc.
+---
 
+## Firebase / Data Persistence
+
+**Firestore collections:** `heroes/{heroId}`, `posse`, `shared/world`
+
+**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`
+
+**Local mode:** If `VITE_FIREBASE_API_KEY` or `VITE_FIREBASE_PROJECT_ID` are missing → localStorage only. Logs `[Firebase] Missing env keys`.
+
+**Required `.env.local`:**
 ```
-locationHandlers/
-├── blacksmithHandler.js
-├── campSiteHandler.js
-├── churchHandler.js
-├── docsOfficeHandler.js + docsOfficeServices.js
-├── frontierOutpostHandler.js + bank/bounties/training services
-├── gamblingHallHandler.js + gamblingHallServices.js
-├── generalStoreHandler.js
-├── indianTradingPostHandler.js + services
-├── locationEventHandler.js      — Unified event dispatcher
-├── mutantQuarterHandler.js + services
-├── saloonHandler.js + saloonServices.js
-├── sheriffsOfficeHandler.js + services
-├── smugglersDenHandler.js + smugglersDenServices.js
-├── streetMarketHandler.js + services + backAlleyServices
-└── campSiteHandler.js
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_MEASUREMENT_ID=...
 ```
+
+---
+
+## Tailwind v4 Notes
+
+- Custom colors (`leather`, `brass`, `blood`, `parchment`, `shadow`, `corruption`) defined in `src/index.css` under `@theme { --color-* }` — NOT in `tailwind.config.js`
+- Uses `@import "tailwindcss"; @config "../tailwind.config.js";` at top of `index.css`
+- Custom utilities use `@utility` directive (e.g., `text-shadow-sm`, `bg-gradient-radial`)
+- Dynamically-constructed class names go in `@source inline("...")` safelist
+- `tailwind.config.js` only contains `content` glob
 
 ---
 
 ## Mobile / UI Conventions
 
-- **Tailwind CSS v4** with `sm:`, `md:`, `lg:` breakpoints. Default is mobile-first.
-- **Tap targets:** Minimum 44×44px on interactive elements (buttons, links, toggles).
-- **Modals/drawers:** Must respect viewport height; use `max-h-[80vh] overflow-y-auto`.
-- **Text:** Use `break-words` or `overflow-wrap: anywhere` for long effect descriptions.
-- **Grids:** Use `grid-cols-1 sm:grid-cols-2 md:grid-cols-3` pattern for responsive layouts.
-- **Font sizes:** Minimum `text-sm` (14px) for readability on mobile.
+- Tailwind `sm:` / `md:` / `lg:` breakpoints. Default is mobile-first.
+- Tap targets: minimum 44×44px on all interactive elements.
+- Modals/drawers: `max-h-[80vh] overflow-y-auto`.
+- Text: use `break-words` / `overflow-wrap: anywhere` for long effect descriptions.
+- Grids: `grid-cols-1 sm:grid-cols-2 md:grid-cols-3` pattern.
+- Font sizes: minimum `text-sm` (14px) for mobile readability.
+- UI scale: global scale factor via `UIScaleContext` + `html[data-btn-size]` for button sizes.
+
+---
+
+## What Has Been Built
+
+- 14 character classes with full stats, abilities, starting items
+- 16 skill trees (4 upgrade levels each), leveling charts per class
+- Full hero character sheet: Stats (draggable blocks), Gear, Upgrade, Conditions, Misc, Posse, Town, DM tabs
+- Posse management with real-time Firebase sync
+- DM panel: enemy spawning, darkness/growing dread card decks, loot pools, maps, **initiative/turn tracker**
+- **Adventure Tracker**: depth track, Hold Back the Darkness, lantern reroll
+- **Camera OCR**: scan enemy cards via live camera viewfinder (tesseract.js)
+- **PWA support** for offline/mobile use
+- Town phase: 13/15 locations with event tables and services
+- Combat: Defense/Armor/Willpower/SpiritArmor resolution paths
+- Condition system: injuries, madness, mutations, corruption tracking
+- Enemy data: 13 worlds/locations with full stat blocks
+- Loot generation, equipment tracking, artifact deck by world
+- Hero ejection/sync system for town/hero state
+- Firebase persistence with localStorage fallback + ErrorBoundary
 
 ---
 
 ## Known Issues / Audit Findings
 
-### Critical (data not persisting)
-- `heroAccess.js:adjustCorruption` writes to `corruption` (dropped by sanitizer) — must use `currentCorruption`
-- `heroAccess.js:applyWounds/healWounds` writes to `wounds` (not a canonical field) — must use `currentHealth`
-- `promptApi.js:137` applyHits fallback writes to `wounds` — must use `currentHealth`
-- `saloonHandler.js:156` Bar Fight writes `wounds` — dropped
-- `saloonHandler.js:213` Song and Dance heals `health` — dropped
-- `streetMarketHandler.js:150` scuffle writes `wounds` — dropped
-- `gamblingHallServices.js:318` Robbery writes `wounds` — dropped
-- `docsOfficeServices.js:477` injection writes `corruption` — dropped
+### Data-Not-Persisting Bugs (fields silently dropped by sanitizer)
+- `heroAccess.js:adjustCorruption` writes to `corruption` → use `currentCorruption`
+- `heroAccess.js:applyWounds/healWounds` writes to `wounds` → use `currentHealth`
+- `promptApi.js:137` applyHits fallback writes to `wounds` → use `currentHealth`
+- `saloonHandler.js:156` Bar Fight writes `wounds` → fix
+- `saloonHandler.js:213` Song and Dance heals `health` → fix
+- `streetMarketHandler.js:150` scuffle writes `wounds` → fix
+- `gamblingHallServices.js:318` Robbery writes `wounds` → fix
+- `docsOfficeServices.js:477` injection writes `corruption` → fix
 
 ### Missing Willpower Saves
-Any Corruption Hit source must allow Willpower saves unless card text explicitly says "ignoring Willpower". Check all `currentCorruption +=` writes to confirm saves are present.
+Any `currentCorruption +=` write must be preceded by Willpower saves unless card text says "ignoring Willpower".
 
 ### Not Yet Implemented
-- Adventure system (exploration, depth/darkness track, encounter resolution)
 - Enemy attack engine (only hero defense is modeled)
-- Critical hit handling in combat (nat 6 → ignore Defense)
+- Critical hit handling (nat 6 → ignore Defense)
 - Dark Stone end-of-adventure corruption roll (two-stage)
-- Grit reroll restrictions (no rerolls on charts)
+- Grit reroll restrictions (no chart rerolls)
 - Bleeding/Fear/Madness auto-application post-combat
 - Grit spend during combat
-- Dark Stone allergy auto-damage (`dsAllergy` flag aggregated but not enforced)
+- Dark Stone allergy auto-damage (`dsAllergy` flag exists but not enforced)
 - `gritCap` enforcement from conditions
 - `forbidSlots` enforcement in all gear equip paths
-- Wanted/Outlaw status tracking on hero
+- Wanted/Outlaw status tracking
 - OtherWorld-specific mutation tables
+- Injury/Madness/Mutation charts (D66 — currently only 2-3 stub entries each)
+- Spirit Guides (Eagle, Snake, Beaver) — in `finish-general-store` branch, not yet merged
+- Doc's Office Medical Attention tab disable — in `disable-medical-attention` branch, not yet merged
+- Orphanage and Town Hall locations (stubbed empty)
 
-### Enemy Mechanic Support Reference
+---
 
-When adding new enemy cards, cross-reference abilities against this table.
+## Enemy Mechanic Support Reference
 
-**Combat resolver handles** (`combatResolution.js`):
+### Combat Resolver Handles (`combatResolution.js`)
 - Endurance (X) — max wounds per hit cap, parsed from ability text
-- Tough — immune to Critical Hits, parsed from ability text
-- Cover X+ — additional save per hit, parsed from ability text
+- Tough — immune to Critical Hits
+- Cover X+ — additional save per hit
 - Enemy Armor X+ — parsed from ability text
 
-**Hero markers implemented** (`statusMarkers.js`):
-| Marker key | Matches enemy ability text |
+### Hero Markers (`statusMarkers.js`)
+| Key | Matches enemy text |
 |---|---|
 | `bleeding` | "Bleeding marker" |
 | `poison` | "Poison marker" |
-| `fire` | "Burning marker" (naming mismatch — enemies say "Burning", system uses "fire") |
+| `fire` | "Burning marker" (naming mismatch — enemies say "Burning") |
 | `web` | "Webbed marker" |
 | `snare` | "Snare marker" |
 | `noise` | "Noise marker" |
+| `voidVenom` | NOT in system — used by all Spider variants |
 
-**Markers NOT in system:**
-- Void Venom — used by all Spider variants (stat penalty/damage over time)
+### Enemy Mechanics NOT Implemented
+- Regeneration (X) — heals X wounds at turn start (Hell Vermin, Undead Gunslinger, etc.)
+- Spawning — mid-fight enemy adds (Egg Sacks, Corpse Pile)
+- Fear/Terror/Unspeakable Terror — automatic Horror Hits on activation
+- D8 dice for To Hit — Magma Giant (Massive Fists)
+- Lava Spaces — terrain markers
+- Shootout mechanics — Undead Gunslinger/Outlaws
+- Formation — Lost Army defensive stance
+- Enemy special card decks — Serpent Magik, Shaman Juju Trinkets, etc.
 
-**Enemy mechanics NOT implemented:**
-- Regeneration (X) — heals X wounds at turn start (Hell Vermin, Undead Gunslinger, Harbinger, Corpse Pile)
-- Spawning — add new enemies mid-fight (Egg Sacks spawn Void Spiders, Corpse Pile spawns Hungry Dead)
-- Fear/Terror/Unspeakable Terror — automatic Horror Hits at activation start (most enemies)
-- D8 dice for To Hit — Magma Giant uses D8 instead of D6 (Massive Fists ability)
-- Lava Spaces — terrain markers that heal Lava Men and damage Heroes
-- Shootout mechanics — Undead Gunslinger/Outlaws special ranged resolution
-- Formation — Lost Army defensive stance (Armor bonus, retreat resistance)
-- Enemy special card decks — Serpent Magik, Shaman Juju Trinkets, Deadman's Shot, Cannon reference cards
-
-**Enemy data schema** (`enemyUtils.js:normalizeEnemyData`):
-Three schemas exist; the normalizer handles all three:
+### Enemy Data Schema (3 formats, all handled by `enemyUtils.js:normalizeEnemyData`)
 1. **Old** (mineEnemies): flat `health`, `defense`, `melee: { toHit, damage }`, `eliteChart`
 2. **Western** (westernEnemies, scannedEnemies): `stats: { normal, brutal }`, `toHit: { melee, ranged }`, `eliteAbilities`
-3. **Scanner internal** (DMScanCards pending queue): flat `normalCombat`, `brutalCombat`, etc. — converted to western format by `formatEnemyForExport`
+3. **Scanner internal**: flat `normalCombat`, `brutalCombat` → converted to western by `formatEnemyForExport`
+
+---
+
+## Common Gotchas
+
+- **HTTPS:** Vite serves HTTPS via self-signed cert. Browser warns on first load — click "Advanced → Proceed". Always use `https://` not `http://`.
+- **Empty Claude sessions:** If a session errors with `400 text content blocks must be non-empty`, use `/clear`. This is a Claude API issue, not an app bug.
+- **Firebase local mode:** If app doesn't sync, check `.env.local` has valid keys. Console logs `[Firebase] Missing env keys`.
+- **Firestore long-polling:** Enabled by default (`experimentalAutoDetectLongPolling: true`) — avoids 400 channel errors on VPNs.
+- **react-grid-layout:** Stat block layout saved per-hero in localStorage. Clearing storage resets layout.
+- **Sanitizer drops unknown fields:** Never write to `wounds`, `corruption`, `health`, `corruptionHits`. Always use the canonical field names above.
+- **Grit rerolls:** Cannot reroll anything rolled on a chart (Injury, Madness, Mutation, Town Events, Exploration, etc.).
+
+---
+
+## Verified Shadows of Brimstone Rules Reference
+
+*Sources: City of the Ancients Rulebook, Swamps of Death Rulebook, Forbidden Fortress Rulebook, Gates of Valhalla Rulebook, Official FAQ v1.02 + v2.01, Esoteric Order of Gamers summary v1.2, Brimstone Mission Generator Reference.*
+
+### Core Game Loop
+
+Each session has 3 phases in order:
+1. **Adventure Phase** — Explore the dungeon, fight enemies, collect loot
+2. **Travel Phase** — Roll travel hazards between missions
+3. **Town Phase** — Visit town locations, heal, buy gear, advance heroes
+
+**Adventure round sequence:**
+1. Hold Back the Darkness (HBtD) — roll D6; if ≤ Darkness marker position, draw Darkness Card
+2. Hero Activation — each hero takes a turn (Move + Action, or double Move)
+3. Room Exploration — reveal Exploration tokens on entry
+4. End of Turn — advance Darkness marker one space
+
+### Hero Stats
+
+Every hero has:
+- **Health** / **Sanity** — resource pools (KO at 0)
+- **Defense** / **Willpower** — threshold saves (X+), roll 1 die per hit
+- **Armor** / **Spirit Armor** — secondary saves after wounds applied
+- **Combat** — number of attack dice
+- **Initiative** — determines activation order
+- **Grit** / **Max Grit** — reroll tokens
+- **6 Skills:** Agility, Cunning, Spirit, Strength, Lore, Luck (1–6, tested by rolling that many D6, need one ≥ target)
+
+### Combat
+
+**Attack chain:**
+1. Roll Combat dice (or weapon dice). Each die ≥ To-Hit target scores a Hit.
+2. **Critical Hit:** Natural 6 ignores Defense entirely — no save allowed.
+3. Enemy rolls Defense saves (1 die per Hit, success blocks the Hit).
+4. Each unblocked Hit deals weapon Damage in Wounds.
+5. If hero has Armor, roll 1 Armor die per Wound — success ignores that Wound.
+
+**Horror path (Sanity):** Same chain but uses Willpower saves + Spirit Armor.
+
+**"Ignoring Defense"** and **"Ignoring Willpower"** are separate flags — one does not imply the other.
+
+**Off-hand weapon:** +1 added to To-Hit number required.
+
+### Darkness Cards
+
+~12-card deck shuffled at mission start. Drawn when HBtD fails (Darkness marker lands on a blood-spatter space). Effects include:
+- Enemy spawns at specific locations
+- Environmental damage to all heroes
+- "Remain in Play" debuffs until condition met
+- Escalation (advance Darkness marker)
+
+Shuffle discard pile when deck empties.
+
+### Growing Dread
+
+~7-card deck. Cards placed face-down on Growing Dread spaces when Darkness marker passes them. All revealed simultaneously at mission climax (when objective room is entered or final room explored). Effects escalate danger.
+
+### Town Phase
+
+**7-step sequence:**
+1. **Recover KO'd Heroes** — roll on Injury/Madness chart for each
+2. **Sell Dark Stone** — $25/stone at Frontier Outpost (or special prices)
+3. **Corruption Check** — roll for any carried Dark Stone
+4. **Choose Town** — pick campaign's frontier town or outpost
+5. **Days in Town** — each day: pick 1 location, roll 2D6 event chart, resolve services
+6. **Upgrade Heroes** — spend XP on skill tree nodes
+7. **Prepare** — buy supplies, reorganize gear, choose next mission
+
+**Town Event Track:** Day Marker starts at 1. End of each day, roll D6. If roll ≤ Day Marker → Town Event fires (reset to 1). Otherwise advance +1. Longer stays make events inevitable.
+
+**Frontier Town locations (base game):**
+- General Store — ammo, clothing, basic supplies
+- Blacksmith — weapon upgrades, horse purchases
+- Doc's Office — surgery, corruption treatment, Medical Attention service
+- Church — blessings, exorcism, rituals
+- Saloon — entertainment, rumors, gambling
+- Frontier Outpost — bounties, banking, training, Dark Stone sales
+- Gambling Hall — Blackjack, Roulette, Craps, Dice games
+- Indian Trading Post — rituals, auras, Spirit Cleansing, Vision Quest
+- Sheriff's Office — bounties, wanted poster system
+- Street Market — open market, bath house, Dark Stone selling
+- Smuggler's Den — black market, outlaw services
+- Mutant Quarter — mutation-friendly services
+- Camp Site — wilderness camp, healing tents
+
+### Depth & Exploration
+
+**Map tiles:** Passages (corridors) and Rooms. Place tiles as heroes explore.
+
+**Exploration tokens** (placed face-down on new tiles): Encounter / Attack / Gate / Empty
+
+**Look Through a Door action:** Reveal tile + token without entering.
+
+**Scavenge:** Roll 3D6; each 6 = draw 1 Scavenge card.
+
+**OtherWorld portals (Gates):** Hero who triggers a Gate is transported to the OtherWorld map. Must find another Gate to return, or complete an OtherWorld objective.
+
+**Depth Track:** Each room entered advances depth. Higher depth = stronger Encounter tables + more Darkness cards drawn.
+
+### Conditions
+
+**Injuries** (from HP KO):
+- Roll on Injury Chart (D66, 36 entries)
+- Career-permanent unless cured at Doc's Office
+- Can forbid gear slots, reduce attack dice, limit actions
+
+**Madness** (from Sanity KO):
+- Roll on Madness Chart (D66, 36 entries)
+- Career-permanent unless exorcised at Church
+- Behavioral rules, stat changes
+
+**Mutations** (from Corruption overflow):
+- When Corruption Points reach Max Corruption (default 5): discard all points → roll Mutation Chart (D66)
+- Career-permanent, no removal
+- Getting the same mutation twice = permanent character death
+
+**Removal:**
+- Injuries → Doc's Office surgery (cost + stat check)
+- Madness → Church exorcism (cost + Spirit check)
+- Corruption Points → Spirit Cleansing at Indian Trading Post, or Church rituals
+
+### Loot
+
+- Each hero draws **1 Loot card per Threat card** (max 3) after a fight
+- Loot types: Gold (D6×$25/$50/$100), Dark Stone (1 or D3), Gear card, Artifact card
+- **Side Bags:** extra item slots beyond standard gear; limited by Side Bag type
+- **Scavenge cards** drawn during exploration give bonus items
+
+### XP & Leveling
+
+| Level | Cumulative XP Required |
+|---|---|
+| 2 | 500 |
+| 3 | 1,000 |
+| 4 | 2,000 |
+| 5 | 3,000 |
+| 6 | 4,500 |
+| 7 | 6,000 |
+| 8 | 8,000 |
+
+**On level-up:** Full heal + Sanity restore → +1 Grit → roll Random Bonus → choose 1 Upgrade from class chart (4 choices per tier, top-down order enforced, 7 total upgrades over career).
+
+### Grit
+
+- **Start of mission:** 1 Grit (regardless of max)
+- **Spend:** Reroll any number of failed dice from one roll (can't reroll same die twice)
+- **Restriction:** Cannot reroll dice rolled **on a chart** (Injury, Madness, Mutation, Town Event, Exploration, Travel, Trap charts). CAN reroll attack/defense/save dice triggered by chart results.
+- **Recovery:** Skip exploration action (heal D6 or recover 1 Grit), level-up, specific abilities/events
+
+### Dark Stone
+
+- Each Dark Stone carried → end-of-adventure risk: roll D6; on 1-3 take a Corruption Hit → Willpower save
+- No Grit rerolls on the D6 risk roll itself; Grit CAN be used on the Willpower save
+- Dark Stone weapons grant bonus attack dice but increase corruption exposure
+- Items with `darkStone: true` flag count for end-of-adventure rolls
+
+### Campaigns & Expansions
+
+**Core sets:**
+- City of the Ancients — Old West mines, Targa Plateau OtherWorld
+- Swamps of Death — Old West, Jargono (Swamps) OtherWorld
+- Forbidden Fortress — Feudal Japan, Belly of the Beast OtherWorld
+- Gates of Valhalla — Norse setting, Valhalla OtherWorld
+
+**OtherWorld expansions (10+):** Caverns of Cynder, Derelict Ship, Blasted Wastes, Forest of the Dead, Cursed Mountain, Valley of the Serpent Kings, and more.
+
+**Hero Packs:** Individual hero expansions with new class + items.
+
+### Card Decks (Complete List)
+
+| Deck | When Used | Shuffle Rule |
+|---|---|---|
+| Map Tiles | Exploration | N/A (permanent layout) |
+| Exploration Tokens | Room entry | Reshuffle when empty |
+| Threat Cards | Fight start | Per encounter |
+| Encounter Cards | Exploration tokens | Per mission |
+| Darkness Cards | HBtD fail | Reshuffle discard when empty |
+| Growing Dread | Darkness marker passes GD spaces | Revealed all at once at climax |
+| Loot Cards | Post-fight | Reshuffle when empty |
+| Scavenge Cards | Scavenge action | Reshuffle when empty |
+| Town Event Cards | Town Event trigger | Reshuffle when empty |
+| Town Gear Cards | Shop purchases | N/A (static list) |
+| Travel Hazard Cards | Travel phase | Per travel |
+| World Cards | World Events | Per mission |
+| Elite Ability Cards | Elite enemy spawn | Shuffle elite deck |
+| Mine Artifact Cards | Loot draw (mine) | Reshuffle when empty |
+| OtherWorld Artifact Cards | Loot draw (OW) | Reshuffle when empty |
+| Personal Item Cards | Hero creation | N/A |
