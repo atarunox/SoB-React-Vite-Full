@@ -281,6 +281,7 @@ Any `currentCorruption +=` write must be preceded by Willpower saves unless card
 - Spirit Guides (Eagle, Snake, Beaver) — in `finish-general-store` branch, not yet merged
 - Doc's Office Medical Attention tab disable — in `disable-medical-attention` branch, not yet merged
 - Orphanage and Town Hall locations (stubbed empty)
+- **HBtD is implemented wrong** — `AdventureContext.jsx` uses 1D6; correct mechanic is 2D6 by Lantern Bearer vs stage target (7+/8+/9+); doubles trigger Depth Event chart, not darkness advance; Grit cannot be spent on this roll
 
 ---
 
@@ -352,10 +353,10 @@ Each session has 3 phases in order:
 3. **Town Phase** — Visit town locations, heal, buy gear, advance heroes
 
 **Adventure round sequence:**
-1. Hold Back the Darkness (HBtD) — roll D6; if ≤ Darkness marker position, draw Darkness Card
+1. Hold Back the Darkness (HBtD) — Lantern Bearer rolls 2D6 vs stage target; see full rules below
 2. Hero Activation — each hero takes a turn (Move + Action, or double Move)
 3. Room Exploration — reveal Exploration tokens on entry
-4. End of Turn — advance Darkness marker one space
+4. End of Turn — (darkness marker advances on HBtD failure, not end of turn)
 
 ### Hero Stats
 
@@ -383,9 +384,35 @@ Every hero has:
 
 **Off-hand weapon:** +1 added to To-Hit number required.
 
+### Hold Back the Darkness (HBtD) — Full Rules
+
+Happens **every round** including during fights. The hero holding the **Old Lantern** makes the roll.
+
+**Roll:** 2D6. Compare the total to the **stage target** based on the party's current depth zone:
+| Depth Stage | Target |
+|---|---|
+| Stage 1 (shallow, depths 1–4) | 7+ |
+| Stage 2 (mid, depths 5–9) | 8+ |
+| Stage 3 (deep, depths 10–15) | 9+ |
+
+**Result — not doubles:**
+- **Success (meets or beats target):** Nothing happens. Darkness held back.
+- **Failure (below target):** Advance the Darkness marker **1 space** forward on the Darkness Track.
+  - If the marker lands on a **blood-spatter space** → draw a **Darkness Card** immediately.
+  - If the marker lands on a **Growing Dread space** → draw a **Growing Dread Card** (place face-down).
+  - If the marker reaches the end → mission consequence (per mission card).
+
+**Result — doubles rolled (any total):**
+- The Darkness marker does **NOT** move (regardless of whether the total would have succeeded or failed).
+- Instead resolve a **Depth Event** from the world-specific Depth Event Chart, keyed to the total rolled (2, 4, 6, 8, 10, or 12). Each world has its own chart — Mines, Targa Plateau, Jargono, etc. are all different.
+
+**Grit:** Cannot be spent to reroll the 2D6 HBtD roll. Grit CAN be spent on any saves triggered by the resulting Depth Event effects.
+
+**Modifiers:** The "Encroaching Darkness" Darkness Card subtracts −1 from the HBtD total while in play.
+
 ### Darkness Cards
 
-~12-card deck shuffled at mission start. Drawn when HBtD fails (Darkness marker lands on a blood-spatter space). Effects include:
+~12-card deck shuffled at mission start. Drawn when the Darkness marker lands on a blood-spatter space after a failed HBtD roll. Effects include:
 - Enemy spawns at specific locations
 - Environmental damage to all heroes
 - "Remain in Play" debuffs until condition met
@@ -395,7 +422,7 @@ Shuffle discard pile when deck empties.
 
 ### Growing Dread
 
-~7-card deck. Cards placed face-down on Growing Dread spaces when Darkness marker passes them. All revealed simultaneously at mission climax (when objective room is entered or final room explored). Effects escalate danger.
+~7-card deck. Cards drawn and placed face-down when the Darkness marker passes a Growing Dread space. All revealed simultaneously at mission climax (when objective room entered or final room explored). Effects escalate danger.
 
 ### Town Phase
 
