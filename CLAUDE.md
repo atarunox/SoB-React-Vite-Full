@@ -320,6 +320,14 @@ Any `currentCorruption +=` write must be preceded by Willpower saves unless card
 
 ---
 
+## Tailwind v4 Notes
+
+- Custom colors (`leather`, `brass`, `blood`, `parchment`, `shadow`, `corruption`) are defined in `src/index.css` under `@theme { --color-* }` — NOT in `tailwind.config.js`
+- Use `@import "tailwindcss"` at the top of `index.css`, not `@tailwind base/components/utilities`
+- Custom utilities (`text-shadow-*`, `bg-gradient-radial`) use `@utility` directive
+- Safelist classes (dynamically constructed in JS) go in `@source inline("...")` in `index.css`
+- `tailwind.config.js` only contains `content` glob — theme/plugins/safelist all moved to CSS
+
 ## Common Gotchas
 
 - **HTTPS:** Vite serves HTTPS via self-signed cert. Browser warns on first load — click "Advanced → Proceed". Always use `https://` not `http://`.
