@@ -93,10 +93,13 @@ if (unblocked > 0) ctx.updateHero?.(id, hh => ({ ...hh, currentCorruption: (hh.c
 |------|-----------|---------|
 | `/` | `HeroScreen` | Main hero view (8 tabs) |
 | `/dm` | `DMTab` | DM panel — enemies, loot, card decks, maps, turn tracker |
+| `/display` | `DisplayScreen` | Read-only TV display — depth track, posse stats, initiative order |
 | `/active-enemies` | `ActiveEnemyStatsPage` | Currently-engaged enemy stats |
 | `/enemies` | `EnemyStatsPage` | All-enemies searchable reference |
 
 **HeroScreen tabs:** Stats → Gear → Town → Upgrade → Conditions → Posse → Misc → DM
+
+**TV Display** (`/display`): opened via "📺 Display" button in DM tab header. Full-screen dark theme, world-themed (switches automatically with world selector), real-time via Firebase. Shows: depth track, last HBtD roll, initiative order, per-hero HP/Sanity/Corruption bars + stats. No interaction — pure display.
 
 ---
 
@@ -134,6 +137,7 @@ src/
 │   └── usePersistentMapDrawn.js
 ├── screens/
 │   ├── HeroScreen.jsx           # Tab router + AdventureTrackView
+│   ├── DisplayScreen.jsx        # Read-only TV display (/display route), world-themed
 │   └── EnemyStatsPage.jsx
 ├── components/
 │   ├── DM/                      # DMTab, DMTurnTracker, DMEnemyPanel, DMLootPoolPanel, DMMapDrawer, etc.
@@ -180,7 +184,10 @@ src/
 │   ├── skillTrees/              # 16 classes, 4 levels each
 │   ├── levelingCharts/          # XP→stat tables per class
 │   ├── cards/                   # Encounter, darkness, growing dread, loot, threat, world cards
-│   └── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
+│   ├── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
+│   └── depthEvents/             # World-specific Depth Event charts (6 worlds, roll 1-6 = die value doubled)
+│       ├── depthEvents_Mines.js, _TargaPlateau.js, _Jargono.js, _DerelictShip.js, _Canyons.js, _BlastedWastes.js
+│       └── depthEventLookup.js  # getDepthEvent(world, dieValue) + getHBtDThreshold(depth)
 └── firebase/
     └── firebaseConfig.js        # Env key reading, Firestore init, long-polling, emulator config
 ```
@@ -191,7 +198,7 @@ src/
 
 **Firestore collections:** `heroes/{heroId}`, `posse`, `shared/world`
 
-**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`
+**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions)
 
 **Local mode:** If `VITE_FIREBASE_API_KEY` or `VITE_FIREBASE_PROJECT_ID` are missing → localStorage only. Logs `[Firebase] Missing env keys`.
 
@@ -205,6 +212,41 @@ VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_MEASUREMENT_ID=...
 ```
+
+---
+
+## Adventure Track Model
+
+**State fields** (`AdventureContext`, `sob_adventure_state` key, schema v3):
+| Field | Meaning | Start |
+|---|---|---|
+| `depth` | Posse steps from entry (0 = at entry, 1 = on space 15, …, 15 = on space 1) | 0 |
+| `darkness` | Physical space number darkness occupies (0 = entry right, 1 = space 1, …, 15 = space 15) | 0 |
+| `trackLength` | Total numbered spaces (default 15) | 15 |
+| `growingDreadSpaces` | Physical space numbers with GD markers (default [6,11,15]) | — |
+| `bloodSpatterSpaces` | Physical space numbers with BS markers (default [2,4,8,10,13]) | — |
+
+**Track slot layout** (left → right as displayed):
+```
+slot 0: Posse Entry
+slot 1: space 15
+slot 2: space 14
+…
+slot 15: space 1
+slot 16: Darkness Entry
+```
+
+**Slot math:**
+- `posseSlot = depth` — posse marker sits at this slot index
+- `darknessSlot = (trackLength + 1) - darkness` — darkness marker sits at this slot index (slot 16 when darkness=0)
+- `consumed = slotIdx > darknessSlot` — space is "eaten" by darkness, shown darker
+
+**Mission failed:** `darkness > trackLength`
+
+**HBtD threshold** (`getHBtDThreshold(depth)` in `depthEventLookup.js`):
+- depth 0–4 → 7+
+- depth 5–9 → 8+
+- depth 10+ → 9+
 
 ---
 
@@ -237,7 +279,9 @@ VITE_FIREBASE_MEASUREMENT_ID=...
 - Full hero character sheet: Stats (draggable blocks), Gear, Upgrade, Conditions, Misc, Posse, Town, DM tabs
 - Posse management with real-time Firebase sync
 - DM panel: enemy spawning, darkness/growing dread card decks, loot pools, maps, **initiative/turn tracker**
-- **Adventure Tracker**: depth track, Hold Back the Darkness, lantern reroll
+- **Adventure Tracker** (DM + Hero views): 15-space depth track matching physical board layout `[Posse Entry][15][14]…[1][Darkness Entry]`; correct HBtD (2D6, depth-based threshold 7+/8+/9+, doubles → world-specific Depth Event chart, darkness does not advance on doubles); lantern bearer detection; GD spaces green, BS spaces red
+- **Map tile → depth advance**: Drawing a map tile in DMMapDrawer shows an amber banner prompting DM to advance the depth marker
+- **TV/Display screen** (`/display`): Read-only full-screen display for a second monitor/TV; world-themed (Mines, Targa, Jargono, Derelict Ship, Canyons, Blasted Wastes, Frontier Town); shows depth track, last HBtD roll, initiative order, per-hero HP/Sanity/Corruption bars + Grit + full stats; real-time via Firebase; opened via "📺 Display" button in DM tab
 - **Camera OCR**: scan enemy cards via live camera viewfinder (tesseract.js)
 - **PWA support** for offline/mobile use
 - Town phase: 13/15 locations with event tables and services
@@ -281,7 +325,6 @@ Any `currentCorruption +=` write must be preceded by Willpower saves unless card
 - Spirit Guides (Eagle, Snake, Beaver) — in `finish-general-store` branch, not yet merged
 - Doc's Office Medical Attention tab disable — in `disable-medical-attention` branch, not yet merged
 - Orphanage and Town Hall locations (stubbed empty)
-- **HBtD is implemented wrong** — `AdventureContext.jsx` uses 1D6; correct mechanic is 2D6 by Lantern Bearer vs stage target (7+/8+/9+); doubles trigger Depth Event chart, not darkness advance; Grit cannot be spent on this roll
 
 ---
 
