@@ -29,14 +29,14 @@ function TrackSpace({ index, depth, darkness, trackLength, gdSpaces, bsSpaces })
   const pastDarkness = index > darkness;
 
   let bg = 'bg-gray-100';
-  if (isGD) bg = 'bg-purple-100 border-purple-300';
+  if (isGD) bg = 'bg-green-100 border-green-300';
   else if (isBS) bg = 'bg-red-50 border-red-200';
   if (pastDarkness) bg = 'bg-gray-800';
 
   return (
     <div className={`relative flex flex-col items-center justify-center w-10 h-14 rounded border text-xs font-mono shrink-0 ${bg}`}>
       <span className={`text-[10px] ${pastDarkness ? 'text-gray-500' : 'text-gray-400'}`}>{index}</span>
-      {isGD && <span className="text-[8px] text-purple-600">GD</span>}
+      {isGD && <span className="text-[8px] text-green-600">GD</span>}
       {isBS && <span className="text-[8px] text-red-500">BS</span>}
       {isParty && (
         <div className="absolute -top-2 w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-700 flex items-center justify-center text-white text-[9px] font-bold shadow">P</div>
@@ -55,7 +55,7 @@ function RollResult({ lastRoll }) {
 
   const isDoubles = lastRoll.isDoubles;
   const bgClass = isDoubles
-    ? 'bg-purple-100 border border-purple-300 text-purple-900'
+    ? 'bg-green-100 border border-green-300 text-green-900'
     : lastRoll.success
       ? 'bg-green-100 border border-green-300 text-green-800'
       : 'bg-red-100 border border-red-300 text-red-800';
@@ -73,14 +73,14 @@ function RollResult({ lastRoll }) {
         <span className="text-xs opacity-70">by {lastRoll.rolledBy}</span>
       </div>
       {isDoubles && lastRoll.depthEvent && (
-        <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-300">
+        <div className="mt-2 p-2 bg-green-50 rounded border border-green-300">
           <div className="font-bold">{lastRoll.depthEvent.name}</div>
-          <div className="italic text-xs text-purple-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
+          <div className="italic text-xs text-green-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
           <div className="mt-1 text-xs leading-snug">{lastRoll.depthEvent.effect}</div>
         </div>
       )}
       {!isDoubles && lastRoll.landedOnGD && (
-        <div className="text-purple-700 font-semibold">Darkness landed on Growing Dread space — draw a Growing Dread card!</div>
+        <div className="text-green-700 font-semibold">Darkness landed on Growing Dread space — draw a Growing Dread card!</div>
       )}
       {!isDoubles && lastRoll.landedOnBS && (
         <div className="text-red-700 font-semibold">Darkness landed on Blood Spatter space — draw a Darkness card!</div>

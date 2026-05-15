@@ -17,7 +17,7 @@ const WORLD_THEMES = {
     accentCls:   'bg-amber-900/60 border-amber-600 text-amber-200',
     trackDefault:'bg-stone-700 border-stone-500 text-stone-400',
     trackConsumed:'bg-stone-950 border-stone-900 text-stone-800',
-    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackGD:     'bg-green-950 border-green-700 text-green-400',
     trackBS:     'bg-red-950  border-red-800  text-red-500',
     heroBg:      'bg-stone-800 border-stone-600',
     heroBgKO:    'bg-red-950/40 border-red-700',
@@ -36,7 +36,7 @@ const WORLD_THEMES = {
     accentCls:   'bg-cyan-900/50 border-cyan-600 text-cyan-200',
     trackDefault:'bg-slate-700 border-slate-500 text-slate-400',
     trackConsumed:'bg-slate-950 border-slate-900 text-slate-800',
-    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackGD:     'bg-green-950 border-green-700 text-green-400',
     trackBS:     'bg-red-950  border-red-800  text-red-500',
     heroBg:      'bg-slate-800 border-cyan-900',
     heroBgKO:    'bg-red-950/40 border-red-700',
@@ -55,7 +55,7 @@ const WORLD_THEMES = {
     accentCls:   'bg-green-900/50 border-green-600 text-green-200',
     trackDefault:'bg-green-900/60 border-green-700 text-green-400',
     trackConsumed:'bg-green-950 border-green-950 text-green-900',
-    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackGD:     'bg-green-950 border-green-700 text-green-400',
     trackBS:     'bg-red-950  border-red-800  text-red-500',
     heroBg:      'bg-green-950/60 border-green-700',
     heroBgKO:    'bg-red-950/40 border-red-700',
@@ -74,7 +74,7 @@ const WORLD_THEMES = {
     accentCls:   'bg-teal-900/40 border-teal-600 text-teal-200',
     trackDefault:'bg-gray-700 border-gray-600 text-gray-400',
     trackConsumed:'bg-gray-950 border-gray-900 text-gray-800',
-    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackGD:     'bg-green-950 border-green-700 text-green-400',
     trackBS:     'bg-red-950  border-red-800  text-red-500',
     heroBg:      'bg-gray-800 border-teal-800',
     heroBgKO:    'bg-red-950/40 border-red-700',
@@ -93,7 +93,7 @@ const WORLD_THEMES = {
     accentCls:   'bg-orange-900/50 border-orange-600 text-orange-200',
     trackDefault:'bg-red-900/40 border-red-800 text-red-300',
     trackConsumed:'bg-red-950 border-red-950 text-red-900',
-    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackGD:     'bg-green-950 border-green-700 text-green-400',
     trackBS:     'bg-red-950  border-red-800  text-red-500',
     heroBg:      'bg-orange-950/50 border-orange-800',
     heroBgKO:    'bg-red-950/40 border-red-700',
@@ -112,7 +112,7 @@ const WORLD_THEMES = {
     accentCls:   'bg-yellow-900/40 border-yellow-700 text-yellow-200',
     trackDefault:'bg-yellow-950/60 border-yellow-800 text-yellow-600',
     trackConsumed:'bg-gray-950 border-gray-900 text-gray-800',
-    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackGD:     'bg-green-950 border-green-700 text-green-400',
     trackBS:     'bg-red-950  border-red-800  text-red-500',
     heroBg:      'bg-yellow-950/40 border-yellow-800',
     heroBgKO:    'bg-red-950/40 border-red-700',
@@ -131,7 +131,7 @@ const WORLD_THEMES = {
     accentCls:   'bg-brass/20 border-brass text-parchment',
     trackDefault:'bg-leather/40 border-leather text-parchment-dark',
     trackConsumed:'bg-shadow border-shadow-light text-shadow-light',
-    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackGD:     'bg-green-950 border-green-700 text-green-400',
     trackBS:     'bg-red-950  border-red-800  text-red-500',
     heroBg:      'bg-leather-dark/60 border-leather',
     heroBgKO:    'bg-red-950/40 border-blood',
@@ -498,7 +498,7 @@ function LastRollBadge({ lastRoll, theme }) {
           </span>
         )}
         {!isDoubles && landedOnGD && (
-          <span className="px-2.5 py-0.5 rounded-full bg-purple-900/50 border border-purple-600 text-purple-200 text-sm font-bold">
+          <span className="px-2.5 py-0.5 rounded-full bg-green-900/50 border border-green-600 text-green-200 text-sm font-bold">
             Growing Dread Card!
           </span>
         )}

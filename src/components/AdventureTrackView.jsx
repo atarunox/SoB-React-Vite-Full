@@ -22,7 +22,7 @@ function TrackSpaceMini({ index, depth, darkness, trackLength, gdSpaces, bsSpace
   const pastDarkness = index > darkness;
 
   let bg = 'bg-gray-100';
-  if (isGD) bg = 'bg-purple-100';
+  if (isGD) bg = 'bg-green-100';
   else if (isBS) bg = 'bg-red-50';
   if (pastDarkness) bg = 'bg-gray-700';
 
@@ -120,7 +120,7 @@ export default function AdventureTrackView() {
       {/* Last roll */}
       {rollRecent && lastRoll && (
         <div className={`text-xs rounded px-2 py-1 space-y-1 ${
-          lastRoll.isDoubles ? 'bg-purple-100 text-purple-900'
+          lastRoll.isDoubles ? 'bg-green-100 text-green-900'
           : lastRoll.success ? 'bg-green-100 text-green-800'
           : 'bg-red-100 text-red-800'
         }`}>
@@ -132,9 +132,9 @@ export default function AdventureTrackView() {
               : lastRoll.success ? 'Held!' : 'Darkness advances!'}
           </div>
           {lastRoll.isDoubles && lastRoll.depthEvent && (
-            <div className="mt-1 p-2 bg-purple-50 rounded border border-purple-300">
+            <div className="mt-1 p-2 bg-green-50 rounded border border-green-300">
               <div className="font-bold text-sm">{lastRoll.depthEvent.name}</div>
-              <div className="italic text-[10px] text-purple-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
+              <div className="italic text-[10px] text-green-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
               <div className="mt-1 text-[11px] leading-tight">{lastRoll.depthEvent.effect}</div>
             </div>
           )}
