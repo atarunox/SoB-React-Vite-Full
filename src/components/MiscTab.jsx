@@ -58,7 +58,7 @@ export default function MiscTab() {
   const { hero, setHero } = useHero();
   const { posse, addHero, removeHero } = usePosse();
   const { darkness, growingDread } = useCombatState();
-  const { scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale, layoutEditMode, setLayoutEditMode } = useUIScale();
+  const { scale, setScale, buttonSize, setButtonSize, statsScale, setStatsScale, layoutEditMode, setLayoutEditMode, statsViewMode, setStatsViewMode } = useUIScale();
 
   // UI state
   const [heroList, setHeroList] = useState([]);            // [{...hero, _lsKey}]
@@ -524,6 +524,37 @@ export default function MiscTab() {
             </button>
           </div>
           <p className="text-xs text-gray-500">Shows undo/redo, drag lock, reset, and scale controls on the Stats tab.</p>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[#5c3a1e]/20" />
+
+        {/* --- Stats View Mode --- */}
+        <div className="space-y-2">
+          <span className="font-bold text-sm">Stats View Mode</span>
+          <div className="flex items-center gap-2">
+            <button
+              className={`px-4 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                statsViewMode === 'tiles'
+                  ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                  : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+              }`}
+              onClick={() => setStatsViewMode('tiles')}
+            >
+              Tiles (draggable)
+            </button>
+            <button
+              className={`px-4 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                statsViewMode === 'list'
+                  ? 'bg-[#5c3a1e] text-white border-[#5c3a1e]'
+                  : 'bg-[#f5f0da] text-[#5c3a1e] border-[#5c3a1e]/40 hover:bg-[#f6e7c1]'
+              }`}
+              onClick={() => setStatsViewMode('list')}
+            >
+              List (D&D style)
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">List view shows all stats in a clean grid, no dragging needed.</p>
         </div>
       </div>
 

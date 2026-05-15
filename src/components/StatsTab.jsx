@@ -373,7 +373,7 @@ export default function StatsTab({
 }) {
   const { hero: activeHero, updateHero } = useHero();
   const { updateHero: updateHeroPosse } = usePosse();
-  const { statsScale, setStatsScale, layoutEditMode } = useUIScale();
+  const { statsScale, setStatsScale, layoutEditMode, statsViewMode } = useUIScale();
 
   // ---- Undo / Redo history for stat changes ----
   const MAX_UNDO = 30;
@@ -460,6 +460,73 @@ export default function StatsTab({
   });
   const [draggingLabel, setDraggingLabel] = useState(null);
   const [dragStart, setDragStart] = useState(null);
+
+  // ---- Tile color customization ----
+  const tileColorsKey = activeHero?.id || activeHero?.localId
+    ? `sob:stats:tileColors:${activeHero.id || activeHero.localId}`
+    : null;
+
+  const [tileColors, setTileColors] = useState(() => {
+    if (!tileColorsKey) return {};
+    try {
+      const saved = localStorage.getItem(tileColorsKey);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Reset tileColors when hero changes
+  useEffect(() => {
+    if (!tileColorsKey) { setTileColors({}); return; }
+    try {
+      const saved = localStorage.getItem(tileColorsKey);
+      setTileColors(saved ? JSON.parse(saved) : {});
+    } catch {
+      setTileColors({});
+    }
+  }, [tileColorsKey]);
+
+  // Color picker popover state
+  const [colorPickerLabel, setColorPickerLabel] = useState(null); // which tile is open
+  const colorPickerRef = useRef(null);
+
+  // Close color picker on outside click
+  useEffect(() => {
+    if (!colorPickerLabel) return;
+    const handleOutside = (e) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target)) {
+        setColorPickerLabel(null);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutside, true);
+    return () => document.removeEventListener('pointerdown', handleOutside, true);
+  }, [colorPickerLabel]);
+
+  const updateTileColor = (label, field, value) => {
+    setTileColors((prev) => {
+      const next = { ...prev, [label]: { ...(prev[label] || {}), [field]: value } };
+      if (tileColorsKey) {
+        try { localStorage.setItem(tileColorsKey, JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
+  };
+
+  const resetTileColor = (label) => {
+    setTileColors((prev) => {
+      const next = { ...prev };
+      delete next[label];
+      if (tileColorsKey) {
+        try { localStorage.setItem(tileColorsKey, JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
+    setColorPickerLabel(null);
+  };
+
+  // Long-press timer ref for touch devices
+  const longPressTimer = useRef(null);
 
   // Per-hero persistence for "Detailed Stats"
   const detailsKey =
@@ -792,7 +859,7 @@ export default function StatsTab({
 
   return (
     <div onPointerMove={handlePointerMove}>
-      {layoutEditMode && (
+      {layoutEditMode && statsViewMode === 'tiles' && (
         <div className="flex justify-end mb-2 gap-2 flex-wrap">
           <button
             className="btn btn-sm"
@@ -1012,43 +1079,152 @@ export default function StatsTab({
         </div>
       )}
 
-      {/* Draggable stat tiles */}
-      <div
-        className="relative border-2 border-[#5C3A21] rounded-xl shadow-inner touch-none"
-        ref={dragAreaRef}
-        style={{
-          minHeight: `${(gridLayout.rowH * Math.ceil(statOrder.length / gridLayout.cols) + TILE_GAP * 2) * statsScale}px`,
-        }}
-      >
-        {statOrder.map((label) => {
-          const value = getStatValue(label);
-          const pos = localPositions[label] || defaultPositions[label] || { x: 0, y: 0 };
-          const displayLabel =
-            label === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(label);
+      {/* Stat tiles / list view */}
+      {statsViewMode === 'list' ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {statOrder.map((label) => {
+            const value = getStatValue(label);
+            const displayLabel =
+              label === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(label);
+            return (
+              <div
+                key={label}
+                className="flex items-center justify-between rounded-lg border border-[#8b6b46] bg-[#f5ebd8] px-3 py-2 shadow-sm"
+              >
+                <span className="text-xs font-semibold text-[#5c3a1e] uppercase tracking-wide">{displayLabel}</span>
+                <span className="text-lg font-black text-[#1f1f1f] tabular-nums">{displayVal(value)}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Draggable stat tiles */
+        <div
+          className="relative border-2 border-[#5C3A21] rounded-xl shadow-inner touch-none"
+          ref={dragAreaRef}
+          style={{
+            minHeight: `${(gridLayout.rowH * Math.ceil(statOrder.length / gridLayout.cols) + TILE_GAP * 2) * statsScale}px`,
+          }}
+        >
+          {/* Color picker popover */}
+          {colorPickerLabel && (() => {
+            const pickerLabel = colorPickerLabel;
+            const currentBg = tileColors[pickerLabel]?.bg || '#ede2c6';
+            const currentText = tileColors[pickerLabel]?.text || '#3b2f1d';
+            return (
+              <div
+                ref={colorPickerRef}
+                className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#2a1f14] border border-[#8b6b46] rounded-xl shadow-2xl p-4 flex flex-col gap-3 min-w-[220px]"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="text-amber-200 font-bold text-sm text-center">
+                  Customize: {pickerLabel === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(pickerLabel)}
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-amber-100 text-xs font-medium">Background</label>
+                  <input
+                    type="color"
+                    value={currentBg}
+                    onChange={(e) => updateTileColor(pickerLabel, 'bg', e.target.value)}
+                    className="w-10 h-8 rounded cursor-pointer border border-[#8b6b46]"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-amber-100 text-xs font-medium">Text Color</label>
+                  <input
+                    type="color"
+                    value={currentText}
+                    onChange={(e) => updateTileColor(pickerLabel, 'text', e.target.value)}
+                    className="w-10 h-8 rounded cursor-pointer border border-[#8b6b46]"
+                  />
+                </div>
+                <div className="flex gap-2 justify-center mt-1">
+                  <button
+                    className="px-3 py-1.5 rounded-md border border-[#8b6b46] bg-[#3d2b18] text-amber-100 text-xs font-medium hover:bg-[#4a3520]"
+                    onClick={() => resetTileColor(pickerLabel)}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className="px-3 py-1.5 rounded-md border border-[#8b6b46] bg-[#5c3a1e] text-white text-xs font-medium hover:bg-[#6e4726]"
+                    onClick={() => setColorPickerLabel(null)}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
-          return (
-            <div
-              key={label}
-              className="absolute rounded-2xl bg-gradient-to-b from-[#ede2c6] to-[#d4c3a1] p-1 border border-[#8b6b46] text-center cursor-grab flex flex-col justify-center items-center transition-transform duration-200 ease-in-out shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
-              style={{
-                left: pos.x * statsScale,
-                top: pos.y * statsScale,
-                width: `${gridLayout.tileW * statsScale}px`,
-                height: `${gridLayout.tileH * statsScale}px`,
-                touchAction: 'none',
-              }}
-              onPointerDown={(e) => handlePointerDown(e, label)}
-            >
-              <div className="font-bold text-[#3b2f1d] tracking-tight drop-shadow-sm leading-snug" style={{ fontSize: `${Math.max(9, gridLayout.tileW * 0.12) * statsScale}px` }}>
-                {displayLabel}
+          {statOrder.map((label) => {
+            const value = getStatValue(label);
+            const pos = localPositions[label] || defaultPositions[label] || { x: 0, y: 0 };
+            const displayLabel =
+              label === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(label);
+            const customBg = tileColors[label]?.bg;
+            const customText = tileColors[label]?.text;
+
+            return (
+              <div
+                key={label}
+                className="absolute rounded-2xl bg-gradient-to-b from-[#ede2c6] to-[#d4c3a1] p-1 border border-[#8b6b46] text-center cursor-grab flex flex-col justify-center items-center transition-transform duration-200 ease-in-out shadow-[0_4px_10px_rgba(0,0,0,0.6)]"
+                style={{
+                  left: pos.x * statsScale,
+                  top: pos.y * statsScale,
+                  width: `${gridLayout.tileW * statsScale}px`,
+                  height: `${gridLayout.tileH * statsScale}px`,
+                  touchAction: 'none',
+                  ...(customBg ? { background: customBg } : {}),
+                  ...(customText ? { color: customText } : {}),
+                }}
+                onPointerDown={(e) => {
+                  // Start long-press timer for touch
+                  longPressTimer.current = setTimeout(() => {
+                    longPressTimer.current = null;
+                    setColorPickerLabel(label);
+                  }, 500);
+                  handlePointerDown(e, label);
+                }}
+                onPointerUp={() => {
+                  if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                  }
+                }}
+                onPointerCancel={() => {
+                  if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setColorPickerLabel(label);
+                }}
+              >
+                <div
+                  className="font-bold tracking-tight drop-shadow-sm leading-snug"
+                  style={{
+                    fontSize: `${Math.max(9, gridLayout.tileW * 0.12) * statsScale}px`,
+                    color: customText || '#3b2f1d',
+                  }}
+                >
+                  {displayLabel}
+                </div>
+                <div
+                  className="font-black leading-tight drop-shadow"
+                  style={{
+                    fontSize: `${Math.max(14, gridLayout.tileW * 0.22) * statsScale}px`,
+                    color: customText || '#1f1f1f',
+                  }}
+                >
+                  {displayVal(value)}
+                </div>
               </div>
-              <div className="font-black text-[#1f1f1f] leading-tight drop-shadow" style={{ fontSize: `${Math.max(14, gridLayout.tileW * 0.22) * statsScale}px` }}>
-                {displayVal(value)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Resource Trackers */}
       <div className="mt-6 w-full flex flex-col gap-3">

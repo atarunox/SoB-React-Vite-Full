@@ -28,6 +28,7 @@ function validFontSize(v) {
 }
 
 const LAYOUT_EDIT_KEY = 'sob:layoutEditMode';
+const STATS_VIEW_MODE_KEY = 'sob:statsViewMode';
 
 const UIScaleContext = createContext({
   scale: 1, setScale: () => {},
@@ -37,6 +38,7 @@ const UIScaleContext = createContext({
   compactMode: false, setCompactMode: () => {},
   fontSize: 'md', setFontSize: () => {},
   fullWidth: false, setFullWidth: () => {},
+  statsViewMode: 'tiles', setStatsViewMode: () => {},
 });
 
 export { BUTTON_SIZES, FONT_SIZES };
@@ -100,6 +102,15 @@ export function UIScaleProvider({ children }) {
     }
   });
 
+  const [statsViewMode, setStatsViewModeRaw] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STATS_VIEW_MODE_KEY);
+      return saved === 'list' ? 'list' : 'tiles';
+    } catch {
+      return 'tiles';
+    }
+  });
+
   const setScale = React.useCallback((v) => setScaleRaw(clampScale(v)), []);
   const setButtonSize = React.useCallback((v) => setButtonSizeRaw(validButtonSize(v)), []);
   const setStatsScale = React.useCallback((v) => setStatsScaleRaw(clampScale(v)), []);
@@ -107,6 +118,7 @@ export function UIScaleProvider({ children }) {
   const setCompactMode = React.useCallback((v) => setCompactModeRaw(!!v), []);
   const setFontSize = React.useCallback((v) => setFontSizeRaw(validFontSize(v)), []);
   const setFullWidth = React.useCallback((v) => setFullWidthRaw(!!v), []);
+  const setStatsViewMode = React.useCallback((v) => setStatsViewModeRaw(v === 'list' ? 'list' : 'tiles'), []);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, String(scale)); } catch {}
@@ -136,6 +148,10 @@ export function UIScaleProvider({ children }) {
     try { localStorage.setItem(FULL_WIDTH_KEY, String(fullWidth)); } catch {}
   }, [fullWidth]);
 
+  useEffect(() => {
+    try { localStorage.setItem(STATS_VIEW_MODE_KEY, statsViewMode); } catch {}
+  }, [statsViewMode]);
+
   // Apply data attributes on <html> so CSS can target them
   useEffect(() => {
     document.documentElement.setAttribute('data-btn-size', buttonSize);
@@ -162,6 +178,7 @@ export function UIScaleProvider({ children }) {
       compactMode, setCompactMode,
       fontSize, setFontSize,
       fullWidth, setFullWidth,
+      statsViewMode, setStatsViewMode,
     }}>
       {children}
     </UIScaleContext.Provider>
