@@ -5,6 +5,7 @@ import { mineCards } from '../../data/maps/mineCards';
 import { blastedWastesCards } from '../../data/maps/blastedWastesCards';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
 import { canyonEncounters } from '../../data/encounters/canyonEncounters';
+import { useAdventure } from '../../context/AdventureContext';
 
 function shuffle(arr) {
   const a = [...arr];
@@ -34,6 +35,11 @@ export default function DMMapDrawer({ world = 'Mines' }) {
   const [deck, setDeck] = useState([]);
   const [drawn, setDrawn] = useState([]);
   const [enlarged, setEnlarged] = useState(null); // {tile, encounter}
+  const [pendingDepthAdvance, setPendingDepthAdvance] = useState(false);
+
+  const adventure = useAdventure();
+  const advanceDepth = adventure?.advanceDepth;
+  const adventureActive = adventure?.state?.active;
 
   const encounters = WORLD_TO_ENCOUNTERS[world] || [];
   const LS_KEY = `sob_mapDrawerState_${world}`;
@@ -66,15 +72,11 @@ export default function DMMapDrawer({ world = 'Mines' }) {
   }, [drawn, deck, LS_KEY]);
 
   const drawCard = () => {
-    setDeck(prevDeck => {
-      if (prevDeck.length === 0) return prevDeck;
-      return prevDeck.slice(1);
-    });
-    setDrawn(prevDrawn => {
-      const currentDeck = deck;
-      if (currentDeck.length === 0) return prevDrawn;
-      return [currentDeck[0], ...prevDrawn];
-    });
+    if (deck.length === 0) return;
+    const tile = deck[0];
+    setDeck(prev => prev.slice(1));
+    setDrawn(prev => [tile, ...prev]);
+    if (adventureActive) setPendingDepthAdvance(true);
   };
 
   // Shuffle remaining deck ONLY (keep drawn as-is)
@@ -131,6 +133,26 @@ export default function DMMapDrawer({ world = 'Mines' }) {
             Clear Map
           </button>
         </div>
+
+        {pendingDepthAdvance && (
+          <div className="flex items-center gap-3 bg-amber-100 border border-amber-400 rounded-lg px-4 py-3">
+            <span className="text-amber-900 font-semibold text-sm flex-1">
+              New tile drawn — did the posse enter a new room?
+            </span>
+            <button
+              className="btn btn-sm btn-primary min-h-[40px]"
+              onClick={() => { advanceDepth?.(); setPendingDepthAdvance(false); }}
+            >
+              Advance Depth
+            </button>
+            <button
+              className="btn btn-sm btn-outline min-h-[40px]"
+              onClick={() => setPendingDepthAdvance(false)}
+            >
+              Not yet
+            </button>
+          </div>
+        )}
 
         <DrawnMapTilesRow
           tiles={drawnWithEncounters}

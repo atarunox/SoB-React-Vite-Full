@@ -290,7 +290,7 @@ export default function DMTab({ showEndOfDayButton = false }) {
         </div>
 
         {/* World selector bound to WorldContext */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <WorldDrawer value={world} onChange={setWorld} compact />
           <button
             className="btn btn-sm btn-warning"
@@ -298,6 +298,13 @@ export default function DMTab({ showEndOfDayButton = false }) {
             title="Clear lodging/choice so Town resets for everyone"
           >
             Start Next Day
+          </button>
+          <button
+            className="btn btn-sm btn-outline"
+            onClick={() => window.open('/display', '_blank')}
+            title="Open TV display in a new tab"
+          >
+            📺 Display
           </button>
         </div>
       </div>

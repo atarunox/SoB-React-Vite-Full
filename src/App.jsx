@@ -16,6 +16,7 @@ import HeroScreen from './screens/HeroScreen';
 import DMTab from './components/DM/DMTab';
 import EnemyStatsPage from './components/EnemyReferencePage';
 import ActiveEnemyStatsPage from './components/ActiveEnemyStatsPage';
+import DisplayScreen from './screens/DisplayScreen';
 
 function Home() {
   const { posse } = usePosse();                 // only posse data here
@@ -35,20 +36,28 @@ function Home() {
 function AppShell() {
   const { scale } = useUIScale();
   return (
-    <div className="min-h-screen bg-[url('/assets/Parchment.jpg')] bg-cover bg-fixed bg-center text-black">
-      <div
-        className="bg-[#fdf6e3]/40 min-h-screen px-2 py-4 border-[3px] border-[#5C3A21] shadow-lg rounded-lg w-full max-w-4xl mx-auto origin-top"
-        style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
-      >
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/dm" element={<DMTab />} />
-          <Route path="/active-enemies" element={<ActiveEnemyStatsPage />} />
-          <Route path="/enemies" element={<EnemyStatsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-    </div>
+    <Routes>
+      {/* TV display — no parchment wrapper */}
+      <Route path="/display" element={<DisplayScreen />} />
+
+      {/* Normal game shell */}
+      <Route path="*" element={
+        <div className="min-h-screen bg-[url('/assets/Parchment.jpg')] bg-cover bg-fixed bg-center text-black">
+          <div
+            className="bg-[#fdf6e3]/40 min-h-screen px-2 py-4 border-[3px] border-[#5C3A21] shadow-lg rounded-lg w-full max-w-4xl mx-auto origin-top"
+            style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
+          >
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/dm" element={<DMTab />} />
+              <Route path="/active-enemies" element={<ActiveEnemyStatsPage />} />
+              <Route path="/enemies" element={<EnemyStatsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </div>
+      } />
+    </Routes>
   );
 }
 
