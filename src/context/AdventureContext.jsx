@@ -10,7 +10,10 @@ const LS_KEY = 'sob_adventure_state';
 const FIRESTORE_DOC = 'gameState';
 const FIRESTORE_ID = 'adventure';
 
+const SCHEMA_VERSION = 2; // bump when DEFAULT_STATE shape changes
+
 const DEFAULT_STATE = {
+  schemaVersion: SCHEMA_VERSION,
   depth: 0,
   darkness: 15,
   turn: 1,
@@ -25,7 +28,11 @@ const DEFAULT_STATE = {
 function loadLocal() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? { ...DEFAULT_STATE, ...JSON.parse(raw) } : { ...DEFAULT_STATE };
+    if (!raw) return { ...DEFAULT_STATE };
+    const parsed = JSON.parse(raw);
+    // If saved state is from an older schema, discard it
+    if (parsed.schemaVersion !== SCHEMA_VERSION) return { ...DEFAULT_STATE };
+    return { ...DEFAULT_STATE, ...parsed };
   } catch {
     return { ...DEFAULT_STATE };
   }
@@ -48,7 +55,11 @@ export function AdventureProvider({ children }) {
     const ref = doc(db, FIRESTORE_DOC, FIRESTORE_ID);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
-        const data = { ...DEFAULT_STATE, ...snap.data() };
+        const remote = snap.data();
+        // Ignore stale remote data from an older schema
+        const data = remote.schemaVersion === SCHEMA_VERSION
+          ? { ...DEFAULT_STATE, ...remote }
+          : { ...DEFAULT_STATE };
         setState(data);
         saveLocal(data);
         lastSavedRef.current = JSON.stringify(data);

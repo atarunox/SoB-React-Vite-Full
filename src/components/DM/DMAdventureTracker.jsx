@@ -183,7 +183,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
               type="number"
               className="input input-sm w-full"
               value={configDraft.trackLength ?? state.trackLength}
-              onChange={e => setConfigDraft(p => ({ ...p, trackLength: Number(e.target.value) || 12 }))}
+              onChange={e => setConfigDraft(p => ({ ...p, trackLength: Number(e.target.value) || 15 }))}
               min={6} max={20}
             />
           </div>
@@ -382,7 +382,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
                 type="number"
                 className="input input-sm w-full"
                 value={state.trackLength}
-                onChange={e => updateAdventure({ trackLength: Number(e.target.value) || 12 })}
+                onChange={e => updateAdventure({ trackLength: Number(e.target.value) || 15 })}
                 min={6} max={20}
               />
             </div>
