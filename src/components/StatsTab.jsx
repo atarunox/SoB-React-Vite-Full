@@ -1444,9 +1444,9 @@ export default function StatsTab({
                 ⬆ Level Up!
               </button>
             )}
-            <div className="flex flex-col gap-1 w-full">
+            <div className="flex gap-1 w-full">
               {[10, 50, 100].map(amt => (
-                <div key={amt} className="flex gap-1 w-full">
+                <React.Fragment key={amt}>
                   <button
                     className="btn btn-sm flex-1 px-1 text-xs"
                     onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - amt) })}
@@ -1454,14 +1454,13 @@ export default function StatsTab({
                   >
                     −{amt}
                   </button>
-                  <span className="text-[10px] text-emerald-700/60 self-center w-7 text-center font-semibold">{amt}</span>
                   <button
                     className="btn btn-sm flex-1 px-1 text-xs"
                     onClick={() => updateHeroFunc({ xp: curXP + amt })}
                   >
                     +{amt}
                   </button>
-                </div>
+                </React.Fragment>
               ))}
             </div>
           </div>
