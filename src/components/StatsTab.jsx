@@ -1447,10 +1447,10 @@ export default function StatsTab({
             <div className="flex gap-1 w-full">
               <button
                 className="btn btn-sm flex-1 px-1 text-xs"
-                onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - 10) })}
+                onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - 5) })}
                 disabled={curXP <= 0}
               >
-                −10
+                −5
               </button>
               {[10, 50, 100].map(amt => (
                 <button
