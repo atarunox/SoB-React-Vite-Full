@@ -1445,22 +1445,21 @@ export default function StatsTab({
               </button>
             )}
             <div className="flex gap-1 w-full">
+              <button
+                className="btn btn-sm flex-1 px-1 text-xs"
+                onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - 10) })}
+                disabled={curXP <= 0}
+              >
+                −10
+              </button>
               {[10, 50, 100].map(amt => (
-                <React.Fragment key={amt}>
-                  <button
-                    className="btn btn-sm flex-1 px-1 text-xs"
-                    onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - amt) })}
-                    disabled={curXP <= 0}
-                  >
-                    −{amt}
-                  </button>
-                  <button
-                    className="btn btn-sm flex-1 px-1 text-xs"
-                    onClick={() => updateHeroFunc({ xp: curXP + amt })}
-                  >
-                    +{amt}
-                  </button>
-                </React.Fragment>
+                <button
+                  key={amt}
+                  className="btn btn-sm flex-1 px-1 text-xs"
+                  onClick={() => updateHeroFunc({ xp: curXP + amt })}
+                >
+                  +{amt}
+                </button>
               ))}
             </div>
           </div>
