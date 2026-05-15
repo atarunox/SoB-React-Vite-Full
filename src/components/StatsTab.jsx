@@ -304,6 +304,14 @@ function buildDefaultPositions(cols, colW, rowH) {
   );
 }
 
+/* ── Stat order (module-level so hooks can reference it before render body) ─ */
+const statOrder = [
+  'Agility', 'Cunning', 'Spirit', 'Strength', 'Lore', 'Luck',
+  'Initiative', 'Melee', 'Ranged', 'Defense', 'Willpower',
+  'Armor', 'Spirit Armor', 'Health', 'Sanity', 'Grit',
+  'Corruption', 'Special', 'Move', 'Combat',
+];
+
 /* ── ResourceCard ────────────────────────────────────────────────────────── */
 const RESOURCE_THEMES = {
   health:     { header: 'bg-gradient-to-r from-red-800 to-red-700',     bar: 'bg-red-500',     track: 'bg-red-100',     border: 'border-red-300',    bg: 'bg-red-50',     label: 'text-red-900' },
@@ -533,8 +541,6 @@ export default function StatsTab({
     ? `sob:stats:listOrder:${activeHero.id || activeHero.localId}`
     : null;
 
-  const DEFAULT_LIST_ORDER = statOrder; // defined later but same reference is fine at eval time
-
   const [listOrder, setListOrder] = useState(() => {
     if (!listOrderKey) return [...statOrder];
     try {
@@ -716,29 +722,6 @@ export default function StatsTab({
     const y = (e.clientY - rect.top - dragStart.y) / s;
     setLocalPositions((pos) => ({ ...pos, [draggingLabel]: { x, y } }));
   };
-
-  const statOrder = [
-    'Agility',
-    'Cunning',
-    'Spirit',
-    'Strength',
-    'Lore',
-    'Luck',
-    'Initiative',
-    'Melee',
-    'Ranged',
-    'Defense',
-    'Willpower',
-    'Armor',
-    'Spirit Armor',
-    'Health',
-    'Sanity',
-    'Grit',
-    'Corruption',
-    'Special',
-    'Move',
-    'Combat',
-  ];
 
   // ---- base-from-hero fallback for details table ----
   function baseFromHero(k, hero) {
