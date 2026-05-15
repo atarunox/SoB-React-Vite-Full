@@ -1444,20 +1444,25 @@ export default function StatsTab({
                 ⬆ Level Up!
               </button>
             )}
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-3"
-                onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - 5) })}
-                disabled={curXP <= 0}
-              >
-                −5
-              </button>
-              <button
-                className="btn btn-sm px-3"
-                onClick={() => updateHeroFunc({ xp: curXP + 5 })}
-              >
-                +5
-              </button>
+            <div className="flex flex-col gap-1 w-full">
+              {[10, 50, 100].map(amt => (
+                <div key={amt} className="flex gap-1 w-full">
+                  <button
+                    className="btn btn-sm flex-1 px-1 text-xs"
+                    onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - amt) })}
+                    disabled={curXP <= 0}
+                  >
+                    −{amt}
+                  </button>
+                  <span className="text-[10px] text-emerald-700/60 self-center w-7 text-center font-semibold">{amt}</span>
+                  <button
+                    className="btn btn-sm flex-1 px-1 text-xs"
+                    onClick={() => updateHeroFunc({ xp: curXP + amt })}
+                  >
+                    +{amt}
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
