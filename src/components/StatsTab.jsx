@@ -304,6 +304,63 @@ function buildDefaultPositions(cols, colW, rowH) {
   );
 }
 
+/* ── ResourceCard ────────────────────────────────────────────────────────── */
+const RESOURCE_THEMES = {
+  health:     { header: 'bg-gradient-to-r from-red-800 to-red-700',     bar: 'bg-red-500',     track: 'bg-red-100',     border: 'border-red-300',    bg: 'bg-red-50',     label: 'text-red-900' },
+  sanity:     { header: 'bg-gradient-to-r from-indigo-700 to-indigo-600', bar: 'bg-indigo-400', track: 'bg-indigo-100',  border: 'border-indigo-300', bg: 'bg-indigo-50',  label: 'text-indigo-900' },
+  grit:       { header: 'bg-gradient-to-r from-amber-700 to-amber-600',  bar: 'bg-amber-400',   track: 'bg-amber-100',   border: 'border-amber-300',  bg: 'bg-amber-50',   label: 'text-amber-900' },
+  corruption: { header: 'bg-gradient-to-r from-purple-900 to-purple-700', bar: 'bg-purple-500', track: 'bg-purple-100',  border: 'border-purple-300', bg: 'bg-purple-50',  label: 'text-purple-900' },
+  darkstone:  { header: 'bg-gradient-to-r from-slate-700 to-slate-600',  bar: null,             track: null,             border: 'border-slate-300',  bg: 'bg-slate-50',   label: 'text-slate-800' },
+  gold:       { header: 'bg-gradient-to-r from-yellow-700 to-yellow-600', bar: null,            track: null,             border: 'border-yellow-300', bg: 'bg-yellow-50',  label: 'text-yellow-900' },
+  scrap:      { header: 'bg-gradient-to-r from-stone-600 to-stone-500',  bar: null,             track: null,             border: 'border-stone-300',  bg: 'bg-stone-50',   label: 'text-stone-800' },
+  tech:       { header: 'bg-gradient-to-r from-sky-700 to-sky-600',      bar: null,             track: null,             border: 'border-sky-300',    bg: 'bg-sky-50',     label: 'text-sky-900' },
+  xp:         { header: 'bg-gradient-to-r from-emerald-700 to-emerald-600', bar: null,          track: null,             border: 'border-emerald-300',bg: 'bg-emerald-50', label: 'text-emerald-900' },
+};
+
+function ResourceCard({ theme: themeKey, label, current, max, onDec, onInc, decLabel = '−', incLabel = '+', decDisabled, incDisabled }) {
+  const t = RESOURCE_THEMES[themeKey] || RESOURCE_THEMES.grit;
+  const hasBar = !!t.bar && max != null && max > 0;
+  const pct = hasBar ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
+  const isLow = hasBar && pct <= 33;
+
+  return (
+    <div className={`rounded-xl overflow-hidden border ${t.border} ${t.bg} shadow-md flex flex-col`}>
+      <div className={`${t.header} text-white text-[10px] font-bold py-1 px-2 text-center tracking-widest uppercase`}>
+        {label}
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-2 pt-2 pb-2">
+        <div className={`text-xl sm:text-2xl font-black tabular-nums ${t.label}`}>
+          {max != null ? `${current} / ${max}` : current}
+        </div>
+        {hasBar && (
+          <div className={`w-full h-2 rounded-full ${t.track} overflow-hidden mt-1.5 mb-1`}>
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${t.bar} ${isLow ? 'animate-pulse' : ''}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
+        <div className={`flex justify-center gap-2 ${hasBar ? '' : 'mt-1.5'}`}>
+          <button
+            className="btn btn-sm px-3"
+            onClick={onDec}
+            disabled={decDisabled ?? current <= 0}
+          >
+            {decLabel}
+          </button>
+          <button
+            className="btn btn-sm px-3"
+            onClick={onInc}
+            disabled={incDisabled ?? (max != null && current >= max)}
+          >
+            {incLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------------------- component -------------------------------- */
 
 export default function StatsTab({
@@ -997,257 +1054,121 @@ export default function StatsTab({
       <div className="mt-6 w-full flex flex-col gap-3">
         {/* Health & Sanity */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Health */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Health</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
-              {toNum(activeHero.currentHealth ?? 0)} / {toNum(maxHealth)}
-            </div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() =>
-                  updateHeroFunc({
-                    currentHealth: Math.max(0, toNum(activeHero.currentHealth ?? 0) - 1),
-                  })
-                }
-                disabled={toNum(activeHero.currentHealth ?? 0) <= 0}
-              >
-                -
-              </button>
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => {
-                  const cur = toNum(activeHero.currentHealth ?? 0);
-                  updateHeroFunc({ currentHealth: Math.min(maxHealth, cur + 1) });
-                }}
-                disabled={toNum(activeHero.currentHealth ?? 0) >= toNum(maxHealth)}
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {/* Sanity */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Sanity</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
-              {toNum(activeHero.currentSanity ?? 0)} / {toNum(maxSanity)}
-            </div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() =>
-                  updateHeroFunc({
-                    currentSanity: Math.max(0, toNum(activeHero.currentSanity ?? 0) - 1),
-                  })
-                }
-                disabled={toNum(activeHero.currentSanity ?? 0) <= 0}
-              >
-                -
-              </button>
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => {
-                  const cur = toNum(activeHero.currentSanity ?? 0);
-                  updateHeroFunc({ currentSanity: Math.min(maxSanity, cur + 1) });
-                }}
-                disabled={toNum(activeHero.currentSanity ?? 0) >= toNum(maxSanity)}
-              >
-                +
-              </button>
-            </div>
-          </div>
+          <ResourceCard
+            theme="health"
+            label="Health"
+            current={toNum(activeHero.currentHealth ?? 0)}
+            max={toNum(maxHealth)}
+            onDec={() => updateHeroFunc({ currentHealth: Math.max(0, toNum(activeHero.currentHealth ?? 0) - 1) })}
+            onInc={() => updateHeroFunc({ currentHealth: Math.min(maxHealth, toNum(activeHero.currentHealth ?? 0) + 1) })}
+          />
+          <ResourceCard
+            theme="sanity"
+            label="Sanity"
+            current={toNum(activeHero.currentSanity ?? 0)}
+            max={toNum(maxSanity)}
+            onDec={() => updateHeroFunc({ currentSanity: Math.max(0, toNum(activeHero.currentSanity ?? 0) - 1) })}
+            onInc={() => updateHeroFunc({ currentSanity: Math.min(maxSanity, toNum(activeHero.currentSanity ?? 0) + 1) })}
+          />
         </div>
 
         {/* Grit & Corruption */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Grit */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Grit</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
-              {curGrit} / {toNum(maxGrit)}
-            </div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() =>
-                  updateHeroFunc({
-                    currentGrit: Math.max(0, toNum(activeHero.currentGrit ?? 0) - 1),
-                  })
-                }
-                disabled={toNum(activeHero.currentGrit ?? 0) <= 0}
-              >
-                -
-              </button>
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => {
-                  const cur = toNum(activeHero.currentGrit ?? 0);
-                  updateHeroFunc({ currentGrit: Math.min(maxGrit, cur + 1) });
-                }}
-                disabled={toNum(activeHero.currentGrit ?? 0) >= toNum(maxGrit)}
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {/* Corruption */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">Corruption</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">
-              {toNum(activeHero.currentCorruption ?? 0)} / {toNum(maxCor)}
-            </div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => {
-                  const newHero = handleCorruptionOverflow(
-                    {
-                      ...activeHero,
-                      currentCorruption: Math.max(
-                        0,
-                        toNum(activeHero.currentCorruption ?? 0) - 1
-                      ),
-                    },
-                    toNum(maxCor)
-                  );
-                  updateHeroFunc(newHero);
-                }}
-                disabled={toNum(activeHero.currentCorruption ?? 0) <= 0}
-              >
-                -
-              </button>
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => {
-                  const newHero = handleCorruptionOverflow(
-                    {
-                      ...activeHero,
-                      currentCorruption: toNum(activeHero.currentCorruption ?? 0) + 1,
-                    },
-                    toNum(maxCor)
-                  );
-                  updateHeroFunc(newHero);
-                }}
-                disabled={toNum(activeHero.currentCorruption ?? 0) >= toNum(maxCor)}
-              >
-                +
-              </button>
-            </div>
-          </div>
+          <ResourceCard
+            theme="grit"
+            label="Grit"
+            current={curGrit}
+            max={toNum(maxGrit)}
+            onDec={() => updateHeroFunc({ currentGrit: Math.max(0, toNum(activeHero.currentGrit ?? 0) - 1) })}
+            onInc={() => updateHeroFunc({ currentGrit: Math.min(maxGrit, toNum(activeHero.currentGrit ?? 0) + 1) })}
+          />
+          <ResourceCard
+            theme="corruption"
+            label="Corruption"
+            current={toNum(activeHero.currentCorruption ?? 0)}
+            max={toNum(maxCor)}
+            onDec={() => {
+              const newHero = handleCorruptionOverflow({ ...activeHero, currentCorruption: Math.max(0, toNum(activeHero.currentCorruption ?? 0) - 1) }, toNum(maxCor));
+              updateHeroFunc(newHero);
+            }}
+            onInc={() => {
+              const newHero = handleCorruptionOverflow({ ...activeHero, currentCorruption: toNum(activeHero.currentCorruption ?? 0) + 1 }, toNum(maxCor));
+              updateHeroFunc(newHero);
+            }}
+          />
         </div>
 
         {/* Dark Stone & Gold */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Dark Stone */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#535359] bg-[#ebebf2] shadow-md text-center">
-            <div className="font-bold text-[#353552] text-sm sm:text-base md:text-lg">Dark Stone</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#222238]">{curDS}</div>
-            <div className="flex justify-center gap-2">
+          <ResourceCard
+            theme="darkstone"
+            label="Dark Stone"
+            current={curDS}
+            onDec={() => updateHeroFunc({ darkStone: Math.max(0, curDS - 1) })}
+            onInc={() => updateHeroFunc({ darkStone: curDS + 1 })}
+            decLabel="−1"
+            incLabel="+1"
+            incDisabled={false}
+          />
+          {/* Gold — kept inline due to $10 step */}
+          <div className="rounded-xl overflow-hidden border border-yellow-300 bg-yellow-50 shadow-md flex flex-col">
+            <div className="bg-gradient-to-r from-yellow-700 to-yellow-600 text-white text-[10px] font-bold py-1 px-2 text-center tracking-widest uppercase">Gold</div>
+            <div className="flex-1 flex flex-col items-center justify-center px-2 pt-2 pb-2">
+              <div className="text-xl sm:text-2xl font-black tabular-nums text-yellow-900">{curGold}</div>
+              <div className="flex justify-center gap-2 mt-1.5">
               <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => updateHeroFunc({ darkStone: Math.max(0, curDS - 1) })}
-                disabled={curDS <= 0}
-              >
-                -1
-              </button>
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => updateHeroFunc({ darkStone: curDS + 1 })}
-              >
-                +1
-              </button>
-            </div>
-          </div>
-
-          {/* Gold */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#bfa439] bg-[#faf1da] shadow-md text-center">
-            <div className="font-bold text-[#bfa439] text-sm sm:text-base md:text-lg">Gold</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#ad9400]">{curGold}</div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
+                className="btn btn-sm px-3"
                 onClick={() => updateHeroFunc({ gold: Math.max(0, curGold - 10) })}
                 disabled={curGold <= 0}
               >
-                -10
+                −10
               </button>
               <button
-                className="btn btn-sm px-2 sm:px-3"
+                className="btn btn-sm px-3"
                 onClick={() => updateHeroFunc({ gold: curGold + 10 })}
               >
                 +10
               </button>
+            </div>
             </div>
           </div>
         </div>
 
         {/* Scrap & Tech */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Scrap */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#757575] bg-[#e3e3e3] shadow-md text-center">
-            <div className="font-bold text-[#474747] text-sm sm:text-base md:text-lg">Scrap</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#313131]">{curScrap}</div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => updateHeroFunc({ scrap: Math.max(0, curScrap - 1) })}
-                disabled={curScrap <= 0}
-              >
-                -1
-              </button>
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => updateHeroFunc({ scrap: curScrap + 1 })}
-              >
-                +1
-              </button>
-            </div>
-          </div>
-
-          {/* Tech */}
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#0a5a8a] bg-[#e0f3fb] shadow-md text-center">
-            <div className="font-bold text-[#0a5a8a] text-sm sm:text-base md:text-lg">Tech</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#145672]">{curTech}</div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => updateHeroFunc({ tech: Math.max(0, curTech - 1) })}
-                disabled={curTech <= 0}
-              >
-                -1
-              </button>
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => updateHeroFunc({ tech: curTech + 1 })}
-              >
-                +1
-              </button>
-            </div>
-          </div>
+          <ResourceCard
+            theme="scrap"
+            label="Scrap"
+            current={curScrap}
+            onDec={() => updateHeroFunc({ scrap: Math.max(0, curScrap - 1) })}
+            onInc={() => updateHeroFunc({ scrap: curScrap + 1 })}
+            decLabel="−1"
+            incLabel="+1"
+            incDisabled={false}
+          />
+          <ResourceCard
+            theme="tech"
+            label="Tech"
+            current={curTech}
+            onDec={() => updateHeroFunc({ tech: Math.max(0, curTech - 1) })}
+            onInc={() => updateHeroFunc({ tech: curTech + 1 })}
+            decLabel="−1"
+            incLabel="+1"
+            incDisabled={false}
+          />
         </div>
 
         {/* XP */}
-        <div className="flex">
-          <div className="flex-1 p-2 sm:p-3 rounded-xl border border-[#8b6b46] bg-[#f5ebd8] shadow-md text-center">
-            <div className="font-bold text-[#3b2f1d] text-sm sm:text-base md:text-lg">XP</div>
-            <div className="text-lg sm:text-xl md:text-2xl font-black my-1 sm:my-2 text-[#1f1f1f]">{curXP}</div>
-            <div className="flex justify-center gap-2">
-              <button
-                className="btn btn-sm px-2 sm:px-3"
-                onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - 5) })}
-                disabled={curXP <= 0}
-              >
-                -5
-              </button>
-              <button className="btn btn-sm px-2 sm:px-3" onClick={() => updateHeroFunc({ xp: curXP + 5 })}>
-                +5
-              </button>
-            </div>
-          </div>
-        </div>
+        <ResourceCard
+          theme="xp"
+          label="XP"
+          current={curXP}
+          onDec={() => updateHeroFunc({ xp: Math.max(0, curXP - 5) })}
+          onInc={() => updateHeroFunc({ xp: curXP + 5 })}
+          decLabel="−5"
+          incLabel="+5"
+          incDisabled={false}
+        />
       </div>
 
       {activeHero.mutations?.some((m) => m.name === 'Mutation — Roll Needed') && (

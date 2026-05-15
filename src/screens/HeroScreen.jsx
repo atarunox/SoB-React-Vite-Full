@@ -82,34 +82,51 @@ export default function HeroScreen({
     );
   }
 
+  const heroClass = activeHero.heroClass || activeHero.class || '';
+  const heroLevel = activeHero.level || activeHero.Level || 1;
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Name Header */}
-      <div className="text-center font-bold text-2xl pt-3 pb-4 bg-gradient-to-b from-leather-dark to-leather text-parchment-light text-shadow-lg border-b-2 border-brass">
-        {activeHero.name || 'Unnamed Hero'}
+      <div className="relative bg-gradient-to-b from-[#2a1a0e] via-leather-dark to-leather border-b-2 border-brass/60 shadow-horror-lg">
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(184,134,11,0.3) 4px, rgba(184,134,11,0.3) 5px)' }} />
+        <div className="relative text-center py-3 px-4">
+          <h1 className="font-bold text-2xl sm:text-3xl text-parchment-light text-shadow-lg tracking-wide leading-tight">
+            {activeHero.name || 'Unnamed Hero'}
+          </h1>
+          {heroClass && (
+            <div className="flex items-center justify-center gap-2 mt-0.5">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-brass/50 max-w-[60px]" />
+              <span className="text-brass-light text-xs font-semibold tracking-widest uppercase">
+                {heroClass.replace(/([A-Z])/g, ' $1').trim()} · Lvl {heroLevel}
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-brass/50 max-w-[60px]" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex flex-wrap justify-center items-center gap-1 border-y-2 border-leather bg-gradient-to-b from-parchment-dark to-parchment py-2 px-2 shadow-inner-dark">
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            className={`
-              relative px-3 py-2 font-semibold text-sm rounded-md
-              transition-all duration-200 transform
-              ${selectedTab === tab
-                ? 'bg-leather text-parchment-light shadow-horror border-2 border-brass scale-105 text-shadow'
-                : 'bg-parchment-dark text-leather-dark hover:bg-leather-light hover:text-parchment hover:scale-105 border-2 border-leather-light shadow-sm'
-              }
-            `}
-            onClick={() => setSelectedTab(tab)}
-          >
-            {selectedTab === tab && (
-              <div className="absolute inset-0 bg-brass/20 rounded-md animate-pulse" />
-            )}
-            <span className="relative z-10">{tab}</span>
-          </button>
-        ))}
+      <div className="bg-gradient-to-b from-[#3a2814] to-leather-dark border-b border-brass/30 px-2 py-1.5 overflow-x-auto hide-scrollbar">
+        <div className="flex items-center gap-1 min-w-max mx-auto">
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setSelectedTab(tab)}
+              className={`
+                relative px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full whitespace-nowrap
+                transition-all duration-200 border
+                ${selectedTab === tab
+                  ? 'bg-brass text-shadow-dark border-brass-light text-[#1a0e00] shadow-md'
+                  : 'bg-transparent border-brass/30 text-parchment/70 hover:text-parchment hover:border-brass/60 hover:bg-white/5'
+                }
+              `}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Adventure Track (visible to all players when active) */}
