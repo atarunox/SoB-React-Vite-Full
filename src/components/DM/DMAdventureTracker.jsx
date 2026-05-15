@@ -21,27 +21,52 @@ const LANTERN_ABILITIES = {
   mine_void_lantern: { label: 'Void Lantern', desc: 'Use Peril Die for HBtD; doubles = D6 Horror Hits to bearer + 1 to others', perilDie: true },
 };
 
-function TrackSpace({ index, depth, darkness, trackLength, gdSpaces, bsSpaces }) {
-  const isParty = index === depth;
-  const isDarkness = index === darkness;
-  const isGD = gdSpaces.includes(index);
-  const isBS = bsSpaces.includes(index);
-  const pastDarkness = index > darkness;
+// Layout: [Posse Entry] [Space 15] [Space 14] … [Space 1] [Darkness Entry]
+// slotIdx 0 = posse entry, 1..15 = spaces, 16 = darkness entry
+// depth    = steps taken (0=entry, 1=space15 … 15=space1)  → posseSlot = depth
+// darkness = physical space (0=entry right, 1=space1 …)    → darknessSlot = trackLength+1-darkness
+function TrackSpace({ slot, slotIdx, trackLength, depth, darkness, gdSpaces, bsSpaces }) {
+  const posseSlot    = depth;
+  const darknessSlot = (trackLength + 1) - darkness;
+  const isParty   = slotIdx === posseSlot;
+  const isDark    = slotIdx === darknessSlot;
+  const consumed  = slotIdx > darknessSlot; // right of darkness marker
+
+  if (slot.type === 'entry') {
+    const isPosse = slot.side === 'posse';
+    return (
+      <div className={`relative flex flex-col items-center justify-center w-10 h-14 rounded border-2 border-dashed text-[9px] font-bold shrink-0 ${
+        isPosse ? 'border-blue-400 bg-blue-50 text-blue-500' : 'border-red-500 bg-red-50 text-red-500'
+      }`}>
+        <span>{isPosse ? 'START' : 'DARK'}</span>
+        {isParty && (
+          <div className="absolute -top-2 w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-700 flex items-center justify-center text-white text-[9px] font-bold shadow">P</div>
+        )}
+        {isDark && (
+          <div className="absolute -bottom-2 w-5 h-5 rounded-full bg-red-600 border-2 border-red-800 flex items-center justify-center text-white text-[9px] font-bold shadow">D</div>
+        )}
+      </div>
+    );
+  }
+
+  const { spaceNum } = slot;
+  const isGD = gdSpaces.includes(spaceNum);
+  const isBS = bsSpaces.includes(spaceNum);
 
   let bg = 'bg-gray-100';
-  if (isGD) bg = 'bg-green-100 border-green-300';
+  if (consumed) bg = 'bg-gray-800';
+  else if (isGD) bg = 'bg-green-100 border-green-300';
   else if (isBS) bg = 'bg-red-50 border-red-200';
-  if (pastDarkness) bg = 'bg-gray-800';
 
   return (
     <div className={`relative flex flex-col items-center justify-center w-10 h-14 rounded border text-xs font-mono shrink-0 ${bg}`}>
-      <span className={`text-[10px] ${pastDarkness ? 'text-gray-500' : 'text-gray-400'}`}>{index}</span>
-      {isGD && <span className="text-[8px] text-green-600">GD</span>}
-      {isBS && <span className="text-[8px] text-red-500">BS</span>}
+      <span className={`text-[10px] ${consumed ? 'text-gray-600' : 'text-gray-400'}`}>{spaceNum}</span>
+      {!consumed && isGD && <span className="text-[8px] text-green-600">GD</span>}
+      {!consumed && isBS && <span className="text-[8px] text-red-500">BS</span>}
       {isParty && (
         <div className="absolute -top-2 w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-700 flex items-center justify-center text-white text-[9px] font-bold shadow">P</div>
       )}
-      {isDarkness && (
+      {isDark && (
         <div className="absolute -bottom-2 w-5 h-5 rounded-full bg-red-600 border-2 border-red-800 flex items-center justify-center text-white text-[9px] font-bold shadow">D</div>
       )}
     </div>
@@ -166,8 +191,18 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
     rollHBtD(bearerName, usesPerilDie ? 'peril' : null);
   }, [currentBearer, lanternAbility, posse, updateHero, rollHBtD, usesPerilDie]);
 
-  const missionFailed = state.darkness <= 0 && state.active;
-  const dangerZone = state.darkness <= 2 && state.darkness > 0 && state.active;
+  const missionFailed = state.darkness > state.trackLength && state.active;
+  const dangerZone = state.darkness >= state.trackLength - 2 && !missionFailed && state.active;
+
+  // Build slots: [P-entry] [space 15..1] [D-entry]
+  const trackSlots = React.useMemo(() => {
+    const slots = [{ type: 'entry', side: 'posse' }];
+    for (let i = 1; i <= state.trackLength; i++) {
+      slots.push({ type: 'space', spaceNum: state.trackLength + 1 - i });
+    }
+    slots.push({ type: 'entry', side: 'darkness' });
+    return slots;
+  }, [state.trackLength]);
 
   // Not active — show setup screen
   if (!state.active) {
@@ -267,10 +302,11 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
       {/* Track visualization */}
       <div className="overflow-x-auto">
         <div className="flex gap-1 py-3 min-w-max">
-          {Array.from({ length: state.trackLength + 1 }, (_, i) => (
+          {trackSlots.map((slot, i) => (
             <TrackSpace
               key={i}
-              index={i}
+              slot={slot}
+              slotIdx={i}
               depth={state.depth}
               darkness={state.darkness}
               trackLength={state.trackLength}
@@ -280,8 +316,8 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
           ))}
         </div>
         <div className="flex justify-between text-[10px] text-gray-400 px-1">
-          <span>Entrance</span>
-          <span>Deep</span>
+          <span>← Posse Entry</span>
+          <span>Darkness Entry →</span>
         </div>
       </div>
 

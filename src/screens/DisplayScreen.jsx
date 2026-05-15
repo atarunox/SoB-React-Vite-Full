@@ -341,26 +341,27 @@ function HeroCard({ hero, theme }) {
 function DepthTrack({ state, theme }) {
   const {
     depth       = 0,
-    darkness    = 12,
-    trackLength = 12,
+    darkness    = 0,
+    trackLength = 15,
     turn        = 1,
     growingDreadSpaces = [],
     bloodSpatterSpaces = [],
   } = state;
 
   const threshold = getHBtDThreshold(depth);
-  const spaces = Array.from({ length: trackLength + 1 }, (_, i) => i);
 
-  function spaceStyle(i) {
-    const consumed = i > darkness;
-    const isGD     = growingDreadSpaces.includes(i);
-    const isBS     = bloodSpatterSpaces.includes(i);
+  // Slots: [P-entry] [space 15..1] [D-entry]
+  const slots = useMemo(() => {
+    const s = [{ type: 'entry', side: 'posse' }];
+    for (let i = 1; i <= trackLength; i++) {
+      s.push({ type: 'space', spaceNum: trackLength + 1 - i });
+    }
+    s.push({ type: 'entry', side: 'darkness' });
+    return s;
+  }, [trackLength]);
 
-    if (consumed) return theme.trackConsumed;
-    if (isGD)     return theme.trackGD;
-    if (isBS)     return theme.trackBS;
-    return theme.trackDefault;
-  }
+  const posseSlot    = depth;
+  const darknessSlot = (trackLength + 1) - darkness;
 
   return (
     <div className="space-y-4">
@@ -378,66 +379,71 @@ function DepthTrack({ state, theme }) {
         {/* Legend */}
         <div className="flex gap-3 ml-auto text-xs text-gray-500">
           <span className="flex items-center gap-1">
-            <span className={`inline-block w-3 h-3 rounded-sm ${theme.trackBS}`} />
-            Blood Spatter
+            <span className={`inline-block w-3 h-3 rounded-sm border ${theme.trackBS}`} /> BS Card
           </span>
           <span className="flex items-center gap-1">
-            <span className={`inline-block w-3 h-3 rounded-sm ${theme.trackGD}`} />
-            Growing Dread
+            <span className={`inline-block w-3 h-3 rounded-sm border ${theme.trackGD}`} /> GD Card
           </span>
         </div>
       </div>
 
-      {/* Spaces */}
+      {/* Slots */}
       <div className="overflow-x-auto">
         <div className="flex gap-1.5 pb-3 min-w-max">
-          {spaces.map(i => {
-            const isParty     = i === depth;
-            const isDarkFront = i === darkness;
+          {slots.map((slot, i) => {
+            const isParty = i === posseSlot;
+            const isDark  = i === darknessSlot;
+            const consumed = i > darknessSlot;
+
+            if (slot.type === 'entry') {
+              const isPosse = slot.side === 'posse';
+              return (
+                <div
+                  key={i}
+                  className={`relative flex items-center justify-center w-12 h-14 rounded-lg border-2 border-dashed shrink-0 text-xs font-bold ${
+                    isPosse ? 'border-blue-500 text-blue-400 bg-blue-950/30'
+                            : 'border-red-600  text-red-400  bg-red-950/30'
+                  }`}
+                >
+                  <span>{isPosse ? 'START' : 'DARK'}</span>
+                  {isParty && <span className="absolute -top-1 text-base font-extrabold text-blue-300">P</span>}
+                  {isDark  && <span className="absolute -bottom-1 text-base font-extrabold text-red-400">D</span>}
+                </div>
+              );
+            }
+
+            const { spaceNum } = slot;
+            const isGD = growingDreadSpaces.includes(spaceNum);
+            const isBS = bloodSpatterSpaces.includes(spaceNum);
+            const spaceCls = consumed ? theme.trackConsumed
+              : isGD ? theme.trackGD
+              : isBS ? theme.trackBS
+              : theme.trackDefault;
 
             return (
               <div
                 key={i}
-                className={`
-                  relative flex items-center justify-center
-                  w-10 h-12 rounded-lg border-2 shrink-0
-                  text-xs font-mono font-bold
-                  ${spaceStyle(i)}
-                `}
+                className={`relative flex flex-col items-center justify-center w-10 h-14 rounded-lg border-2 shrink-0 text-xs font-mono font-bold ${spaceCls}`}
               >
-                <span className={(isParty || isDarkFront) ? 'opacity-0' : ''}>{i}</span>
-
-                {isParty && !isDarkFront && (
-                  <div className="absolute top-0.5 left-1/2 -translate-x-1/2">
-                    <span className="text-[11px] font-extrabold text-blue-300 leading-none">P</span>
-                  </div>
-                )}
-                {isDarkFront && !isParty && (
-                  <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2">
-                    <span className="text-[11px] font-extrabold text-red-400 leading-none">D</span>
-                  </div>
-                )}
-                {isParty && isDarkFront && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center leading-none gap-0.5">
-                    <span className="text-[10px] font-extrabold text-blue-300">P</span>
-                    <span className="text-[10px] font-extrabold text-red-400">D</span>
-                  </div>
-                )}
+                <span className={consumed ? 'opacity-30' : ''}>{spaceNum}</span>
+                {!consumed && isGD && <span className="text-[8px] text-green-400">GD</span>}
+                {!consumed && isBS && <span className="text-[8px] text-red-400">BS</span>}
+                {isParty && <span className="absolute -top-1 text-sm font-extrabold text-blue-300 leading-none">P</span>}
+                {isDark  && <span className="absolute -bottom-1 text-sm font-extrabold text-red-400 leading-none">D</span>}
               </div>
             );
           })}
         </div>
         <div className="flex justify-between text-xs text-gray-600 px-1">
-          <span>← Entrance (0)</span>
-          <span>Deep ({trackLength}) →</span>
+          <span>← Posse Entry</span>
+          <span>Darkness Entry →</span>
         </div>
       </div>
 
-      {/* Marker key */}
       <div className="flex gap-4 text-xs text-gray-500">
-        <span><strong className="text-blue-300">P</strong> = Party position</span>
-        <span><strong className="text-red-400">D</strong> = Darkness front</span>
-        <span>Faded spaces = consumed by darkness</span>
+        <span><strong className="text-blue-300">P</strong> = Posse</span>
+        <span><strong className="text-red-400">D</strong> = Darkness</span>
+        <span>Dark spaces = consumed</span>
       </div>
     </div>
   );
@@ -566,6 +572,36 @@ export default function DisplayScreen() {
           </p>
         )}
       </section>
+
+      {/* ── Initiative Order ── */}
+      {heroes.length > 0 && (() => {
+        const sorted = [...heroes].sort((a, b) =>
+          (Number(b.stats?.Initiative) || 0) - (Number(a.stats?.Initiative) || 0)
+        );
+        return (
+          <section className={`border rounded-2xl p-4 space-y-3 ${theme.sectionCls}`}>
+            <h2 className={`text-xl font-bold uppercase tracking-wider ${theme.posseHeader}`}>
+              Initiative Order
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {sorted.map((hero, idx) => (
+                <div
+                  key={hero.id ?? hero.localId ?? hero.name}
+                  className="flex items-center gap-2 bg-black/20 border border-white/10 rounded-xl px-3 py-2"
+                >
+                  <span className={`text-2xl font-extrabold w-6 text-center ${theme.headerCls}`}>
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <div className="font-bold text-white text-base leading-tight">{hero.name}</div>
+                    <div className="text-xs text-gray-400">{hero.heroClass} — Init {hero.stats?.Initiative ?? '?'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ── Posse Grid ── */}
       <section className="space-y-3">

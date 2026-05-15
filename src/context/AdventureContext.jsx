@@ -10,17 +10,18 @@ const LS_KEY = 'sob_adventure_state';
 const FIRESTORE_DOC = 'gameState';
 const FIRESTORE_ID = 'adventure';
 
-const SCHEMA_VERSION = 2; // bump when DEFAULT_STATE shape changes
+// v3: darkness now counts UP from 0 (entry) → matches physical space numbers
+const SCHEMA_VERSION = 3;
 
 const DEFAULT_STATE = {
   schemaVersion: SCHEMA_VERSION,
-  depth: 0,
-  darkness: 15,
+  depth: 0,      // posse steps from entry: 0=at entry, 1=space 15, ..., 15=space 1
+  darkness: 0,   // darkness position: 0=at entry(right), 1=space 1, ..., 15=space 15
   turn: 1,
   lanternBearerId: null,
   trackLength: 15,
-  growingDreadSpaces: [6, 11, 15],
-  bloodSpatterSpaces: [2, 4, 8, 10, 13],
+  growingDreadSpaces: [6, 11, 15],   // physical space numbers
+  bloodSpatterSpaces: [2, 4, 8, 10, 13], // physical space numbers
   lastRoll: null,
   active: false,
 };
@@ -111,14 +112,14 @@ export function AdventureProvider({ children }) {
   const advanceDarkness = useCallback((spaces = 1) => {
     updateAdventure(prev => ({
       ...prev,
-      darkness: Math.max(0, prev.darkness - spaces),
+      darkness: prev.darkness + spaces,  // darkness advances (higher = further left)
     }));
   }, [updateAdventure]);
 
   const retreatDarkness = useCallback((spaces = 1) => {
     updateAdventure(prev => ({
       ...prev,
-      darkness: Math.min(prev.trackLength, prev.darkness + spaces),
+      darkness: Math.max(0, prev.darkness - spaces),
     }));
   }, [updateAdventure]);
 
@@ -142,15 +143,13 @@ export function AdventureProvider({ children }) {
       const success = roll >= threshold;
       const isDoublesEvent = isDoubles && !success;
 
-      let depthEvent = null;
-      if (isDoubles) {
-        depthEvent = getDepthEvent(world, die1);
-      }
+      const depthEvent = isDoubles ? getDepthEvent(world, die1) : null;
 
-      // On doubles, darkness does NOT advance even on failure — Depth Event fires instead
+      // On doubles, darkness does NOT advance — Depth Event fires instead
       const nextDarkness = (success || isDoubles)
         ? prev.darkness
-        : Math.max(0, prev.darkness - 1);
+        : prev.darkness + 1;
+      // landedSpace = physical space number darkness just moved to
       const landedSpace = nextDarkness;
 
       const next = {
@@ -185,7 +184,8 @@ export function AdventureProvider({ children }) {
       trackLength: config.trackLength ?? DEFAULT_STATE.trackLength,
       growingDreadSpaces: config.growingDreadSpaces ?? DEFAULT_STATE.growingDreadSpaces,
       bloodSpatterSpaces: config.bloodSpatterSpaces ?? DEFAULT_STATE.bloodSpatterSpaces,
-      darkness: config.trackLength ?? DEFAULT_STATE.trackLength,
+      darkness: 0, // always starts at entry (right side)
+      depth: 0,
       active: true,
     };
     syncToFirebase(next);
