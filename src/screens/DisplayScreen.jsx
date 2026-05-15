@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useAdventure } from '../context/AdventureContext';
 import { usePosse } from '../context/PosseContext';
 import { useWorld } from '../context/WorldContext';
+import { useCombatState } from '../hooks/useCombatState';
 import { getHBtDThreshold } from '../data/depthEvents/depthEventLookup';
 
 // ---------------------------------------------------------------------------
@@ -531,6 +532,7 @@ export default function DisplayScreen() {
   const { state }  = useAdventure();
   const { posse }  = usePosse();
   const { world }  = useWorld();
+  const { combatGroups } = useCombatState();
 
   const theme  = useMemo(() => getTheme(world), [world]);
   const heroes = useMemo(() => (Array.isArray(posse) ? posse : []), [posse]);
@@ -574,27 +576,49 @@ export default function DisplayScreen() {
       </section>
 
       {/* ── Initiative Order ── */}
-      {heroes.length > 0 && (() => {
-        const sorted = [...heroes].sort((a, b) =>
-          (Number(b.stats?.Initiative) || 0) - (Number(a.stats?.Initiative) || 0)
-        );
+      {(() => {
+        const heroEntries = heroes.map(h => ({
+          name:       h.name || 'Hero',
+          sub:        h.heroClass || h.class || '',
+          initiative: Number(h.stats?.Initiative ?? h.initiative ?? 4),
+          type:       'hero',
+          id:         h.id ?? h.localId ?? h.name,
+        }));
+        const enemyEntries = (combatGroups || []).map(g => ({
+          name:       g.name || 'Enemy',
+          sub:        `×${g.count ?? 1}`,
+          initiative: Number(g.baseStats?.initiative ?? 0),
+          type:       'enemy',
+          id:         g.id,
+        }));
+        const sorted = [...heroEntries, ...enemyEntries]
+          .sort((a, b) => b.initiative - a.initiative);
+        if (sorted.length === 0) return null;
         return (
           <section className={`border rounded-2xl p-4 space-y-3 ${theme.sectionCls}`}>
             <h2 className={`text-xl font-bold uppercase tracking-wider ${theme.posseHeader}`}>
               Initiative Order
             </h2>
             <div className="flex flex-wrap gap-2">
-              {sorted.map((hero, idx) => (
+              {sorted.map((entry, idx) => (
                 <div
-                  key={hero.id ?? hero.localId ?? hero.name}
-                  className="flex items-center gap-2 bg-black/20 border border-white/10 rounded-xl px-3 py-2"
+                  key={entry.id ?? idx}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 border ${
+                    entry.type === 'enemy'
+                      ? 'bg-red-950/40 border-red-700/60'
+                      : 'bg-black/20 border-white/10'
+                  }`}
                 >
                   <span className={`text-2xl font-extrabold w-6 text-center ${theme.headerCls}`}>
                     {idx + 1}
                   </span>
                   <div>
-                    <div className="font-bold text-white text-base leading-tight">{hero.name}</div>
-                    <div className="text-xs text-gray-400">{hero.heroClass} — Init {hero.stats?.Initiative ?? '?'}</div>
+                    <div className={`font-bold text-base leading-tight ${entry.type === 'enemy' ? 'text-red-300' : 'text-white'}`}>
+                      {entry.name}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {entry.sub}{entry.sub ? ' — ' : ''}Init {entry.initiative}
+                    </div>
                   </div>
                 </div>
               ))}

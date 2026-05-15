@@ -5,6 +5,8 @@ import { useHero } from '../context/HeroContext';
 import { usePosse } from '../context/PosseContext';
 import { useUIScale } from '../context/UIScaleContext';
 import { calculateCurrentStats } from '../utils/calculateStats';
+import { canLevelUp, getNextLevelXP } from '../utils/levelingUtils';
+import LevelUpModal from './LevelUpModal';
 
 /* ------------------------------- helpers -------------------------------- */
 
@@ -378,6 +380,7 @@ export default function StatsTab({
   resetLayout,
   positions = {},
   setPositions,
+  onSwitchTab,
 }) {
   const { hero: activeHero, updateHero } = useHero();
   const { updateHero: updateHeroPosse } = usePosse();
@@ -621,6 +624,7 @@ export default function StatsTab({
   });
 
   const [showKeywordsBox, setShowKeywordsBox] = useState(false);
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
 
   useEffect(() => {
     const saved = activeHero?.statPositions;
@@ -911,6 +915,11 @@ export default function StatsTab({
   const curScrap = toNum(activeHero.scrap ?? 0, 0);
   const curTech = toNum(activeHero.tech ?? 0, 0);
   const curXP = toNum(activeHero.xp ?? 0, 0);
+
+  // Level-up computed values
+  const nextLevelXP = getNextLevelXP(activeHero);
+  const canLevel = canLevelUp(activeHero);
+  const currentLevel = Number(activeHero?.level ?? 1);
 
   return (
     <div onPointerMove={handlePointerMove}>
@@ -1410,16 +1419,48 @@ export default function StatsTab({
         </div>
 
         {/* XP */}
-        <ResourceCard
-          theme="xp"
-          label="XP"
-          current={curXP}
-          onDec={() => updateHeroFunc({ xp: Math.max(0, curXP - 5) })}
-          onInc={() => updateHeroFunc({ xp: curXP + 5 })}
-          decLabel="−5"
-          incLabel="+5"
-          incDisabled={false}
-        />
+        <div className="rounded-xl overflow-hidden border border-emerald-300 bg-emerald-50 shadow-md flex flex-col">
+          <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 text-white text-[10px] font-bold py-1 px-2 text-center tracking-widest uppercase flex items-center justify-between">
+            <span>XP</span>
+            <span className="text-emerald-200 normal-case text-[9px] font-semibold tracking-normal">Level {currentLevel}{currentLevel >= 8 ? ' (Max)' : ''}</span>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center px-2 pt-2 pb-2">
+            <div className="text-xl sm:text-2xl font-black tabular-nums text-emerald-900">
+              {nextLevelXP != null ? `${curXP} / ${nextLevelXP}` : curXP}
+            </div>
+            {nextLevelXP != null && (
+              <div className="w-full h-2 rounded-full bg-emerald-100 overflow-hidden mt-1.5 mb-1">
+                <div
+                  className="h-full rounded-full transition-all duration-300 bg-emerald-500"
+                  style={{ width: `${Math.min(100, (curXP / nextLevelXP) * 100)}%` }}
+                />
+              </div>
+            )}
+            {canLevel && (
+              <button
+                className="btn btn-warning w-full text-sm font-bold py-1.5 mb-1.5"
+                onClick={() => setShowLevelUpModal(true)}
+              >
+                ⬆ Level Up!
+              </button>
+            )}
+            <div className="flex justify-center gap-2">
+              <button
+                className="btn btn-sm px-3"
+                onClick={() => updateHeroFunc({ xp: Math.max(0, curXP - 5) })}
+                disabled={curXP <= 0}
+              >
+                −5
+              </button>
+              <button
+                className="btn btn-sm px-3"
+                onClick={() => updateHeroFunc({ xp: curXP + 5 })}
+              >
+                +5
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {activeHero.mutations?.some((m) => m.name === 'Mutation — Roll Needed') && (
@@ -1429,6 +1470,18 @@ export default function StatsTab({
           <br />
           Please roll once on the <strong>Mutation Chart</strong> for each.
         </div>
+      )}
+
+      {showLevelUpModal && activeHero && (
+        <LevelUpModal
+          hero={activeHero}
+          updateHero={(patch) => updateHeroFunc(patch)}
+          onClose={() => setShowLevelUpModal(false)}
+          onGoToUpgrades={() => {
+            setShowLevelUpModal(false);
+            onSwitchTab?.('Upgrade');
+          }}
+        />
       )}
     </div>
   );

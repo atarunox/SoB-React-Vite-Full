@@ -145,6 +145,7 @@ export default function HeroScreen({
             resetLayout={resetLayout}
             positions={positions}
             setPositions={setPositions}
+            onSwitchTab={setSelectedTab}
           />
         )}
 

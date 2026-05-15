@@ -11,10 +11,9 @@ import DMPlayerList from './DMPlayerList';
 import TownPhaseTab from './TownPhaseTab';
 import DMLootPoolPanel from './DMLootPoolPanel';
 import DMTradePanel from './DMTradePanel';
-import DMItemGenerator from './DMItemGenerator';
 import DMHandPanel from './DMHandPanel';
-import DMScanCards from './DMScanCards';
 import DMTurnTracker from './DMTurnTracker';
+import DMOptionsPanel from './DMOptionsPanel';
 import DMAdventureTracker from './DMAdventureTracker';
 
 import { usePosse } from '../../context/PosseContext';
@@ -51,70 +50,6 @@ function PlayersWithConditions(props) {
   );
 }
 
-// ------------------------ Options Panel ------------------------------------
-function OptionsPanel({
-  selectedCampaigns,
-  setSelectedCampaigns,
-  mergedWorldsCount,
-}) {
-  const ALL_KEYS = Object.keys(WORLD_CARDS_BY_CAMPAIGN);
-
-  const isChecked = (k) => selectedCampaigns.includes(k);
-  const toggle = (k) => {
-    const next = isChecked(k)
-      ? selectedCampaigns.filter(x => x !== k)
-      : [...selectedCampaigns, k];
-    setSelectedCampaigns(next);
-  };
-
-  const selectAll = () => setSelectedCampaigns([...ALL_KEYS]);
-  const selectNone = () => setSelectedCampaigns([]);
-
-  const nicename = (k) => ({
-    cityOfTheAncients: 'City of the Ancients',
-    forbiddenFortress: 'Forbidden Fortress',
-    adventures: 'Adventures',
-  }[k] || k);
-
-  return (
-    <div className="space-y-4">
-      <h3 className="font-bold text-lg">Options</h3>
-
-      <div className="rounded-md border p-3 bg-white/80">
-        <div className="font-semibold mb-2">World Sources (Campaigns)</div>
-        <div className="flex flex-col gap-2">
-          {ALL_KEYS.map((k) => {
-            const count = (WORLD_CARDS_BY_CAMPAIGN[k] || []).length;
-            return (
-              <label key={k} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="checkbox"
-                  checked={isChecked(k)}
-                  onChange={() => toggle(k)}
-                />
-                <span className="font-medium">{nicename(k)}</span>
-                <span className="text-xs text-gray-600">({count} worlds)</span>
-              </label>
-            );
-          })}
-        </div>
-        <div className="mt-3 flex gap-2">
-          <button className="btn btn-sm" onClick={selectAll}>Select All</button>
-          <button className="btn btn-sm btn-ghost" onClick={selectNone}>Clear</button>
-        </div>
-
-        <div className="mt-3 text-sm text-gray-700">
-          Using <b>{mergedWorldsCount}</b> world{mergedWorldsCount === 1 ? '' : 's'} from selected campaigns.
-        </div>
-        <p className="mt-2 text-xs text-gray-500">
-          These selections are saved locally and can be used by World/Encounter drawers to restrict what shows up.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------- Tabs list ------------------------------------
 const TABS = [
   { id: 'players',      label: 'Players',          component: PlayersWithConditions },
@@ -127,11 +62,9 @@ const TABS = [
   { id: 'encounters',   label: 'Encounters',       component: EncounterWithWorld },
   { id: 'loot',         label: 'Loot Pool',        component: DMLootPoolPanel },
   { id: 'trade',        label: 'Trade Items',      component: DMTradePanel },
-  { id: 'itemGen',      label: 'Item Generator',   component: DMItemGenerator },
   { id: 'charts',       label: 'Charts',           component: DMChartPanel },
   { id: 'townPhase',    label: 'Town Phase',       component: TownPhaseTab },
-  { id: 'scan',         label: 'Scan Cards',       component: DMScanCards },
-  { id: 'options',      label: 'Options',          component: OptionsPanel },
+  { id: 'options',      label: 'Options',          component: DMOptionsPanel },
 ];
 
 function StableDrawer({ component: Component, ...props }) {
