@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useAdventure } from '../../context/AdventureContext';
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
+import { getHBtDThreshold } from '../../data/depthEvents/depthEventLookup';
 
 function getLanternInfo(hero) {
   if (!hero?.gear) return null;
@@ -52,21 +53,37 @@ function RollResult({ lastRoll }) {
   const age = Date.now() - (lastRoll.timestamp || 0);
   if (age > 60000) return null;
 
+  const isDoubles = lastRoll.isDoubles;
+  const bgClass = isDoubles
+    ? 'bg-purple-100 border border-purple-300 text-purple-900'
+    : lastRoll.success
+      ? 'bg-green-100 border border-green-300 text-green-800'
+      : 'bg-red-100 border border-red-300 text-red-800';
+
   return (
-    <div className={`rounded-lg p-3 text-sm font-medium ${lastRoll.success ? 'bg-green-100 border border-green-300 text-green-800' : 'bg-red-100 border border-red-300 text-red-800'}`}>
+    <div className={`rounded-lg p-3 text-sm font-medium space-y-1 ${bgClass}`}>
       <div className="flex items-center justify-between">
         <span>
-          {lastRoll.success ? 'Darkness held!' : 'Darkness advances!'}
-          {' '}Rolled <strong>{lastRoll.roll}</strong> vs {lastRoll.threshold}+
+          {isDoubles
+            ? 'DOUBLES — Depth Event!'
+            : lastRoll.success ? 'Darkness held!' : 'Darkness advances!'}
+          {' '}Rolled <strong>[{lastRoll.die1}+{lastRoll.die2}]={lastRoll.roll}</strong> vs {lastRoll.threshold}+
           {lastRoll.diceType === 'peril' && ' (Peril Die)'}
         </span>
         <span className="text-xs opacity-70">by {lastRoll.rolledBy}</span>
       </div>
-      {lastRoll.landedOnGD && (
-        <div className="mt-1 text-purple-700 font-semibold">Darkness landed on Growing Dread space — draw a Growing Dread card!</div>
+      {isDoubles && lastRoll.depthEvent && (
+        <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-300">
+          <div className="font-bold">{lastRoll.depthEvent.name}</div>
+          <div className="italic text-xs text-purple-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
+          <div className="mt-1 text-xs leading-snug">{lastRoll.depthEvent.effect}</div>
+        </div>
       )}
-      {lastRoll.landedOnBS && (
-        <div className="mt-1 text-red-700 font-semibold">Darkness landed on Blood Spatter space — draw a Darkness card!</div>
+      {!isDoubles && lastRoll.landedOnGD && (
+        <div className="text-purple-700 font-semibold">Darkness landed on Growing Dread space — draw a Growing Dread card!</div>
+      )}
+      {!isDoubles && lastRoll.landedOnBS && (
+        <div className="text-red-700 font-semibold">Darkness landed on Blood Spatter space — draw a Darkness card!</div>
       )}
     </div>
   );
@@ -106,7 +123,6 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
   const handleStartAdventure = useCallback(() => {
     const config = {
       trackLength: configDraft.trackLength || state.trackLength,
-      hbtdThreshold: configDraft.hbtdThreshold || state.hbtdThreshold,
       growingDreadSpaces: state.growingDreadSpaces,
       bloodSpatterSpaces: state.bloodSpatterSpaces,
     };
@@ -171,15 +187,9 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
               min={6} max={20}
             />
           </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-600">HBtD Threshold</label>
-            <input
-              type="number"
-              className="input input-sm w-full"
-              value={configDraft.hbtdThreshold ?? state.hbtdThreshold}
-              onChange={e => setConfigDraft(p => ({ ...p, hbtdThreshold: Number(e.target.value) || 7 }))}
-              min={4} max={12}
-            />
+          <div className="flex flex-col justify-end">
+            <label className="text-xs font-semibold text-gray-600">HBtD Target</label>
+            <p className="text-xs text-gray-500 mt-1">Auto: 7+ (depths 1–4) · 8+ (5–9) · 9+ (10+)</p>
           </div>
         </div>
 
@@ -245,7 +255,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
           Darkness: <strong>{state.darkness}</strong>/{state.trackLength}
         </span>
         <span className="bg-gray-50 px-2 py-1 rounded border border-gray-200">
-          Threshold: <strong>{state.hbtdThreshold}+</strong>
+          HBtD Target: <strong>{getHBtDThreshold(state.depth)}+</strong>
         </span>
         {currentBearer && (
           <span className="bg-yellow-50 px-2 py-1 rounded border border-yellow-200">
@@ -283,7 +293,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-amber-900">Hold Back the Darkness</h3>
           <span className="text-xs text-amber-700">
-            {usesPerilDie ? 'Peril Die' : '2D6'} ≥ {state.hbtdThreshold}
+            {usesPerilDie ? 'Peril Die' : '2D6'} ≥ {getHBtDThreshold(state.depth)}+
           </span>
         </div>
         {lanternAbility && (
@@ -376,15 +386,9 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
                 min={6} max={20}
               />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-600">HBtD Threshold</label>
-              <input
-                type="number"
-                className="input input-sm w-full"
-                value={state.hbtdThreshold}
-                onChange={e => updateAdventure({ hbtdThreshold: Number(e.target.value) || 7 })}
-                min={4} max={12}
-              />
+            <div className="flex flex-col justify-end">
+              <label className="text-xs font-semibold text-gray-600">HBtD Target</label>
+              <p className="text-xs text-gray-500 mt-1">7+ · 8+ · 9+ (auto by depth)</p>
             </div>
           </div>
           <p className="text-xs text-gray-400">

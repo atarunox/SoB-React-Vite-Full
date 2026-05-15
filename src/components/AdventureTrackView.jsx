@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useAdventure } from '../context/AdventureContext';
 import { useHero } from '../context/HeroContext';
 import { usePosse } from '../context/PosseContext';
+import { getHBtDThreshold } from '../data/depthEvents/depthEventLookup';
 
 function getLanternInfo(hero) {
   if (!hero?.gear) return null;
@@ -112,15 +113,31 @@ export default function AdventureTrackView() {
       <div className="flex flex-wrap gap-2 text-xs">
         <span>Depth: <strong>{state.depth}</strong></span>
         <span>Darkness: <strong>{state.darkness}</strong></span>
-        <span>Threshold: <strong>{state.hbtdThreshold}+</strong></span>
+        <span>HBtD Target: <strong>{getHBtDThreshold(state.depth)}+</strong></span>
         {lanternBearerName && <span>Lantern: <strong>{lanternBearerName}</strong></span>}
       </div>
 
       {/* Last roll */}
       {rollRecent && lastRoll && (
-        <div className={`text-xs rounded px-2 py-1 ${lastRoll.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-          {lastRoll.rolledBy} rolled <strong>{lastRoll.roll}</strong> vs {lastRoll.threshold}+
-          — {lastRoll.success ? 'Held!' : 'Darkness advances!'}
+        <div className={`text-xs rounded px-2 py-1 space-y-1 ${
+          lastRoll.isDoubles ? 'bg-purple-100 text-purple-900'
+          : lastRoll.success ? 'bg-green-100 text-green-800'
+          : 'bg-red-100 text-red-800'
+        }`}>
+          <div>
+            {lastRoll.rolledBy} rolled <strong>[{lastRoll.die1}+{lastRoll.die2}]={lastRoll.roll}</strong> vs {lastRoll.threshold}+
+            {' — '}
+            {lastRoll.isDoubles
+              ? 'DOUBLES — Depth Event!'
+              : lastRoll.success ? 'Held!' : 'Darkness advances!'}
+          </div>
+          {lastRoll.isDoubles && lastRoll.depthEvent && (
+            <div className="mt-1 p-2 bg-purple-50 rounded border border-purple-300">
+              <div className="font-bold text-sm">{lastRoll.depthEvent.name}</div>
+              <div className="italic text-[10px] text-purple-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
+              <div className="mt-1 text-[11px] leading-tight">{lastRoll.depthEvent.effect}</div>
+            </div>
+          )}
         </div>
       )}
 

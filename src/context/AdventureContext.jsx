@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../firebase/firebaseConfig';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getDepthEvent, getHBtDThreshold } from '../data/depthEvents/depthEventLookup';
+import { useWorld } from './WorldContext';
 
 const AdventureContext = createContext(null);
 
@@ -16,7 +18,6 @@ const DEFAULT_STATE = {
   trackLength: 12,
   growingDreadSpaces: [3, 6, 9],
   bloodSpatterSpaces: [2, 5, 8, 11],
-  hbtdThreshold: 7,
   lastRoll: null,
   active: false,
 };
@@ -39,6 +40,7 @@ export function AdventureProvider({ children }) {
   const writeTimerRef = useRef(null);
   const lastSavedRef = useRef(null);
   const isLocal = !db || db.localMode;
+  const { world } = useWorld();
 
   // Firebase real-time listener
   useEffect(() => {
@@ -111,31 +113,52 @@ export function AdventureProvider({ children }) {
 
   const rollHBtD = useCallback((rolledBy = 'DM', diceOverride = null) => {
     const d6 = () => Math.floor(Math.random() * 6) + 1;
-    let roll;
+
+    let die1, die2;
     if (diceOverride === 'peril') {
       const perilTable = [3, 3, 4, 4, 5, 6];
-      roll = perilTable[Math.floor(Math.random() * 6)] + perilTable[Math.floor(Math.random() * 6)];
+      die1 = perilTable[Math.floor(Math.random() * 6)];
+      die2 = perilTable[Math.floor(Math.random() * 6)];
     } else {
-      roll = d6() + d6();
+      die1 = d6();
+      die2 = d6();
     }
+    const roll = die1 + die2;
+    const isDoubles = die1 === die2;
 
     setState(prev => {
-      const success = roll >= prev.hbtdThreshold;
-      const nextDarkness = success ? prev.darkness : Math.max(0, prev.darkness - 1);
+      const threshold = getHBtDThreshold(prev.depth);
+      const success = roll >= threshold;
+      const isDoublesEvent = isDoubles && !success;
+
+      let depthEvent = null;
+      if (isDoubles) {
+        depthEvent = getDepthEvent(world, die1);
+      }
+
+      // On doubles, darkness does NOT advance even on failure — Depth Event fires instead
+      const nextDarkness = (success || isDoubles)
+        ? prev.darkness
+        : Math.max(0, prev.darkness - 1);
       const landedSpace = nextDarkness;
+
       const next = {
         ...prev,
         darkness: nextDarkness,
         turn: prev.turn + 1,
         lastRoll: {
+          die1,
+          die2,
           roll,
-          threshold: prev.hbtdThreshold,
+          threshold,
           success,
+          isDoubles,
+          depthEvent: isDoubles ? depthEvent : null,
           rolledBy,
           diceType: diceOverride || '2d6',
           timestamp: Date.now(),
-          landedOnGD: !success && prev.growingDreadSpaces.includes(landedSpace),
-          landedOnBS: !success && prev.bloodSpatterSpaces.includes(landedSpace),
+          landedOnGD: !success && !isDoubles && prev.growingDreadSpaces.includes(landedSpace),
+          landedOnBS: !success && !isDoubles && prev.bloodSpatterSpaces.includes(landedSpace),
         },
       };
       syncToFirebase(next);
@@ -143,7 +166,7 @@ export function AdventureProvider({ children }) {
     });
 
     return roll;
-  }, [syncToFirebase]);
+  }, [syncToFirebase, world]);
 
   const resetAdventure = useCallback((config = {}) => {
     const next = {
@@ -151,7 +174,6 @@ export function AdventureProvider({ children }) {
       trackLength: config.trackLength ?? DEFAULT_STATE.trackLength,
       growingDreadSpaces: config.growingDreadSpaces ?? DEFAULT_STATE.growingDreadSpaces,
       bloodSpatterSpaces: config.bloodSpatterSpaces ?? DEFAULT_STATE.bloodSpatterSpaces,
-      hbtdThreshold: config.hbtdThreshold ?? DEFAULT_STATE.hbtdThreshold,
       darkness: config.trackLength ?? DEFAULT_STATE.trackLength,
       active: true,
     };
