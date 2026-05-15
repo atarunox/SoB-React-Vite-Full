@@ -53,7 +53,7 @@ function buildTurnOrder(posse, combatGroups, excluded) {
     });
   }
 
-  entries.sort((a, b) => b.initiative - a.initiative);
+  entries.sort((a, b) => b.initiative - a.initiative || (a.type === 'enemy' ? -1 : 1));
   return entries;
 }
 

@@ -592,7 +592,7 @@ export default function DisplayScreen() {
           id:         g.id,
         }));
         const sorted = [...heroEntries, ...enemyEntries]
-          .sort((a, b) => b.initiative - a.initiative);
+          .sort((a, b) => b.initiative - a.initiative || (a.type === 'enemy' ? -1 : 1));
         if (sorted.length === 0) return null;
         return (
           <section className={`border rounded-2xl p-4 space-y-3 ${theme.sectionCls}`}>
