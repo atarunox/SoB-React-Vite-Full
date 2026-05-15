@@ -528,6 +528,78 @@ export default function StatsTab({
   // Long-press timer ref for touch devices
   const longPressTimer = useRef(null);
 
+  // ---- List view order (reorderable when layoutEditMode) ----
+  const listOrderKey = activeHero?.id || activeHero?.localId
+    ? `sob:stats:listOrder:${activeHero.id || activeHero.localId}`
+    : null;
+
+  const DEFAULT_LIST_ORDER = statOrder; // defined later but same reference is fine at eval time
+
+  const [listOrder, setListOrder] = useState(() => {
+    if (!listOrderKey) return [...statOrder];
+    try {
+      const saved = localStorage.getItem(listOrderKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch {}
+    return [...statOrder];
+  });
+
+  const [dragListIdx, setDragListIdx] = useState(null);
+  const [dragOverListIdx, setDragOverListIdx] = useState(null);
+
+  useEffect(() => {
+    if (!listOrderKey) { setListOrder([...statOrder]); return; }
+    try {
+      const saved = localStorage.getItem(listOrderKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length) { setListOrder(parsed); return; }
+      }
+    } catch {}
+    setListOrder([...statOrder]);
+  // statOrder is stable (defined inline each render but same values), key change = hero change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listOrderKey]);
+
+  const saveListOrder = (order) => {
+    if (listOrderKey) {
+      try { localStorage.setItem(listOrderKey, JSON.stringify(order)); } catch {}
+    }
+  };
+
+  const handleListDragStart = (idx) => setDragListIdx(idx);
+  const handleListDragOver = (e, idx) => {
+    e.preventDefault();
+    setDragOverListIdx(idx);
+  };
+  const handleListDrop = (e, idx) => {
+    e.preventDefault();
+    if (dragListIdx === null || dragListIdx === idx) {
+      setDragListIdx(null);
+      setDragOverListIdx(null);
+      return;
+    }
+    const next = [...listOrder];
+    const [moved] = next.splice(dragListIdx, 1);
+    next.splice(idx, 0, moved);
+    setListOrder(next);
+    saveListOrder(next);
+    setDragListIdx(null);
+    setDragOverListIdx(null);
+  };
+  const handleListDragEnd = () => {
+    setDragListIdx(null);
+    setDragOverListIdx(null);
+  };
+  const resetListOrder = () => {
+    const fresh = [...statOrder];
+    setListOrder(fresh);
+    saveListOrder(fresh);
+  };
+
   // Per-hero persistence for "Detailed Stats"
   const detailsKey =
     activeHero?.id || activeHero?.localId
@@ -859,6 +931,12 @@ export default function StatsTab({
 
   return (
     <div onPointerMove={handlePointerMove}>
+      {layoutEditMode && statsViewMode === 'list' && (
+        <div className="flex justify-end mb-2 gap-2 flex-wrap">
+          <span className="text-xs text-leather/70 self-center italic">Drag items to reorder</span>
+          <button className="btn btn-sm" onClick={resetListOrder}>Reset Order</button>
+        </div>
+      )}
       {layoutEditMode && statsViewMode === 'tiles' && (
         <div className="flex justify-end mb-2 gap-2 flex-wrap">
           <button
@@ -1082,16 +1160,30 @@ export default function StatsTab({
       {/* Stat tiles / list view */}
       {statsViewMode === 'list' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {statOrder.map((label) => {
+          {listOrder.map((label, idx) => {
             const value = getStatValue(label);
             const displayLabel =
               label === 'Special' ? DISPLAY_LABELS.Special(activeHero) : formatStatLabel(label);
+            const isDragging = dragListIdx === idx;
+            const isOver = dragOverListIdx === idx && dragListIdx !== idx;
             return (
               <div
                 key={label}
-                className="flex items-center justify-between rounded-lg border border-[#8b6b46] bg-[#f5ebd8] px-3 py-2 shadow-sm"
+                draggable={layoutEditMode}
+                onDragStart={layoutEditMode ? () => handleListDragStart(idx) : undefined}
+                onDragOver={layoutEditMode ? (e) => handleListDragOver(e, idx) : undefined}
+                onDrop={layoutEditMode ? (e) => handleListDrop(e, idx) : undefined}
+                onDragEnd={layoutEditMode ? handleListDragEnd : undefined}
+                className={`flex items-center justify-between rounded-lg border px-3 py-2 shadow-sm transition-all
+                  ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'}
+                  ${isOver ? 'border-brass ring-2 ring-brass/50 bg-amber-50' : 'border-[#8b6b46] bg-[#f5ebd8]'}
+                  ${layoutEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
+                `}
               >
-                <span className="text-xs font-semibold text-[#5c3a1e] uppercase tracking-wide">{displayLabel}</span>
+                {layoutEditMode && (
+                  <span className="text-[#8b6b46]/50 mr-2 text-base select-none">⠿</span>
+                )}
+                <span className="text-xs font-semibold text-[#5c3a1e] uppercase tracking-wide flex-1">{displayLabel}</span>
                 <span className="text-lg font-black text-[#1f1f1f] tabular-nums">{displayVal(value)}</span>
               </div>
             );
