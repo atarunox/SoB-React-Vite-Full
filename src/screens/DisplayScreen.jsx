@@ -5,6 +5,152 @@ import { useWorld } from '../context/WorldContext';
 import { getHBtDThreshold } from '../data/depthEvents/depthEventLookup';
 
 // ---------------------------------------------------------------------------
+// World themes
+// ---------------------------------------------------------------------------
+
+const WORLD_THEMES = {
+  'Mines': {
+    pageStyle:   { background: 'radial-gradient(ellipse at top, #1c120a 0%, #0a0704 100%)' },
+    sectionCls:  'bg-stone-900/80 border-stone-700',
+    headerCls:   'text-amber-400',
+    subCls:      'text-amber-200/70',
+    accentCls:   'bg-amber-900/60 border-amber-600 text-amber-200',
+    trackDefault:'bg-stone-700 border-stone-500 text-stone-400',
+    trackConsumed:'bg-stone-950 border-stone-900 text-stone-800',
+    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackBS:     'bg-red-950  border-red-800  text-red-500',
+    heroBg:      'bg-stone-800 border-stone-600',
+    heroBgKO:    'bg-red-950/40 border-red-700',
+    dieCls:      'bg-stone-900 border-stone-600 text-amber-200',
+    rollSuccess: 'bg-green-950/40 border-green-700',
+    rollFail:    'bg-red-950/40  border-red-800',
+    rollDoubles: 'bg-amber-950/40 border-amber-600',
+    posseHeader: 'text-amber-400',
+    flavor:      'The Mines of Brimstone',
+  },
+  'Targa Plateau': {
+    pageStyle:   { background: 'radial-gradient(ellipse at top, #060d1a 0%, #020408 100%)' },
+    sectionCls:  'bg-slate-900/80 border-cyan-900',
+    headerCls:   'text-cyan-300',
+    subCls:      'text-cyan-100/60',
+    accentCls:   'bg-cyan-900/50 border-cyan-600 text-cyan-200',
+    trackDefault:'bg-slate-700 border-slate-500 text-slate-400',
+    trackConsumed:'bg-slate-950 border-slate-900 text-slate-800',
+    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackBS:     'bg-red-950  border-red-800  text-red-500',
+    heroBg:      'bg-slate-800 border-cyan-900',
+    heroBgKO:    'bg-red-950/40 border-red-700',
+    dieCls:      'bg-slate-900 border-slate-600 text-cyan-200',
+    rollSuccess: 'bg-green-950/40 border-green-700',
+    rollFail:    'bg-red-950/40  border-red-800',
+    rollDoubles: 'bg-cyan-950/40 border-cyan-600',
+    posseHeader: 'text-cyan-300',
+    flavor:      'Targa Plateau — The Alien Ice World',
+  },
+  'Swamps of Jargono': {
+    pageStyle:   { background: 'radial-gradient(ellipse at top, #071208 0%, #020602 100%)' },
+    sectionCls:  'bg-green-950/70 border-green-800',
+    headerCls:   'text-green-400',
+    subCls:      'text-green-200/60',
+    accentCls:   'bg-green-900/50 border-green-600 text-green-200',
+    trackDefault:'bg-green-900/60 border-green-700 text-green-400',
+    trackConsumed:'bg-green-950 border-green-950 text-green-900',
+    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackBS:     'bg-red-950  border-red-800  text-red-500',
+    heroBg:      'bg-green-950/60 border-green-700',
+    heroBgKO:    'bg-red-950/40 border-red-700',
+    dieCls:      'bg-green-950 border-green-700 text-green-200',
+    rollSuccess: 'bg-green-950/60 border-green-600',
+    rollFail:    'bg-red-950/40  border-red-800',
+    rollDoubles: 'bg-green-900/40 border-green-500',
+    posseHeader: 'text-green-400',
+    flavor:      'Swamps of Jargono — The Ancient Jungle',
+  },
+  'Derelict Ship': {
+    pageStyle:   { background: 'radial-gradient(ellipse at top, #05100f 0%, #020808 100%)' },
+    sectionCls:  'bg-gray-900/80 border-teal-900',
+    headerCls:   'text-teal-300',
+    subCls:      'text-teal-100/50',
+    accentCls:   'bg-teal-900/40 border-teal-600 text-teal-200',
+    trackDefault:'bg-gray-700 border-gray-600 text-gray-400',
+    trackConsumed:'bg-gray-950 border-gray-900 text-gray-800',
+    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackBS:     'bg-red-950  border-red-800  text-red-500',
+    heroBg:      'bg-gray-800 border-teal-800',
+    heroBgKO:    'bg-red-950/40 border-red-700',
+    dieCls:      'bg-gray-900 border-teal-800 text-teal-200',
+    rollSuccess: 'bg-green-950/40 border-green-700',
+    rollFail:    'bg-red-950/40  border-red-800',
+    rollDoubles: 'bg-teal-950/40 border-teal-600',
+    posseHeader: 'text-teal-300',
+    flavor:      'Derelict Ship — Adrift in the Void',
+  },
+  'Canyons': {
+    pageStyle:   { background: 'radial-gradient(ellipse at top, #1a0800 0%, #0d0300 100%)' },
+    sectionCls:  'bg-orange-950/60 border-orange-900',
+    headerCls:   'text-orange-400',
+    subCls:      'text-orange-200/60',
+    accentCls:   'bg-orange-900/50 border-orange-600 text-orange-200',
+    trackDefault:'bg-red-900/40 border-red-800 text-red-300',
+    trackConsumed:'bg-red-950 border-red-950 text-red-900',
+    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackBS:     'bg-red-950  border-red-800  text-red-500',
+    heroBg:      'bg-orange-950/50 border-orange-800',
+    heroBgKO:    'bg-red-950/40 border-red-700',
+    dieCls:      'bg-orange-950 border-orange-700 text-orange-200',
+    rollSuccess: 'bg-green-950/40 border-green-700',
+    rollFail:    'bg-red-950/40  border-red-800',
+    rollDoubles: 'bg-orange-950/40 border-orange-600',
+    posseHeader: 'text-orange-400',
+    flavor:      'The Canyons — Bone-Dry Badlands',
+  },
+  'Blasted Wastes': {
+    pageStyle:   { background: 'radial-gradient(ellipse at top, #150f03 0%, #090602 100%)' },
+    sectionCls:  'bg-yellow-950/50 border-yellow-900',
+    headerCls:   'text-yellow-500',
+    subCls:      'text-yellow-200/50',
+    accentCls:   'bg-yellow-900/40 border-yellow-700 text-yellow-200',
+    trackDefault:'bg-yellow-950/60 border-yellow-800 text-yellow-600',
+    trackConsumed:'bg-gray-950 border-gray-900 text-gray-800',
+    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackBS:     'bg-red-950  border-red-800  text-red-500',
+    heroBg:      'bg-yellow-950/40 border-yellow-800',
+    heroBgKO:    'bg-red-950/40 border-red-700',
+    dieCls:      'bg-yellow-950 border-yellow-700 text-yellow-200',
+    rollSuccess: 'bg-green-950/40 border-green-700',
+    rollFail:    'bg-red-950/40  border-red-800',
+    rollDoubles: 'bg-yellow-950/40 border-yellow-600',
+    posseHeader: 'text-yellow-500',
+    flavor:      'Blasted Wastes — The Scorched Earth',
+  },
+  'Frontier Town': {
+    pageStyle:   { background: 'radial-gradient(ellipse at top, #1a1008 0%, #0d0804 100%)' },
+    sectionCls:  'bg-leather-dark/60 border-leather',
+    headerCls:   'text-brass',
+    subCls:      'text-parchment/60',
+    accentCls:   'bg-brass/20 border-brass text-parchment',
+    trackDefault:'bg-leather/40 border-leather text-parchment-dark',
+    trackConsumed:'bg-shadow border-shadow-light text-shadow-light',
+    trackGD:     'bg-purple-950 border-purple-700 text-purple-400',
+    trackBS:     'bg-red-950  border-red-800  text-red-500',
+    heroBg:      'bg-leather-dark/60 border-leather',
+    heroBgKO:    'bg-red-950/40 border-blood',
+    dieCls:      'bg-shadow border-leather text-parchment',
+    rollSuccess: 'bg-green-950/40 border-green-700',
+    rollFail:    'bg-red-950/40  border-blood',
+    rollDoubles: 'bg-brass/10 border-brass',
+    posseHeader: 'text-brass',
+    flavor:      'Frontier Town — The Last Safe Place',
+  },
+};
+
+const DEFAULT_THEME = WORLD_THEMES['Mines'];
+
+function getTheme(world) {
+  return WORLD_THEMES[world] ?? DEFAULT_THEME;
+}
+
+// ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
 
@@ -49,7 +195,7 @@ function ResourceBar({ label, current, max, colorClass, trackClass = 'bg-gray-70
 // Grit token row
 // ---------------------------------------------------------------------------
 
-function GritRow({ current, max }) {
+function GritRow({ current, max, theme }) {
   const cap = Math.max(max ?? 2, 1);
   const cur = clamp(current ?? 0, 0, cap);
   return (
@@ -72,7 +218,7 @@ function GritRow({ current, max }) {
 // Hero card
 // ---------------------------------------------------------------------------
 
-function HeroCard({ hero }) {
+function HeroCard({ hero, theme }) {
   const s = hero.stats ?? {};
   const isKO = (hero.currentHealth ?? 0) <= 0 || (hero.currentSanity ?? 0) <= 0;
 
@@ -82,21 +228,18 @@ function HeroCard({ hero }) {
     ...(hero.mutations ?? []).filter(c => c?.posseEffect === true).map(c => ({ ...c, type: 'Mutation' })),
   ], [hero.injuries, hero.madness, hero.mutations]);
 
+  const cardCls = isKO ? theme.heroBgKO : theme.heroBg;
+
   return (
-    <div className={`
-      rounded-2xl border p-4 md:p-5 space-y-3
-      ${isKO
-        ? 'border-blood bg-red-950/30'
-        : 'border-gray-700 bg-gray-800'}
-    `}>
+    <div className={`rounded-2xl border p-4 md:p-5 space-y-3 ${cardCls}`}>
       {/* Name + class row */}
       <div className="flex items-baseline gap-2 flex-wrap">
-        <h2 className="text-2xl font-extrabold text-parchment leading-tight">
+        <h2 className={`text-2xl font-extrabold leading-tight ${theme.headerCls}`}>
           {hero.name || 'Unknown Hero'}
         </h2>
-        <span className="text-base text-brass">{hero.heroClass || ''}</span>
+        <span className="text-base text-gray-300">{hero.heroClass || ''}</span>
         {isKO && (
-          <span className="ml-auto text-sm font-bold text-blood animate-pulse">KO</span>
+          <span className="ml-auto text-sm font-bold text-red-400 animate-pulse">KO</span>
         )}
       </div>
 
@@ -107,12 +250,14 @@ function HeroCard({ hero }) {
           current={hero.currentHealth}
           max={hero.maxHealth ?? 10}
           colorClass="bg-blood"
+          trackClass="bg-gray-700/80"
         />
         <ResourceBar
           label="Sanity"
           current={hero.currentSanity}
           max={hero.maxSanity ?? 10}
           colorClass="bg-indigo-500"
+          trackClass="bg-gray-700/80"
         />
         {(hero.currentCorruption ?? 0) > 0 && (
           <ResourceBar
@@ -120,15 +265,16 @@ function HeroCard({ hero }) {
             current={hero.currentCorruption}
             max={hero.maxCorruption ?? 5}
             colorClass="bg-corruption"
+            trackClass="bg-gray-700/80"
           />
         )}
       </div>
 
       {/* Grit + Gold + XP */}
       <div className="flex flex-wrap items-center gap-3">
-        <GritRow current={hero.currentGrit} max={hero.Grit} />
+        <GritRow current={hero.currentGrit} max={hero.Grit} theme={theme} />
         <div className="flex gap-2 ml-auto">
-          <span className="text-sm bg-yellow-900/50 border border-yellow-700 text-yellow-300 px-2.5 py-0.5 rounded-full font-semibold">
+          <span className={`text-sm px-2.5 py-0.5 rounded-full font-semibold ${theme.accentCls}`}>
             ${hero.gold ?? 0}
           </span>
           <span className="text-sm bg-gray-700/60 border border-gray-600 text-gray-300 px-2.5 py-0.5 rounded-full font-semibold">
@@ -138,7 +284,7 @@ function HeroCard({ hero }) {
       </div>
 
       {/* 6 dice-pool stats */}
-      <div className="grid grid-cols-6 gap-1 text-center bg-gray-900/50 rounded-xl px-2 py-2">
+      <div className="grid grid-cols-6 gap-1 text-center bg-black/20 rounded-xl px-2 py-2">
         {[
           ['Str', s.Strength],
           ['Agi', s.Agility],
@@ -149,7 +295,7 @@ function HeroCard({ hero }) {
         ].map(([abbr, val]) => (
           <div key={abbr} className="flex flex-col items-center leading-none gap-0.5">
             <span className="text-[10px] text-gray-500 uppercase">{abbr}</span>
-            <span className="text-lg font-extrabold text-parchment">{val ?? '—'}</span>
+            <span className={`text-lg font-extrabold ${theme.headerCls}`}>{val ?? '—'}</span>
           </div>
         ))}
       </div>
@@ -163,7 +309,7 @@ function HeroCard({ hero }) {
         ].map(([label, val]) => (
           <span
             key={label}
-            className="text-sm bg-gray-700 border border-gray-600 text-gray-200 px-2.5 py-0.5 rounded font-medium"
+            className="text-sm bg-black/20 border border-white/10 text-gray-300 px-2.5 py-0.5 rounded font-medium"
           >
             {label}: <strong className="text-white">{val ?? '—'}</strong>
           </span>
@@ -192,7 +338,7 @@ function HeroCard({ hero }) {
 // Depth track
 // ---------------------------------------------------------------------------
 
-function DepthTrack({ state, world }) {
+function DepthTrack({ state, theme }) {
   const {
     depth       = 0,
     darkness    = 12,
@@ -203,45 +349,40 @@ function DepthTrack({ state, world }) {
   } = state;
 
   const threshold = getHBtDThreshold(depth);
-
-  // Spaces 0..trackLength
   const spaces = Array.from({ length: trackLength + 1 }, (_, i) => i);
 
   function spaceStyle(i) {
-    // A space is "consumed by darkness" when darkness has advanced past it.
-    // darkness counts DOWN from trackLength (starts at trackLength, goes to 0).
-    // Consumed = i > darkness (ahead of the darkness front, i.e. already dark).
-    const consumed   = i > darkness;
-    const isGD       = growingDreadSpaces.includes(i);
-    const isBS       = bloodSpatterSpaces.includes(i);
+    const consumed = i > darkness;
+    const isGD     = growingDreadSpaces.includes(i);
+    const isBS     = bloodSpatterSpaces.includes(i);
 
-    if (consumed) return 'bg-gray-950 border-gray-800 text-gray-800';
-    if (isGD)     return 'bg-purple-950 border-purple-600 text-purple-400';
-    if (isBS)     return 'bg-red-950 border-red-800 text-red-500';
-    return 'bg-gray-700 border-gray-500 text-gray-400';
+    if (consumed) return theme.trackConsumed;
+    if (isGD)     return theme.trackGD;
+    if (isBS)     return theme.trackBS;
+    return theme.trackDefault;
   }
 
   return (
     <div className="space-y-4">
       {/* Header row */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xl font-bold text-brass">Depth Track</span>
-        <span className="text-base text-parchment">
-          Depth <strong>{depth}</strong>
+        <span className={`text-xl font-bold ${theme.headerCls}`}>Depth Track</span>
+        <span className="text-base text-gray-300">
+          Depth <strong className="text-white">{depth}</strong>
         </span>
-        <span className="bg-amber-900/60 border border-amber-600 text-amber-200 text-sm px-2.5 py-0.5 rounded-full font-bold">
+        <span className={`text-sm px-2.5 py-0.5 rounded-full font-bold border ${theme.accentCls}`}>
           HBtD {threshold}+
         </span>
         <span className="text-gray-500 text-sm">Turn {turn}</span>
 
         {/* Legend */}
-        <div className="flex gap-3 ml-auto text-xs text-gray-400">
+        <div className="flex gap-3 ml-auto text-xs text-gray-500">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-red-950 border border-red-800" />
+            <span className={`inline-block w-3 h-3 rounded-sm ${theme.trackBS}`} />
             Blood Spatter
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-purple-950 border border-purple-600" />
+            <span className={`inline-block w-3 h-3 rounded-sm ${theme.trackGD}`} />
             Growing Dread
           </span>
         </div>
@@ -251,7 +392,7 @@ function DepthTrack({ state, world }) {
       <div className="overflow-x-auto">
         <div className="flex gap-1.5 pb-3 min-w-max">
           {spaces.map(i => {
-            const isParty   = i === depth;
+            const isParty     = i === depth;
             const isDarkFront = i === darkness;
 
             return (
@@ -264,24 +405,18 @@ function DepthTrack({ state, world }) {
                   ${spaceStyle(i)}
                 `}
               >
-                {/* Space number (hidden behind markers) */}
                 <span className={(isParty || isDarkFront) ? 'opacity-0' : ''}>{i}</span>
 
-                {/* Party marker (top half) */}
-                {isParty && (
+                {isParty && !isDarkFront && (
                   <div className="absolute top-0.5 left-1/2 -translate-x-1/2">
                     <span className="text-[11px] font-extrabold text-blue-300 leading-none">P</span>
                   </div>
                 )}
-
-                {/* Darkness front marker (bottom half) */}
-                {isDarkFront && (
+                {isDarkFront && !isParty && (
                   <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2">
                     <span className="text-[11px] font-extrabold text-red-400 leading-none">D</span>
                   </div>
                 )}
-
-                {/* Combined — show both stacked */}
                 {isParty && isDarkFront && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center leading-none gap-0.5">
                     <span className="text-[10px] font-extrabold text-blue-300">P</span>
@@ -312,20 +447,17 @@ function DepthTrack({ state, world }) {
 // Last HBtD roll badge
 // ---------------------------------------------------------------------------
 
-function LastRollBadge({ lastRoll }) {
+function LastRollBadge({ lastRoll, theme }) {
   if (!lastRoll || !isRecent(lastRoll.timestamp)) return null;
 
   const { die1, die2, roll, threshold, success, isDoubles, depthEvent, rolledBy, landedOnGD, landedOnBS } = lastRoll;
 
-  const borderColor = isDoubles ? 'border-yellow-500'
-    : success                   ? 'border-green-600'
-    :                             'border-blood';
-  const bgColor = isDoubles ? 'bg-yellow-950/30'
-    : success                ? 'bg-green-950/30'
-    :                          'bg-red-950/30';
+  const cls = isDoubles ? theme.rollDoubles
+    : success            ? theme.rollSuccess
+    :                      theme.rollFail;
 
   return (
-    <div className={`rounded-xl border px-4 py-3 space-y-2 ${borderColor} ${bgColor}`}>
+    <div className={`rounded-xl border px-4 py-3 space-y-2 ${cls}`}>
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs text-gray-400 uppercase tracking-wide">
           Last HBtD{rolledBy ? ` — ${rolledBy}` : ''}
@@ -336,7 +468,7 @@ function LastRollBadge({ lastRoll }) {
           {[die1, die2].map((d, idx) => (
             <span
               key={idx}
-              className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 text-parchment font-extrabold text-xl leading-none"
+              className={`inline-flex items-center justify-center w-10 h-10 rounded-lg border-2 font-extrabold text-xl leading-none ${theme.dieCls}`}
             >
               {d}
             </span>
@@ -355,13 +487,13 @@ function LastRollBadge({ lastRoll }) {
             SUCCESS — Held!
           </span>
         ) : (
-          <span className="px-2.5 py-0.5 rounded-full bg-red-900/60 border border-blood text-red-300 text-sm font-bold">
+          <span className="px-2.5 py-0.5 rounded-full bg-red-900/60 border border-red-700 text-red-300 text-sm font-bold">
             FAIL — Darkness advances
           </span>
         )}
 
         {!isDoubles && landedOnBS && (
-          <span className="px-2.5 py-0.5 rounded-full bg-blood/50 border border-blood text-red-200 text-sm font-bold">
+          <span className="px-2.5 py-0.5 rounded-full bg-red-900/50 border border-red-700 text-red-200 text-sm font-bold">
             Darkness Card!
           </span>
         )}
@@ -394,35 +526,38 @@ export default function DisplayScreen() {
   const { posse }  = usePosse();
   const { world }  = useWorld();
 
+  const theme  = useMemo(() => getTheme(world), [world]);
   const heroes = useMemo(() => (Array.isArray(posse) ? posse : []), [posse]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-4 md:p-6 space-y-6">
-
+    <div
+      className="min-h-screen text-white p-4 md:p-6 space-y-6"
+      style={theme.pageStyle}
+    >
       {/* ── Header ── */}
-      <header className="flex flex-wrap items-baseline gap-3 border-b border-gray-800 pb-4">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-brass tracking-widest uppercase">
+      <header className="flex flex-wrap items-baseline gap-3 border-b border-white/10 pb-4">
+        <h1 className={`text-3xl md:text-4xl font-extrabold tracking-widest uppercase ${theme.headerCls}`}>
           Shadows of Brimstone
         </h1>
         {world && (
-          <span className="text-xl text-parchment font-semibold">
-            — {world}
+          <span className={`text-lg font-semibold ${theme.subCls}`}>
+            — {theme.flavor ?? world}
           </span>
         )}
         {state?.active && (
           <span className="ml-auto text-base text-gray-400">
-            Turn <strong className="text-parchment text-lg">{state.turn ?? 1}</strong>
+            Turn <strong className={`text-lg ${theme.headerCls}`}>{state.turn ?? 1}</strong>
           </span>
         )}
       </header>
 
       {/* ── Adventure Track ── */}
-      <section className="bg-gray-900 border border-gray-700 rounded-2xl p-4 md:p-6 space-y-4">
+      <section className={`border rounded-2xl p-4 md:p-6 space-y-4 ${theme.sectionCls}`}>
         {state?.active ? (
           <>
-            <DepthTrack state={state} world={world} />
+            <DepthTrack state={state} theme={theme} />
             {state.lastRoll && isRecent(state.lastRoll.timestamp) && (
-              <LastRollBadge lastRoll={state.lastRoll} />
+              <LastRollBadge lastRoll={state.lastRoll} theme={theme} />
             )}
           </>
         ) : (
@@ -434,18 +569,18 @@ export default function DisplayScreen() {
 
       {/* ── Posse Grid ── */}
       <section className="space-y-3">
-        <h2 className="text-2xl font-bold text-brass uppercase tracking-wider">
+        <h2 className={`text-2xl font-bold uppercase tracking-wider ${theme.posseHeader}`}>
           Posse{heroes.length > 0 ? ` (${heroes.length})` : ''}
         </h2>
 
         {heroes.length === 0 ? (
-          <div className="bg-gray-900/60 border border-gray-700 rounded-2xl p-8 text-center">
+          <div className={`border rounded-2xl p-8 text-center ${theme.sectionCls}`}>
             <p className="text-gray-500 text-lg italic">No heroes in posse</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {heroes.map(hero => (
-              <HeroCard key={hero.id ?? hero.localId ?? hero.name} hero={hero} />
+              <HeroCard key={hero.id ?? hero.localId ?? hero.name} hero={hero} theme={theme} />
             ))}
           </div>
         )}
