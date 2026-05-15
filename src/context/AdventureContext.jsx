@@ -12,12 +12,12 @@ const FIRESTORE_ID = 'adventure';
 
 const DEFAULT_STATE = {
   depth: 0,
-  darkness: 12,
+  darkness: 15,
   turn: 1,
   lanternBearerId: null,
-  trackLength: 12,
-  growingDreadSpaces: [3, 6, 9],
-  bloodSpatterSpaces: [2, 5, 8, 11],
+  trackLength: 15,
+  growingDreadSpaces: [6, 11, 15],
+  bloodSpatterSpaces: [2, 4, 8, 10, 13],
   lastRoll: null,
   active: false,
 };
