@@ -1,221 +1,54 @@
+// src/components/DM/charts/townTraitsChart.js
+// HexCrawl Expanded Charts v1.0 — Town Traits (D36 = D6×10+D6)
+// Roll twice when entering a town for the first time (once if Frontier Town expansion).
+// Do not re-roll for subsequent visits to the same town.
+
 export const townTraitsChart = [
-  {
-    roll: 11,
-    name: "Boom Town!",
-    flavor: "The streets are buzzing with trade and gold flows like water.",
-    effect: "All Sell values are +10%. You may reroll 1 Town Event roll."
-  },
-  {
-    roll: 12,
-    name: "Shadows Gather",
-    flavor: "An ominous hush hangs over the town as if something watches.",
-    effect: "Add +1 Darkness to the Track when arriving. All Daily Events are +1 Danger."
-  },
-  {
-    roll: 13,
-    name: "Good Eats",
-    flavor: "The local grub is surprisingly hearty and healing.",
-    effect: "Recover +1D6 Health and Sanity when staying at the Hotel."
-  },
-  {
-    roll: 14,
-    name: "Sour Water",
-    flavor: "A strange taste lingers in every drink drawn from the well.",
-    effect: "Healing effects at Camp are -1 (min 1)."
-  },
-  {
-    roll: 15,
-    name: "Bandit Trouble",
-    flavor: "Outlaws prowl the alleys and outskirts, looking for easy marks.",
-    effect: "Each Hero must make a Cunning 5+ test or be robbed of D6x$50."
-  },
-  {
-    roll: 16,
-    name: "Witch in Town",
-    flavor: "A mysterious woman whispers strange truths to those brave enough to listen.",
-    effect: "Each Hero may attempt a Lore 6+ test. If successful, gain 1 Corruption Resistance for this Town Stay."
-  },
-  {
-    roll: 21,
-    name: "Haunted",
-    flavor: "Ghostly figures are seen in windows and mirrors... always just out of reach.",
-    effect: "Each Hero must make a Willpower 5+ test or start with 1 Madness."
-  },
-  {
-    roll: 22,
-    name: "Heavy Mutations",
-    flavor: "The local surgeon's basement glows at night...",
-    effect: "Mutations are cheaper in Town. Gain +1 Mutation on failed Surgery."
-  },
-  {
-    roll: 23,
-    name: "Ghost Town",
-    flavor: "Shops are shuttered, doors hang ajar, and no one makes eye contact.",
-    effect: "Roll a die for each Location. On 1-2, that shop is closed."
-  },
-  {
-    roll: 24,
-    name: "Marshal Crackdown",
-    flavor: "The law rides heavy and swift in this town.",
-    effect: "All Heroes must pay $50 or be put in Jail. Gain 10 XP if you pay."
-  },
-  {
-    roll: 25,
-    name: "Drunken Revelry",
-    flavor: "The saloon spills into the streets in raucous celebration.",
-    effect: "Each Hero may pay $10 to ignore 1 Madness or 1 Injury."
-  },
-  {
-    roll: 26,
-    name: "Merchant Gathering",
-    flavor: "Traders from far and wide crowd the market square.",
-    effect: "All item prices are reduced by 10%."
-  },
-  {
-    roll: 31,
-    name: "Missionary Revival",
-    flavor: "The townsfolk gather in spiritual unity and healing.",
-    effect: "All Heroes may remove 1 Corruption point for free."
-  },
-  {
-    roll: 32,
-    name: "Relic Hunters",
-    flavor: "A rare buyer passes through, seeking artifacts and oddities.",
-    effect: "All Gear items with the Artifact tag are +$50 to Sell."
-  },
-  {
-    roll: 33,
-    name: "Showdown!",
-    flavor: "Tensions erupt in a dusty street, and you’re caught in the crossfire.",
-    effect: "All Heroes must take part in a gunfight event. (Roll D6: 1-3 = Town Sheriff; 4-6 = Rival Posse)"
-  },
-  {
-    roll: 34,
-    name: "Bar Brawl",
-    flavor: "The saloon turns to chaos as fists and furniture fly.",
-    effect: "Each Hero must make a Strength 4+ test or take 1 Wound (ignores Defense)."
-  },
-  {
-    roll: 35,
-    name: "Cult Activity",
-    flavor: "Rituals are whispered of behind closed doors.",
-    effect: "Each Hero makes a Spirit 5+ test or gains 1 Corruption point."
-  },
-  {
-    roll: 36,
-    name: "Stranger in Town",
-    flavor: "A mysterious figure offers aid… or perhaps something darker.",
-    effect: "Draw 1 Ally card. That Ally is in this Town and may be interacted with by 1 Hero."
-  },
-  {
-    roll: 41,
-    name: "Booming Business",
-    flavor: "Shelves are stocked and demand is high.",
-    effect: "All Shops have +1 item for sale. Reroll any Sold Out result once."
-  },
-  {
-    roll: 42,
-    name: "Doom and Gloom",
-    flavor: "The people speak in hushed tones and avoid eye contact.",
-    effect: "All Heroes start with 1 less Grit this Town Stay (min 0)."
-  },
-  {
-    roll: 43,
-    name: "Foreign Dignitary",
-    flavor: "A VIP arrives in town, and taxes rise with the pomp.",
-    effect: "Each Hero must make a Cunning 5+ test or pay $25 in taxes."
-  },
-  {
-    roll: 44,
-    name: "Saloon Festival",
-    flavor: "Drinks flow freely and laughter fills the air.",
-    effect: "All drinks and games at the Saloon are half price."
-  },
-  {
-    roll: 45,
-    name: "Dust Storms",
-    flavor: "Choking clouds swirl between every building.",
-    effect: "Each trip between Locations causes 1 Wound unless a Horse or transport is used."
-  },
-  {
-    roll: 46,
-    name: "Disease Outbreak",
-    flavor: "People avoid contact and bandages run thin.",
-    effect: "All Healing effects in Town are halved (round down)."
-  },
-  {
-    roll: 51,
-    name: "Festival Week",
-    flavor: "Streamers hang from balconies and music fills the streets.",
-    effect: "All XP gains in Town are +10%."
-  },
-  {
-    roll: 52,
-    name: "Riot in the Streets",
-    flavor: "Looting and chaos tear through the market.",
-    effect: "No Town Events this visit. All Shops have +1 Danger."
-  },
-  {
-    roll: 53,
-    name: "Outlaw Haven",
-    flavor: "Dangerous folk gather here with bounties on their heads.",
-    effect: "All Heroes with 3+ Mutations are attacked by a Bounty Hunter (Draw Enemy)."
-  },
-  {
-    roll: 54,
-    name: "Rodeo in Town",
-    flavor: "Yeehaw! Bulls, booze, and busted bones.",
-    effect: "All Animal Gear is -$25 and each Hero may make an Agility 4+ test to win $50."
-  },
-  {
-    roll: 55,
-    name: "Unstable Magic",
-    flavor: "Mystic forces ripple unpredictably through the air.",
-    effect: "All Magic item effects are -1 Damage. Spell healing is halved."
-  },
-  {
-    roll: 56,
-    name: "Tensions High",
-    flavor: "Every whisper could spark violence.",
-    effect: "Every failed Shop Event triggers a Town Riot (each Hero takes 1 Wound and a new Shop is closed)."
-  },
-  {
-    roll: 61,
-    name: "Military Presence",
-    flavor: "Bayonets shine and rules are strictly enforced.",
-    effect: "All Guns cost +$25. Gear tagged as Military is doubled in price."
-  },
-  {
-    roll: 62,
-    name: "Wild Weather",
-    flavor: "Snow, sleet, wind, and heat... sometimes in the same hour.",
-    effect: "All rolls for travel to this Town are -1."
-  },
-  {
-    roll: 63,
-    name: "Merchant Boom",
-    flavor: "Wagons overflow with trade goods and the market hums.",
-    effect: "Each Hero may sell 1 Gear item for double price."
-  },
-  {
-    roll: 64,
-    name: "Mine Collapse Nearby",
-    flavor: "A deep rumble echoes through the hills.",
-    effect: "No Map Cards may be drawn on your next Adventure. You must use a pre-drawn layout."
-  },
-  {
-    roll: 65,
-    name: "Hero Celebration",
-    flavor: "Banners fly as the townsfolk cheer your return.",
-    effect: "Each Hero gains 1 free Token (draw randomly)."
-  },
-  {
-    roll: 66,
-    name: "Prosperity",
-    flavor: "The land is bountiful and fortune smiles.",
-    effect: "Each Hero gains +1 Grit until end of next Adventure."
-  }
+  { roll: 11, name: "Dry", flavor: "Heroes may not purchase alcoholic Side Bag Tokens here.", effect: "Heroes may not purchase alcoholic Side Bag Tokens here, but may try to sell them at the Campsite for 2× the price. When trying to sell, roll D6. On a 1 or 2, the sale is discovered and the Heroes end their Town Stay and cannot enter this Town for a week. Every time the Posse enters for a Town Stay, a Random Hero makes a Cunning 6+ test. If three successes are made on a single roll, this vile secret is discovered and this Town is Destroyed.", restrictions: [] },
+  { roll: 12, name: "Dark Secret", flavor: "Something sinister lurks beneath the surface of this town.", effect: "Whenever the Posse enters this Town, all Heroes make a Luck 4+ roll. If failed, Attack! — Draw a Threat at the Posse's Threat level. If this fight is failed or Escaped, Destroy one Town Location.", restrictions: ["Reroll if Town already has the 'Peaceful' trait"] },
+  { roll: 13, name: "No Stones Allowed!", flavor: "The people here are fed up with Dark Stone.", effect: "You may not buy or sell any Dark Stone, Gear with the Dark Stone symbol, or any Dark Stone Upgrades while in this Town.", restrictions: ["Reroll if the Town is the Mining Town type"] },
+  { roll: 14, name: "Dark Stone Infused", flavor: "The earth itself radiates with Dark Stone corruption.", effect: "Each Hero takes 1 Corruption Hit for each day that they stay here during a Town Visit.", restrictions: [] },
+  { roll: 15, name: "Shortages", flavor: "Supplies are hard to come by out here.", effect: "Side Bag Tokens may not be bought here, but may be sold for twice the listed price. Also, whenever a Hero wants to buy a Purchase Item, roll a D6. On a 1, 2, or 3, that Item is not in stock.", restrictions: ["Reroll if the Town is the Mining Town or Rail Town type"] },
+  { roll: 16, name: "Obligation", flavor: "A Random Hero has some sort of financial obligation in this Town.", effect: "That hero must pay D3×$50 whenever visiting this Town or else gain 1 Corruption point with no Willpower save.", restrictions: [] },
+  { roll: 21, name: "Degenerate", flavor: "Rough folk with no respect for proper company.", effect: "Any Female Hero that visits a Town Location without a Male Hero is at risk of being assaulted. If unaccompanied, make a Strength 4+ test. If failed, the Female Hero takes Hits (1 Damage) and rolls on the Injury Chart if she suffers more than three Wounds.", restrictions: ["Reroll if the Town has the keyword 'Law' or the trait 'Law-Abiding'"] },
+  { roll: 22, name: "Bad Water", flavor: "Whatever's in the water, it ain't doing anybody any favors.", effect: "At the start of each day, every Hero makes a Strength 4+ test. If failed, they are at −1 Health until the end of your next Mission.", restrictions: [] },
+  { roll: 23, name: "Inbred", flavor: "Folks here can't figure out anything too complicated.", effect: "You may only Purchase Items in this Town. All other Services, Rituals, or other actions are unavailable.", restrictions: [] },
+  { roll: 24, name: "Xenophobic", flavor: "Mutants aren't welcome here.", effect: "Heroes with any Mutations roll twice for Location Events and always take the lesser of the two results. This Town should never include the Mutant Quarter Location.", restrictions: ["Reroll if Town has the keyword 'Mutant' or is the Mutant Town type"] },
+  { roll: 25, name: "Unstable Gate", flavor: "Something tears at the fabric of space around here.", effect: "Whenever a Hero would visit a Town Location, go to a Random Town Location instead.", restrictions: [] },
+  { roll: 26, name: "Foreigners", flavor: "Outsiders are viewed with deep suspicion.", effect: "Whenever the Posse enters this Town, all Heroes make a Luck 4+ roll. If failed, Attack! — Draw a Threat at the Posse's Threat level. If this fight is failed or Escaped, Destroy one Town Location.", restrictions: ["Reroll if Town has the 'Peaceful' trait"] },
+  { roll: 31, name: "Heathens", flavor: "Religion is not welcome here.", effect: "Heroes with the keyword 'Holy' roll twice for Location Events and always take the lesser of the two results. Replace the Church with another Location if it is set up in this Town.", restrictions: ["Reroll if Town already has the 'Religious Cult' trait or keyword 'Holy' or is the Plague Town type"] },
+  { roll: 32, name: "Cannibals!", flavor: "The people of this Town have taken to questionable practices.", effect: "Whenever the Posse enters this Town, Attack! — Roll a Human Threat at the Hero Posse's level. If all Heroes are KO'd during this fight, all Heroes roll on the Injury Chart three times. The Heroes may not stay at this Town (not even at the Camp Site).", restrictions: [] },
+  { roll: 33, name: "Religious Cult", flavor: "The faithful demand absolute devotion.", effect: "Heroes that do not have the keyword 'Holy' roll twice for Location Events and always take the lesser of the two results. There must always be a Church in this Town. Replace another Location with the Church if it is ever Destroyed.", restrictions: ["Reroll if Town already has the 'Heathens' trait"] },
+  { roll: 34, name: "Boring", flavor: "Folks here are boring as hell.", effect: "Remove any other Town Traits/Types/Keywords from this Town and do not roll for any other Traits.", restrictions: [] },
+  { roll: 35, name: "Bartering", flavor: "Cash is meaningless here — trade is king.", effect: "Gold may not be used to Purchase Items. All Items traded directly for Items or Services are worth their listed sell value; no change is given if overpaid.", restrictions: [] },
+  { roll: 36, name: "Corrupt", flavor: "Everyone here has their hand out.", effect: "Each Hero must pay a $25 bribe for each day they stay in Town or else end their Town Visit immediately.", restrictions: ["Reroll if the Town has the keyword 'Law'"] },
+  { roll: 41, name: "Thieving", flavor: "Pickpockets and thugs target the Posse the moment they arrive.", effect: "Whenever the Posse enters this Town, each Hero makes an Agility 4+ roll. If failed, that Hero has lost D3×$50 worth of Gold, Gear, or Side Bag Tokens (your choice).", restrictions: ["Reroll if the Town has the 'Law-Abiding' Trait or the keyword 'Law'"] },
+  { roll: 42, name: "Slavers", flavor: "Bondage and servitude are the local economy.", effect: "Whenever you visit Town Locations, take D6 Corruption Hits. A Hero may attempt to free slaves by making a Strength 6+ test. If successful: Destroy Location, gain 50 XP, and end the Posse's Town Stay. You may not visit again for a week.", restrictions: [] },
+  { roll: 43, name: "Amazonian", flavor: "Women run this town and they don't tolerate weakness from men.", effect: "Male Heroes roll twice for Location Events and always take the lesser of the two results.", restrictions: [] },
+  { roll: 44, name: "Peaceful", flavor: "No weapons of any sort are permitted in this Town.", effect: "While in Town, Heroes do not have access to their weapons and may only use their fists in Combat. Heroes may not purchase or sell any Weapons, Ammunition, or Weapon Upgrades while in Town.", restrictions: ["Reroll if Town has the keyword 'Outlaw' or has the 'Unstable Gate' Trait or is the Outlaw Town type"] },
+  { roll: 45, name: "Addicted", flavor: "The vices of this town are irresistible.", effect: "Each Hero makes an Agility 4+ roll each day they stay in Town. If failed, the Hero loses an Alcohol or Herb Side Bag Token (their choice).", restrictions: [] },
+  { roll: 46, name: "Nightmares", flavor: "Darkness seeps into the sleep of all who rest here.", effect: "Each Hero takes 3 Horror Hits every day they stay in Town. Sanity Damage gained from this cannot be Healed until after you confront your fears and finish another Mission.", restrictions: [] },
+  { roll: 51, name: "Artifact Decay", flavor: "Something in this Town is hostile to ancient relics.", effect: "Each Hero that carries any Artifacts rolls a D8 whenever they enter this Town. On a 1, add a Corruption token to an Artifact. With 3 Corruption Tokens, that Artifact is Destroyed.", restrictions: [] },
+  { roll: 52, name: "Bad Luck", flavor: "Misfortune follows the Posse through every door.", effect: "At the beginning of each day in Town, all Heroes make a Luck 5+ roll. If failed, move the Darkness marker two spaces on the Town Event Tracker instead of the normal one per day.", restrictions: [] },
+  { roll: 53, name: "Black Market", flavor: "Anything can be had here — for the right price.", effect: "Heroes may visit any Town Location, whether or not it officially exists in this Town. Prices are $50 more expensive for Purchase Items or Services at Black Market Locations (regular Town Locations have normal prices). If a Town Location is Destroyed, a Black Market Location replaces it. If all Town Locations are Destroyed, the Town itself is Destroyed.", restrictions: [] },
+  { roll: 54, name: "Jovial", flavor: "Good cheer and good fortune seem to follow the Posse here.", effect: "When rolling on the Town Event chart, roll twice and take the higher of the two rolls.", restrictions: [] },
+  { roll: 55, name: "Constructive", flavor: "Folks here rebuild what's been lost.", effect: "Whenever you enter Town, if any Town Locations have been Destroyed, the Posse rolls D8. If an 8 is rolled, add a new Town Location. This roll is not made again until another Mission is completed.", restrictions: [] },
+  { roll: 56, name: "Cattle Yard", flavor: "Hard work pays off out here.", effect: "Instead of visiting a Town Location, a Hero may make an Agility or Strength Skill test for the day to earn money. For each roll of 2–5, gain $25. For every 6, gain $100. If a 1 is rolled, the Hero earns nothing and suffers an accident — roll on the Injury Chart.", restrictions: [] },
+  { roll: 61, name: "Law-Abiding", flavor: "Folks here are proper and don't much tolerate disreputable persons.", effect: "Heroes with keyword 'Outlaw' roll twice for Location Events and always take the lesser of the two results. This Town should never include the Smuggler's Den Location.", restrictions: ["Reroll if Town type is an Outlaw Town or if the Town already has 'Degenerate' or 'Thieving' Trait or keyword 'Outlaw'"] },
+  { roll: 62, name: "Fancy House", flavor: "There's something seedy going on behind those curtains.", effect: "Every night you stay in this Town, each Hero rolls a D8. On a 1 or 2, a Male Hero loses $50 and gains keyword 'Rash' (−3 Health; removed at Doc's Office via Surgery). On a roll of 8, that Hero instead loses $100 and may remove one Madness. Female Heroes who roll a 7 or 8 may gain $100.", restrictions: [] },
+  { roll: 63, name: "Unstable Economy", flavor: "This town can never make up its mind.", effect: "Choose different Town Locations each time you come here for a Town Stay. Keyword Locations or Town Type Locations are the only constants; must still follow any restrictions.", restrictions: [] },
+  { roll: 64, name: "Dimensional Paradox", flavor: "This town seems to exist in two places at once.", effect: "Pick a second, different Keyword or Town Type. Whenever you enter Town, roll a D6. On an even roll it is the 1st Town Keyword/Type; on an odd roll it is the 2nd. Locations stay the same and may conflict — it's a paradox.", restrictions: [] },
+  { roll: 65, name: "Well-Defended", flavor: "This Town has Armor 5+.", effect: "Whenever a Town Location or the Town itself would be Destroyed, roll a D6. On a 5 or better, that Location or the Town is not Destroyed.", restrictions: [] },
+  { roll: 66, name: "Unique Location", flavor: "There's an expert or artisan in Town renowned throughout the region.", effect: "Choose one of the Town's Locations at Random. You may purchase Advanced Gear and Services from this Location in this Town.", restrictions: [] },
 ];
 
+export function lookupTownTrait(roll) {
+  return townTraitsChart.find(e => Number(e.roll) === Number(roll)) || null;
+}
 
-export default function Placeholder() { return null; }
+export function rollD36TownTrait() {
+  const d1 = Math.ceil(Math.random() * 6);
+  const d2 = Math.ceil(Math.random() * 6);
+  const roll = d1 * 10 + d2;
+  return { roll, result: lookupTownTrait(roll) };
+}

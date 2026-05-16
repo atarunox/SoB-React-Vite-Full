@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { travelHazardChart } from '../../data/charts/travelHazardChart';
-import { townTraitsChart } from '../../data/charts/townTraitsChart';
+import { townTraitsChart } from './charts/townTraitsChart';
 import TownVisitPanel from './TownVisitPanel';
 import TownStayManager from './TownStayManager';
 
@@ -13,8 +13,11 @@ export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier
     setHazardRolled(travelHazardChart[idx]);
   };
   const rollTrait = () => {
-    const idx = Math.floor(Math.random() * townTraitsChart.length);
-    setTraitRolled(townTraitsChart[idx]);
+    const d1 = Math.ceil(Math.random() * 6);
+    const d2 = Math.ceil(Math.random() * 6);
+    const roll = d1 * 10 + d2;
+    const result = townTraitsChart.find(e => e.roll === roll) || townTraitsChart[0];
+    setTraitRolled({ ...result, rolledValue: roll });
   };
 
   return (
@@ -32,8 +35,16 @@ export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier
         </div>
       )}
       {traitRolled && (
-        <div className="mt-2 p-2 bg-blue-50 border rounded">
-          <strong>Town Trait:</strong> {traitRolled.name} — <span className="italic">{traitRolled.effect}</span>
+        <div className="mt-2 p-3 bg-blue-50 border border-blue-300 rounded-lg space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono bg-blue-200 text-blue-900 px-2 py-0.5 rounded">{traitRolled.rolledValue}</span>
+            <strong className="text-blue-900">{traitRolled.name}</strong>
+          </div>
+          {traitRolled.flavor && <p className="text-sm italic text-blue-700">{traitRolled.flavor}</p>}
+          <p className="text-sm text-blue-900">{traitRolled.effect}</p>
+          {traitRolled.restrictions?.length > 0 && (
+            <p className="text-xs text-amber-700 italic">{traitRolled.restrictions.join(' · ')}</p>
+          )}
         </div>
       )}
 
