@@ -130,7 +130,7 @@ src/
 │   ├── WorldContext.jsx         # Campaign world name
 │   ├── DeckRegistryContext.jsx  # Item lookup maps (gear, mine artifacts, OW artifacts by world)
 │   ├── AdventureContext.jsx     # Adventure track, depth track, HBtD, lantern
-│   └── UIScaleContext.jsx       # Global UI scale factor
+│   └── UIScaleContext.jsx       # Global UI scale factor + statsViewMode ('tiles'|'list')
 ├── hooks/
 │   ├── useCombatState.jsx       # Darkness deck, growing dread, enemy groups (localStorage key: sob_combat_state_v4)
 │   ├── useLootPool.jsx
@@ -141,20 +141,24 @@ src/
 │   └── EnemyStatsPage.jsx
 ├── components/
 │   ├── DM/                      # DMTab, DMTurnTracker, DMEnemyPanel, DMLootPoolPanel, DMMapDrawer, etc.
+│   │   ├── DMDeckExplorer.jsx   # Collapsible deck browser (all card types incl. enemies)
+│   │   └── DMOptionsPanel.jsx   # Options sub-tab shell (Settings/DeckExplorer/ItemGen/Scan)
 │   ├── TownTab/                 # Town phase UI + LocationPanel
 │   ├── Town/                    # Town event drawers, travel hazards
 │   ├── Shops/                   # Shop/service UI
-│   ├── StatsTab.jsx             # Hero attributes + draggable stat blocks (react-grid-layout)
+│   ├── StatsTab.jsx             # Hero attributes; tiles OR list layout; tile color customization
+│   ├── LevelUpModal.jsx         # 3-step level-up flow (2D6 chart roll, D6 prompts, choices)
 │   ├── GearTab.jsx              # Slot-based equipment management
 │   ├── ConditionsTab.jsx        # Injuries/Madness/Mutations + Spirit Guide buffs
 │   ├── UpgradeTab.jsx           # Skill trees, perks
-│   ├── MiscTab.jsx              # XP, Gold, Skills, Level tracking
+│   ├── MiscTab.jsx              # XP, Gold, Skills, Level tracking + stats view mode toggle
 │   ├── PosseTab.jsx             # Multi-hero posse management
 │   ├── SidebagsTab.jsx          # Side Bag token tracking
 │   └── ErrorBoundary.jsx
 ├── utils/
 │   ├── sanitizeHero.js          # CANONICAL HERO SCHEMA — source of truth
 │   ├── calculateStats.js        # Stat pipeline: base + gear + skills + conditions
+│   ├── levelingUtils.js         # XP_THRESHOLDS, xpForLevel, getNextLevelXP, canLevelUp
 │   ├── conditionRules.js        # Non-numeric rule aggregation
 │   ├── combatResolution.js      # Defense/Armor + Willpower/SpiritArmor resolution
 │   ├── heroAccess.js            # adjustGrit, applyWounds, etc.
@@ -198,7 +202,7 @@ src/
 
 **Firestore collections:** `heroes/{heroId}`, `posse`, `shared/world`
 
-**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions)
+**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions), `sob:statsViewMode` (`'tiles'`|`'list'`), `sob:stats:tileColors:{heroId}`, `sob:stats:listOrder:{heroId}`, `sob:stats:layout:{heroId}` (react-grid-layout positions), `dm_options_subtab`, `dm_campaigns`, `dm_current_drawer`
 
 **Local mode:** If `VITE_FIREBASE_API_KEY` or `VITE_FIREBASE_PROJECT_ID` are missing → localStorage only. Logs `[Firebase] Missing env keys`.
 
@@ -281,7 +285,7 @@ slot 16: Darkness Entry
 - DM panel: enemy spawning, darkness/growing dread card decks, loot pools, maps, **initiative/turn tracker**
 - **Adventure Tracker** (DM + Hero views): 15-space depth track matching physical board layout `[Posse Entry][15][14]…[1][Darkness Entry]`; correct HBtD (2D6, depth-based threshold 7+/8+/9+, doubles → world-specific Depth Event chart, darkness does not advance on doubles); lantern bearer detection; GD spaces green, BS spaces red
 - **Map tile → depth advance**: Drawing a map tile in DMMapDrawer shows an amber banner prompting DM to advance the depth marker
-- **TV/Display screen** (`/display`): Read-only full-screen display for a second monitor/TV; world-themed (Mines, Targa, Jargono, Derelict Ship, Canyons, Blasted Wastes, Frontier Town); shows depth track, last HBtD roll, initiative order, per-hero HP/Sanity/Corruption bars + Grit + full stats; real-time via Firebase; opened via "📺 Display" button in DM tab
+- **TV/Display screen** (`/display`): Read-only full-screen display for a second monitor/TV; world-themed (Mines, Targa, Jargono, Derelict Ship, Canyons, Blasted Wastes, Frontier Town); shows depth track, last HBtD roll, initiative order (heroes + active enemies, enemies win ties), per-hero HP/Sanity/Corruption bars + Grit + full stats; real-time via Firebase; opened via "📺 Display" button in DM tab
 - **Camera OCR**: scan enemy cards via live camera viewfinder (tesseract.js)
 - **PWA support** for offline/mobile use
 - Town phase: 13/15 locations with event tables and services
@@ -291,6 +295,67 @@ slot 16: Darkness Entry
 - Loot generation, equipment tracking, artifact deck by world
 - Hero ejection/sync system for town/hero state
 - Firebase persistence with localStorage fallback + ErrorBoundary
+
+### Stats Tab (Hero Sheet)
+
+- **Two layout modes** (toggled from MiscTab → "Stats View Mode"):
+  - **Tiles** — draggable react-grid-layout blocks, layout saved per-hero in `sob:stats:layout:{heroId}`
+  - **List** — D&D-style vertical list; reorderable via drag-and-drop when layout edit mode is active; order saved in `sob:stats:listOrder:{heroId}`
+- **Tile color customization**: right-click (desktop) or long-press (mobile) any stat tile to pick a background + text color theme; saved per-hero in `sob:stats:tileColors:{heroId}`
+- **Resource cards**: Health, Sanity, Grit, Corruption, Gold each rendered as colored gradient cards with +/− buttons and a progress bar that pulses red at ≤33%
+- **XP card**: shows `currentXP / nextLevelXP`, progress bar, and a "⬆ Level Up!" button when threshold is reached. Buttons: −5 · +10 · +50 · +100
+- **`statOrder`** is declared at **module scope** (before the component function) — do not move it inside the component or useState lazy initializers will crash with a TDZ ReferenceError
+
+### Level-Up System
+
+- **`src/utils/levelingUtils.js`**: `XP_THRESHOLDS`, `xpForLevel(level, hero)` (Drifter pays double), `getNextLevelXP(hero)`, `canLevelUp(hero)`
+- **`src/components/LevelUpModal.jsx`**: 3-step modal
+  - Step 1: Preview + apply full heal/sanity/+1 maxGrit
+  - Step 2: Roll **2D6** → land on the class leveling chart (keys 2–12). Re-rolls automatically if the slot is already in `hero.levelTrack`. Shows dice history. Interactive per component type:
+    - **Fixed** (`+1 Move`) — shown, applied automatically
+    - **D6** (`+D6 Health`) — "Auto Roll" button or manual 1–6 input; adds to `maxHealth`/`maxSanity`
+    - **Choice** (`+1 Strength or +1 Initiative`) — radio buttons showing current effective stat (gear included) and 6-max reminder; capped options disabled in red
+    - **D6 Split** (`+D6 Health/Sanity any mix`) — roll total then distribute via linked inputs
+    - **Narrative** (Vendetta, Dark Stone Resistance) — description shown, no stat change
+  - Step 3: Prompt to visit Upgrade tab for skill tree choice
+- **`hero.levelTrack`**: keyed by 2D6 chart result (2–12), not by character level — tracks which chart slots have been used
+- **`hero.levelBonuses`**: keyed by chart result, stores what was applied at each slot
+- **Leveling charts** (`src/data/levelingCharts/`): objects keyed 2–12 with `{ name?, description?, bonus?, extra?, effects?, extraRoll? }`. `bonus`/`extra` are strings parsed at runtime; `effects`/`extraRoll` are legacy structured format. Most classes use the string format.
+
+### DM Tab — Options Consolidation
+
+The **Options** top-level tab now contains four sub-tabs (state persisted as `dm_options_subtab`):
+- **Settings** — campaign checkboxes (world source selection), select-all/none, merged worlds count
+- **Deck Explorer** — browse all card decks (see below)
+- **Item Generator** — moved from former top-level tab
+- **Scan Cards** — moved from former top-level tab
+
+`src/components/DM/DMOptionsPanel.jsx` renders the sub-tab shell and passes props through to each sub-component.
+
+### Deck Explorer (`src/components/DM/DMDeckExplorer.jsx`)
+
+Collapsible sections with card counts and search for every deck:
+
+| Section | Source | Notes |
+|---|---|---|
+| Darkness Cards | `darknessCards.js` | `DARKNESS_CARDS` |
+| Growing Dread | `growingDreadCards.js` | `GROWING_DREAD_CARDS` |
+| Encounter Cards | `encounterCards.js` | `ENCOUNTER_CARDS` |
+| Loot Cards | `lootDeck.js` | `lootCards` |
+| World Cards | `worldCards.js` | `WORLD_CARDS` |
+| Map Cards | `mapCards.js` | `MAP_CARDS` |
+| Gear Cards | `items/gearCards.js` | slot, value, effects, restrictions |
+| Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
+| OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
+| Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
+
+### Initiative Order — Enemies Included
+
+Both `DisplayScreen.jsx` and `DMTurnTracker.jsx` now merge heroes and active enemy groups into a single sorted list. **Tie-break: enemies activate before heroes** at equal initiative.
+
+Sort key: `b.initiative - a.initiative || (a.type === 'enemy' ? -1 : 1)`
+
+On the TV display, enemy entries render with a red-tinted border and show `×count` in the sub-text.
 
 ---
 
