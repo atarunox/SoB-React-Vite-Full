@@ -260,15 +260,13 @@ function HeroCard({ hero, theme }) {
           colorClass="bg-indigo-500"
           trackClass="bg-gray-700/80"
         />
-        {(hero.currentCorruption ?? 0) > 0 && (
-          <ResourceBar
-            label="Corruption"
-            current={hero.currentCorruption}
-            max={hero.maxCorruption ?? 5}
-            colorClass="bg-corruption"
-            trackClass="bg-gray-700/80"
-          />
-        )}
+        <ResourceBar
+          label="Corruption"
+          current={hero.currentCorruption ?? 0}
+          max={hero.maxCorruption ?? 5}
+          colorClass="bg-corruption"
+          trackClass="bg-gray-700/80"
+        />
       </div>
 
       {/* Grit + Gold + XP */}
@@ -287,15 +285,15 @@ function HeroCard({ hero, theme }) {
       {/* 6 dice-pool stats */}
       <div className="grid grid-cols-6 gap-1 text-center bg-black/20 rounded-xl px-2 py-2">
         {[
-          ['Str', s.Strength],
-          ['Agi', s.Agility],
-          ['Cun', s.Cunning],
-          ['Spi', s.Spirit],
-          ['Lor', s.Lore],
-          ['Lck', s.Luck],
+          ['STR', s.Strength],
+          ['AGI', s.Agility],
+          ['CUN', s.Cunning],
+          ['SPI', s.Spirit],
+          ['LOR', s.Lore],
+          ['LGK', s.Luck],
         ].map(([abbr, val]) => (
           <div key={abbr} className="flex flex-col items-center leading-none gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">{abbr}</span>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wide">{abbr}</span>
             <span className={`text-lg font-extrabold ${theme.headerCls}`}>{val ?? '—'}</span>
           </div>
         ))}
@@ -368,21 +366,23 @@ function DepthTrack({ state, theme }) {
     <div className="space-y-4">
       {/* Header row */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className={`text-xl font-bold ${theme.headerCls}`}>Depth Track</span>
-        <span className="text-base text-gray-300">
+        <span className={`text-xl font-extrabold uppercase tracking-widest flex items-center gap-2 ${theme.headerCls}`}>
+          ⚔ DEPTH TRACK
+        </span>
+        <span className="text-sm text-gray-300">
           Depth <strong className="text-white">{depth}</strong>
         </span>
         <span className={`text-sm px-2.5 py-0.5 rounded-full font-bold border ${theme.accentCls}`}>
-          HBtD {threshold}+
+          HBD {threshold}+
         </span>
         <span className="text-gray-500 text-sm">Turn {turn}</span>
 
         {/* Legend */}
         <div className="flex gap-3 ml-auto text-xs text-gray-500">
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             <span className={`inline-block w-3 h-3 rounded-sm border ${theme.trackBS}`} /> BS Card
           </span>
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             <span className={`inline-block w-3 h-3 rounded-sm border ${theme.trackGD}`} /> GD Card
           </span>
         </div>
@@ -401,14 +401,19 @@ function DepthTrack({ state, theme }) {
               return (
                 <div
                   key={i}
-                  className={`relative flex items-center justify-center w-12 h-14 rounded-lg border-2 border-dashed shrink-0 text-xs font-bold ${
+                  className={`relative flex flex-col items-center justify-center w-12 h-14 rounded-lg border-2 border-dashed shrink-0 text-xs font-bold ${
                     isPosse ? 'border-blue-500 text-blue-400 bg-blue-950/30'
                             : 'border-red-600  text-red-400  bg-red-950/30'
                   }`}
                 >
-                  <span>{isPosse ? 'START' : 'DARK'}</span>
-                  {isParty && <span className="absolute -top-1 text-base font-extrabold text-blue-300">P</span>}
-                  {isDark  && <span className="absolute -bottom-1 text-base font-extrabold text-red-400">D</span>}
+                  <span className="leading-none">{isPosse ? 'P' : 'D'}</span>
+                  <span className="text-[9px] mt-0.5 opacity-70">{isPosse ? 'START' : 'DARK'}</span>
+                  {isParty && (
+                    <div className="absolute -top-2 w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-700 flex items-center justify-center text-white text-[9px] font-bold shadow">P</div>
+                  )}
+                  {isDark && (
+                    <div className="absolute -bottom-2 w-5 h-5 rounded-full bg-red-600 border-2 border-red-800 flex items-center justify-center text-white text-[9px] font-bold shadow">D</div>
+                  )}
                 </div>
               );
             }
@@ -424,13 +429,17 @@ function DepthTrack({ state, theme }) {
             return (
               <div
                 key={i}
-                className={`relative flex flex-col items-center justify-center w-10 h-14 rounded-lg border-2 shrink-0 text-xs font-mono font-bold ${spaceCls}`}
+                className={`relative flex flex-col items-center justify-center w-10 h-14 rounded-lg border-2 shrink-0 font-mono font-bold ${spaceCls}`}
               >
-                <span className={consumed ? 'opacity-30' : ''}>{spaceNum}</span>
-                {!consumed && isGD && <span className="text-[8px] text-green-400">GD</span>}
-                {!consumed && isBS && <span className="text-[8px] text-red-400">BS</span>}
-                {isParty && <span className="absolute -top-1 text-sm font-extrabold text-blue-300 leading-none">P</span>}
-                {isDark  && <span className="absolute -bottom-1 text-sm font-extrabold text-red-400 leading-none">D</span>}
+                <span className={`text-sm leading-none ${consumed ? 'opacity-30' : ''}`}>{spaceNum}</span>
+                {!consumed && isGD && <span className="text-[9px] text-green-400 leading-none mt-0.5">GD</span>}
+                {!consumed && isBS && <span className="text-[9px] text-red-400 leading-none mt-0.5">BS</span>}
+                {isParty && (
+                  <div className="absolute -top-2 w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-700 flex items-center justify-center text-white text-[9px] font-bold shadow">P</div>
+                )}
+                {isDark && (
+                  <div className="absolute -bottom-2 w-5 h-5 rounded-full bg-red-600 border-2 border-red-800 flex items-center justify-center text-white text-[9px] font-bold shadow">D</div>
+                )}
               </div>
             );
           })}
@@ -553,8 +562,8 @@ export default function DisplayScreen() {
           </span>
         )}
         {state?.active && (
-          <span className="ml-auto text-base text-gray-400">
-            Turn <strong className={`text-lg ${theme.headerCls}`}>{state.turn ?? 1}</strong>
+          <span className={`ml-auto flex items-center gap-2 border rounded-lg px-3 py-1.5 font-bold text-base ${theme.accentCls}`}>
+            ⏳ Turn {state.turn ?? 1}
           </span>
         )}
       </header>
@@ -595,21 +604,21 @@ export default function DisplayScreen() {
           .sort((a, b) => b.initiative - a.initiative || (a.type === 'enemy' ? -1 : 1));
         if (sorted.length === 0) return null;
         return (
-          <section className={`border rounded-2xl p-4 space-y-3 ${theme.sectionCls}`}>
-            <h2 className={`text-xl font-bold uppercase tracking-wider ${theme.posseHeader}`}>
-              Initiative Order
+          <section className={`border rounded-2xl p-4 md:p-5 space-y-3 ${theme.sectionCls}`}>
+            <h2 className={`text-xl font-extrabold uppercase tracking-widest flex items-center gap-2 ${theme.posseHeader}`}>
+              ⚔ INITIATIVE ORDER
             </h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {sorted.map((entry, idx) => (
                 <div
                   key={entry.id ?? idx}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2 border ${
+                  className={`flex items-center gap-3 rounded-xl px-4 py-3 border min-w-[160px] ${
                     entry.type === 'enemy'
                       ? 'bg-red-950/40 border-red-700/60'
-                      : 'bg-black/20 border-white/10'
+                      : 'bg-black/30 border-white/10'
                   }`}
                 >
-                  <span className={`text-2xl font-extrabold w-6 text-center ${theme.headerCls}`}>
+                  <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-base font-extrabold shrink-0 ${theme.accentCls}`}>
                     {idx + 1}
                   </span>
                   <div>
@@ -629,8 +638,8 @@ export default function DisplayScreen() {
 
       {/* ── Posse Grid ── */}
       <section className="space-y-3">
-        <h2 className={`text-2xl font-bold uppercase tracking-wider ${theme.posseHeader}`}>
-          Posse{heroes.length > 0 ? ` (${heroes.length})` : ''}
+        <h2 className={`text-2xl font-extrabold uppercase tracking-widest flex items-center gap-2 ${theme.posseHeader}`}>
+          👥 POSSE{heroes.length > 0 ? ` (${heroes.length})` : ''}
         </h2>
 
         {heroes.length === 0 ? (
