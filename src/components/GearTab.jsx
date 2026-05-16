@@ -6,7 +6,7 @@ import { flattenTokens } from '../data/SidebagLibrary';
 import { calculateCurrentStats } from '../utils/calculateStats';
 import { getConditionRules } from '../utils/conditionRules';
 import { ASSETS } from './TownTab/townTabHelpers';
-import { applyUpgrade, slotsRemaining } from '../utils/upgradeSlots';
+import { applyUpgrade, slotsRemaining, isCompatible } from '../utils/upgradeSlots';
 import churchBlessedAuras from '../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
 // --------------------------------- helpers ---------------------------------
@@ -904,8 +904,7 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
 
                     const compatibleUpgrades = (viewHero?.inventory || []).filter(i => {
                       if (!i || (!i.isAttachment && i.type !== 'upgrade')) return false;
-                      if (!Array.isArray(i.attachTo) || i.attachTo.length === 0) return true;
-                      return i.attachTo.some(a => itemTags.includes(String(a).toLowerCase()));
+                      return isCompatible(i, itemTags);
                     });
 
                     return (
