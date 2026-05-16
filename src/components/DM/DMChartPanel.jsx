@@ -1,5 +1,4 @@
 // src/components/DM/DMChartPanel.jsx
-// src/components/DM/DMChartPanel.jsx
 import React, { useMemo, useState } from 'react';
 import { usePosse } from '../../context/PosseContext';
 import { injuryChart } from './charts/injuryChart';
@@ -7,8 +6,10 @@ import { madnessChart } from './charts/madnessChart';
 import { mutationChart } from './charts/mutationChart';
 import { CONDITION_EFFECTS, inferEffectsFromText } from '../../utils/conditionEffects';
 import { withConditionAppended } from '../../utils/mergeConditions';
+import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 
-const charts = { Injury: injuryChart, Madness: madnessChart, Mutation: mutationChart };
+const HEX_CHARTS = { Injury: injuryChart, Madness: madnessChart, Mutation: mutationChart };
+const HEX_KEYS   = { Injury: 'injuryChart', Madness: 'madnessChart', Mutation: 'mutationChart' };
 
 
 const isValidD66 = (n) => {
@@ -70,6 +71,7 @@ const makeId = (type, roll) => {
 
 export default function DMChartPanel() {
   const { posse, updateHero } = usePosse();
+  const { settings } = useHexCrawlSettings();
 
   const [selectedHeroId, setSelectedHeroId] = useState('');
   const [type, setType] = useState('Injury');
@@ -82,7 +84,8 @@ export default function DMChartPanel() {
     ? posse.find(h => (h.id || h.localId) === selectedHeroId)
     : null;
 
-  const chart = charts[type] || [];
+  const useHexChart = settings[HEX_KEYS[type]] ?? true;
+  const chart = useHexChart ? (HEX_CHARTS[type] || []) : [];
 
   const lookup = useMemo(() => {
     const m = new Map();
@@ -163,6 +166,12 @@ export default function DMChartPanel() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Apply Condition</h2>
 
+      {!useHexChart && (
+        <div className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          📖 <strong>Standard Brimstone chart active</strong> — roll on the physical D66 chart and manually record the result. Enable HexCrawl charts in <em>Options → Settings</em> to use the digital D36 lookup.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <select
           value={selectedHeroId}
@@ -192,7 +201,7 @@ export default function DMChartPanel() {
           value={rolls[0]}
           onChange={e => handleRollChange(0, e.target.value)}
           className="input input-bordered"
-          placeholder="Roll (D66 → 11–66)"
+          placeholder={useHexChart ? 'Roll (D36 → 11–66)' : 'Roll (D66 → 11–66)'}
           disabled={resolved}
         />
 

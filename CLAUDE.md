@@ -133,6 +133,7 @@ src/
 │   └── UIScaleContext.jsx       # Global UI scale factor + statsViewMode ('tiles'|'list')
 ├── hooks/
 │   ├── useCombatState.jsx       # Darkness deck, growing dread, enemy groups (localStorage key: sob_combat_state_v4)
+│   ├── useHexCrawlSettings.js   # HexCrawl mode per-chart toggles (localStorage key: sob:hexcrawl_settings)
 │   ├── useLootPool.jsx
 │   └── usePersistentMapDrawn.js
 ├── screens/
@@ -188,6 +189,7 @@ src/
 │   ├── skillTrees/              # 16 classes, 4 levels each
 │   ├── levelingCharts/          # XP→stat tables per class
 │   ├── cards/                   # Encounter, darkness, growing dread, loot, threat, world cards
+│   │   └── townTypeCards.js     # 7 Frontier Town expansion Town Type cards (Mining, Mutant, Outlaw, Plague, Rail, River, Ruins)
 │   ├── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
 │   └── depthEvents/             # World-specific Depth Event charts (6 worlds, roll 1-6 = die value doubled)
 │       ├── depthEvents_Mines.js, _TargaPlateau.js, _Jargono.js, _DerelictShip.js, _Canyons.js, _BlastedWastes.js
@@ -202,7 +204,7 @@ src/
 
 **Firestore collections:** `heroes/{heroId}`, `posse`, `shared/world`
 
-**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions), `sob:statsViewMode` (`'tiles'`|`'list'`), `sob:stats:tileColors:{heroId}`, `sob:stats:listOrder:{heroId}`, `sob:stats:layout:{heroId}` (react-grid-layout positions), `dm_options_subtab`, `dm_campaigns`, `dm_current_drawer`
+**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions), `sob:statsViewMode` (`'tiles'`|`'list'`), `sob:stats:tileColors:{heroId}`, `sob:stats:listOrder:{heroId}`, `sob:stats:layout:{heroId}` (react-grid-layout positions), `dm_options_subtab`, `dm_campaigns`, `dm_current_drawer`, `sob:hexcrawl_settings` (HexCrawl mode toggles — see below)
 
 **Local mode:** If `VITE_FIREBASE_API_KEY` or `VITE_FIREBASE_PROJECT_ID` are missing → localStorage only. Logs `[Firebase] Missing env keys`.
 
@@ -348,6 +350,31 @@ Collapsible sections with card counts and search for every deck:
 | Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
 | OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
 | Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
+| Town Type Cards | `data/cards/townTypeCards.js` | 7 Frontier Town expansion double-sided Town Type cards |
+| Town Traits (D36) | `DM/charts/townTraitsChart.js` | HexCrawl D36 Town Traits chart (all 36 entries) |
+
+### HexCrawl Mode (`src/hooks/useHexCrawlSettings.js`)
+
+Per-chart toggles stored in `localStorage` under key `sob:hexcrawl_settings`. Managed via `useHexCrawlSettings()` hook (returns `{ settings, toggle, setAll }`).
+
+**Settings shape:**
+```js
+{
+  injuryChart:      true,   // use D36 HexCrawl injury chart in DM Chart Panel
+  madnessChart:     true,   // use D36 HexCrawl madness chart in DM Chart Panel
+  mutationChart:    true,   // use D36 HexCrawl mutation chart in DM Chart Panel
+  townTraits:       true,   // roll Town Traits on town entry (D36)
+  persistentHealth: false,  // no full heal at adventure end — Catch Your Breath only
+}
+```
+
+**Defaults:** all charts ON, persistentHealth OFF. When a chart is OFF, `DMChartPanel` shows a callout banner instructing the DM to roll the physical D66 chart instead.
+
+**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart). These are the digital lookups. Standard Brimstone charts in `src/data/charts/` are stubs only (2–3 entries) — no digital lookup for standard mode.
+
+**Persistent Health:** When ON, end-of-adventure confirmation shows a "Catch Your Breath" instruction instead of the "Full Heal All Heroes" button. DM resolves the 2D6 heal manually per hero.
+
+**UI:** DM Options → Settings sub-tab → "HexCrawl Mode" section (5 checkboxes + All On / All Off buttons).
 
 ### Initiative Order — Enemies Included
 

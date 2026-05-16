@@ -3,6 +3,7 @@ import { useAdventure } from '../../context/AdventureContext';
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
 import { getHBtDThreshold } from '../../data/depthEvents/depthEventLookup';
+import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 
 function getLanternInfo(hero) {
   if (!hero?.gear) return null;
@@ -145,6 +146,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
   if (!adventure) return null;
   const { state, updateAdventure, advanceDepth, retreatDepth, advanceDarkness, retreatDarkness, rollHBtD, resetAdventure, endAdventure } = adventure;
   const { updateHero } = usePosse();
+  const { settings: hexSettings } = useHexCrawlSettings();
   const [showConfig, setShowConfig] = useState(false);
   const [configDraft, setConfigDraft] = useState({});
   const [lanternUsedThisTurn, setLanternUsedThisTurn] = useState(false);
@@ -248,6 +250,19 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
 
     setDsRollResults(results);
     setShowEndModal(true);
+  }, [posse, updateHero]);
+
+  const handleFullHeal = useCallback(() => {
+    posse.forEach(h => {
+      const id = h.id || h.localId;
+      if (!id) return;
+      updateHero(id, hh => ({
+        ...hh,
+        currentHealth: hh.maxHealth ?? hh.Health ?? 10,
+        currentSanity: hh.maxSanity ?? hh.Sanity ?? 10,
+        currentGrit: 1,
+      }));
+    });
   }, [posse, updateHero]);
 
   const confirmEndAdventure = useCallback(() => {
@@ -418,9 +433,30 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
               )}
             </div>
 
-            {/* Step 3: Proceed */}
+            {/* Step 3: Heal */}
             <div className="border rounded-lg p-3">
-              <div className="font-bold text-amber-900">3. Proceed to Town Phase</div>
+              <div className="font-bold text-amber-900">3. Recovery</div>
+              {hexSettings.persistentHealth ? (
+                <div className="space-y-1 text-xs text-gray-700">
+                  <p className="font-semibold text-amber-800">⚔ HexCrawl — Catch Your Breath</p>
+                  <p>Each hero heals <strong>2D6 Wounds/Sanity</strong> (any mix). Grit resets to 1. Damage is otherwise persistent — no full heal.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 text-xs text-gray-700">
+                  <p>Standard rule: all heroes <strong>fully restore</strong> Health and Sanity, Grit resets to 1.</p>
+                  <button
+                    className="btn btn-sm btn-success text-white"
+                    onClick={handleFullHeal}
+                  >
+                    Full Heal All Heroes
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Step 4: Proceed */}
+            <div className="border rounded-lg p-3">
+              <div className="font-bold text-amber-900">4. Proceed to Town Phase</div>
               <p className="text-xs text-gray-600">Sell Dark Stone at Frontier Outpost ($25/stone), then visit town locations.</p>
             </div>
           </div>
