@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useAdventure } from '../context/AdventureContext';
 import { useHero } from '../context/HeroContext';
 import { usePosse } from '../context/PosseContext';
@@ -76,12 +76,141 @@ function TrackSlotMini({ slot, slotIdx, trackLength, depth, darkness, gdSpaces, 
   );
 }
 
+function DieBox({ value, highlight }) {
+  return (
+    <div className={`w-14 h-14 rounded-xl border-4 flex items-center justify-center text-3xl font-black shadow-lg ${
+      highlight
+        ? 'border-yellow-400 bg-yellow-100 text-yellow-900'
+        : 'border-gray-400 bg-white text-gray-900'
+    }`}>
+      {value}
+    </div>
+  );
+}
+
+function HBtDResultModal({ lastRoll, onClose }) {
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    timerRef.current = setTimeout(onClose, 12000);
+    return () => clearTimeout(timerRef.current);
+  }, [onClose]);
+
+  if (!lastRoll) return null;
+
+  const { die1, die2, roll, threshold, success, isDoubles, depthEvent, rolledBy, diceType, landedOnGD, landedOnBS } = lastRoll;
+
+  let bannerBg, bannerText, headline;
+  if (isDoubles) {
+    bannerBg = 'bg-purple-700';
+    bannerText = 'text-white';
+    headline = 'DOUBLES — DEPTH EVENT!';
+  } else if (success) {
+    bannerBg = 'bg-green-600';
+    bannerText = 'text-white';
+    headline = 'DARKNESS HELD!';
+  } else {
+    bannerBg = 'bg-red-700';
+    bannerText = 'text-white';
+    headline = 'DARKNESS ADVANCES!';
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Banner */}
+        <div className={`${bannerBg} ${bannerText} text-center py-4 px-4`}>
+          <div className="text-2xl font-black tracking-wide">{headline}</div>
+          <div className="text-sm opacity-80 mt-0.5">by {rolledBy}{diceType === 'peril' ? ' · Peril Die' : ''}</div>
+        </div>
+
+        {/* Dice display */}
+        <div className="bg-gray-900 px-6 py-5 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-4">
+            <DieBox value={die1} highlight={isDoubles} />
+            <span className="text-white text-2xl font-bold">+</span>
+            <DieBox value={die2} highlight={isDoubles} />
+            <span className="text-white text-2xl font-bold">=</span>
+            <div className={`w-16 h-16 rounded-xl border-4 flex items-center justify-center text-3xl font-black shadow-lg ${
+              isDoubles ? 'border-purple-400 bg-purple-900 text-purple-100'
+              : success ? 'border-green-400 bg-green-900 text-green-100'
+              : 'border-red-400 bg-red-900 text-red-100'
+            }`}>
+              {roll}
+            </div>
+          </div>
+          <div className="text-gray-400 text-sm">
+            Target: <span className="text-white font-bold">{threshold}+</span>
+            {!isDoubles && (
+              <span className={`ml-3 font-bold ${success ? 'text-green-400' : 'text-red-400'}`}>
+                {success ? '✓ Pass' : '✗ Fail'}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Alerts / Depth Event */}
+        <div className="bg-gray-800 px-4 pb-4 pt-2 space-y-2">
+          {!isDoubles && landedOnGD && (
+            <div className="bg-green-900/60 border border-green-500 rounded-lg px-3 py-2 text-green-200 text-sm font-semibold">
+              ⚠ Landed on Growing Dread space — draw a Growing Dread card!
+            </div>
+          )}
+          {!isDoubles && landedOnBS && (
+            <div className="bg-red-900/60 border border-red-500 rounded-lg px-3 py-2 text-red-200 text-sm font-semibold">
+              ⚠ Landed on Blood Spatter space — draw a Darkness card!
+            </div>
+          )}
+          {isDoubles && depthEvent && (
+            <div className="bg-purple-900/60 border border-purple-400 rounded-lg px-3 py-2 space-y-1">
+              <div className="text-purple-100 font-bold text-sm">{depthEvent.name}</div>
+              {depthEvent.flavor && (
+                <div className="text-purple-300 text-xs italic">{depthEvent.flavor}</div>
+              )}
+              <div className="text-purple-100 text-xs leading-snug mt-1">{depthEvent.effect}</div>
+            </div>
+          )}
+          {isDoubles && !depthEvent && (
+            <div className="bg-purple-900/40 border border-purple-500 rounded-lg px-3 py-2 text-purple-200 text-sm">
+              Darkness does not advance. Resolve Depth Event for this world.
+            </div>
+          )}
+
+          <button
+            className="w-full mt-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-semibold transition-colors min-h-[44px]"
+            onClick={onClose}
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdventureTrackView() {
   const adventure = useAdventure();
   if (!adventure) return null;
   const { state, rollHBtD } = adventure;
   const { activeHeroId } = useHero();
   const { posse } = usePosse();
+
+  const [showModal, setShowModal] = useState(false);
+  const lastRollTimestamp = useRef(null);
+
+  // Show modal when a new roll lands
+  useEffect(() => {
+    if (state.lastRoll && state.lastRoll.timestamp !== lastRollTimestamp.current) {
+      lastRollTimestamp.current = state.lastRoll.timestamp;
+      setShowModal(true);
+    }
+  }, [state.lastRoll]);
 
   const activeHero = useMemo(() => {
     return posse.find(h => (h.id || h.localId) === activeHeroId) || null;
@@ -110,77 +239,86 @@ export default function AdventureTrackView() {
   const rollRecent = lastRoll && (Date.now() - (lastRoll.timestamp || 0)) < 60000;
 
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-sm text-amber-900">Depth Track</h3>
-        <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">Turn {state.turn}</span>
-      </div>
-
-      {missionFailed && (
-        <div className="bg-red-600 text-white font-bold text-center py-1.5 rounded text-sm">
-          MISSION FAILED
-        </div>
+    <>
+      {showModal && lastRoll && (
+        <HBtDResultModal
+          lastRoll={lastRoll}
+          onClose={() => setShowModal(false)}
+        />
       )}
 
-      {/* Track: [P-Entry] [15]…[1] [D-Entry] */}
-      <div className="overflow-x-auto">
-        <div className="flex gap-0.5 py-2 min-w-max">
-          {slots.map((slot, i) => (
-            <TrackSlotMini
-              key={i}
-              slot={slot}
-              slotIdx={i}
-              trackLength={state.trackLength}
-              depth={state.depth}
-              darkness={state.darkness}
-              gdSpaces={state.growingDreadSpaces}
-              bsSpaces={state.bloodSpatterSpaces}
-            />
-          ))}
+      <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-sm text-amber-900">Depth Track</h3>
+          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">Turn {state.turn}</span>
         </div>
-      </div>
 
-      {/* Stats row */}
-      <div className="flex flex-wrap gap-2 text-xs">
-        <span>Depth: <strong>{state.depth}</strong></span>
-        <span>Darkness: <strong>{state.darkness > 0 ? `Space ${state.darkness}` : 'Entry'}</strong></span>
-        <span>HBtD Target: <strong>{getHBtDThreshold(state.depth)}+</strong></span>
-        {lanternBearerName && <span>Lantern: <strong>{lanternBearerName}</strong></span>}
-      </div>
-
-      {/* Last roll */}
-      {rollRecent && lastRoll && (
-        <div className={`text-xs rounded px-2 py-1 space-y-1 ${
-          lastRoll.isDoubles ? 'bg-yellow-100 text-yellow-900'
-          : lastRoll.success ? 'bg-green-100 text-green-800'
-          : 'bg-red-100 text-red-800'
-        }`}>
-          <div>
-            {lastRoll.rolledBy} rolled <strong>[{lastRoll.die1}+{lastRoll.die2}]={lastRoll.roll}</strong> vs {lastRoll.threshold}+
-            {' — '}
-            {lastRoll.isDoubles ? 'DOUBLES — Depth Event!'
-              : lastRoll.success ? 'Held!' : 'Darkness advances!'}
+        {missionFailed && (
+          <div className="bg-red-600 text-white font-bold text-center py-1.5 rounded text-sm">
+            MISSION FAILED
           </div>
-          {lastRoll.isDoubles && lastRoll.depthEvent && (
-            <div className="mt-1 p-2 bg-yellow-50 rounded border border-yellow-300">
-              <div className="font-bold text-sm">{lastRoll.depthEvent.name}</div>
-              <div className="italic text-[10px] text-yellow-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
-              <div className="mt-1 text-[11px] leading-tight">{lastRoll.depthEvent.effect}</div>
-            </div>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* Lantern bearer roll button */}
-      {(isLanternBearer || (hasLantern && !state.lanternBearerId)) && !missionFailed && (
-        <button
-          className="btn btn-sm btn-warning w-full font-semibold min-h-[44px]"
-          onClick={() => rollHBtD(activeHero?.name || 'Hero', usesPerilDie ? 'peril' : null)}
-        >
-          Roll Hold Back the Darkness
-          {usesPerilDie && ' (Peril Die)'}
-        </button>
-      )}
-    </div>
+        {/* Track: [P-Entry] [15]…[1] [D-Entry] */}
+        <div className="overflow-x-auto">
+          <div className="flex gap-0.5 py-2 min-w-max">
+            {slots.map((slot, i) => (
+              <TrackSlotMini
+                key={i}
+                slot={slot}
+                slotIdx={i}
+                trackLength={state.trackLength}
+                depth={state.depth}
+                darkness={state.darkness}
+                gdSpaces={state.growingDreadSpaces}
+                bsSpaces={state.bloodSpatterSpaces}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span>Depth: <strong>{state.depth}</strong></span>
+          <span>Darkness: <strong>{state.darkness > 0 ? `Space ${state.darkness}` : 'Entry'}</strong></span>
+          <span>HBtD Target: <strong>{getHBtDThreshold(state.depth)}+</strong></span>
+          {lanternBearerName && <span>Lantern: <strong>{lanternBearerName}</strong></span>}
+        </div>
+
+        {/* Last roll inline summary (recent only) */}
+        {rollRecent && lastRoll && !showModal && (
+          <div className={`text-xs rounded px-2 py-1 space-y-1 ${
+            lastRoll.isDoubles ? 'bg-yellow-100 text-yellow-900'
+            : lastRoll.success ? 'bg-green-100 text-green-800'
+            : 'bg-red-100 text-red-800'
+          }`}>
+            <div>
+              {lastRoll.rolledBy} rolled <strong>[{lastRoll.die1}+{lastRoll.die2}]={lastRoll.roll}</strong> vs {lastRoll.threshold}+
+              {' — '}
+              {lastRoll.isDoubles ? 'DOUBLES — Depth Event!'
+                : lastRoll.success ? 'Held!' : 'Darkness advances!'}
+              {' '}
+              <button
+                className="underline opacity-70 hover:opacity-100"
+                onClick={() => setShowModal(true)}
+              >
+                details
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Lantern bearer roll button */}
+        {(isLanternBearer || (hasLantern && !state.lanternBearerId)) && !missionFailed && (
+          <button
+            className="btn btn-sm btn-warning w-full font-semibold min-h-[44px]"
+            onClick={() => rollHBtD(activeHero?.name || 'Hero', usesPerilDie ? 'peril' : null)}
+          >
+            Roll Hold Back the Darkness
+            {usesPerilDie && ' (Peril Die)'}
+          </button>
+        )}
+      </div>
+    </>
   );
 }

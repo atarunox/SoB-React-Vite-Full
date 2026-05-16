@@ -76,39 +76,65 @@ function TrackSpace({ slot, slotIdx, trackLength, depth, darkness, gdSpaces, bsS
 function RollResult({ lastRoll }) {
   if (!lastRoll) return null;
   const age = Date.now() - (lastRoll.timestamp || 0);
-  if (age > 60000) return null;
+  if (age > 120000) return null;
 
-  const isDoubles = lastRoll.isDoubles;
-  const bgClass = isDoubles
-    ? 'bg-green-100 border border-green-300 text-green-900'
-    : lastRoll.success
-      ? 'bg-green-100 border border-green-300 text-green-800'
-      : 'bg-red-100 border border-red-300 text-red-800';
+  const { isDoubles, success, die1, die2, roll, threshold, diceType, rolledBy, depthEvent, landedOnGD, landedOnBS } = lastRoll;
+  const isFresh = age < 8000;
+
+  let borderColor, headlineBg, headlineText, headline;
+  if (isDoubles) {
+    borderColor = 'border-purple-500';
+    headlineBg = 'bg-purple-700';
+    headlineText = 'text-white';
+    headline = 'DOUBLES — DEPTH EVENT!';
+  } else if (success) {
+    borderColor = 'border-green-500';
+    headlineBg = 'bg-green-600';
+    headlineText = 'text-white';
+    headline = 'DARKNESS HELD!';
+  } else {
+    borderColor = 'border-red-500';
+    headlineBg = 'bg-red-700';
+    headlineText = 'text-white';
+    headline = 'DARKNESS ADVANCES!';
+  }
 
   return (
-    <div className={`rounded-lg p-3 text-sm font-medium space-y-1 ${bgClass}`}>
-      <div className="flex items-center justify-between">
-        <span>
-          {isDoubles
-            ? 'DOUBLES — Depth Event!'
-            : lastRoll.success ? 'Darkness held!' : 'Darkness advances!'}
-          {' '}Rolled <strong>[{lastRoll.die1}+{lastRoll.die2}]={lastRoll.roll}</strong> vs {lastRoll.threshold}+
-          {lastRoll.diceType === 'peril' && ' (Peril Die)'}
-        </span>
-        <span className="text-xs opacity-70">by {lastRoll.rolledBy}</span>
+    <div className={`rounded-xl border-2 overflow-hidden ${borderColor} ${isFresh ? 'animate-pulse' : ''}`}
+      style={isFresh ? { animationDuration: '1.5s' } : {}}>
+      <div className={`${headlineBg} ${headlineText} px-3 py-2 flex items-center justify-between`}>
+        <span className="font-black text-base tracking-wide">{headline}</span>
+        <span className="text-xs opacity-80">by {rolledBy}{diceType === 'peril' ? ' · Peril Die' : ''}</span>
       </div>
-      {isDoubles && lastRoll.depthEvent && (
-        <div className="mt-2 p-2 bg-green-50 rounded border border-green-300">
-          <div className="font-bold">{lastRoll.depthEvent.name}</div>
-          <div className="italic text-xs text-green-700 mt-0.5">{lastRoll.depthEvent.flavor}</div>
-          <div className="mt-1 text-xs leading-snug">{lastRoll.depthEvent.effect}</div>
+      <div className="bg-gray-900 px-3 py-2 flex items-center gap-2">
+        <span className="text-white font-mono text-lg font-bold">[{die1}+{die2}]={roll}</span>
+        <span className="text-gray-400 text-sm">vs</span>
+        <span className="text-white font-bold">{threshold}+</span>
+        {!isDoubles && (
+          <span className={`ml-auto font-bold text-sm ${success ? 'text-green-400' : 'text-red-400'}`}>
+            {success ? '✓ Pass' : '✗ Fail'}
+          </span>
+        )}
+      </div>
+      {(landedOnGD || landedOnBS || (isDoubles && depthEvent)) && (
+        <div className="bg-gray-800 px-3 py-2 space-y-1.5">
+          {!isDoubles && landedOnGD && (
+            <p className="text-green-300 text-sm font-semibold">⚠ Growing Dread space — draw a Growing Dread card!</p>
+          )}
+          {!isDoubles && landedOnBS && (
+            <p className="text-red-300 text-sm font-semibold">⚠ Blood Spatter space — draw a Darkness card!</p>
+          )}
+          {isDoubles && depthEvent && (
+            <div className="space-y-0.5">
+              <div className="text-purple-200 font-bold text-sm">{depthEvent.name}</div>
+              {depthEvent.flavor && <div className="text-purple-400 text-xs italic">{depthEvent.flavor}</div>}
+              <div className="text-gray-200 text-xs leading-snug">{depthEvent.effect}</div>
+            </div>
+          )}
+          {isDoubles && !depthEvent && (
+            <p className="text-purple-300 text-sm">Darkness does not advance. Resolve Depth Event for this world.</p>
+          )}
         </div>
-      )}
-      {!isDoubles && lastRoll.landedOnGD && (
-        <div className="text-green-700 font-semibold">Darkness landed on Growing Dread space — draw a Growing Dread card!</div>
-      )}
-      {!isDoubles && lastRoll.landedOnBS && (
-        <div className="text-red-700 font-semibold">Darkness landed on Blood Spatter space — draw a Darkness card!</div>
       )}
     </div>
   );
