@@ -13,6 +13,7 @@ const DECK_TYPES = [
   { id: 'gear',         label: 'Gear Card' },
   { id: 'artifact',     label: 'Artifact' },
   { id: 'depthEvent',   label: 'Depth Event' },
+  { id: 'townTrait',    label: 'Town Trait Card' },
   { id: 'enemy',        label: 'Enemy Sheet' },
 ];
 
@@ -139,6 +140,14 @@ function applyToSchema(raw, deckType, enemySide = 'normal') {
         flavorText: raw.flavorText || '',
         effect,
         depth: raw.depth || '',
+      };
+    case 'townTrait':
+      return {
+        roll: raw.roll ?? null,
+        name,
+        flavor: raw.flavor || raw.flavorText || '',
+        effect,
+        restrictions: Array.isArray(raw.restrictions) ? raw.restrictions : [],
       };
     case 'enemy': {
       const move = raw.move != null ? String(raw.move) : '0';
@@ -430,6 +439,26 @@ function FormFields({ deckType, data, onChange }) {
           {textarea('Flavor / Lore Text (italic)', 'flavorText')}
           {textarea('Effect', 'effect')}
           {field('Depth (e.g. 1, 2, 3, or "any")', 'depth', 'text', 'any')}
+        </div>
+      );
+
+    case 'townTrait':
+      return (
+        <div className="space-y-3">
+          {field('D36 Roll (11–66)', 'roll', 'number')}
+          {field('Name', 'name')}
+          {textarea('Flavor Text (short, italic)', 'flavor')}
+          {textarea('Effect', 'effect')}
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Reroll Restrictions (one per line)</label>
+            <textarea
+              className="textarea textarea-sm w-full mt-0.5"
+              rows={2}
+              placeholder="e.g. Roll again if the town has no Blacksmith"
+              value={(data.restrictions || []).join('\n')}
+              onChange={e => set('restrictions', e.target.value.split('\n').filter(Boolean))}
+            />
+          </div>
         </div>
       );
 
