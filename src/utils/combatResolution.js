@@ -5,6 +5,7 @@
 // plus post-combat healing.
 
 import { d6, d3, rollND, sum, clamp } from './diceHelpers';
+import { getConditionRules } from './conditionRules';
 
 /* ==================== Helpers ==================== */
 
@@ -676,6 +677,18 @@ export async function resolveCorruptionHits({
   }
 
   log.push(`--- Corruption Attack: ${incomingHits} Corruption Hit(s) ---`);
+
+  // Sociopathy madness: skip Willpower saves entirely
+  const condRules = getConditionRules(hero);
+  if (condRules.noWillpowerVsCorruption) {
+    const totalCorruptionRaw = incomingHits * Math.max(1, Math.floor(corruptionPerHit));
+    log.push(`Willpower saves skipped (Sociopathy — ignoring Willpower). ${totalCorruptionRaw} Corruption point(s) applied.`);
+    if (totalCorruptionRaw > 0 && typeof updateHero === 'function' && heroId) {
+      const curCorruption = Number(hero?.currentCorruption ?? 0);
+      updateHero(heroId, h => ({ ...h, currentCorruption: curCorruption + totalCorruptionRaw }));
+    }
+    return { corruption: totalCorruptionRaw, log };
+  }
 
   // Willpower saves (per hit)
   const wpTargetGuess =

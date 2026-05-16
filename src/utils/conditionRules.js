@@ -41,19 +41,32 @@ export function getConditionRules(hero = {}) {
     shotsDeltaRanged: 0,           // +/- Shots with Ranged Weapons
     noCrit: { melee: false, ranged: false, all: false },
     carryCapacityDelta: 0,         // applied in GearTab.carryCapacity()
-    corruptionCapacityDelta: 0,    // informational (surface in UI if desired)
+    corruptionCapacityDelta: 0,    // reduces maxCorruption (enforced in sanitizeHero)
     critDamageDelta: 0,            // modifies crit damage globally (UI hint)
     gainArmor4Plus: false,         // informational flag
     noGuns: false,                 // block all non-artifact Guns
     noGunsUnlessArtifact: false,   // block non-artifact Guns (artifact guns allowed)
     dsAllergy: false,              // take hits per DS carried at start of activation
+    noWillpowerVsCorruption: false, // Sociopathy — Willpower saves vs Corruption skipped
     gritCap: undefined,            // optional cap on Max Grit (min across active conditions)
   };
 
-  // Merge conditions from common locations
-  const list = []
-    .concat(Array.isArray(hero.conditions) ? hero.conditions : [])
-    .concat(Array.isArray(hero?.status?.conditions) ? hero.status.conditions : []);
+  // Collect conditions from all storage formats:
+  //   1. Bucketed object: hero.conditions = { injury, madness, mutation, temporary, other }
+  //   2. Legacy top-level arrays: hero.injuries, hero.madness, hero.mutations
+  //   3. Flat array: hero.conditions = [{ type, ... }]
+  //   4. hero.status.conditions
+  const list = [];
+  if (hero.conditions && !Array.isArray(hero.conditions) && typeof hero.conditions === 'object') {
+    for (const bucket of ['injury', 'madness', 'mutation', 'temporary', 'other']) {
+      if (Array.isArray(hero.conditions[bucket])) list.push(...hero.conditions[bucket]);
+    }
+  }
+  for (const arr of [hero.injuries, hero.madness, hero.mutations]) {
+    if (Array.isArray(arr)) list.push(...arr);
+  }
+  if (Array.isArray(hero.conditions)) list.push(...hero.conditions);
+  if (Array.isArray(hero?.status?.conditions)) list.push(...hero.status.conditions);
 
   for (const c of list) {
     if (!c || c.active === false) continue;
@@ -88,10 +101,11 @@ export function getConditionRules(hero = {}) {
     if (Number.isFinite(rules.corruptionCapacityDelta)) out.corruptionCapacityDelta += rules.corruptionCapacityDelta;
     if (Number.isFinite(rules.critDamageDelta))        out.critDamageDelta += rules.critDamageDelta;
 
-    out.gainArmor4Plus       = out.gainArmor4Plus       || !!rules.gainArmor4Plus;
-    out.noGuns               = out.noGuns               || !!rules.noGuns;
-    out.noGunsUnlessArtifact = out.noGunsUnlessArtifact || !!rules.noGunsUnlessArtifact;
-    out.dsAllergy            = out.dsAllergy            || !!rules.dsAllergy;
+    out.gainArmor4Plus            = out.gainArmor4Plus            || !!rules.gainArmor4Plus;
+    out.noGuns                    = out.noGuns                    || !!rules.noGuns;
+    out.noGunsUnlessArtifact      = out.noGunsUnlessArtifact      || !!rules.noGunsUnlessArtifact;
+    out.dsAllergy                 = out.dsAllergy                 || !!rules.dsAllergy;
+    out.noWillpowerVsCorruption   = out.noWillpowerVsCorruption   || !!rules.noWillpowerVsCorruption;
 
     // If a condition says "extraHandPerTurn", treat it as +1 available hand
     if (rules.extraHandPerTurn === true && !Number.isFinite(rules.handsAvailableDelta)) {

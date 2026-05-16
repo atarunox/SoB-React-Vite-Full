@@ -254,7 +254,47 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
     setShowEndModal(false);
     setDsRollResults(null);
     endAdventure();
-  }, [endAdventure]);
+
+    // Strip conditions marked temporary (e.g. "until end of adventure" injuries)
+    const stripTemporary = arr => Array.isArray(arr) ? arr.filter(c => !c?.temporary) : arr;
+    posse.forEach(h => {
+      const id = h.id || h.localId;
+      if (!id) return;
+      const conds = h.conditions ?? {};
+      if (Array.isArray(conds)) {
+        // flat conditions array format
+        const next = conds.filter(c => !c?.temporary);
+        if (next.length !== conds.length) updateHero(id, hh => ({ ...hh, conditions: next }));
+      } else if (typeof conds === 'object') {
+        // bucketed format: { injury, madness, mutation, temporary, other }
+        const next = {
+          ...conds,
+          injury:    stripTemporary(conds.injury),
+          madness:   stripTemporary(conds.madness),
+          mutation:  stripTemporary(conds.mutation),
+          temporary: [],
+          other:     stripTemporary(conds.other),
+        };
+        updateHero(id, hh => ({ ...hh, conditions: next }));
+      }
+      // Also strip from legacy top-level arrays
+      const nextInjuries  = stripTemporary(h.injuries);
+      const nextMadness   = stripTemporary(h.madness);
+      const nextMutations = stripTemporary(h.mutations);
+      const changed =
+        nextInjuries?.length  !== (h.injuries  ?? []).length ||
+        nextMadness?.length   !== (h.madness   ?? []).length ||
+        nextMutations?.length !== (h.mutations ?? []).length;
+      if (changed) {
+        updateHero(id, hh => ({
+          ...hh,
+          injuries:  nextInjuries,
+          madness:   nextMadness,
+          mutations: nextMutations,
+        }));
+      }
+    });
+  }, [endAdventure, posse, updateHero]);
 
   const missionFailed = state.darkness > state.trackLength && state.active;
   const dangerZone = state.darkness >= state.trackLength - 2 && !missionFailed && state.active;

@@ -167,6 +167,22 @@ export function sanitizeHero(inputHero) {
     if (typeof add === 'number' && Number.isFinite(add)) maxCorruption += add;
   }
 
+  // Apply condition-based corruption capacity reductions (e.g. Barbed Tail, Tentacle Tail, Eye Stalks)
+  const _capCondsList = [...injuries, ...madness, ...mutations];
+  if (hero.conditions && !Array.isArray(hero.conditions) && typeof hero.conditions === 'object') {
+    for (const b of ['injury', 'madness', 'mutation', 'temporary', 'other']) {
+      if (Array.isArray(hero.conditions[b])) _capCondsList.push(...hero.conditions[b]);
+    }
+  }
+  const _condCapDelta = _capCondsList.reduce((sum, c) => {
+    if (!c || c.active === false) return sum;
+    if (typeof c?.rules?.corruptionCapacityDelta === 'number') return sum + c.rules.corruptionCapacityDelta;
+    const n = String(c?.name || '').toLowerCase().trim();
+    if (n === 'barbed tail' || n === 'tentacle tail' || n === 'eye stalks') return sum - 1;
+    return sum;
+  }, 0);
+  if (_condCapDelta !== 0) maxCorruption = Math.max(1, maxCorruption + _condCapDelta);
+
   let currentCorruption = hero.currentCorruption ?? 0;
   const newMutations = [];
   if (currentCorruption >= maxCorruption) {
