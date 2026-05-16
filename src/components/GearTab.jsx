@@ -6,6 +6,7 @@ import { flattenTokens } from '../data/SidebagLibrary';
 import { calculateCurrentStats } from '../utils/calculateStats';
 import { getConditionRules } from '../utils/conditionRules';
 import { ASSETS } from './TownTab/townTabHelpers';
+import { applyUpgrade, slotsRemaining } from '../utils/upgradeSlots';
 import churchBlessedAuras from '../data/townLocations/FrontierTown/Church/churchBlessedAuras.js';
 
 // --------------------------------- helpers ---------------------------------
@@ -63,8 +64,16 @@ function aggregateGearMods(gearObj = {}) {
     const key = String(it?.id ?? '');
     if (key && seen.has(key)) continue;
     if (key) seen.add(key);
-    if (!it || !it.mods) continue;
-    for (const [k, v] of Object.entries(it.mods)) {
+    if (!it) continue;
+    // Merge base mods + any upgrade mods
+    const allMods = { ...(it.mods || {}) };
+    for (const upg of (it.upgrades || [])) {
+      if (!upg?.mods || typeof upg.mods !== 'object') continue;
+      for (const [k, v] of Object.entries(upg.mods)) {
+        if (typeof v === 'number') allMods[k] = (allMods[k] || 0) + v;
+      }
+    }
+    for (const [k, v] of Object.entries(allMods)) {
       // Handle threshold strings like '5+' (Armor, Spirit Armor, etc.)
       if (typeof v === 'string' && /^\d+\+$/.test(v.trim())) {
         const newThresh = parseInt(v, 10);
@@ -289,6 +298,34 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
   const [activeTab, setActiveTab] = useState('Equipped'); // Equipped | Inventory | Sidebags | Buffs
   const [equipPage, setEquipPage] = useState(1);
   const [showStatMods, setShowStatMods] = useState(false);
+
+  // Upgrade slot UI state
+  const [upgradePickerSlot, setUpgradePickerSlot] = useState(null); // gear slot name
+
+  const applyItemUpgrade = (gearSlot, upgradeItemId) => {
+    const item = viewHero?.gear?.[gearSlot];
+    const inv  = viewHero?.inventory || [];
+    const upgradeItem = inv.find(i => i.id === upgradeItemId);
+    if (!item || !upgradeItem) return;
+    const newItem = applyUpgrade(item, upgradeItem);
+    const newInventory = inv.filter(i => i.id !== upgradeItemId);
+    bumpOptimisticWindow();
+    saveHero({ ...viewHero, gear: { ...viewHero.gear, [gearSlot]: newItem }, inventory: newInventory });
+    setUpgradePickerSlot(null);
+  };
+
+  const removeItemUpgrade = (gearSlot, upgradeIdx) => {
+    const item = viewHero?.gear?.[gearSlot];
+    if (!item || !Array.isArray(item.upgrades)) return;
+    const removed = item.upgrades[upgradeIdx];
+    const newItem = { ...item, upgrades: item.upgrades.filter((_, i) => i !== upgradeIdx) };
+    const newInventory = [...(viewHero?.inventory || [])];
+    if (removed?.name) {
+      newInventory.push({ ...removed, type: 'upgrade', isAttachment: true, id: removed.id || uid() });
+    }
+    bumpOptimisticWindow();
+    saveHero({ ...viewHero, gear: { ...viewHero.gear, [gearSlot]: newItem }, inventory: newInventory });
+  };
 
   // Inventory filter
   const [inventoryQuery, setInventoryQuery] = useState('');
@@ -851,6 +888,95 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                     );
                   })()}
 
+                  {/* ── Upgrade Slots ── */}
+                  {eqSafe && Number(eqSafe.upgradeSlots) > 0 && (() => {
+                    const totalSlots = Number(eqSafe.upgradeSlots);
+                    const applied    = Array.isArray(eqSafe.upgrades) ? eqSafe.upgrades : [];
+                    const remaining  = Math.max(0, totalSlots - applied.length);
+                    const isOpen     = upgradePickerSlot === slot;
+
+                    // Compatible upgrades in inventory
+                    const itemTags = [
+                      ...(eqSafe.tags || []),
+                      eqSafe.slot,
+                      eqSafe.type,
+                    ].filter(Boolean).map(t => String(t).toLowerCase());
+
+                    const compatibleUpgrades = (viewHero?.inventory || []).filter(i => {
+                      if (!i || (!i.isAttachment && i.type !== 'upgrade')) return false;
+                      if (!Array.isArray(i.attachTo) || i.attachTo.length === 0) return true;
+                      return i.attachTo.some(a => itemTags.includes(String(a).toLowerCase()));
+                    });
+
+                    return (
+                      <div className="mt-2 border-t border-[#8b6b46]/20 pt-2">
+                        <div className="text-[10px] uppercase tracking-wide text-[#5c3a1e]/70 mb-1 font-semibold">
+                          Upgrades ({applied.length}/{totalSlots})
+                        </div>
+
+                        {/* Applied upgrades */}
+                        {applied.map((upg, i) => (
+                          <div key={upg.id ?? i} className="flex items-center justify-between gap-1 mb-1 bg-amber-50 border border-amber-300 rounded px-2 py-1">
+                            <div>
+                              <span className="text-[11px] font-semibold text-amber-900">{upg.name}</span>
+                              {upg.description && (
+                                <span className="text-[10px] text-amber-700/70 ml-1 italic">{upg.description}</span>
+                              )}
+                            </div>
+                            <button
+                              className="text-[10px] text-red-600 hover:text-red-800 font-bold shrink-0 px-1"
+                              onClick={() => removeItemUpgrade(slot, i)}
+                              title="Remove upgrade"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Empty slots */}
+                        {remaining > 0 && (
+                          <button
+                            className={`w-full text-[11px] border rounded px-2 py-1 mt-0.5 transition-colors ${
+                              isOpen
+                                ? 'bg-amber-100 border-amber-400 text-amber-900'
+                                : 'border-dashed border-[#8b6b46]/40 text-[#5c3a1e]/60 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-900'
+                            }`}
+                            onClick={() => setUpgradePickerSlot(isOpen ? null : slot)}
+                          >
+                            {isOpen ? '▲ Cancel' : `＋ Add upgrade (${remaining} slot${remaining !== 1 ? 's' : ''} open)`}
+                          </button>
+                        )}
+
+                        {/* Upgrade picker */}
+                        {isOpen && (
+                          <div className="mt-1 bg-white border border-amber-300 rounded-lg shadow-md p-2 space-y-1">
+                            {compatibleUpgrades.length === 0 ? (
+                              <p className="text-[11px] italic text-gray-500 text-center py-1">
+                                No compatible upgrades in inventory.
+                              </p>
+                            ) : (
+                              compatibleUpgrades.map(upg => (
+                                <button
+                                  key={upg.id}
+                                  className="w-full text-left px-2 py-1.5 rounded hover:bg-amber-50 border border-transparent hover:border-amber-300 transition-colors"
+                                  onClick={() => applyItemUpgrade(slot, upg.id)}
+                                >
+                                  <div className="text-[11px] font-semibold text-[#3b2f1d]">{upg.name}</div>
+                                  {Array.isArray(upg.effects) && upg.effects.length > 0 && (
+                                    <div className="text-[10px] italic text-gray-600 mt-0.5">{upg.effects[0]}</div>
+                                  )}
+                                  {upg.description && !upg.effects?.length && (
+                                    <div className="text-[10px] italic text-gray-600 mt-0.5">{upg.description}</div>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {slotForbidden && (
                     <div className="mt-1 text-[11px] text-red-700 font-semibold">
                       Cannot equip in this slot due to a condition.
@@ -1124,8 +1250,16 @@ function equipGearFactory(viewHero, saveHero, condRules, setViewHero) {
     if (id === '') {
       if (copy.gear[slot] && copy.gear[slot].name !== 'Empty Slot') {
         const removed = copy.gear[slot];
-        if (!copy.inventory.some(i => String(i.id) === String(removed.id))) {
-          copy.inventory.push(removed);
+        // Return any applied upgrades to inventory before unequipping
+        for (const upg of (removed.upgrades || [])) {
+          if (upg?.name && !copy.inventory.some(i => String(i.id) === String(upg.id))) {
+            copy.inventory.push({ ...upg, type: 'upgrade', isAttachment: true, id: upg.id || uid() });
+          }
+        }
+        // Return item itself (stripped of upgrades) to inventory
+        const strippedRemoved = { ...removed, upgrades: [] };
+        if (!copy.inventory.some(i => String(i.id) === String(strippedRemoved.id))) {
+          copy.inventory.push(strippedRemoved);
         }
         // replace with explicit placeholder rather than delete
         copy.gear[slot] = { id: `empty-${slot.replace(/\s+/g, '').toLowerCase()}`, name: 'Empty Slot', slot };
