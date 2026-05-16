@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { useAdventure } from '../../context/AdventureContext';
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
@@ -179,7 +179,12 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
     };
     resetAdventure(config);
     setLanternUsedThisTurn(false);
-  }, [resetAdventure, configDraft, state]);
+    // Rules: every hero starts each mission with exactly 1 Grit (SoB core rules p.22)
+    posse.forEach(h => {
+      const id = h.id || h.localId;
+      if (id) updateHero(id, hero => ({ ...hero, currentGrit: 1 }));
+    });
+  }, [resetAdventure, configDraft, state, posse, updateHero]);
 
   // Reset lantern ability when turn advances
   const lastTurn = React.useRef(state.turn);
@@ -216,6 +221,40 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
     const bearerName = currentBearer.heroName || 'DM';
     rollHBtD(bearerName, usesPerilDie ? 'peril' : null);
   }, [currentBearer, lanternAbility, posse, updateHero, rollHBtD, usesPerilDie]);
+
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [dsRollResults, setDsRollResults] = useState(null);
+
+  const handleEndAdventure = useCallback(() => {
+    // Build per-hero Dark Stone roll results
+    const results = posse.map(h => {
+      const count = Number(h.darkStone ?? 0);
+      const wpStr = String(h.stats?.Willpower ?? h.willpower ?? '5+');
+      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
+      const rolls = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
+      const hits = rolls.filter(r => r <= 3).length;
+      const saves = Array.from({ length: hits }, () => Math.ceil(Math.random() * 6));
+      const blocked = saves.filter(s => s >= wpTarget).length;
+      const corruption = Math.max(0, hits - blocked);
+      return { id: h.id || h.localId, name: h.name, count, rolls, hits, saves, blocked, corruption, wpTarget };
+    }).filter(r => r.count > 0);
+
+    // Apply corruption to each hero
+    results.forEach(r => {
+      if (r.corruption > 0 && r.id) {
+        updateHero(r.id, h => ({ ...h, currentCorruption: (h.currentCorruption ?? 0) + r.corruption }));
+      }
+    });
+
+    setDsRollResults(results);
+    setShowEndModal(true);
+  }, [posse, updateHero]);
+
+  const confirmEndAdventure = useCallback(() => {
+    setShowEndModal(false);
+    setDsRollResults(null);
+    endAdventure();
+  }, [endAdventure]);
 
   const missionFailed = state.darkness > state.trackLength && state.active;
   const dangerZone = state.darkness >= state.trackLength - 2 && !missionFailed && state.active;
@@ -283,13 +322,93 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
 
   // Active adventure
   return (
+    <>
+    {showEndModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="bg-amber-800 text-white px-4 py-3">
+            <div className="font-black text-lg">End of Adventure Checklist</div>
+            <div className="text-xs opacity-80">Complete these steps before returning to town</div>
+          </div>
+          <div className="overflow-y-auto flex-1 p-4 space-y-4 text-sm">
+
+            {/* Step 1: KO'd heroes */}
+            <div className="border rounded-lg p-3 space-y-1">
+              <div className="font-bold text-amber-900">1. Recover KO'd Heroes</div>
+              {posse.filter(h => (h.currentHealth ?? h.maxHealth ?? 10) <= 0).length === 0 ? (
+                <p className="text-green-700 text-xs">✓ All heroes are standing.</p>
+              ) : (
+                <>
+                  <p className="text-red-700 text-xs font-semibold">Heroes with 0 HP must roll on the Injury and/or Madness chart:</p>
+                  <ul className="text-xs space-y-0.5">
+                    {posse.filter(h => (h.currentHealth ?? 10) <= 0).map(h => (
+                      <li key={h.id || h.localId} className="text-red-800">• {h.name} — roll Injury (HP KO)</li>
+                    ))}
+                    {posse.filter(h => (h.currentSanity ?? 10) <= 0).map(h => (
+                      <li key={(h.id || h.localId) + '_san'} className="text-purple-800">• {h.name} — roll Madness (Sanity KO)</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-gray-500 italic">Apply in Conditions tab after closing.</p>
+                </>
+              )}
+            </div>
+
+            {/* Step 2: Dark Stone corruption */}
+            <div className="border rounded-lg p-3 space-y-2">
+              <div className="font-bold text-amber-900">2. Dark Stone Corruption Risk</div>
+              {dsRollResults === null || dsRollResults.length === 0 ? (
+                <p className="text-green-700 text-xs">✓ No heroes carried Dark Stone.</p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-600">Each Dark Stone carried: roll D6 — on 1–3 take 1 Corruption Hit (Willpower save).</p>
+                  {dsRollResults.map(r => (
+                    <div key={r.id} className={`rounded p-2 text-xs ${r.corruption > 0 ? 'bg-red-50 border border-red-300' : 'bg-green-50 border border-green-300'}`}>
+                      <div className="font-semibold">{r.name} — {r.count} Dark Stone{r.count > 1 ? 's' : ''}</div>
+                      <div>Rolls: [{r.rolls.join(', ')}] → {r.hits} hit{r.hits !== 1 ? 's' : ''}</div>
+                      {r.hits > 0 && (
+                        <div>Willpower {r.wpTarget}+ saves: [{r.saves.join(', ')}] → {r.blocked} blocked</div>
+                      )}
+                      <div className={`font-bold ${r.corruption > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                        {r.corruption > 0 ? `+${r.corruption} Corruption applied` : '✓ No corruption taken'}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-500 italic">Corruption already applied to hero sheets. Check Conditions tab for any overflow mutations.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Step 3: Proceed */}
+            <div className="border rounded-lg p-3">
+              <div className="font-bold text-amber-900">3. Proceed to Town Phase</div>
+              <p className="text-xs text-gray-600">Sell Dark Stone at Frontier Outpost ($25/stone), then visit town locations.</p>
+            </div>
+          </div>
+
+          <div className="p-4 border-t flex gap-2">
+            <button
+              className="flex-1 btn btn-sm btn-ghost"
+              onClick={() => setShowEndModal(false)}
+            >
+              Keep Playing
+            </button>
+            <button
+              className="flex-1 btn btn-sm btn-error text-white"
+              onClick={confirmEndAdventure}
+            >
+              Confirm End Adventure
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="p-4 bg-white rounded shadow space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-bold">Adventure Tracker</h2>
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold bg-gray-100 px-3 py-1 rounded">Turn {state.turn}</span>
-          <button className="btn btn-xs btn-ghost text-red-500" onClick={endAdventure}>End Adventure</button>
+          <button className="btn btn-xs btn-ghost text-red-500" onClick={handleEndAdventure}>End Adventure</button>
         </div>
       </div>
 
@@ -459,5 +578,6 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
         </div>
       )}
     </div>
+    </>
   );
 }

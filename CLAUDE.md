@@ -663,3 +663,82 @@ Shuffle discard pile when deck empties.
 | Mine Artifact Cards | Loot draw (mine) | Reshuffle when empty |
 | OtherWorld Artifact Cards | Loot draw (OW) | Reshuffle when empty |
 | Personal Item Cards | Hero creation | N/A |
+
+---
+
+## Full Mechanics Audit (2026-05-16)
+
+### Implemented
+
+| Mechanic | Location |
+|---|---|
+| Hero stats, gear, conditions (injuries/madness/mutations) | `sanitizeHero.js`, `ConditionsTab.jsx` |
+| Skill trees, leveling charts, XP, level-up 2D6 roll | `LevelUpModal.jsx`, `levelingUtils.js` |
+| All 13 Frontier Town locations (event tables + services) | `locationHandlers/` |
+| Blasted Wastes town locations (Workshop, Mining Op, Market, Arena, Temple, Doc) | `locationHandlers/` |
+| Adventure depth track (15-space, HBtD 2D6, doubles→Depth Event) | `AdventureContext.jsx`, `AdventureTrackView.jsx` |
+| Depth events for 6 worlds (Mines, Targa, Jargono, Derelict Ship, Canyons, Blasted Wastes) | `data/depthEvents/` |
+| TV display screen with hero stats, initiative, depth track | `DisplayScreen.jsx` |
+| Posse management (Firebase real-time sync) | `PosseContext.jsx` |
+| Gear upgrade slot system (attach/remove across all locations) | `upgradeSlots.js`, `GearTab.jsx` |
+| Combat resolution: Defense, Armor, Willpower, Spirit Armor | `combatResolution.js` |
+| Enemy stat blocks (13 worlds) | `data/enemyCards/` |
+| Loot generation | `DMLootPoolPanel` |
+| Camera OCR (enemy card scanning) | tesseract.js |
+| Dark Stone quantity tracking (`darkStone` field) | `sanitizeHero.js`, `StatsTab.jsx` |
+| Corruption overflow → placeholder mutation added automatically | `sanitizeHero.js` |
+| Grit reset to 1 on adventure start | `DMAdventureTracker.jsx` `handleStartAdventure` |
+| End-of-adventure Dark Stone corruption roll (automated) | `DMAdventureTracker.jsx` `handleEndAdventure` |
+| Mutation pending alert + duplicate-mutation death warning | `ConditionsTab.jsx` |
+| Prominent HBtD result modal (hero + DM) | `AdventureTrackView.jsx`, `DMAdventureTracker.jsx` |
+| Initiative order: enemies beat heroes on ties | `DisplayScreen.jsx`, `DMTurnTracker.jsx` |
+
+### Not Yet Implemented — Priority Order
+
+#### High (core loop, happens every session)
+| Mechanic | Notes |
+|---|---|
+| Injury/Madness/Mutation D66 full chart data | Only 2-3 stub entries each; all 36 needed per chart |
+| Critical hits (nat 6 → ignore Defense) | `combatResolution.js` needs `isCrit = roll === 6` path |
+| Enemy attack engine | Only hero defense is modeled; enemy attacks are narrated manually |
+| Corruption overflow auto-prompt in UI | Sanitizer adds placeholder mutation but no in-session alert fires at the moment of overflow |
+
+#### Medium (important but not every round)
+| Mechanic | Notes |
+|---|---|
+| Elite enemy abilities | `eliteChart` in data but no roll/apply/track mechanic |
+| GD card simultaneous reveal trigger | DM panel needs "Reveal all GD cards" button for mission climax |
+| Off-hand weapon To-Hit penalty | +1 to To-Hit for weapons in `Off Hand` slot; not enforced in stat pipeline |
+| Travel hazard phase UI | `travelHazardChart.js` exists; no phase UI between adventure and town |
+| Scavenge action | Roll 3D6; each 6 → draw Scavenge card; no UI |
+| Threat cards → loot count link | `threatDecks.js` exists; not wired to loot draw count |
+| Grit recovery (Rest action) | Skip explore → heal D6 HP or gain 1 Grit; no UI |
+| Wanted/Outlaw status tracking | Smuggler's Den data exists; no persistent flag on hero |
+| Mission card selection/objectives | No mission structure; DM manages manually |
+| OtherWorld-specific mutation tables | Only the base table stub exists |
+
+#### Low (expansion content / advanced rules)
+| Mechanic | Notes |
+|---|---|
+| OtherWorld Gates (portal transport) | Exploration token mechanic; not modeled |
+| Enemy Regeneration (X) | Heals X wounds at turn start |
+| Fear / Terror / Unspeakable Terror | Auto Horror Hits on enemy activation |
+| Enemy Spawning | Mid-fight enemy adds (Egg Sacks, etc.) |
+| Formation | Lost Army defensive stance |
+| Shootout mechanics | Undead Gunslinger / Outlaws |
+| D8 die type | Magma Giant Massive Fists; only D6 modeled |
+| Enemy special card decks | Serpent Magik, Shaman Juju Trinkets, etc. |
+| Depth events for 7+ worlds | Belly of the Beast, Forest of the Dead, Cursed Mountain, Valley of the Serpent Kings, Valhalla, etc. |
+| Exploration token draw randomization | DM resolves manually |
+| Lava Spaces | Terrain mechanic not modeled |
+| Orphanage / Town Hall | Stubbed empty |
+
+### Known Data-Not-Persisting Bugs (silently dropped by sanitizer)
+- `heroAccess.js:adjustCorruption` writes `corruption` → use `currentCorruption`
+- `heroAccess.js:applyWounds/healWounds` writes `wounds` → use `currentHealth`
+- `promptApi.js:137` applyHits fallback writes `wounds` → fix
+- `saloonHandler.js:156` Bar Fight writes `wounds` → fix
+- `saloonHandler.js:213` Song and Dance heals `health` → fix
+- `streetMarketHandler.js:150` scuffle writes `wounds` → fix
+- `gamblingHallServices.js:318` Robbery writes `wounds` → fix
+- `docsOfficeServices.js:477` injection writes `corruption` → fix

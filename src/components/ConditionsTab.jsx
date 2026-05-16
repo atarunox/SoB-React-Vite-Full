@@ -455,9 +455,36 @@ export default function ConditionsTab({ hero }) {
     </div>
   );
 
+  const pendingMutations = mutationsWithSrc.filter(
+    e => e?.cond?.source === 'Corruption Overflow' || e?.cond?.name === 'Mutation — Roll Needed'
+  );
+
+  const allMutationNames = mutationsWithSrc
+    .map(e => e?.cond?.name)
+    .filter(n => n && n !== 'Mutation — Roll Needed');
+
+  const hasDuplicateMutation = allMutationNames.length !== new Set(allMutationNames).size;
+
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Conditions</h2>
+
+      {hasDuplicateMutation && (
+        <div className="mb-4 bg-black text-white rounded-lg p-3 border-2 border-red-600 text-center space-y-1">
+          <div className="text-2xl font-black text-red-400">☠ CHARACTER DEATH</div>
+          <div className="text-sm">This hero has rolled the same Mutation twice — they are permanently dead.</div>
+        </div>
+      )}
+
+      {pendingMutations.length > 0 && !hasDuplicateMutation && (
+        <div className="mb-4 bg-purple-900 text-purple-100 rounded-lg p-3 border border-purple-500 space-y-1">
+          <div className="font-bold text-sm">⚠ {pendingMutations.length} Mutation{pendingMutations.length > 1 ? 's' : ''} Pending — Roll Needed</div>
+          <div className="text-xs text-purple-300">
+            Corruption overflowed. Roll D66 on the Mutation chart and update each entry below with the result.
+            If you roll the same mutation this hero already has → character death.
+          </div>
+        </div>
+      )}
 
       {renderList('Permanent Effects', permanentWithSrc)} {/* shows Dark Road */}
       {renderList('Temporary Conditions', temporaryWithSrc)}
