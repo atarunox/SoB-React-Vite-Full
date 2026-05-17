@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { getAllStatsWithBreakdown } from "../../utils/enemyModifiers";
 import { TRAIT_DECKS } from "../../data/traitDecks";
-import { ENEMY_TRAIT_CARDS } from "../../data/enemyCards/enemyTraitCards";
+import { ENEMY_TRAIT_CARDS, ENEMY_TRAIT_CONFIG } from "../../data/enemyCards/enemyTraitCards";
 import { DARKNESS_CARDS } from "../../data/darknessCards";
 import { GROWING_DREAD_CARDS } from "../../data/growingDreadCards";
 import StatBreakdownModal from "./StatBreakdownModal";
@@ -82,7 +82,9 @@ export default function EnemyGroupCard({
     const deck = ENEMY_TRAIT_CARDS[group.name] || [];
     if (deck.length === 0) return;
     const roll = Math.floor(Math.random() * 6) + 1;
-    if (roll >= 4) {
+    const triggerOn = ENEMY_TRAIT_CONFIG[group.name]?.triggerOn || '1-3';
+    const triggered = triggerOn === '4-6' ? roll >= 4 : roll <= 3;
+    if (!triggered) {
       setTraitRoll({ roll, card: null });
       return;
     }
@@ -230,7 +232,7 @@ export default function EnemyGroupCard({
           <div className="flex items-start justify-between gap-2">
             <div>
               <span className={`font-bold ${traitRoll.card ? 'text-purple-300' : 'text-gray-400'}`}>
-                Trait Roll: {traitRoll.roll} — {traitRoll.card ? `drew "${traitRoll.card.name}"` : 'No trait (4–6)'}
+                Trait Roll: {traitRoll.roll} — {traitRoll.card ? `drew "${traitRoll.card.name}"` : `No trait (${(ENEMY_TRAIT_CONFIG[group.name]?.triggerOn || '1-3') === '4-6' ? '1–3' : '4–6'})`}
               </span>
               {traitRoll.card?.effect && (
                 <p className="text-parchment/80 mt-0.5 leading-snug">{traitRoll.card.effect}</p>
@@ -302,8 +304,12 @@ export default function EnemyGroupCard({
           <button className="btn btn-xs btn-outline" onClick={drawDarkness}>Darkness</button>
           <button className="btn btn-xs btn-outline" onClick={drawGrowingDread}>Grd</button>
           {ENEMY_TRAIT_CARDS[group.name]?.length > 0 && (
-            <button className="btn btn-xs btn-outline btn-secondary" onClick={drawEnemyTrait} title="Roll D6 — 1-3 draws an enemy trait card">
-              Trait D6
+            <button
+              className="btn btn-xs btn-outline btn-secondary"
+              onClick={drawEnemyTrait}
+              title={`Roll D6 — ${ENEMY_TRAIT_CONFIG[group.name]?.triggerOn || '1-3'} draws an enemy trait card`}
+            >
+              {ENEMY_TRAIT_CONFIG[group.name]?.triggerOn === '4-6' ? 'Pack (D6 4-6)' : 'Trait (D6 1-3)'}
             </button>
           )}
         </div>
