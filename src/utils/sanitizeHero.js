@@ -239,6 +239,9 @@ export function sanitizeHero(inputHero) {
     grit: hero.currentGrit ?? 0,
     heroClass: (hero.heroClass ?? 'Unknown').replace(/\s+/g, ''),
     name: hero.name ?? 'Unnamed Hero',
+
+    // Transformation Curse — null | 'zombie' | 'werewolf' | 'vampire'
+    transformation: hero.transformation ?? null,
   };
 }
 

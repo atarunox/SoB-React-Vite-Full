@@ -15,6 +15,7 @@ import DMHandPanel from './DMHandPanel';
 import DMTurnTracker from './DMTurnTracker';
 import DMOptionsPanel from './DMOptionsPanel';
 import DMAdventureTracker from './DMAdventureTracker';
+import DMTransformationPanel from './DMTransformationPanel';
 
 import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
@@ -46,6 +47,19 @@ function PlayersWithConditions(props) {
     <div className="space-y-4">
       <DMPlayerList {...props} />
       <DMChartPanel {...props} />
+      <div className="border border-[#8b6b46] rounded-xl overflow-hidden">
+        <details>
+          <summary className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#2a1f14] to-[#3d2c1a] cursor-pointer select-none list-none">
+            <span className="font-bold text-amber-200 tracking-wide">Transformation Curses</span>
+            <span className="text-xs bg-amber-900/60 text-amber-200 rounded-full px-2.5 py-0.5 font-semibold">
+              {(props.posse ?? []).filter(h => h.transformation).length} active
+            </span>
+          </summary>
+          <div className="bg-[#fdf6e3]/50">
+            <DMTransformationPanel {...props} />
+          </div>
+        </details>
+      </div>
     </div>
   );
 }

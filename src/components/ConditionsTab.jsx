@@ -4,6 +4,7 @@ import { usePosse } from '../context/PosseContext';
 import { useHero } from '../context/HeroContext';
 // Pull lookups to enrich roll-only entries:
 import { lookupInjury } from './DM/charts/injuryChart'; // safe to import here
+import { TRANSFORMATIONS } from '../data/transformations';
 
 /* ---------------- small helpers ---------------- */
 const isActive = (c) => c && c.active !== false && !c.removed;
@@ -475,6 +476,31 @@ export default function ConditionsTab({ hero }) {
           <div className="text-sm">This hero has rolled the same Mutation twice — they are permanently dead.</div>
         </div>
       )}
+
+      {/* Transformation Curse banner */}
+      {(() => {
+        const tfm = hero?.transformation ? TRANSFORMATIONS[hero.transformation] : null;
+        if (!tfm) return null;
+        return (
+          <div className={`mb-4 rounded-lg border-2 ${tfm.theme.border} ${tfm.theme.bg} p-3 space-y-2`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className={`text-xs font-bold uppercase tracking-widest ${tfm.theme.text}`}>Transformation Curse</div>
+                <div className={`font-bold text-base ${tfm.theme.text}`}>{tfm.name}</div>
+                <div className="text-white/50 text-xs">{tfm.curseSource}</div>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded ${tfm.theme.badge}`}>{tfm.keyword}</span>
+            </div>
+            <ul className="space-y-1.5">
+              {tfm.abilities.map((a, i) => (
+                <li key={i} className="text-xs text-white/85 leading-snug">
+                  <b className="text-white">{a.name}:</b> {a.effect}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       {pendingMutations.length > 0 && !hasDuplicateMutation && (
         <div className="mb-4 bg-purple-900 text-purple-100 rounded-lg p-3 border border-purple-500 space-y-1">
