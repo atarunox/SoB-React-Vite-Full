@@ -153,6 +153,11 @@ export const ENEMY_TRAIT_CARDS = {
       flavorText: 'Void Spiders move through other models.',
       effect: 'Defense 4+\n−2 Move\n−1 Initiative',
     },
+    {
+      name: 'Egg Layers',
+      flavorText: 'Void Spiders move through other models.',
+      effect: 'Void Spider To Hit rolls of 6+ now also cause 1 Corruption Hit.\n\nInfected by Egg Sacks — Until the end of the Adventure, any time a Hero rolls on the Mutation Chart, that Hero also takes 2D6 Wounds, ignoring Defense and Armor, and triggers an Ambush Attack! Void Spiders, as they burst out of the unsuspecting host!',
+    },
   ],
 
   // ── Feral Vampires ─────────────────────────────────────────────────────────
@@ -228,6 +233,23 @@ export const ENEMY_TRAIT_CARDS = {
       name: 'Pit Dwellers',
       effect: 'Prioritizes targets by who currently has the most Corruption Points (highest to lowest).\n\nGains +1 Damage on Combat Hits for every Corruption Point the target Hero has, and +2 Damage for each Mutation the target has.',
     },
+    {
+      name: 'Charred',
+      flavorText: 'Hellfire Succubi Trait',
+      effect: 'Heroes take 1 Wound/Sanity Damage (your Choice), ignoring Defense/Willpower, for every Hit they assign to an adjacent Hellfire Succubi.',
+      xp: 5,
+    },
+    {
+      name: 'Born of Flesh',
+      flavorText: 'Hellfire Succubi Trait',
+      effect: 'The Hellfire Succubi lose their Hellfire Demons ability and are reduced to Melee To Hit 4+.\n\nHeroes are -1 on any To Hit rolls they assign to a Hellfire Succubi (if the roll would no longer Hit, it may not be assigned to them). Rolls of 6+ still count as a Critical Hit.',
+    },
+    {
+      name: 'Belian Coven',
+      flavorText: 'Hellfire Succubi Trait',
+      effect: 'Hellfire Succubi gain Armor 5+ against all Damage done by a Holy or Magik Hero (including Sermons and Spells).\n\nAt the start of each turn, roll a D6. On the roll of 1, 2, or 3, draw a Shadow Magik Spell card to be cast by a Random Hellfire Succubi model.',
+      xp: 5,
+    },
   ],
 
   // ── Shaman Juju Trinkets ───────────────────────────────────────────────────
@@ -291,6 +313,11 @@ export const ENEMY_TRAIT_CARDS = {
     {
       name: 'Rocky Skin',
       effect: 'Night Terrors have +3 Health and Tough (Immune to Critical Hits).',
+    },
+    {
+      name: 'Death in the Dark',
+      flavorText: 'Night Terror Trait',
+      effect: 'Night Terrors Re-Target each turn, and prioritize their target based on Heroes that are furthest from the Light Source.\n\nWhile NOT on the same Map Tile as the Heroes\' Light Source, a Night Terror is +1 on all of its To Hit rolls.',
     },
   ],
 
