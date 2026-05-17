@@ -53,6 +53,11 @@ export const ENEMY_TRAIT_CARDS = {
       name: 'Flooding Swarm',
       effect: 'At the end of each Fight round, if there are any Enemies still on the board, add D3+1 Ambushing HellBats to the Fight.\n\nAny HellBat models that cannot be placed each do 2 Horror Hits to every Hero (instead of gaining Elite abilities).',
     },
+    {
+      name: 'Corpse Nesting',
+      flavorText: 'HellBat Trait',
+      effect: 'These HellBats come into play with D3 Corpse Pile Enemies.\n\nWhenever these Corpse Piles successfully roll to Spawn a Hungry Dead, instead it Spawns D3 HellBats.\n\nIf one or more HellBats cannot be placed for this, move the Darkness forward 1 space on the Depth Track instead.',
+    },
   ],
 
   // ── Hungry Dead ────────────────────────────────────────────────────────────
@@ -86,8 +91,10 @@ export const ENEMY_TRAIT_CARDS = {
   // ── Goliath ────────────────────────────────────────────────────────────────
   'Goliath': [
     {
-      name: 'Goliath Trait',
-      effect: 'The Goliath has double its base Health, and gains Keywords Ancient and Alien.\n\nAny time the Goliath does 6 or more Wounds to a Hero during its Activation, that Hero must discard an Item, Side Bag Token, or Dark Stone, consumed by the rampaging creature! It then Heals D6 Wounds (or +1 Wounds per Dark Stone consumed).',
+      name: 'From Beyond the Stars',
+      flavorText: 'Goliath Trait',
+      effect: 'The Goliath has double its base Health, and gains Keywords Ancient and Alien.\n\nAny time the Goliath does 6 or more Wounds to a Hero during its Activation, that Hero must discard an Item, Side Bag Token, or Dark Stone, consumed by the rampaging creature! It then Heals D6 Wounds (or Promo Wounds if it was a Dark Stone or had a Dark Stone Icon).',
+      xp: 5,
     },
     {
       name: 'Feeds on Memories',
@@ -100,6 +107,11 @@ export const ENEMY_TRAIT_CARDS = {
     {
       name: 'Hulking Alien Form',
       effect: 'The Goliath has triple its base Health, and is Keyword Alien.\n\nGains extra Combat with its Flailing Tentacles, against each Hero within range, equal to the total number of Heroes in the Hero Posse.',
+    },
+    {
+      name: 'Plunging Tentacle Arms',
+      flavorText: 'Goliath Trait',
+      effect: 'The Goliath has double its base Health.\n\nAt the start of each turn (after the first turn of the Fight), if there are no Tentacle Enemies on the board, place 2 Tentacles as an Ambush. These Tentacles represent the arms of the Goliath bursting through the ground to reach the Heroes!\n\nWhen a Tentacle is killed, remove it and collect XP as normal, but also add Wound markers to the Goliath equal to the Tentacle\'s base Health.\n\nWhenever the Goliath moves, remove all Tentacles from the board, discarding any Wound markers they had on them. If the Goliath is killed, remove all Tentacles as well.',
     },
   ],
 
@@ -121,6 +133,16 @@ export const ENEMY_TRAIT_CARDS = {
       name: 'Serrated Claws',
       effect: 'Slasher Combat Hits now use the D8 for Damage and ignore Armor.',
     },
+    {
+      name: 'Void Parasites',
+      flavorText: 'Slasher Trait',
+      effect: 'Slashers gain Keyword Void.\n\nWhen a Slasher is killed by a Hero, leave it in place on the board. At the end of that Hero\'s Activation, that Slasher immediately Activates outside of the normal Initiative order, Re-targeting, moving, and Attacking using double its normal Combat value as it unleashes a final fury in death. It is then removed from play.',
+    },
+    {
+      name: 'Enraged by Light',
+      flavorText: 'Slasher Trait',
+      effect: 'While on the same Map Tile as the Hero with the Light Source, Slashers are +2 Combat.\n\nAt the start of its Activation, if a Slasher is within 2 spaces of the Hero with the Light Source, it will change to target that Hero.',
+    },
   ],
 
   // ── Order of the Crimson Hand ──────────────────────────────────────────────
@@ -128,6 +150,28 @@ export const ENEMY_TRAIT_CARDS = {
     {
       name: 'Acolytes of the Black',
       effect: 'Any turn in which the Hold Back the Darkness roll is failed, the Crimson Hand get an extra Activation (Move, Attack, etc.) at Initiative 8, as well as at their normal Initiative level.',
+    },
+    {
+      name: 'Ritual Mutation',
+      flavorText: 'Crimson Hand Trait',
+      effect: 'Roll once on the Mutation Chart (normally only for Heroes), and apply the result to all Crimson Hand models.\n\nIgnore any reference to Sanity and Corruption. If Chest Portal is rolled, it is only triggered once for the whole Enemy Group, when 11 or 12 is rolled to Hold Back the Darkness.',
+    },
+    {
+      name: 'Relic Raiders',
+      flavorText: 'Crimson Hand Trait',
+      effect: 'Any time a Hero takes 5 or more Wounds from Crimson Hand Combat Hits during the turn, roll a D6. On the roll of 1 or 2, the Crimson Hand steal the Hero\'s highest Gold value Artifact (discard, and transfer to the Crimson Hand). This immediately counts as an extra Artifact for their Sacred Artifact ability.',
+      xp: '+5 Per Artifact currently in their possession',
+    },
+    {
+      name: 'New Recruits',
+      flavorText: 'New recruits are often unskilled, but have something to prove.',
+      effect: 'Crimson Hand lose the Sacred Artifact Ability, are reduced to Range To Hit 5+, and are only Damage 2 for Melee Attacks.\n\nThey are, however, Double their base Health, and gain +2 Damage for each Wound instead, for their Zealot Ability.',
+    },
+    {
+      name: 'Infiltration',
+      flavorText: 'Crimson Hand Trait',
+      effect: 'Always attacks from Ambush.\n\nIn the first turn of a Fight, gains +1 Shot with their Cult Rifles for each Hero in the Posse that has Cunning 2 or lower.',
+      xp: 5,
     },
   ],
 
@@ -416,6 +460,24 @@ export const ENEMY_TRAIT_CARDS = {
       flavorText: 'A hefty group of slovenly bandits, the McMillan Boys had a legendary appetite for gold and violence. Overrun and infected while trying to pilfer the Zombie infested ruins of Camp Anderson, this appetite has become an unquenchable hunger for carnage and brains!',
       effect: 'Bloated Bodies — +2 Health\n\nBrain Hungry — +2 Move and +1 Combat. Shootout ability is replaced with Assault, but their Twin Irons are reduced to only Shots 2 (or Shots 3 if Brutal).',
       xp: 15,
+    },
+    {
+      name: "Tuco Vaca's Border Raiders",
+      flavorText: 'A wild pack of Bandidos in life, these reckless outlaws raided border towns all across the Southwest, until they were finally caught and hanged in Texas. Risen from the grave, they have become even more reckless than before! Their raspy cackling is enough to chill you to the bone!',
+      effect: 'Dynamite — When about to make a Ranged Attack, roll a D6. On the roll of 5 or 6, throws Dynamite instead. Place a Dynamite Token in the Target\'s space and roll To Hit. This works like normal Dynamite in every way (for Bounce, etc).\n\nRaspy Cackling — Explosives (such as Dynamite) only reduce their Defense to 2, rather than fully ignoring it.',
+      xp: 5,
+    },
+    {
+      name: 'The Rooker Gang',
+      flavorText: 'A fearsome band of outlaws from the 1850s, the Rooker Gang robbed every bank and camp from Uxbridge to Charlotte\'s Mill. There\'s little left of them now except for bones and hate!',
+      effect: 'Skeletal — +2 Move and +2 Initiative\n\nFear Bullets — All Rooker Gang Ranged To Hit rolls of 6+ also cause 3 Horror Hits that do 2 Sanity Damage each.',
+      xp: 10,
+    },
+    {
+      name: 'The Trailblazer Gang',
+      flavorText: 'Ghostly spectres of their former selves, the Trailblazer Gang now haunt the roads and mines they used to rob and terrorize in life. They still drag the chains they were bound in when they attempted a jail break, and were gunned down trying to escape.',
+      effect: 'Ethereal Spectres — +2 Move and may move through other models. Reduced to Health 3 (or Health 5 if Brutal), but may not take more than 1 Wound per Hit.\n\nTerrifying — Fear (2) is replaced with Terror (2). If combined with the Elite Chart Ruthless Outlaws ability, this becomes Unspeakable Terror (2).',
+      xp: 5,
     },
   ],
 
