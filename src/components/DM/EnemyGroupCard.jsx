@@ -309,7 +309,9 @@ export default function EnemyGroupCard({
               onClick={drawEnemyTrait}
               title={`Roll D6 — ${ENEMY_TRAIT_CONFIG[group.name]?.triggerOn || '1-3'} draws an enemy trait card`}
             >
-              {ENEMY_TRAIT_CONFIG[group.name]?.triggerOn === '4-6' ? 'Pack (D6 4-6)' : 'Trait (D6 1-3)'}
+              {ENEMY_TRAIT_CONFIG[group.name]?.triggerOn === '4-6'
+                ? `${ENEMY_TRAIT_CONFIG[group.name]?.label ?? 'Pack'} (4-6)`
+                : 'Trait (D6 1-3)'}
             </button>
           )}
         </div>
