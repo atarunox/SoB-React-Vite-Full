@@ -4,13 +4,71 @@ import { rollND } from '../../utils/diceHelpers';
 
 const LS_KEY = 'sob_turnTracker';
 
+// Keyed by trait card name. Values: { activation?, hero?, round_end? }
+// activation  = show when that enemy group is the active entry
+// hero        = show on every hero's activation while the group is in combat
+// round_end   = show in the persistent end-of-round reminder strip
+const TRAIT_REMINDERS = {
+  // ── Harbinger ──────────────────────────────────────────────────────────────
+  'Lashing Tail':          { activation: 'Roll 1 Hit on Random Hero within 3 spaces → 2D6 Damage' },
+  'Screeching Roar':       { round_end:  'If HBtD failed this turn: all Enemies +2 Damage / all Heroes −2 Damage until end of turn' },
+  'Blistering Touch':      { hero:       'Adjacent to Harbinger? Agility 5+ or take 3 Hits × 2 Damage; 6+ to-hit adds D3 Burning markers' },
+  'Bringer of Armageddon': { activation: 'Cast a Shadow Magik Spell (or Default Spell on back of reference card)' },
+
+  // ── HellBats ───────────────────────────────────────────────────────────────
+  'Human Faces':           { hero:      'Adjacent to HellBats? Take 1 Corruption Hit' },
+  'Flooding Swarm':        { round_end: 'HellBats — Flooding Swarm: Add D3+1 Ambushing HellBats to the Fight' },
+
+  // ── Goliath ────────────────────────────────────────────────────────────────
+  'Plunging Tentacle Arms':{ activation: 'If no Tentacle enemies on board: place 2 Tentacles as Ambush. Killed Tentacle → add its base Health as wounds to Goliath' },
+  'Unstoppable Mass':      { activation: 'Re-Target to Hero with highest current Health this turn' },
+
+  // ── Slashers ───────────────────────────────────────────────────────────────
+  'Enraged by Light':      { activation: 'If within 2 spaces of Lantern Hero, re-target that Hero (+2 Combat while on same Map Tile as Light Source)' },
+
+  // ── Order of the Crimson Hand ──────────────────────────────────────────────
+  'Acolytes of the Black': { round_end:  'Crimson Hand — Acolytes: If HBtD failed this turn, Crimson Hand get an extra Activation at Initiative 8' },
+
+  // ── Feral Vampires ─────────────────────────────────────────────────────────
+  'Light Sensitive':       { activation: 'Roll D6 per Vampire in Move range of Lantern Hero — on 5+: re-target to Lantern Hero this turn' },
+  'Soul Siphoning':        { round_end:  'Feral Vampires — Soul Siphoning: Each Hero takes 1 Horror Hit per Wound on each adjacent Vampire' },
+  'Blood Frenzied':        { activation: 'Re-Target to Hero with most Wounds; +1 Damage per 2 Wounds target had at start of Vampire activation' },
+
+  // ── Werewolf Feral Kin ─────────────────────────────────────────────────────
+  'Battle Lust':           { round_end:  'Werewolf Feral Kin — Battle Lust: Heal Wounds equal to Blood Spatter spaces Darkness has passed (including current space)' },
+  'The Smell of Fear':     { activation: 'Re-Target to Hero with most Sanity Damage; +1 Damage per 2 Sanity Damage target had at start of activation' },
+
+  // ── Lost Army ──────────────────────────────────────────────────────────────
+  'Burning Hatred':        {
+    activation: 'Lost Army in Formation: Free Move 1 space toward Lantern Hero (must stay in Formation)',
+    hero:       'On same Map Tile as Lost Army? Take 2 Horror Hits',
+  },
+
+  // ── Hellfire Succubi ───────────────────────────────────────────────────────
+  'Belian Coven':          { activation: 'Roll D6 — on 1, 2, or 3: draw a Shadow Magik Spell card for a Random Succubus to cast' },
+
+  // ── Shaman ─────────────────────────────────────────────────────────────────
+  'Tribal Voodoo Doll':    { activation: 'Select a Random Hero → Defense and Willpower 5+ this turn (unless already worse)' },
+  "Ven'issa Rattle":       { hero:       'On same Map Tile as Shaman? Take 2 Horror Hits (Terror 2 — replaces any Fear)' },
+
+  // ── Ancient One ────────────────────────────────────────────────────────────
+  'Ancient Enemies':       { activation: 'Roll D6 — on 1, 2, or 3: draw a Darkness card' },
+
+  // ── Night Terrors ──────────────────────────────────────────────────────────
+  'Glowing Eyes':          { activation: '⇅ REVERSE INITIATIVE active — all models activate lowest→highest. Defense 4− enemies have Tough until they Activate' },
+  'Death in the Dark':     { activation: 'Re-Target to Hero furthest from Light Source; +1 To Hit if not on same tile as Light Source' },
+};
+
 function getHeroInitiative(hero) {
   return Number(hero?.stats?.Initiative ?? hero?.initiative ?? 4);
 }
 
 function parseFearFromGroup(group) {
-  const abilities = group.baseStats?.abilities || [];
-  for (const a of abilities) {
+  const sources = [
+    ...(group.baseStats?.abilities || []),
+    ...(group.modifiers || []).filter(m => m.type === 'enemyTrait').map(m => m.description || ''),
+  ];
+  for (const a of sources) {
     const m = a.match(/(?:Unspeakable\s+)?(?:Terror|Fear)\s*\((\d+)\)/i);
     if (m) {
       const hits = parseInt(m[1], 10);
@@ -25,7 +83,19 @@ function parseFearFromGroup(group) {
   return null;
 }
 
-function buildTurnOrder(posse, combatGroups, excluded) {
+// Returns trait reminder text for a specific timing from a group's active enemyTrait modifiers.
+function getTraitRemindersForGroup(group, timing) {
+  if (!group?.modifiers) return [];
+  return group.modifiers
+    .filter(m => m.type === 'enemyTrait')
+    .flatMap(m => {
+      const r = TRAIT_REMINDERS[m.name];
+      if (!r || !r[timing]) return [];
+      return [{ cardName: m.name, text: r[timing] }];
+    });
+}
+
+function buildTurnOrder(posse, combatGroups, excluded, reversed) {
   const entries = [];
 
   for (const hero of posse) {
@@ -53,7 +123,11 @@ function buildTurnOrder(posse, combatGroups, excluded) {
     });
   }
 
-  entries.sort((a, b) => b.initiative - a.initiative || (a.type === 'enemy' ? -1 : 1));
+  if (reversed) {
+    entries.sort((a, b) => a.initiative - b.initiative || (a.type === 'enemy' ? -1 : 1));
+  } else {
+    entries.sort((a, b) => b.initiative - a.initiative || (a.type === 'enemy' ? -1 : 1));
+  }
   return entries;
 }
 
@@ -63,6 +137,7 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
   const [excluded, setExcluded] = useState(() => {
     try { return JSON.parse(localStorage.getItem(LS_KEY + '_excluded')) || {}; } catch { return {}; }
   });
+  const [reverseInitiative, setReverseInitiative] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [activationLog, setActivationLog] = useState(null);
   const [activatedThisRound, setActivatedThisRound] = useState(new Set());
@@ -71,9 +146,15 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     localStorage.setItem(LS_KEY + '_excluded', JSON.stringify(excluded));
   }, [excluded]);
 
+  // Auto-suggest reverse initiative when Glowing Eyes is active
+  const glowingEyesActive = useMemo(
+    () => combatGroups.some(g => g.modifiers?.some(m => m.type === 'enemyTrait' && m.name === 'Glowing Eyes')),
+    [combatGroups]
+  );
+
   const turnOrder = useMemo(
-    () => buildTurnOrder(posse, combatGroups, excluded),
-    [posse, combatGroups, excluded]
+    () => buildTurnOrder(posse, combatGroups, excluded, reverseInitiative),
+    [posse, combatGroups, excluded, reverseInitiative]
   );
 
   const current = turnOrder[currentIdx] || null;
@@ -87,10 +168,16 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     });
   }, []);
 
+  // Collect persistent round-end reminders from all active groups' trait modifiers
+  const roundEndReminders = useMemo(() => {
+    return combatGroups.flatMap(g => getTraitRemindersForGroup(g, 'round_end'));
+  }, [combatGroups]);
+
   const getActivationEffects = useCallback((entry) => {
     const effects = [];
 
     if (entry.type === 'hero') {
+      // Status markers
       const markers = getAllMarkers(entry.hero);
       if (markers.length > 0) {
         effects.push({
@@ -99,6 +186,7 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
         });
       }
 
+      // Fear / Terror / Unspeakable Terror from all enemy groups
       for (const group of combatGroups) {
         const fear = parseFearFromGroup(group);
         if (fear) {
@@ -107,6 +195,17 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
             label: `${group.name}: ${fear.label} — ${fear.hits} Horror Hit(s) if ${fear.range}`,
             hits: fear.hits,
             enemyName: group.name,
+          });
+        }
+      }
+
+      // Trait reminders that fire on hero activation
+      for (const group of combatGroups) {
+        const heroReminders = getTraitRemindersForGroup(group, 'hero');
+        for (const r of heroReminders) {
+          effects.push({
+            type: 'trait',
+            label: `${group.name} [${r.cardName}]: ${r.text}`,
           });
         }
       }
@@ -147,57 +246,33 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
       return;
     }
 
-    // Minimal UI adapter for resolveActivationMarkers
     const ui = {
-      roll: async (count, sides, label) => {
-        const rolls = rollND(count, sides);
-        return rolls;
-      },
-      toast: (msg) => {
-        console.log(`[Activation] ${msg}`);
-      },
+      roll: async (count, sides) => rollND(count, sides),
+      toast: (msg) => console.log(`[Activation] ${msg}`),
     };
 
-    const getStat = (h, statName) => {
-      return h?.stats?.[statName] ?? h?.[statName?.toLowerCase()] ?? 0;
-    };
+    const getStat = (h, statName) => h?.stats?.[statName] ?? h?.[statName?.toLowerCase()] ?? 0;
 
     try {
-      const result = await resolveActivationMarkers({
-        ui,
-        hero,
-        getStat,
-        updateHero,
-        heroId,
-      });
+      const result = await resolveActivationMarkers({ ui, hero, getStat, updateHero, heroId });
 
-      // Apply wounds to hero (CRITICAL: use currentHealth, not wounds/health)
       if (result.wounds > 0 && updateHero) {
         updateHero(heroId, (h) => {
           const maxHP = Number(h.maxHealth ?? 10);
           const curHP = Number(h.currentHealth ?? maxHP);
-          const nextHP = Math.max(0, curHP - result.wounds);
-          return { ...h, currentHealth: nextHP };
+          return { ...h, currentHealth: Math.max(0, curHP - result.wounds) };
         });
       }
 
-      // Display log
       const logLines = result.log || [];
-      if (result.lostActivation) {
-        logLines.push('⚠️ Hero loses this activation due to Snare/Web!');
-      }
+      if (result.lostActivation) logLines.push('⚠️ Hero loses this activation due to Snare/Web!');
       setActivationLog(logLines);
 
-      // Auto-advance if lost activation
       if (result.lostActivation) {
-        setTimeout(() => {
-          markActivated();
-          advanceTurn();
-        }, 2000);
+        setTimeout(() => { markActivated(); advanceTurn(); }, 2000);
       }
     } catch (err) {
       setActivationLog([`Error resolving markers: ${err.message}`]);
-      console.error(err);
     }
   }, [current, updateHero, markActivated, advanceTurn]);
 
@@ -216,6 +291,7 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     setCurrentIdx(0);
     setActivationLog(null);
     setActivatedThisRound(new Set());
+    setReverseInitiative(false);
   }, []);
 
   const effects = current ? getActivationEffects(current) : [];
@@ -239,14 +315,39 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     <div className="p-4 bg-white rounded shadow space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-bold">Initiative Tracker</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold bg-gray-100 px-3 py-1 rounded">Round {round}</span>
+
+          {/* Reverse initiative toggle */}
+          <button
+            className={`btn btn-xs min-h-[36px] ${reverseInitiative ? 'btn-warning' : 'btn-outline'}`}
+            onClick={() => setReverseInitiative(v => !v)}
+            title={reverseInitiative ? 'Initiative reversed (lowest first) — click to restore' : 'Reverse initiative order (Glowing Eyes)'}
+          >
+            ⇅ {reverseInitiative ? 'Reversed' : 'Normal'}
+          </button>
+
           <button className="btn btn-xs btn-outline min-h-[36px]" onClick={() => setShowSettings(!showSettings)}>
             {showSettings ? 'Hide' : 'Settings'}
           </button>
           <button className="btn btn-xs btn-ghost text-red-500 min-h-[36px]" onClick={resetTracker}>Reset</button>
         </div>
       </div>
+
+      {/* Glowing Eyes suggestion banner */}
+      {glowingEyesActive && !reverseInitiative && (
+        <div className="bg-purple-100 border border-purple-400 rounded px-3 py-2 flex items-center justify-between gap-2">
+          <span className="text-xs text-purple-800 font-semibold">👁 Glowing Eyes active — should initiative be reversed?</span>
+          <button className="btn btn-xs btn-warning" onClick={() => setReverseInitiative(true)}>Reverse Now</button>
+        </div>
+      )}
+
+      {/* Reverse initiative active banner */}
+      {reverseInitiative && (
+        <div className="bg-amber-100 border border-amber-400 rounded px-3 py-2 text-xs text-amber-900 font-semibold">
+          ⇅ Initiative REVERSED — activating lowest to highest (0 → 1 → 2…)
+        </div>
+      )}
 
       {showSettings && (
         <ExcludeSettings posse={posse} combatGroups={combatGroups} excluded={excluded} toggleExclude={toggleExclude} />
@@ -295,21 +396,39 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
             <span className="text-xs text-gray-500">Init {current.initiative}</span>
           </div>
 
-          {/* Activation effects */}
+          {/* Hero: Fear / markers / trait reminders */}
           {effects.length > 0 && (
             <div className="space-y-1">
               <p className="text-xs font-bold text-gray-600 uppercase">Start of Activation:</p>
               {effects.map((eff, i) => (
                 <div key={i} className={`text-sm px-2 py-1 rounded ${
-                  eff.type === 'fear' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                  eff.type === 'fear'    ? 'bg-purple-100 text-purple-800 border border-purple-200' :
                   eff.type === 'markers' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                  eff.type === 'trait'   ? 'bg-orange-100 text-orange-800 border border-orange-200' :
                   'bg-gray-100'
                 }`}>
+                  {eff.type === 'trait' && <span className="mr-1">⚠</span>}
                   {eff.label}
                 </div>
               ))}
             </div>
           )}
+
+          {/* Enemy: trait activation reminders */}
+          {current.type === 'enemy' && (() => {
+            const reminders = getTraitRemindersForGroup(current.group, 'activation');
+            if (reminders.length === 0) return null;
+            return (
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-gray-600 uppercase">Trait Reminders:</p>
+                {reminders.map((r, i) => (
+                  <div key={i} className="text-sm px-2 py-1 rounded bg-orange-100 text-orange-900 border border-orange-300">
+                    <span className="font-semibold">[{r.cardName}]</span> {r.text}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Activation log */}
           {activationLog && (
@@ -319,14 +438,9 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
           )}
 
           <div className="flex flex-wrap gap-2 pt-1">
-            <button className="btn btn-sm btn-outline min-h-[44px]" onClick={prevTurn}>
-              ← Prev
-            </button>
+            <button className="btn btn-sm btn-outline min-h-[44px]" onClick={prevTurn}>← Prev</button>
             {current.type === 'hero' && getAllMarkers(current.hero).length > 0 && (
-              <button
-                className="btn btn-sm btn-warning min-h-[44px]"
-                onClick={handleResolveActivation}
-              >
+              <button className="btn btn-sm btn-warning min-h-[44px]" onClick={handleResolveActivation}>
                 ⚡ Resolve Markers
               </button>
             )}
@@ -337,6 +451,18 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
               End Turn → Next
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Round-end reminders — persistent strip */}
+      {roundEndReminders.length > 0 && (
+        <div className="border border-amber-400 rounded-lg bg-amber-50 p-3 space-y-1">
+          <p className="text-xs font-bold text-amber-800 uppercase">End of Round Reminders:</p>
+          {roundEndReminders.map((r, i) => (
+            <div key={i} className="text-xs text-amber-900 px-2 py-1 bg-amber-100 rounded border border-amber-300">
+              <span className="font-semibold">[{r.cardName}]</span> {r.text}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -352,12 +478,7 @@ function ExcludeSettings({ posse, combatGroups, excluded, toggleExclude }) {
           const id = hero.id || hero.localId;
           return (
             <label key={id} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!excluded[id]}
-                onChange={() => toggleExclude(id)}
-                className="checkbox checkbox-sm"
-              />
+              <input type="checkbox" checked={!excluded[id]} onChange={() => toggleExclude(id)} className="checkbox checkbox-sm" />
               <span className="text-blue-700">{hero.name || 'Unknown Hero'}</span>
               <span className="text-xs text-gray-400">Init {getHeroInitiative(hero)}</span>
             </label>
@@ -365,12 +486,7 @@ function ExcludeSettings({ posse, combatGroups, excluded, toggleExclude }) {
         })}
         {combatGroups.map(group => (
           <label key={group.id} className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!excluded[group.id]}
-              onChange={() => toggleExclude(group.id)}
-              className="checkbox checkbox-sm"
-            />
+            <input type="checkbox" checked={!excluded[group.id]} onChange={() => toggleExclude(group.id)} className="checkbox checkbox-sm" />
             <span className="text-red-700">{group.name} (×{group.count})</span>
             <span className="text-xs text-gray-400">Init {group.baseStats?.initiative ?? '?'}</span>
           </label>
