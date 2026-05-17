@@ -195,6 +195,24 @@ export const ENEMY_TRAIT_CARDS = {
       name: 'The Smell of Fear',
       effect: 'Prioritizes targets by who currently has the most Sanity Damage (highest to lowest).\n\nGains +1 Damage on Combat Hits for every 2 Sanity Damage the target Hero had at the start of the Werewolf Activation.',
     },
+    {
+      name: 'Pack Hunters',
+      flavorText: 'Werewolf Trait',
+      effect: 'When selecting targets, ignores whether or not the target already has a Werewolf Feral Kin targeting it (may double up, etc).\n\nGains +1 Combat and +1 Defense for each other adjacent Werewolf Feral Kin.',
+      xp: 5,
+    },
+    {
+      name: 'Leaping',
+      flavorText: 'Werewolf Trait',
+      effect: 'Moves through other models.\n\nWhen moving to attack, only moves the shortest distance possible to reach the target.\n\nAfter moving at least 1 space to reach a target, gains +1 Damage on all of its Combat Hits for each unspent point of its move remaining.',
+      xp: 5,
+    },
+    {
+      name: 'Runic Charms',
+      flavorText: 'Werewolf Trait',
+      effect: '+2 Defense\n\nGains an additional +2 Defense and is Immune to Critical Hits from any Attack made using an Item that has one or more Holy icons.\n\nAlso, ignores all of the effects of any Sermon or Spell on the D6 roll of 5 or 6.',
+      xp: 10,
+    },
   ],
 
   // ── Lost Army ──────────────────────────────────────────────────────────────
@@ -319,6 +337,16 @@ export const ENEMY_TRAIT_CARDS = {
       flavorText: 'Night Terror Trait',
       effect: 'Night Terrors Re-Target each turn, and prioritize their target based on Heroes that are furthest from the Light Source.\n\nWhile NOT on the same Map Tile as the Heroes\' Light Source, a Night Terror is +1 on all of its To Hit rolls.',
     },
+    {
+      name: 'Stolen in the Night',
+      flavorText: 'Night Terror Trait',
+      effect: 'When the Night Terrors are placed on the board, also put D3 KO\'d Hero markers at the back of the Map Tile for each Night Terror. These markers represent Stolen Victims and may not be interacted with in any way.\n\nNight Terrors are +1 Health for each of these Stolen Victim markers in play, and +1 Combat for every 2 Stolen Victim markers in play.\n\nAt the end of the Fight, every Hero gains +10 XP for each Stolen Victim marker, and the markers are removed.',
+    },
+    {
+      name: 'Glowing Eyes',
+      flavorText: 'Night Terror Trait',
+      effect: 'At the start of each turn, if there are one or more Night Terrors on the board, they shift reality, making nightmares manifest!\n\nThis turn, all models are Activated in reverse Initiative order, from lowest to highest (starting with Initiative 0, then 1, then 2, etc).\n\nAll Enemies with Defense 4 or less are considered to have Tough (Immune to Critical Hits) until they Activate each turn.',
+    },
   ],
 
   // ── Serpentmen Tribal Pack (draw on 4-6) ──────────────────────────────────
@@ -342,6 +370,11 @@ export const ENEMY_TRAIT_CARDS = {
       name: 'King Moccasin Tribe',
       flavorText: 'The biggest and strongest of the local tribes, these Serpentmen are hearty warriors with thick, razor-sharp blue scales. Where other tribes often use their speed and stealth to attack, the King Moccasin rush headlong into the fight, crushing their opponents with brute force!',
       effect: 'Heavy Scales — +2 Health but −1 Initiative.\n\nBrute Force — Serpentmen Melee To Hit rolls of 6 ignore Defense.\n\nXP: +10',
+    },
+    {
+      name: 'Bloodbane Tribe',
+      flavorText: 'The Bloodbane tribe hail from the southern reach of the Dor\'ahk Blood Swamp, where the murky water runs red as it bubbles up from below the surface. These deadly vipers naturally produce a toxin that is legendary for the speed at which it kills, and the torment of those it has touched.',
+      effect: 'Vicious Attacks — Serpentmen Combat Hits are +1 Damage.\n\nDeadly Venom — While this Serpentmen Tribe card is in play, all Poison Markers do wounds on 1, 2, or 3 instead.',
     },
   ],
 
@@ -372,6 +405,18 @@ export const ENEMY_TRAIT_CARDS = {
       flavorText: 'The Hitchcock Gang have earned a name for themselves as the most ruthless bank robbers in the Southwest! They hit hard and fast, and have an affinity for using Dynamite.',
       effect: 'Hit Fast — +1 Move and +1 Initiative.\n\nDynamite — When about to make a Ranged Attack, roll a D6. On the roll of 5 or 6, throws Dynamite instead. Place a Dynamite Token in the Target\'s space and roll To Hit. This works like normal Dynamite in every way (for Bounce, etc).',
     },
+    {
+      name: 'The Lost Marshals',
+      flavorText: 'With the tattered black dusters, rusty shotguns, and tarnished tin badges of their former trade, this pack of unlawful turncoats betrayed their oath and their country to get rich on the frontier. It caught up to them in life, but in death...they dispense a new form of law.',
+      effect: 'Rusty Shotguns — Twin Irons are replaced with Rusty Shotguns: Range 5, Shots 1, Damage 5. Uses the D8 To Hit.\n\nTarnished Tin — All Lost Marshals are +1 Shot for each Wound it currently has.',
+      xp: '+10 (+5 more if Law)',
+    },
+    {
+      name: 'The McMillan Boys',
+      flavorText: 'A hefty group of slovenly bandits, the McMillan Boys had a legendary appetite for gold and violence. Overrun and infected while trying to pilfer the Zombie infested ruins of Camp Anderson, this appetite has become an unquenchable hunger for carnage and brains!',
+      effect: 'Bloated Bodies — +2 Health\n\nBrain Hungry — +2 Move and +1 Combat. Shootout ability is replaced with Assault, but their Twin Irons are reduced to only Shots 2 (or Shots 3 if Brutal).',
+      xp: 15,
+    },
   ],
 
   // ── Werewolf Pack (draw on 4-6) ────────────────────────────────────────────
@@ -390,6 +435,16 @@ export const ENEMY_TRAIT_CARDS = {
       name: 'Children of the Moon',
       flavorText: 'On occasion, an entire group of prospectors working in a mine or a whole community of settlers will succumb to a fast-spreading curse, transforming them all into werewolves over the course of just a few days.',
       effect: 'Settlers and Prospectors — Children of the Moon have Keyword Frontier.\n\nTerritorial — Children of the Moon Melee To Hit rolls of 6+ are +1 Damage for each Hero in the Hero Posse.',
+    },
+    {
+      name: 'The Henshaw Gang',
+      flavorText: 'Once simply known as an infamous posse of cutthroats and bandits, The Henshaw Gang were cursed by a dying medicine man after being paid to wipe out an Indian village on the orders of a ruthless rail baron. Already unhinged, the gang now uses their lycan forms to chase down and rob stagecoaches and speeding trains, leaving a bloody trail in their wake.',
+      effect: 'Vicious Thieves — The Henshaw Gang have Keyword Outlaw.\n\nFighting Dirty — The Henshaw Gang only have a base Melee To Hit 4+, but each unsaved Hit also adds a Bleeding Marker to the Hero on the D6 roll of 1, 2, or 3.\n\nBounty: $50 Each',
+    },
+    {
+      name: 'Brothers of the Wolf',
+      flavorText: 'Taken by the Wolf Mother during a tribal ritual, these young and bloodthirsty Indian Braves are hunters on a physical Spirit journey! Finding one another in the wild and forming a pack, they are on the warpath to collect trophies for their lunar goddess, proving their worth as warriors of the night!',
+      effect: 'Indian Braves — Brothers of the Wolf have Keyword Tribal.\n\nCollect Trophies — Any Hero KO\'d by a Brothers of the Wolf Enemy must also discard an Item, Side Bag Token, or Dark Stone (taken as a trophy).',
     },
   ],
 };
