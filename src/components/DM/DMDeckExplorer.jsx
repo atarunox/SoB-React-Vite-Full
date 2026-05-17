@@ -9,8 +9,14 @@ import { gearCards }           from '../../data/items/gearCards';
 import { mineArtifacts }       from '../../data/items/mineArtifacts';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts';
 import { ENEMY_CARDS }         from '../../data/enemyCards';
+import { ENEMY_TRAIT_CARDS }   from '../../data/enemyCards/enemyTraitCards';
 import { TOWN_TYPE_CARDS }     from '../../data/cards/townTypeCards';
 import { townTraitsChart }     from './charts/townTraitsChart';
+
+// Flatten enemy trait cards: { enemyName: [cards] } → [{ enemy, name, effect, ... }]
+const flatEnemyTraitCards = Object.entries(ENEMY_TRAIT_CARDS).flatMap(
+  ([enemy, cards]) => cards.map(c => ({ ...c, tags: [enemy] }))
+);
 
 // ── Flat decks ────────────────────────────────────────────────────────────────
 const DECKS = [
@@ -23,8 +29,9 @@ const DECKS = [
   { id: 'gear',        label: 'Gear Cards',            cards: gearCards           },
   { id: 'mineArt',    label: 'Mine Artifacts',         cards: mineArtifacts       },
   { id: 'owArt',      label: 'OtherWorld Artifacts',   cards: otherWorldArtifacts },
-  { id: 'townTypes',   label: 'Town Type Cards',        cards: TOWN_TYPE_CARDS     },
-  { id: 'townTraits',  label: 'Town Traits (D36)',      cards: townTraitsChart     },
+  { id: 'townTypes',   label: 'Town Type Cards',        cards: TOWN_TYPE_CARDS         },
+  { id: 'townTraits',  label: 'Town Traits (D36)',      cards: townTraitsChart         },
+  { id: 'enemyTraits', label: 'Enemy Trait Cards',      cards: flatEnemyTraitCards     },
 ];
 
 // ── Generic card row ──────────────────────────────────────────────────────────

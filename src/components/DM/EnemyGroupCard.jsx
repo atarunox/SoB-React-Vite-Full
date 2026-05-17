@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { getAllStatsWithBreakdown } from "../../utils/enemyModifiers";
 import { TRAIT_DECKS } from "../../data/traitDecks";
+import { ENEMY_TRAIT_CARDS } from "../../data/enemyCards/enemyTraitCards";
 import { DARKNESS_CARDS } from "../../data/darknessCards";
 import { GROWING_DREAD_CARDS } from "../../data/growingDreadCards";
 import StatBreakdownModal from "./StatBreakdownModal";
@@ -17,6 +18,7 @@ export default function EnemyGroupCard({
   const [breakdownModal, setBreakdownModal] = useState({ show: false, stat: "", breakdown: null });
   const [manualOverrides, setManualOverrides] = useState(group.manualOverrides || {});
   const [showElite, setShowElite] = useState(false);
+  const [traitRoll, setTraitRoll] = useState(null);
 
   const statBundle = getAllStatsWithBreakdown(group, globalModifiers, manualOverrides);
 
@@ -76,6 +78,25 @@ export default function EnemyGroupCard({
     });
     setCombatGroups(newGroups);
   };
+  const drawEnemyTrait = () => {
+    const deck = ENEMY_TRAIT_CARDS[group.name] || [];
+    if (deck.length === 0) return;
+    const roll = Math.floor(Math.random() * 6) + 1;
+    if (roll >= 4) {
+      setTraitRoll({ roll, card: null });
+      return;
+    }
+    const card = deck[Math.floor(Math.random() * deck.length)];
+    setTraitRoll({ roll, card });
+    const newGroups = [...allGroups];
+    newGroups[groupIdx].modifiers.push({
+      type: "enemyTrait",
+      name: card.name,
+      description: card.effect || '',
+    });
+    setCombatGroups(newGroups);
+  };
+
   const removeModifier = (i) => {
     const newGroups = [...allGroups];
     newGroups[groupIdx].modifiers.splice(i, 1);
@@ -203,6 +224,23 @@ export default function EnemyGroupCard({
         </div>
       )}
 
+      {/* ── Enemy trait roll result ── */}
+      {traitRoll && (
+        <div className={`border-t px-3 py-2 text-xs ${traitRoll.card ? 'bg-purple-950 border-purple-700' : 'bg-gray-900 border-gray-700'}`}>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <span className={`font-bold ${traitRoll.card ? 'text-purple-300' : 'text-gray-400'}`}>
+                Trait Roll: {traitRoll.roll} — {traitRoll.card ? `drew "${traitRoll.card.name}"` : 'No trait (4–6)'}
+              </span>
+              {traitRoll.card?.effect && (
+                <p className="text-parchment/80 mt-0.5 leading-snug">{traitRoll.card.effect}</p>
+              )}
+            </div>
+            <button className="text-gray-500 hover:text-gray-300 shrink-0" onClick={() => setTraitRoll(null)}>✕</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Stats bar ── */}
       <div className={`${statBarBg} border-t border-parchment/20`}>
         <div className="grid grid-cols-6 divide-x divide-parchment/20 text-center">
@@ -263,6 +301,11 @@ export default function EnemyGroupCard({
           <button className="btn btn-xs btn-outline" onClick={drawTrait}>Trait</button>
           <button className="btn btn-xs btn-outline" onClick={drawDarkness}>Darkness</button>
           <button className="btn btn-xs btn-outline" onClick={drawGrowingDread}>Grd</button>
+          {ENEMY_TRAIT_CARDS[group.name]?.length > 0 && (
+            <button className="btn btn-xs btn-outline btn-secondary" onClick={drawEnemyTrait} title="Roll D6 — 1-3 draws an enemy trait card">
+              Trait D6
+            </button>
+          )}
         </div>
         <button className="btn btn-xs btn-ghost text-red-600 ml-auto" onClick={removeGroup}>Remove</button>
       </div>

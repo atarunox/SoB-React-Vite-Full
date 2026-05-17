@@ -15,6 +15,7 @@ const DECK_TYPES = [
   { id: 'depthEvent',   label: 'Depth Event' },
   { id: 'townTrait',    label: 'Town Trait Card' },
   { id: 'enemy',        label: 'Enemy Sheet' },
+  { id: 'enemyTrait',   label: 'Enemy Trait Card' },
 ];
 
 const WORLDS = [
@@ -148,6 +149,13 @@ function applyToSchema(raw, deckType, enemySide = 'normal') {
         flavor: raw.flavor || raw.flavorText || '',
         effect,
         restrictions: Array.isArray(raw.restrictions) ? raw.restrictions : [],
+      };
+    case 'enemyTrait':
+      return {
+        enemy: raw.enemy || '',
+        name,
+        flavorText: raw.flavorText || '',
+        effect,
       };
     case 'enemy': {
       const move = raw.move != null ? String(raw.move) : '0';
@@ -462,6 +470,16 @@ function FormFields({ deckType, data, onChange }) {
         </div>
       );
 
+    case 'enemyTrait':
+      return (
+        <div className="space-y-3">
+          {field('Enemy Name (exact match)', 'enemy', 'text', 'e.g. Scafford Gang')}
+          {field('Card Name', 'name', 'text', 'e.g. Wanted Dead or Alive')}
+          {textarea('Flavor Text (italic, optional)', 'flavorText')}
+          {textarea('Effect', 'effect')}
+        </div>
+      );
+
     case 'enemy':
       return (
         <div className="space-y-3">
@@ -576,9 +594,23 @@ function formatEnemyForExport(card) {
 function exportCards(deckType, cards) {
   const label = DECK_TYPES.find(d => d.id === deckType)?.label || deckType;
   const date = new Date().toISOString().slice(0, 10);
-  const exportData = deckType === 'enemy' ? cards.map(formatEnemyForExport) : cards;
-  const json = JSON.stringify(exportData, null, 2);
-  const content = `// Scanned cards — ${label} — ${date}\n// Paste / merge into the appropriate data file\nexport default ${json};\n`;
+
+  let json, content;
+  if (deckType === 'enemyTrait') {
+    const grouped = {};
+    for (const card of cards) {
+      const enemy = card.enemy || 'Unknown';
+      if (!grouped[enemy]) grouped[enemy] = [];
+      const { enemy: _e, ...rest } = card;
+      grouped[enemy].push(rest);
+    }
+    json = JSON.stringify(grouped, null, 2);
+    content = `// Scanned enemy trait cards — ${date}\n// Merge into src/data/enemyCards/enemyTraitCards.js\nexport const ENEMY_TRAIT_CARDS = ${json};\nexport default ENEMY_TRAIT_CARDS;\n`;
+  } else {
+    const exportData = deckType === 'enemy' ? cards.map(formatEnemyForExport) : cards;
+    json = JSON.stringify(exportData, null, 2);
+    content = `// Scanned cards — ${label} — ${date}\n// Paste / merge into the appropriate data file\nexport default ${json};\n`;
+  }
 
   const blob = new Blob([content], { type: 'text/javascript' });
   const url = URL.createObjectURL(blob);
