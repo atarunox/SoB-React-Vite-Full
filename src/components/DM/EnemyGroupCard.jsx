@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { getAllStatsWithBreakdown } from "../../utils/enemyModifiers";
 import { TRAIT_DECKS } from "../../data/traitDecks";
-import { ENEMY_TRAIT_CARDS, ENEMY_TRAIT_CONFIG } from "../../data/enemyCards/enemyTraitCards";
+import { ENEMY_TRAIT_CARDS, ENEMY_TRAIT_CONFIG, CORRUPTED_TRAIT } from "../../data/enemyCards/enemyTraitCards";
+import { SPECIAL_ENEMIES_BY_BASE } from "../../data/enemyCards/specialEnemies";
 import { DARKNESS_CARDS } from "../../data/darknessCards";
 import { GROWING_DREAD_CARDS } from "../../data/growingDreadCards";
 import StatBreakdownModal from "./StatBreakdownModal";
@@ -44,6 +45,56 @@ export default function EnemyGroupCard({
     newGroups[groupIdx].manualExtraElite = val;
     setCombatGroups(newGroups);
   }
+
+  const applyCorrupted = () => {
+    const newGroups = [...allGroups];
+    newGroups[groupIdx].modifiers.push({
+      type: 'corrupted',
+      name: CORRUPTED_TRAIT.name,
+      description: CORRUPTED_TRAIT.effect,
+    });
+    setCombatGroups(newGroups);
+  };
+
+  const spawnSpecial = (special) => {
+    const bs = group.baseStats || {};
+    // Build adjusted base stats from deltas
+    const baseHealth = Number(bs.health) || 0;
+    const baseCombat = Number(bs.combat) || 0;
+    const baseDefense = Number(bs.defense) || 0;
+    const baseInit = Number(bs.initiative) || 0;
+
+    const newHealth = Math.round(baseHealth * (special.statDeltas.healthMultiplier || 1)) + (special.statDeltas.healthBonus || 0);
+    const newCombat = Math.round(baseCombat * (special.statDeltas.combatMultiplier || 1)) + (special.statDeltas.combatBonus || 0);
+    const newDefense = baseDefense + (special.statDeltas.defenseBonus || 0);
+    const newInit = baseInit + (special.statDeltas.initiativeBonus || 0);
+
+    const specialGroup = {
+      id: Date.now().toString(),
+      name: special.name,
+      count: 1,
+      isSpecial: true,
+      specialTheme: special.theme,
+      specialSource: special.sourceCard,
+      baseEnemyName: special.baseEnemyName,
+      baseStats: {
+        ...bs,
+        health: newHealth || baseHealth,
+        combat: newCombat || baseCombat,
+        defense: newDefense || baseDefense,
+        initiative: newInit || baseInit,
+        xp: special.xpOverride ?? bs.xp,
+        tough: special.statDeltas.tough || false,
+        abilities: [
+          ...(bs.abilities || []),
+          ...special.extras.map(e => `[${special.name}] ${e}`),
+        ],
+      },
+      modifiers: [],
+      manualExtraElite: 0,
+    };
+    setCombatGroups([...allGroups, specialGroup]);
+  };
 
   const drawTrait = () => {
     const traitDeck = TRAIT_DECKS[group.baseStats.world] || [];
@@ -112,9 +163,12 @@ export default function EnemyGroupCard({
   const keywords = statBundle.keywords || bs.keywords || [];
   const hasStatSystem = typeof bs.brutal === 'boolean';
 
-  const headerBg = isBrutal ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-leather-dark';
-  const borderColor = isBrutal ? 'border-red-800' : hasStatSystem ? 'border-green-800' : 'border-leather';
-  const statBarBg = isBrutal ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-leather-dark';
+  const specialTheme = group.isSpecial ? (group.specialTheme || {}) : null;
+  const headerBg   = specialTheme ? specialTheme.bg   : (isBrutal ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-leather-dark');
+  const borderColor = specialTheme ? specialTheme.border : (isBrutal ? 'border-red-800' : hasStatSystem ? 'border-green-800' : 'border-leather');
+  const statBarBg  = specialTheme ? specialTheme.bg   : (isBrutal ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-leather-dark');
+
+  const specialVariants = SPECIAL_ENEMIES_BY_BASE[group.name] || [];
 
   const statCell = (label, value, highlight = false) => (
     <div className={`flex flex-col items-center justify-center px-2 py-1 ${highlight ? 'bg-black/20' : ''}`}>
@@ -136,7 +190,17 @@ export default function EnemyGroupCard({
       <div className={`px-3 pt-2 pb-2 ${headerBg} relative`}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            {hasStatSystem && (
+            {group.isSpecial && (
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded ${specialTheme?.badge ?? 'bg-white/20 text-white'}`}>
+                  ★ Special
+                </span>
+                {group.baseEnemyName && (
+                  <span className="text-[10px] text-white/50 italic">({group.baseEnemyName} variant)</span>
+                )}
+              </div>
+            )}
+            {!group.isSpecial && hasStatSystem && (
               <div className={`text-xs font-bold italic tracking-widest uppercase mb-0.5 ${isBrutal ? 'text-red-400' : 'text-green-400'}`}>
                 {isBrutal ? 'Brutal' : 'Normal'}
               </div>
@@ -299,10 +363,21 @@ export default function EnemyGroupCard({
           <button className="btn btn-xs btn-outline" disabled={manualExtraElite === 0}
             onClick={() => setManualElite(Math.max(0, manualExtraElite - 1))}>−1 Elite</button>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           <button className="btn btn-xs btn-outline" onClick={drawTrait}>Trait</button>
           <button className="btn btn-xs btn-outline" onClick={drawDarkness}>Darkness</button>
           <button className="btn btn-xs btn-outline" onClick={drawGrowingDread}>Grd</button>
+          {/* Corrupted universal trait — only for non-Demon/Undead */}
+          {!(group.baseStats?.keywords || []).some(k => k === 'Demon' || k === 'Undead') && (
+            <button
+              className="btn btn-xs btn-outline"
+              style={{ borderColor: '#6b7280', color: '#6b7280' }}
+              onClick={applyCorrupted}
+              title="Apply Corrupted trait — +2 Init/Health, Possessed keyword, Taint of Evil"
+            >
+              Corrupted
+            </button>
+          )}
           {ENEMY_TRAIT_CARDS[group.name]?.length > 0 && (
             <button
               className="btn btn-xs btn-outline btn-secondary"
@@ -315,6 +390,23 @@ export default function EnemyGroupCard({
             </button>
           )}
         </div>
+        {/* Spawn special/miniboss variants */}
+        {specialVariants.length > 0 && (
+          <div className="w-full flex gap-1 flex-wrap pt-1 border-t border-leather/30">
+            <span className="text-[10px] text-leather-dark/60 self-center font-semibold uppercase tracking-wide">Spawn:</span>
+            {specialVariants.map(s => (
+              <button
+                key={s.id}
+                className="btn btn-xs"
+                style={{ backgroundColor: '#1c1917', color: '#fbbf24', border: '1px solid #92400e' }}
+                onClick={() => spawnSpecial(s)}
+                title={s.sourceCard}
+              >
+                ★ {s.name}
+              </button>
+            ))}
+          </div>
+        )}
         <button className="btn btn-xs btn-ghost text-red-600 ml-auto" onClick={removeGroup}>Remove</button>
       </div>
     </div>

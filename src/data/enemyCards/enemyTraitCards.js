@@ -4,6 +4,16 @@
 // Default (triggerOn: '1-3'): roll D6 when enemy appears — on 1-3 draw a random trait card.
 // Pack decks (triggerOn: '4-6'): roll D6 — on 4-6 draw a random pack card to determine the variant.
 // Populated by scanning via DM Options → Scan Cards → Enemy Trait Card.
+//
+// CORRUPTED — universal trait applicable to any Non-Demon/Undead enemy.
+// Apply via the "Corrupted" button in EnemyGroupCard controls (not a D6 roll deck).
+export const CORRUPTED_TRAIT = {
+  name: 'Corrupted',
+  tags: ['Universal Trait', 'Possessed'],
+  restriction: 'Any Non-Demon/Undead Enemy',
+  effect: 'Enemy gains Keyword Possessed.\n\nUnholy — +2 Initiative and +2 Health. Does +1 Damage against Holy Heroes.\n\nTaint of Evil — Any time a Hero is Wounded by a Corrupted Enemy\'s Hit, they also take 1 Corruption Hit.',
+  xp: '+5 (or +10 for a Holy Hero)',
+};
 
 export const ENEMY_TRAIT_CONFIG = {
   // Pack decks — triggered on 4-6
