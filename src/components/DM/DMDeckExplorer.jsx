@@ -9,9 +9,10 @@ import { gearCards }           from '../../data/items/gearCards';
 import { mineArtifacts }       from '../../data/items/mineArtifacts';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts';
 import { ENEMY_CARDS }         from '../../data/enemyCards';
-import { ENEMY_TRAIT_CARDS }   from '../../data/enemyCards/enemyTraitCards';
-import { TOWN_TYPE_CARDS }     from '../../data/cards/townTypeCards';
-import { townTraitsChart }     from './charts/townTraitsChart';
+import { ENEMY_TRAIT_CARDS }      from '../../data/enemyCards/enemyTraitCards';
+import { BLACK_FANG_WAR_CHANT }  from '../../data/enemyCards/warChantCards';
+import { TOWN_TYPE_CARDS }        from '../../data/cards/townTypeCards';
+import { townTraitsChart }        from './charts/townTraitsChart';
 
 // Flatten enemy trait cards: { enemyName: [cards] } → [{ enemy, name, effect, ... }]
 const flatEnemyTraitCards = Object.entries(ENEMY_TRAIT_CARDS).flatMap(
@@ -31,7 +32,8 @@ const DECKS = [
   { id: 'owArt',      label: 'OtherWorld Artifacts',   cards: otherWorldArtifacts },
   { id: 'townTypes',   label: 'Town Type Cards',        cards: TOWN_TYPE_CARDS         },
   { id: 'townTraits',  label: 'Town Traits (D36)',      cards: townTraitsChart         },
-  { id: 'enemyTraits', label: 'Enemy Trait Cards',      cards: flatEnemyTraitCards     },
+  { id: 'enemyTraits',   label: 'Enemy Trait Cards',        cards: flatEnemyTraitCards   },
+  { id: 'warChant',     label: 'Black Fang War Chant',     cards: BLACK_FANG_WAR_CHANT  },
 ];
 
 // ── Generic card row ──────────────────────────────────────────────────────────
@@ -61,6 +63,11 @@ function CardRow({ card }) {
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <span className="font-bold text-[#3b2f1d] text-sm leading-snug">{name}</span>
         <div className="flex items-center gap-1 flex-wrap shrink-0">
+          {card.consumesDarkStone && (
+            <span className="text-[10px] font-semibold bg-slate-700 text-slate-100 border border-slate-500 rounded px-1.5 py-0.5">
+              ◆ Dark Stone
+            </span>
+          )}
           {card.remainsInPlay && (
             <span className="text-[10px] font-semibold bg-amber-200 text-amber-900 border border-amber-400 rounded px-1.5 py-0.5">
               Remains in Play
