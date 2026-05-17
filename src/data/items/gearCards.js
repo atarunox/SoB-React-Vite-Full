@@ -1551,6 +1551,637 @@ export const gearCards = [
     "darkStone": false,
     "upgradeSlots": 1,
     "restrictions": []
+  },
+
+  // ── Scanned 2026-05-17 ────────────────────────────────────────────────────
+  {
+    "id": "holy_water",
+    "name": "Holy Water",
+    "slot": "Item",
+    "effects": ["Gain 2 Holy Water Tokens"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "wooden_stakes",
+    "name": "Wooden Stakes",
+    "slot": "Item",
+    "effects": ["Gain 2 Stake Tokens"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "lantern_oil",
+    "name": "Lantern Oil",
+    "slot": "Light Source",
+    "effects": ["Gain 2 Lantern Oil Tokens"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "bandages",
+    "name": "Bandages",
+    "slot": "Item",
+    "effects": ["Gain 2 Bandage Tokens"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "flash_powder",
+    "name": "Flash Powder",
+    "slot": "Misc",
+    "effects": ["Gain 2 Flash Tokens", "Discard a Token to make all Enemies −2 Initiative until the end of the Turn"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card when Tokens are gone"]
+  },
+  {
+    "id": "rare_spices",
+    "name": "Rare Spices",
+    "slot": "Misc",
+    "effects": ["Gain 2 Spice Tokens"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "tequila_bottle",
+    "name": "Tequila Bottle",
+    "slot": "Misc",
+    "effects": ["Gain 1 Tequila Token"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "healing_herbs",
+    "name": "Healing Herbs",
+    "slot": "Item",
+    "effects": ["Gain 1 Herbs Token"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "fine_cigar",
+    "name": "Fine Cigar",
+    "slot": "Misc",
+    "effects": ["Gain 1 Fine Cigar Token"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "exotic_herbs",
+    "name": "Exotic Herbs",
+    "slot": "Item",
+    "effects": ["Gain 1 Exotic Herbs Token"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "far_eastern_potion",
+    "name": "Far Eastern Potion",
+    "slot": "Tonic",
+    "effects": ["Gain 2 Potion Tokens"],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "army_tent",
+    "name": "Army Tent",
+    "slot": "Misc",
+    "effects": [
+      "Once per Traveling/Town Stay, you may Heal D6 Wounds/Sanity (any mix).",
+      "Gain 5 XP for each Travel Hazard encountered while Traveling.",
+      "Limit 1"
+    ],
+    "value": 550,
+    "twoHanded": true,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Limit 1 per Posse"]
+  },
+  {
+    "id": "mark_of_the_faithful",
+    "name": "Mark of the Faithful",
+    "slot": "Mark",
+    "effects": [
+      "Use 2 Dark Stone to Attach to any Item.",
+      "Bonus: You are +Health equal to your Spirit."
+    ],
+    "value": 250,
+    "twoHanded": false,
+    "darkStone": true,
+    "upgradeSlots": 0,
+    "restrictions": ["Attach to Item — costs 2 Dark Stone"]
+  },
+  {
+    "id": "mark_of_the_damned",
+    "name": "Mark of the Damned",
+    "slot": "Mark",
+    "effects": [
+      "Use 2 Dark Stone to Attach to any Item.",
+      "Bonus: +1 Damage to Demon Enemies."
+    ],
+    "value": 150,
+    "twoHanded": false,
+    "darkStone": true,
+    "upgradeSlots": 0,
+    "restrictions": ["Attach to Item — costs 2 Dark Stone"]
+  },
+  {
+    "id": "rune_of_the_void",
+    "name": "Rune of the Void",
+    "slot": "Mark",
+    "effects": [
+      "Use 2 Dark Stone to Attach to any Item.",
+      "Bonus: Recover 1 Grit and gain 25 XP any time you pass through a Gate (limit once per Gate)."
+    ],
+    "value": 150,
+    "twoHanded": false,
+    "darkStone": true,
+    "upgradeSlots": 1,
+    "restrictions": ["Attach to Item — costs 2 Dark Stone"]
+  },
+  {
+    "id": "transfusion_kit",
+    "name": "Transfusion Kit",
+    "slot": "Misc",
+    "effects": [
+      "Use 1 Grit and take D6 Wounds (ignoring Defense) to cancel another Hero's Curse on D6 roll of 3+ (except during a Fight), or to cancel an Injury just rolled by another Hero on the same Map Tile.",
+      "After each successful use, gain 50 XP and roll D6. On 1 or 2, breaks (discard)."
+    ],
+    "value": 550,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "telescope",
+    "name": "Telescope",
+    "slot": "Misc",
+    "effects": [
+      "+1 Cunning",
+      "When Traveling to Town, you may cancel and Re-roll one result on the Travel Hazard Chart."
+    ],
+    "value": 225,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "old_map",
+    "name": "Old Map",
+    "slot": "Misc",
+    "effects": [
+      "Once per turn, cancel and Re-draw an Encounter or Map Card just drawn.",
+      "After each use, discard Old Map on D6 roll of 1 or 2."
+    ],
+    "value": 25,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "scafford_wanted_poster",
+    "name": "Scafford Wanted Poster",
+    "slot": "Misc",
+    "effects": [
+      "Discard to Recover 1 Grit (or 2 Grit if Law).",
+      "Or discard to gain D6×$100 when you kill an Outlaw Enemy."
+    ],
+    "value": 25,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use"]
+  },
+  {
+    "id": "dead_mans_dice",
+    "name": "Dead Man's Dice",
+    "slot": "Misc",
+    "effects": [
+      "At the start of every Fight, you may roll 2D6. If doubles are rolled, Recover Grit up to your Max Grit. If a total of 7 is rolled, take 3 Horror Hits."
+    ],
+    "value": 525,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "ally_pack_mule",
+    "name": "Ally: Pack Mule",
+    "slot": "Ally",
+    "effects": [
+      "Gain 1 Pack Mule Ally (choose Basic/Advanced) to use for the rest of this Adventure.",
+      "If you already have an Advanced Pack Mule in the Hero Posse, you may discard this card to immediately give it D3 Ally XP.",
+      "If Advanced was chosen, at the start of the next Adventure you may pay half the normal cost (rounding up to the nearest $5) to fully purchase this Ally."
+    ],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "ally_blacksmith",
+    "name": "Ally: Blacksmith",
+    "slot": "Ally",
+    "effects": [
+      "Gain 1 Blacksmith Ally (choose Basic/Advanced) to use for the rest of this Adventure.",
+      "If you already have an Advanced Blacksmith in the Hero Posse, you may discard this card to immediately give it D3 Ally XP.",
+      "If Advanced was chosen, at the start of the next Adventure you may pay half the normal cost (rounding up to the nearest $5) to fully purchase this Ally."
+    ],
+    "value": 0,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard this Card"]
+  },
+  {
+    "id": "the_grave_digger",
+    "name": "The Grave Digger",
+    "slot": "Gun",
+    "effects": [
+      "Range 3",
+      "Shots 2",
+      "Uses the D8 To Hit and for Damage (6+ counts as Critical Hit).",
+      "+1 Damage to Undead Enemies."
+    ],
+    "value": 400,
+    "twoHanded": true,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "followers_hat",
+    "name": "Follower's Hat",
+    "slot": "Hat",
+    "effects": [
+      "−1 Initiative",
+      "+1 Damage on all Attacks against targets with a higher Initiative.",
+      "A Henchmen Ally with this Item equipped may roll 3 dice and discard the lowest when rolling on the Henchmen Exploration Chart."
+    ],
+    "value": 150,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "dead_mans_boots",
+    "name": "Dead Man's Boots",
+    "slot": "Boots",
+    "effects": ["Any time you roll a 6 for Move, you may Heal 2 Sanity."],
+    "value": 150,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 1,
+    "restrictions": []
+  },
+  {
+    "id": "dead_mans_coat",
+    "name": "Dead Man's Coat",
+    "slot": "Coat",
+    "effects": [
+      "Discard to prevent all Damage just taken from a single Source.",
+      "−1 Max Grit",
+      "A Henchmen Ally with this Item equipped may discard it to cancel a roll on the Gruesome Fate Chart."
+    ],
+    "value": 100,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use (damage prevention)"]
+  },
+  {
+    "id": "silver_bullets",
+    "name": "Silver Bullets",
+    "slot": "Misc",
+    "effects": [
+      "Discard to use. Until the end of the Adventure, all of your Gun Hits are +1 Damage against any Beast Enemy (or +2 against a Werewolf).",
+      "Limit 1 Ammo at a time."
+    ],
+    "value": 50,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to activate"]
+  },
+  {
+    "id": "vicious_axe",
+    "name": "Vicious Axe",
+    "slot": "Hand Weapon",
+    "effects": [
+      "Your Combat Hits are +1 Damage.",
+      "+1 Initiative"
+    ],
+    "value": 500,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 1,
+    "restrictions": []
+  },
+  {
+    "id": "axe",
+    "name": "Axe",
+    "slot": "Hand Weapon",
+    "effects": ["Once per turn, you may add +2 Damage to one of your Combat Hits."],
+    "value": 200,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 2,
+    "restrictions": []
+  },
+  {
+    "id": "holy_charm",
+    "name": "Holy Charm",
+    "slot": "Charm",
+    "effects": [
+      "Discard to prevent all Damage just done to you by Demon or Undead Enemies.",
+      "Or discard to Re-roll any single die, adding +1 to the roll."
+    ],
+    "value": 350,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use"]
+  },
+  {
+    "id": "jack_of_hearts",
+    "name": "Jack of Hearts",
+    "slot": "Misc",
+    "effects": [
+      "+1 Luck",
+      "Any time you draw a Nothing Here Scavenge card, gain $25."
+    ],
+    "value": 150,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "wolfsbane",
+    "name": "Wolfsbane",
+    "slot": "Misc",
+    "effects": [
+      "Discard to cancel all Hits just done to you by one or more Beast Enemies (even after Defense rolls).",
+      "While you have this Item, you automatically pass all Escape tests for Beast Enemies."
+    ],
+    "value": 250,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use (cancel hits)"]
+  },
+  {
+    "id": "journal_pages",
+    "name": "Journal Pages",
+    "slot": "Misc",
+    "effects": ["Discard to Recover 1 Grit and gain 50 XP."],
+    "value": 50,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use"]
+  },
+  {
+    "id": "outlaw_pistol",
+    "name": "Outlaw Pistol",
+    "slot": "Gun",
+    "effects": [
+      "Range 5",
+      "Shots 3",
+      "May only get Critical Hits against adjacent targets."
+    ],
+    "value": 150,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 4,
+    "restrictions": []
+  },
+  {
+    "id": "lucky_bowler",
+    "name": "Lucky Bowler",
+    "slot": "Hat",
+    "effects": [
+      "Whenever a Depth Event is rolled while Holding Back the Darkness, you may Recover a Grit on D6 roll of 3+."
+    ],
+    "value": 350,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 2,
+    "restrictions": []
+  },
+  {
+    "id": "rusty_badge",
+    "name": "Rusty Badge",
+    "slot": "Misc",
+    "effects": [
+      "Once per Adventure, every Hero may remove up to 3 Corruption Points to gain +1 Shot with a Gun or +1 Combat for each (their choice) during their next Activation."
+    ],
+    "value": 650,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "cigar",
+    "name": "Cigar",
+    "slot": "Misc",
+    "effects": ["Once per Adventure, prevent all damage done to you from a single source."],
+    "value": 175,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "poisoned_dagger",
+    "name": "Poisoned Dagger",
+    "slot": "Hand Weapon",
+    "effects": [
+      "+1 Initiative",
+      "Your Melee To Hit rolls of 6+ do +2 Damage.",
+      "While equipped, your Corruption Resistance is reduced by 1."
+    ],
+    "value": 325,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "bandana",
+    "name": "Bandana",
+    "slot": "Face",
+    "effects": ["Once per turn, you may Re-roll an Escape test."],
+    "value": 50,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "keg_of_dynamite",
+    "name": "Keg of Dynamite",
+    "slot": "Explosive",
+    "effects": [
+      "Discard to throw as a Ranged Attack (like Dynamite). Once the Keg lands in a space, it breaks apart and Dynamite tokens fall out, each Bouncing D3 spaces before exploding."
+    ],
+    "value": 600,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use"]
+  },
+  {
+    "id": "gunpowder_keg",
+    "name": "Gunpowder Keg",
+    "slot": "Explosive",
+    "effects": [
+      "Discard to throw, just like Dynamite. After any Bounce, models in the same and adjacent spaces take Wounds (ignoring Defense). Other models on the same Map Tile take 2 Hits from falling debris."
+    ],
+    "value": 400,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use"]
+  },
+  {
+    "id": "military_drum",
+    "name": "Military Drum",
+    "slot": "Misc",
+    "effects": [
+      "Once per Adventure, use at the start of a turn to give all Heroes +2 Move and +2 Initiative until the end of the turn.",
+      "Until used each Adventure, all Heroes may Re-roll an Escape test once per turn."
+    ],
+    "value": 450,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "saxtons_fancy_tonic",
+    "name": "Saxton's Fancy Tonic",
+    "slot": "Tonic",
+    "effects": ["Discard to Recover 2 Grit. You also take D3 Corruption Hits."],
+    "value": 100,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use"]
+  },
+  {
+    "id": "fallen_gunfighters_pistol",
+    "name": "Fallen Gunfighter's Pistol",
+    "slot": "Gun",
+    "effects": [
+      "Once per turn, you may take 3 Wounds (ignoring Defense) to add +2 Damage to a Hit with this Pistol."
+    ],
+    "value": 550,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "rattlesnake_fangs",
+    "name": "Rattlesnake Fangs",
+    "slot": "Misc",
+    "effects": [
+      "Attach to any Item. Once per Adventure, you may add +3 Damage to one of your Hits.",
+      "You are Immune to Poison markers."
+    ],
+    "value": 325,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "expedition_boots",
+    "name": "Expedition Boots",
+    "slot": "Boots",
+    "effects": ["Once per Adventure, you may cancel and re-draw a Threat or Encounter card."],
+    "value": 450,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 2,
+    "restrictions": []
+  },
+  {
+    "id": "looking_glass",
+    "name": "Looking Glass",
+    "slot": "Misc",
+    "effects": [
+      "+1 Cunning",
+      "Recover 1 Grit any time you pass a Cunning Test (limit once per turn)."
+    ],
+    "value": 75,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "canteen",
+    "name": "Canteen",
+    "slot": "Container",
+    "effects": ["Once per Adventure, Heal 2D6 Wounds."],
+    "value": 75,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "matches",
+    "name": "Matches",
+    "slot": "Misc",
+    "effects": ["Discard to ignore Voices in the Dark."],
+    "value": 10,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Discard to use"]
   }
 ];
 
