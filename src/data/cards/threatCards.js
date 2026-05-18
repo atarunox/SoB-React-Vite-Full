@@ -105,6 +105,83 @@ export const THREAT_CARDS_STANDARD = [
     spawn: '1 Magma Giant',
     effects: [],
   },
+  {
+    id: '1_hell_cannon_and_2_threat_cards',
+    name: '1 Hell Cannon and 2 Threat Cards',
+    tier: 'low',
+    spawn: '1 Hell Cannon and 2 Threat Cards',
+    effects: [],
+  },
+  {
+    id: '1_hell_cannon_and_2_threat_cards_2',
+    name: '1 Hell Cannon and 2 Threat Cards',
+    tier: 'low',
+    spawn: '1 Hell Cannon and 2 Threat Cards',
+    effects: [],
+  },
+  {
+    id: 'thunder_of_cannons',
+    name: 'Thunder of Cannons (3 Hell Cannons)',
+    tier: 'low',
+    spawn: '3 Hell Cannons',
+    effects: [],
+  },
+  {
+    id: 'd3_night_terrors_and_2_threat_cards',
+    name: 'D3 Night Terrors and 2 Threat Cards',
+    tier: 'low',
+    spawn: 'D3 Night Terrors and 2 Threat Cards',
+    effects: [],
+  },
+  {
+    id: '2_dark_stone_scorpions',
+    name: '2 Dark Stone Scorpions',
+    tier: 'low',
+    spawn: '2 Dark Stone Scorpions',
+    effects: ['Enraged — Dark Stone Scorpions are Melee To Hit 3+ and change targets each turn.'],
+  },
+  {
+    id: '1_harbinger_and_1_threat_card',
+    name: '1 Harbinger and 1 Threat Card',
+    tier: 'low',
+    spawn: '1 Harbinger and 1 Threat Card',
+    effects: [],
+  },
+  {
+    id: '1_harbinger_and_1_threat_card_2',
+    name: '1 Harbinger and 1 Threat Card',
+    tier: 'low',
+    spawn: '1 Harbinger and 1 Threat Card',
+    effects: [],
+  },
+  {
+    id: 'd3_slashers_and_2_threat_cards',
+    name: 'D3 Slashers and 2 Threat Cards',
+    tier: 'low',
+    spawn: 'D3 Slashers and 2 Threat Cards',
+    effects: [],
+  },
+  {
+    id: '1_wasteland_terralisk_and_2_threat_cards',
+    name: '1 Wasteland Terralisk and 2 Threat Cards',
+    tier: 'low',
+    spawn: '1 Wasteland Terralisk and 2 Threat Cards',
+    effects: [],
+  },
+  {
+    id: '1_harbinger_and_2_low_threat_cards',
+    name: '1 Harbinger and 2 Low Threat Cards',
+    tier: 'low',
+    spawn: '1 Harbinger and 2 Low Threat Cards',
+    effects: [],
+  },
+  {
+    id: '2_elite_threat_cards',
+    name: '2 Elite Threat Cards',
+    tier: 'low',
+    spawn: '2 Elite Threat Cards',
+    effects: ['Draw 2 Low Elite Threat Cards instead of a normal Threat Card.'],
+  },
 
   // ── Heroes-table cards (spawn varies by hero count) ────────────────────────
   {
@@ -211,6 +288,72 @@ export const THREAT_CARDS_STANDARD = [
     name: 'Black Fang War Party',
     tier: 'low',
     spawn: 'Black Fang War Shaman, 6 Black Fang Tribe, and 1 Threat Card',
+    effects: [],
+  },
+  {
+    id: 'lost_army_generalisimo',
+    name: 'Lost Army Generalisimo and...',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: '{P} Lost Army' },
+      { range: '3-4', text: '{P}+3 Lost Army and 1 Threat Card' },
+      { range: '5-6', text: '{P}{P} Lost Army and 1 Threat Card' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'crimson_hand_inquisitor',
+    name: 'Crimson Hand Inquisitor and...',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: '1 Threat Card' },
+      { range: '3-4', text: '{P} Crimson Hand and 1 Threat Card' },
+      { range: '5-6', text: '{P}{P} Crimson Hand and 1 Threat Card' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'lost_army_battle_group',
+    name: 'Lost Army Battle Group',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: 'Lost Army Generalisimo and {P} Lost Army' },
+      { range: '3-4', text: 'Lost Army Generalisimo and {P}+3 Lost Army w/ Banner Bearer' },
+      { range: '5-6', text: 'Lost Army Generalisimo and {P}{P} Lost Army w/ Banner Bearer' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'undead_gunslinger',
+    name: 'The Undead Gunslinger and...',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: '{P} Undead Outlaws' },
+      { range: '3-4', text: '6 Undead Outlaws' },
+      { range: '5-6', text: '6 Undead Outlaws and 1 Threat Card' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'undead_gunslinger_2',
+    name: 'The Undead Gunslinger and...',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: '{P} Undead Outlaws' },
+      { range: '3-4', text: '6 Undead Outlaws' },
+      { range: '5-6', text: '6 Undead Outlaws and 1 Threat Card' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'undead_gunslinger_infamous',
+    name: 'The Undead Gunslinger and... (Infamous)',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: 'D3+1 Infamous Undead Outlaws' },
+      { range: '3-4', text: '{P} Infamous Undead Outlaws' },
+      { range: '5-6', text: '6 Infamous Undead Outlaws' },
+    ],
     effects: [],
   },
 
@@ -337,6 +480,16 @@ export const THREAT_CARDS_OTHERWORLD = [
     spawn: '3 Sand Crabs and 1 Threat Card',
     effects: [],
   },
+  {
+    id: '1_elder_wasteland_terralisk',
+    name: '1 Elder Wasteland Terralisk',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    spawn: '1 Elder Wasteland Terralisk',
+    effects: [
+      'Ancient Menace — The Elder Wasteland Terralisk is Keyword Ancient, and has double the normal Health Total, as well as +4 Combat.',
+    ],
+  },
 
   // Caverns of Cynder ─────────────────────────────────────────────────────────
   {
@@ -345,6 +498,34 @@ export const THREAT_CARDS_OTHERWORLD = [
     tier: 'otherworld',
     world: 'Caverns of Cynder',
     spawn: '1 Magma Giant',
+    effects: [],
+  },
+  {
+    id: '1_magma_giant_caverns_of_cynder_2',
+    name: '1 Magma Giant',
+    tier: 'otherworld',
+    world: 'Caverns of Cynder',
+    spawn: '1 Magma Giant',
+    effects: [],
+  },
+  {
+    id: 'hellfire_witch_and_2_cynder_threat_cards',
+    name: 'Hellfire Witch and 2 Cynder Threat Cards',
+    tier: 'otherworld',
+    world: 'Caverns of Cynder',
+    spawn: '1 Hellfire Witch and 2 Cynder Threat Cards',
+    effects: [],
+  },
+  {
+    id: 'hellfire_witch_and_succubi',
+    name: 'Hellfire Witch and...',
+    tier: 'otherworld',
+    world: 'Caverns of Cynder',
+    heroTable: [
+      { range: '1-2', text: '1 Threat Card' },
+      { range: '3-4', text: '{P} Hellfire Succubi and 1 Threat Card' },
+      { range: '5-6', text: '6 Hellfire Succubi and 1 Threat Card' },
+    ],
     effects: [],
   },
   {
@@ -361,6 +542,44 @@ export const THREAT_CARDS_OTHERWORLD = [
     tier: 'otherworld',
     world: 'Caverns of Cynder',
     spawn: '1 Onmorake and 6 Scourge Dead',
+    effects: [],
+  },
+
+  // Swamps of Jargono ─────────────────────────────────────────────────────────
+  {
+    id: '1_swamp_raptor_jargono',
+    name: '1 Swamp Raptor',
+    tier: 'otherworld',
+    world: 'Swamps of Jargono',
+    spawn: '1 Swamp Raptor',
+    effects: [],
+  },
+  {
+    id: '1_swamp_raptor_jargono_2',
+    name: '1 Swamp Raptor',
+    tier: 'otherworld',
+    world: 'Swamps of Jargono',
+    spawn: '1 Swamp Raptor',
+    effects: [],
+  },
+  {
+    id: 'raptor_hunting_pack',
+    name: 'Raptor Hunting Pack (D3 Swamp Raptors)',
+    tier: 'otherworld',
+    world: 'Swamps of Jargono',
+    spawn: 'D3 Swamp Raptors',
+    effects: ['Generates 1 extra Loot for each Hero.'],
+  },
+  {
+    id: '1_grand_shaman',
+    name: '1 Grand Shaman and...',
+    tier: 'otherworld',
+    world: 'Swamps of Jargono',
+    heroTable: [
+      { range: '1-2', text: '1 Threat Card' },
+      { range: '3-4', text: '6 Serpentmen Warriors' },
+      { range: '5-6', text: '{P} Serpentmen Warriors and 1 Threat Card' },
+    ],
     effects: [],
   },
 
