@@ -39,9 +39,10 @@ export const gearCards = [
       "Damage +1"
     ],
     "value": 550,
+    "weight": 1,
     "twoHanded": true,
     "darkStone": false,
-    "upgradeSlots": 2,
+    "upgradeSlots": 1,
     "restrictions": []
   },
   {
@@ -84,6 +85,7 @@ export const gearCards = [
       "Anytime you find Dark Stone, gain 1 extra."
     ],
     "value": 300,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -126,9 +128,10 @@ export const gearCards = [
     "effects": [
       "+2 Health",
       "Holds up to 2 Side Bag Tokens.",
-      "While carried by an Ally, they may carry an extra 3 Items as well."
+      "While carried by an Ally, they may carry an extra 3 weight as well."
     ],
     "value": 600,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -145,9 +148,10 @@ export const gearCards = [
       "Critical Hits also do 1 Wound to every Enemy adjacent to the target, ignoring Defense."
     ],
     "value": 425,
-    "twoHanded": false,
+    "weight": 1,
+    "twoHanded": true,
     "darkStone": false,
-    "upgradeSlots": 2,
+    "upgradeSlots": 1,
     "restrictions": [
       "Outlaw Only"
     ]
@@ -161,6 +165,7 @@ export const gearCards = [
       "When using Grit to add Movement, may always add 6 instead of rolling."
     ],
     "value": 650,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -279,11 +284,13 @@ export const gearCards = [
       "+1 Damage against Undead or Beast Enemies (or +2 if you are Holy)."
     ],
     "value": 950,
-    "twoHanded": false,
+    "weight": 1,
+    "twoHanded": true,
     "darkStone": false,
     "upgradeSlots": 2,
     "restrictions": [
-      "Holy Only"
+      "Holy Only",
+      "May not use Dark Stone upgrades"
     ]
   },
   {
@@ -357,6 +364,7 @@ export const gearCards = [
       "Shots 2"
     ],
     "value": 100,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 1,
@@ -1707,7 +1715,8 @@ export const gearCards = [
     "twoHanded": false,
     "darkStone": true,
     "upgradeSlots": 0,
-    "restrictions": ["Attach to Item — costs 2 Dark Stone"]
+    "restrictions": ["Attach to Item — costs 2 Dark Stone"],
+    "isAttachment": true
   },
   {
     "id": "mark_of_the_damned",
@@ -1721,7 +1730,8 @@ export const gearCards = [
     "twoHanded": false,
     "darkStone": true,
     "upgradeSlots": 0,
-    "restrictions": ["Attach to Item — costs 2 Dark Stone"]
+    "restrictions": ["Attach to Item — costs 2 Dark Stone"],
+    "isAttachment": true
   },
   {
     "id": "rune_of_the_void",
@@ -1735,7 +1745,8 @@ export const gearCards = [
     "twoHanded": false,
     "darkStone": true,
     "upgradeSlots": 1,
-    "restrictions": ["Attach to Item — costs 2 Dark Stone"]
+    "restrictions": ["Attach to Item — costs 2 Dark Stone"],
+    "isAttachment": true
   },
   {
     "id": "transfusion_kit",
@@ -1760,6 +1771,7 @@ export const gearCards = [
       "When Traveling to Town, you may cancel and Re-roll one result on the Travel Hazard Chart."
     ],
     "value": 225,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -1774,6 +1786,7 @@ export const gearCards = [
       "After each use, discard Old Map on D6 roll of 1 or 2."
     ],
     "value": 25,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -1921,7 +1934,8 @@ export const gearCards = [
       "+1 Initiative"
     ],
     "value": 500,
-    "twoHanded": false,
+    "weight": 1,
+    "twoHanded": true,
     "darkStone": false,
     "upgradeSlots": 1,
     "restrictions": []
@@ -2002,9 +2016,10 @@ export const gearCards = [
       "May only get Critical Hits against adjacent targets."
     ],
     "value": 150,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
-    "upgradeSlots": 4,
+    "upgradeSlots": 3,
     "restrictions": []
   },
   {
@@ -2055,6 +2070,7 @@ export const gearCards = [
       "While equipped, your Corruption Resistance is reduced by 1."
     ],
     "value": 325,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -2150,7 +2166,8 @@ export const gearCards = [
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
-    "restrictions": []
+    "restrictions": [],
+    "isAttachment": true
   },
   {
     "id": "expedition_boots",
