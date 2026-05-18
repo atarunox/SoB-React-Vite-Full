@@ -656,7 +656,10 @@ function formatEnemyForExport(card) {
 }
 
 function exportCards(deckType, cards) {
-  const label = DECK_TYPES.find(d => d.id === deckType)?.label || deckType;
+  const safeKey = deckType.replace(/[:/\\?*"|<>]/g, '-');
+  const label = deckType.startsWith('threat:')
+    ? `Threat Card (${deckType.replace('threat:', '').replace('otherworld-', 'OtherWorld ')})`
+    : DECK_TYPES.find(d => d.id === deckType)?.label || deckType;
   const date = new Date().toISOString().slice(0, 10);
 
   let json, content;
@@ -680,7 +683,7 @@ function exportCards(deckType, cards) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `scanned_${deckType}_${date}.js`;
+  a.download = `scanned_${safeKey}_${date}.js`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1709,6 +1712,15 @@ export default function DMScanCards({ addGroup, combatGroups }) {
                       <span className={`text-xs px-1.5 py-0.5 rounded ${card.brutalHealth ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-400'}`}>
                         B{card.brutalHealth ? ` ${card.brutalHealth}hp` : ''}
                       </span>
+                    </div>
+                  ) : deckType === 'threat' ? (
+                    <div className="text-xs text-gray-600 truncate">
+                      {[
+                        card.tier && card.tier.charAt(0).toUpperCase() + card.tier.slice(1),
+                        card.enemyGroup,
+                        card.perilCount ? '{P} Peril' : card.enemyCount ? `${card.enemyCount} enemies` : null,
+                        card.xp ? `${card.xp} XP` : null,
+                      ].filter(Boolean).join(' · ')}
                     </div>
                   ) : (card.effect || card.description) ? (
                     <div className="text-xs text-gray-600 truncate">{card.effect || card.description}</div>
