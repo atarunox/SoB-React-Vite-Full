@@ -490,6 +490,42 @@ export const THREAT_CARDS_OTHERWORLD = [
       'Ancient Menace — The Elder Wasteland Terralisk is Keyword Ancient, and has double the normal Health Total, as well as +4 Combat.',
     ],
   },
+  {
+    id: 'scavenger_warparty',
+    name: 'Scavenger Warparty',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    heroTable: [
+      { range: '1-2', text: 'D3+1 Wasteland Scavengers and 1 Scavenger Warlord' },
+      { range: '3-4', text: '{P} Wasteland Scavengers, 2 Scavenger Heavies, and 1 Scavenger Warlord' },
+      { range: '5-6', text: '6 Wasteland Scavengers, 2 Scavenger Heavies, and 1 Scavenger Warmaster' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'wasteland_warmaster',
+    name: 'Wasteland Warmaster and...',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    heroTable: [
+      { range: '1-2', text: 'D3+1 Wasteland Scavengers' },
+      { range: '3-4', text: '{P} Wasteland Scavengers and 1 Scavenger Heavy' },
+      { range: '5-6', text: '6 Wasteland Scavengers and 2 Scavenger Heavies' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'wasteland_warmaster_2',
+    name: 'Wasteland Warmaster and...',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    heroTable: [
+      { range: '1-2', text: 'D3+1 Wasteland Scavengers' },
+      { range: '3-4', text: '{P} Wasteland Scavengers and 1 Scavenger Heavy' },
+      { range: '5-6', text: '6 Wasteland Scavengers and 2 Scavenger Heavies' },
+    ],
+    effects: [],
+  },
 
   // Caverns of Cynder ─────────────────────────────────────────────────────────
   {
