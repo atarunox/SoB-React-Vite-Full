@@ -1437,6 +1437,20 @@ export const gearCards = [
   "restrictions": []
 },
 {
+  "id": "shotgun",
+  "name": "Shotgun",
+  "slot": "Gun",
+  "effects": [
+    "Uses the D8 To Hit and for Damage (6, 7, or 8 count as a Critical Hit)."
+  ],
+  "value": 300,
+  "weight": 1,
+  "twoHanded": true,
+  "darkStone": false,
+  "upgradeSlots": 1,
+  "restrictions": []
+},
+{
   "id": "us_marshal_shotgun",
   "name": "Shotgun",
   "slot": "Gun",
@@ -1446,6 +1460,7 @@ export const gearCards = [
     "Uses the D8 To Hit and for Damage (6, 7, or 8 count as a Critical Hit)."
   ],
   "value": 300,
+  "weight": 1,
   "twoHanded": true,
   "darkStone": false,
   "upgradeSlots": 1,
