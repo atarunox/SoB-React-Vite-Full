@@ -848,7 +848,9 @@ export default function DMScanCards({ addGroup, combatGroups }) {
         : {};
       const result = await scanWithClaudeVision(file, label, apiKey, extra);
       const cardData = applyToSchema(result, deckType, enemySide);
-      const key = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
+      const key = deckType === 'threat'
+        ? (threatTier === 'otherworld' ? `threat:otherworld:${world}` : `threat:${threatTier}`)
+        : NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
 
       setPending(prev => {
         const existing = prev[key] || [];
@@ -898,7 +900,7 @@ export default function DMScanCards({ addGroup, combatGroups }) {
     } finally {
       setInFlight(n => n - 1);
     }
-  }, [deckType, world, apiKey, enemySide]);
+  }, [deckType, world, apiKey, enemySide, threatTier]);
 
   const startLiveCamera = useCallback(async () => {
     setLiveMode(true);
@@ -1216,7 +1218,9 @@ export default function DMScanCards({ addGroup, combatGroups }) {
           cardData = parseOcrText(text, deckType);
         }
         results.push({ file: file.name, card: cardData });
-        const key = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
+        const key = deckType === 'threat'
+          ? (threatTier === 'otherworld' ? `threat:otherworld:${world}` : `threat:${threatTier}`)
+          : NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
         const existing = (localPending[key] || []);
         if (deckType === 'enemy' && cardData.name) {
           const matchIdx = existing.findIndex(c => c.name && c.name.toLowerCase() === cardData.name.toLowerCase());
@@ -1268,7 +1272,7 @@ export default function DMScanCards({ addGroup, combatGroups }) {
     setBatchIndex(-1);
     setBatchRunning(false);
     setBatchQueue([]);
-  }, [batchQueue, pending, deckType, world, useClaudeVision, apiKey]);
+  }, [batchQueue, pending, deckType, world, useClaudeVision, apiKey, threatTier, enemySide]);
 
   const cancelBatch = useCallback(() => {
     batchAbortRef.current = true;
