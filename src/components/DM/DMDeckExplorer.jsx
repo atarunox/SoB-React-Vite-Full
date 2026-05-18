@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DARKNESS_CARDS }      from '../../data/darknessCards';
 import { GROWING_DREAD_CARDS } from '../../data/growingDreadCards';
-import { ENCOUNTER_CARDS }     from '../../data/encounterCards';
 import { lootCards }           from '../../data/lootDeck';
 import { WORLD_CARDS }         from '../../data/worldCards';
 import { MAP_CARDS }           from '../../data/mapCards';
@@ -14,17 +13,28 @@ import { BLACK_FANG_WAR_CHANT }  from '../../data/enemyCards/warChantCards';
 import { TOWN_TYPE_CARDS }        from '../../data/cards/townTypeCards';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
+import { mineEncounters }         from '../../data/encounters/mineEncounters';
+import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
+import { canyonEncounters }       from '../../data/encounters/canyonEncounters';
+import { targaEncounters }        from '../../data/targaEncounters';
 
 // Flatten enemy trait cards: { enemyName: [cards] } → [{ enemy, name, effect, ... }]
 const flatEnemyTraitCards = Object.entries(ENEMY_TRAIT_CARDS).flatMap(
   ([enemy, cards]) => cards.map(c => ({ ...c, tags: [enemy] }))
 );
 
+// ── Encounter cards by world ──────────────────────────────────────────────────
+const ENCOUNTER_WORLDS = {
+  'Mines':          mineEncounters,
+  'Blasted Wastes': blastedWastesEncounters,
+  'Canyons':        canyonEncounters,
+  'Targa Plateau':  targaEncounters,
+};
+
 // ── Flat decks ────────────────────────────────────────────────────────────────
 const DECKS = [
   { id: 'darkness',    label: 'Darkness Cards',        cards: DARKNESS_CARDS      },
   { id: 'growingDread',label: 'Growing Dread',         cards: GROWING_DREAD_CARDS },
-  { id: 'encounter',   label: 'Encounter Cards',       cards: ENCOUNTER_CARDS     },
   { id: 'loot',        label: 'Loot Cards',            cards: lootCards           },
   { id: 'world',       label: 'World Cards',           cards: WORLD_CARDS         },
   { id: 'map',         label: 'Map Cards',             cards: MAP_CARDS           },
@@ -223,6 +233,100 @@ function DeckSection({ deck }) {
               </button>
             </div>
           )}
+          {filtered.length === 0 ? (
+            <p className="text-sm italic text-[#5c3a1e]/60 text-center py-2">No cards match.</p>
+          ) : (
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto themed-scrollbar pr-1">
+              {filtered.map((card, i) => (
+                <CardRow key={card.id ?? card.name ?? i} card={card} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Encounter section (grouped by world) ─────────────────────────────────────
+function EncounterSection() {
+  const [open, setOpen]   = useState(false);
+  const [world, setWorld] = useState('Mines');
+  const [query, setQuery] = useState('');
+  const [sort, setSort]   = useState('default');
+
+  const worlds = Object.keys(ENCOUNTER_WORLDS);
+
+  const cards = useMemo(() => ENCOUNTER_WORLDS[world] || [], [world]);
+
+  const filtered = useMemo(() => {
+    let list = cards;
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(c => {
+        const parts = [
+          c.name, c.effect, c.flavor, c.flavorText,
+          ...(c.tags || []),
+          ...(Array.isArray(c.effects) ? c.effects : []),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return parts.includes(q);
+      });
+    }
+    return applySort(list, sort);
+  }, [cards, query, sort]);
+
+  const totalCount = useMemo(
+    () => Object.values(ENCOUNTER_WORLDS).reduce((s, a) => s + a.length, 0),
+    []
+  );
+
+  return (
+    <div className="border border-[#8b6b46] rounded-xl overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#2a1f14] to-[#3d2c1a] hover:from-[#3d2c1a] hover:to-[#5c3a1e] transition-colors"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span className="font-bold text-amber-200 tracking-wide">Encounter Cards</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs bg-amber-900/60 text-amber-200 rounded-full px-2.5 py-0.5 font-semibold">
+            {totalCount} cards
+          </span>
+          <span className="text-amber-400 text-sm">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div className="bg-[#fdf6e3]/50 p-3 space-y-2">
+          <select
+            value={world}
+            onChange={e => { setWorld(e.target.value); setQuery(''); setSort('default'); }}
+            className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#8b6b46]/50 bg-white/80 focus:outline-none focus:ring-1 focus:ring-[#b8860b]/50"
+          >
+            {worlds.map(w => (
+              <option key={w} value={w}>{w} ({(ENCOUNTER_WORLDS[w] || []).length})</option>
+            ))}
+          </select>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Search encounters…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-[#8b6b46]/50 bg-white/80 focus:outline-none focus:ring-1 focus:ring-[#b8860b]/50"
+            />
+            <button
+              onClick={() => setSort(s => nextSort(s))}
+              className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold whitespace-nowrap transition-colors ${
+                sort !== 'default'
+                  ? 'bg-amber-700 text-amber-100 border-amber-600'
+                  : 'bg-white/80 text-[#5c3a1e] border-[#8b6b46]/40 hover:bg-amber-50'
+              }`}
+            >
+              {SORT_LABEL[sort]}
+            </button>
+          </div>
+
           {filtered.length === 0 ? (
             <p className="text-sm italic text-[#5c3a1e]/60 text-center py-2">No cards match.</p>
           ) : (
@@ -476,18 +580,20 @@ function ThreatCardSection() {
 export default function DMDeckExplorer() {
   const flatTotal = DECKS.reduce((s, d) => s + (Array.isArray(d.cards) ? d.cards.length : 0), 0);
   const enemyTotal = Object.values(ENEMY_CARDS).reduce((s, a) => s + a.length, 0);
+  const encounterTotal = Object.values(ENCOUNTER_WORLDS).reduce((s, a) => s + a.length, 0);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-base text-[#3b2f1d]">Deck Explorer</h3>
         <span className="text-xs text-[#5c3a1e]/60">
-          {flatTotal + enemyTotal + THREAT_CARDS.length} total cards
+          {flatTotal + enemyTotal + encounterTotal + THREAT_CARDS.length} total cards
         </span>
       </div>
       {DECKS.map(deck => (
         <DeckSection key={deck.id} deck={deck} />
       ))}
+      <EncounterSection />
       <ThreatCardSection />
       <EnemySection />
     </div>
