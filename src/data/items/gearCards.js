@@ -69,6 +69,7 @@ export const gearCards = [
       "These Tokens may not be removed except to use."
     ],
     "value": 1250,
+    "weight": 2,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -174,9 +175,10 @@ export const gearCards = [
       "If carried by a Blacksmith Ally, they may use this Dark Stone Enhancement ability up to twice per Turn, instead of only once."
     ],
     "value": 650,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
-    "upgradeSlots": 2,
+    "upgradeSlots": 4,
     "restrictions": []
   },
   {
@@ -188,6 +190,7 @@ export const gearCards = [
       "When attacking, Demons, Undead, and Ghosts are -1 on their To Hit rolls (a roll of 6 still triggers abilities)."
     ],
     "value": 325,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 1,
@@ -339,6 +342,7 @@ export const gearCards = [
       "You automatically pass all Escape tests for Undead Enemies."
     ],
     "value": 250,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -366,6 +370,7 @@ export const gearCards = [
       "+1 Combat"
     ],
     "value": 100,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 1,
@@ -1796,6 +1801,7 @@ export const gearCards = [
       "At the start of every Fight, you may roll 2D6. If doubles are rolled, Recover Grit up to your Max Grit. If a total of 7 is rolled, take 3 Horror Hits."
     ],
     "value": 525,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -1842,6 +1848,7 @@ export const gearCards = [
       "+1 Damage to Undead Enemies."
     ],
     "value": 400,
+    "weight": 1,
     "twoHanded": true,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -1857,6 +1864,7 @@ export const gearCards = [
       "A Henchmen Ally with this Item equipped may roll 3 dice and discard the lowest when rolling on the Henchmen Exploration Chart."
     ],
     "value": 150,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -1868,6 +1876,7 @@ export const gearCards = [
     "slot": "Boots",
     "effects": ["Any time you roll a 6 for Move, you may Heal 2 Sanity."],
     "value": 150,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 1,
@@ -1883,6 +1892,7 @@ export const gearCards = [
       "A Henchmen Ally with this Item equipped may discard it to cancel a roll on the Gruesome Fate Chart."
     ],
     "value": 100,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -1922,6 +1932,7 @@ export const gearCards = [
     "slot": "Hand Weapon",
     "effects": ["Once per turn, you may add +2 Damage to one of your Combat Hits."],
     "value": 200,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 2,
@@ -1950,6 +1961,7 @@ export const gearCards = [
       "Any time you draw a Nothing Here Scavenge card, gain $25."
     ],
     "value": 150,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -2003,6 +2015,7 @@ export const gearCards = [
       "Whenever a Depth Event is rolled while Holding Back the Darkness, you may Recover a Grit on D6 roll of 3+."
     ],
     "value": 350,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 2,
@@ -2079,6 +2092,7 @@ export const gearCards = [
       "Discard to throw, just like Dynamite. After any Bounce, models in the same and adjacent spaces take Wounds (ignoring Defense). Other models on the same Map Tile take 2 Hits from falling debris."
     ],
     "value": 400,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -2093,6 +2107,7 @@ export const gearCards = [
       "Until used each Adventure, all Heroes may Re-roll an Escape test once per turn."
     ],
     "value": 450,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
@@ -2117,8 +2132,9 @@ export const gearCards = [
       "Once per turn, you may take 3 Wounds (ignoring Defense) to add +2 Damage to a Hit with this Pistol."
     ],
     "value": 550,
+    "weight": 1,
     "twoHanded": false,
-    "darkStone": false,
+    "darkStone": true,
     "upgradeSlots": 0,
     "restrictions": []
   },
@@ -2142,9 +2158,10 @@ export const gearCards = [
     "slot": "Boots",
     "effects": ["Once per Adventure, you may cancel and re-draw a Threat or Encounter card."],
     "value": 450,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
-    "upgradeSlots": 2,
+    "upgradeSlots": 1,
     "restrictions": []
   },
   {
@@ -2167,6 +2184,7 @@ export const gearCards = [
     "slot": "Container",
     "effects": ["Once per Adventure, Heal 2D6 Wounds."],
     "value": 75,
+    "weight": 1,
     "twoHanded": false,
     "darkStone": false,
     "upgradeSlots": 0,
