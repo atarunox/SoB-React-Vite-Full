@@ -114,6 +114,31 @@ function getMediaType(file) {
 }
 
 function buildPrompt(deckType, extra = {}) {
+  if (extra.isThreat) {
+    const worldLine = extra.world ? `\nOtherWorld context: ${extra.world}` : '';
+    return `You are extracting data from a Shadows of Brimstone THREAT CARD photo.
+Threat tier: ${extra.tier || 'unknown'}${worldLine}
+
+Threat cards are drawn at the start of a fight. They describe an enemy group that appears and any special rules for that encounter.
+
+Extract ALL visible text and return a JSON object with these fields:
+- name: the card title (usually bold text at top, often formatted as "Enemy Group — Variant" e.g. "Lost Army — Generalisimo")
+- flavorText: italic lore/flavor text if present (not rules text)
+- tier: the threat tier shown — "low", "medium", "high", "epic", or "otherworld"
+- world: the OtherWorld name if this is an otherworld threat card (e.g. "Jargono", "Trederra"), otherwise omit
+- enemyGroup: the name of the enemy group that spawns (e.g. "Lost Army", "Black Fang Tribe")
+- enemyCount: if the card shows a specific fixed number of enemies to spawn (e.g. "3", "D6+1"), put that here as a string. Leave blank if a Peril Die icon is shown instead.
+- perilCount: set to true if the card shows a YELLOW CUBE with the letter "P" on it (this is the Peril Die icon — a custom yellow D6 die used in Shadows of Brimstone). This means the number of enemies is determined by rolling the Peril Die. If you see this yellow P-cube icon anywhere on the card, set perilCount to true and leave enemyCount blank.
+- lootCount: number of Loot cards heroes draw after winning this fight (integer, default 1)
+- xp: XP reward for defeating this threat, as a string (e.g. "15+5" means 15 base + 5 per hero)
+- effects: array of strings — each special fight rule or ability this threat adds. Each distinct rule is a separate array entry.
+
+Rules:
+- The Peril Die is a YELLOW CUBE / YELLOW D6 with a "P" on its face. It looks like a small yellow square/box with the letter P. It is NOT a skull die. If you see this icon, perilCount must be true.
+- Correct obvious OCR spelling errors using Shadows of Brimstone context
+- Include ALL rules text in effects — do not truncate
+- Return ONLY a valid JSON object, no markdown fences, no explanation`;
+  }
   if (extra.isEnemy) {
     return `You are extracting data from a Shadows of Brimstone ENEMY SHEET photo.
 

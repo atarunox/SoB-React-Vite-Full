@@ -528,8 +528,8 @@ function FormFields({ deckType, data, onChange }) {
                   checked={!!data.perilCount}
                   onChange={e => set('perilCount', e.target.checked)}
                 />
-                <span className="font-medium">⚀ Peril Roll</span>
-                <span className="text-xs text-gray-500">(skull die, result = enemy count)</span>
+                <span className="font-medium text-yellow-700">🟨 Peril Die</span>
+                <span className="text-xs text-gray-500">(yellow cube "P" icon — result = enemy count)</span>
               </label>
             </div>
           </div>
@@ -833,8 +833,16 @@ export default function DMScanCards({ addGroup, combatGroups }) {
   const processInBackground = useCallback(async (file) => {
     setInFlight(n => n + 1);
     try {
-      const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
-      const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+      const label = deckType === 'threat'
+        ? `${threatTier} threat card${threatTier === 'otherworld' ? ` (${world})` : ''}`
+        : NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
+      const extra = deckType === 'enemy' ? { isEnemy: true, enemySide }
+        : deckType === 'threat' ? {
+            tier: threatTier,
+            world: threatTier === 'otherworld' ? world : undefined,
+            isThreat: true,
+          }
+        : {};
       const result = await scanWithClaudeVision(file, label, apiKey, extra);
       const cardData = applyToSchema(result, deckType, enemySide);
       const key = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
@@ -955,7 +963,12 @@ export default function DMScanCards({ addGroup, combatGroups }) {
           ? `${threatTier} threat card${threatTier === 'otherworld' ? ` (${world})` : ''}`
           : NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
         const extra = deckType === 'enemy' ? { isEnemy: true, enemySide }
-          : deckType === 'threat' ? { tier: threatTier, world: threatTier === 'otherworld' ? world : undefined }
+          : deckType === 'threat' ? {
+              tier: threatTier,
+              world: threatTier === 'otherworld' ? world : undefined,
+              isThreat: true,
+              hint: 'If the card shows a yellow cube/die with the letter P (the Peril Die icon), set perilCount:true and leave enemyCount blank. The Peril Die is rolled to determine how many enemies spawn.',
+            }
           : {};
         const result = await scanWithClaudeVision(imageFile, label, apiKey, extra);
         setProgress(100);
@@ -1182,8 +1195,17 @@ export default function DMScanCards({ addGroup, combatGroups }) {
       try {
         let cardData;
         if (useClaudeVision) {
-          const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
-          const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+          const label = deckType === 'threat'
+            ? `${threatTier} threat card${threatTier === 'otherworld' ? ` (${world})` : ''}`
+            : NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
+          const extra = deckType === 'enemy' ? { isEnemy: true, enemySide }
+            : deckType === 'threat' ? {
+                tier: threatTier,
+                world: threatTier === 'otherworld' ? world : undefined,
+                isThreat: true,
+                hint: 'If the card shows a yellow cube/die with the letter P (the Peril Die icon), set perilCount:true and leave enemyCount blank. The Peril Die is rolled to determine how many enemies spawn.',
+              }
+            : {};
           const result = await scanWithClaudeVision(file, label, apiKey, extra);
           cardData = applyToSchema(result, deckType, enemySide);
         } else {
