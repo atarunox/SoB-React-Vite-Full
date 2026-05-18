@@ -15,6 +15,13 @@ export const THREAT_CARDS_STANDARD = [
     effects: [],
   },
   {
+    id: '1_burrower_2',
+    name: '1 Burrower',
+    tier: 'low',
+    spawn: '1 Burrower',
+    effects: [],
+  },
+  {
     id: '1_burrower_and_1_threat_card',
     name: '1 Burrower and 1 Threat Card',
     tier: 'low',
@@ -36,6 +43,13 @@ export const THREAT_CARDS_STANDARD = [
     effects: [],
   },
   {
+    id: 'the_ancient_one_2',
+    name: 'The Ancient One',
+    tier: 'low',
+    spawn: '1 The Ancient One',
+    effects: [],
+  },
+  {
     id: 'the_ancient_one_and_crimson_hand',
     name: 'The Ancient One and {P} Crimson Hand',
     tier: 'low',
@@ -44,6 +58,13 @@ export const THREAT_CARDS_STANDARD = [
   },
   {
     id: '1_goliath_and_1_threat_card',
+    name: '1 Goliath and 1 Threat Card',
+    tier: 'low',
+    spawn: '1 Goliath and 1 Threat Card',
+    effects: [],
+  },
+  {
+    id: '1_goliath_and_1_threat_card_2',
     name: '1 Goliath and 1 Threat Card',
     tier: 'low',
     spawn: '1 Goliath and 1 Threat Card',
@@ -109,7 +130,29 @@ export const THREAT_CARDS_STANDARD = [
     effects: [],
   },
   {
+    id: 'death_cult_2',
+    name: 'Death Cult',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: '{P}{P} Crimson Hand' },
+      { range: '3-4', text: 'Inquisitor and {P}{P} Crimson Hand' },
+      { range: '5-6', text: 'Inquisitor and 12 Crimson Hand' },
+    ],
+    effects: [],
+  },
+  {
     id: 'colonel_scafford_mutations',
+    name: 'Colonel Scafford and... (Mutations)',
+    tier: 'low',
+    heroTable: [
+      { range: '1-2', text: 'D3+1 Scaffold Gang with 1 Hideous Mutation' },
+      { range: '3-4', text: '{P} Scaffold Gang with 2 Hideous Mutations' },
+      { range: '5-6', text: '6 Scaffold Gang with 3 Hideous Mutations' },
+    ],
+    effects: [],
+  },
+  {
+    id: 'colonel_scafford_mutations_2',
     name: 'Colonel Scafford and... (Mutations)',
     tier: 'low',
     heroTable: [
@@ -248,6 +291,21 @@ export const THREAT_CARDS_OTHERWORLD = [
     ],
   },
   {
+    id: '1_wasteland_giant_blasted_wastes_2',
+    name: '1 Wasteland Giant',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    spawn: '1 Wasteland Giant',
+    effects: [
+      'A Wasteland Giant is a Magma Giant with the following: +1 Combat, +5 XP.',
+      'Replaces Keyword Cynder with Blasted Wastes.',
+      'All references to Burning markers are changed to Stunned markers instead.',
+      'Elite Chart result 1-2) is replaced with:',
+      '1) Dripping Acid — Any Hero ending their move adjacent to the Wasteland Giant takes 2 Hits that do 2 Damage each.',
+      '2) Erupts From the Sand — Always starts in Ambush and is +1 Damage for each adjacent Hero.',
+    ],
+  },
+  {
     id: '1_sand_kraken_blasted_wastes',
     name: '1 Sand Kraken',
     tier: 'otherworld',
@@ -323,6 +381,14 @@ export const THREAT_CARDS_OTHERWORLD = [
     spawn: '1 Guardian and 1 Threat Card',
     effects: [],
   },
+  {
+    id: '1_guardian_and_1_threat_card_targa_plateau_2',
+    name: '1 Guardian and 1 Threat Card',
+    tier: 'otherworld',
+    world: 'Targa Plateau',
+    spawn: '1 Guardian and 1 Threat Card',
+    effects: [],
+  },
 
   // Derelict Ship ─────────────────────────────────────────────────────────────
   {
@@ -337,6 +403,20 @@ export const THREAT_CARDS_OTHERWORLD = [
   // Belly of the Beast ────────────────────────────────────────────────────────
   {
     id: '1_bile_giant_belly_of_the_beast',
+    name: '1 Bile Giant',
+    tier: 'otherworld',
+    world: 'Belly of the Beast',
+    spawn: '1 Bile Giant',
+    effects: [
+      'A Bile Giant is a Magma Giant with the following: -1 Combat, +1 Damage, -1 Defense.',
+      'Replaces Keyword Cynder with Belly of the Beast.',
+      'All references to Burning markers are changed to Bleeding markers instead.',
+      'Elite Chart result 1-2) is replaced with:',
+      '1-2) Spews Bile — At the start of this Enemy\'s Activation, makes a free Ranged Attack at a Random Hero using: Range 4, Shots 2, Damage {P}.',
+    ],
+  },
+  {
+    id: '1_bile_giant_belly_of_the_beast_2',
     name: '1 Bile Giant',
     tier: 'otherworld',
     world: 'Belly of the Beast',
