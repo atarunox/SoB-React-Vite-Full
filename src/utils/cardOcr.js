@@ -127,7 +127,7 @@ Extract ALL visible text and return a JSON object with these fields:
 - tier: the threat tier shown — "low", "medium", "high", "epic", or "otherworld"
 - world: the OtherWorld name if this is an otherworld threat card (e.g. "Jargono", "Trederra"), otherwise omit
 - enemyGroup: the name of the enemy group that spawns (e.g. "Lost Army", "Black Fang Tribe")
-- enemyCount: if the card shows a specific fixed number of enemies to spawn (e.g. "3", "D6+1"), put that here as a string. Leave blank if a Peril Die icon is shown instead.
+- enemyCount: if the card shows a number or dice expression for how many enemies spawn (e.g. "3", "D3+1", "D6", "2D6", "D6+2"), put that here as a string. D3 means roll 1–3, D6 means roll 1–6. Leave blank if a Peril Die {P} icon is shown instead.
 - perilCount: set to true if the card shows a {P} symbol or a die icon with the letter P (this is the Peril Die — a custom D6 with faces 3,3,4,4,5,6 used in Shadows of Brimstone to determine enemy spawn counts). On printed cards it appears as a small die icon or the text "{P}". Set perilCount to true and leave enemyCount blank when you see this.
 - lootCount: number of Loot cards heroes draw after winning this fight (integer, default 1)
 - xp: XP reward for defeating this threat, as a string (e.g. "15+5" means 15 base + 5 per hero)
@@ -199,36 +199,48 @@ async function callClaude(file, prompt, apiKey, maxTokens = 2048) {
   const mediaType = getMediaType(file);
   const cleanKey = apiKey.replace(/[^\x20-\x7E]/g, '').trim();
 
-  const response = await fetch(CLAUDE_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': cleanKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: prompt },
-          ],
-        },
-      ],
-    }),
+  const body = JSON.stringify({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: maxTokens,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: prompt },
+        ],
+      },
+    ],
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `API error ${response.status}`);
-  }
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-api-key': cleanKey,
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true',
+  };
 
-  const data = await response.json();
-  return (data.content?.[0]?.text || '').trim();
+  // Retry up to 3 times on 529 Overloaded with exponential backoff
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    const response = await fetch(CLAUDE_API_URL, { method: 'POST', headers, body });
+
+    if (response.status === 529 || response.status === 503) {
+      if (attempt < 3) {
+        const delay = (2 ** attempt) * 2000; // 2s, 4s, 8s
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw new Error('Claude API is overloaded — wait a moment and try again');
+    }
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.content?.[0]?.text || '').trim();
+  }
 }
 
 function parseJsonResponse(text) {
