@@ -47,17 +47,151 @@ const DECKS = [
   { id: 'warChant',     label: 'Black Fang War Chant',     cards: BLACK_FANG_WAR_CHANT  },
 ];
 
+// ── Shared card shell ─────────────────────────────────────────────────────────
+function CardShell({ name, tags, badges, flavor, children, restrictions }) {
+  return (
+    <div className="border border-[#8b6b46]/40 rounded-lg bg-[#fdf6e3] px-3 py-2 space-y-1.5">
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <span className="font-bold text-[#3b2f1d] text-sm leading-snug">{name}</span>
+        <div className="flex items-center gap-1 flex-wrap shrink-0">{badges}</div>
+      </div>
+      {tags?.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((t, i) => (
+            <span key={i} className="text-[10px] bg-[#2a1f14]/10 text-[#5c3a1e] rounded-full px-2 py-0.5 border border-[#8b6b46]/30">{t}</span>
+          ))}
+        </div>
+      )}
+      {flavor && (
+        <p className="text-xs italic text-[#5c3a1e]/70 leading-snug border-l-2 border-[#8b6b46]/30 pl-2">{flavor}</p>
+      )}
+      {children}
+      {restrictions?.length > 0 && (
+        <p className="text-[10px] text-red-700/70 italic">{restrictions.join(' · ')}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Encounter card row (rich + flat schema) ───────────────────────────────────
+function EncounterTestBlock({ test }) {
+  if (!test) return null;
+  if (typeof test === 'string') {
+    return <p className="text-xs font-semibold text-[#3b2f1d]">Test: {test}</p>;
+  }
+  return (
+    <div className="rounded border border-[#8b6b46]/30 bg-white/50 px-2 py-1.5 space-y-1">
+      <p className="text-xs font-bold text-[#3b2f1d]">{test.stat} {test.target}</p>
+      {test.success?.length > 0 && (
+        <div>
+          <span className="text-[10px] font-bold text-green-700">SUCCESS: </span>
+          <span className="text-xs text-[#3b2f1d]/80">{test.success.join(' · ')}</span>
+        </div>
+      )}
+      {test.fail?.length > 0 && (
+        <div>
+          <span className="text-[10px] font-bold text-red-700">FAIL: </span>
+          <span className="text-xs text-[#3b2f1d]/80">{test.fail.join(' · ')}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EncounterCardRow({ card }) {
+  const flavor = card.flavor || card.flavorText || null;
+  const isRich = card.test && typeof card.test === 'object';
+
+  const badges = (
+    <>
+      {card.remainsInPlay && (
+        <span className="text-[10px] font-semibold bg-amber-200 text-amber-900 border border-amber-400 rounded px-1.5 py-0.5">
+          Remains in Play
+        </span>
+      )}
+    </>
+  );
+
+  return (
+    <CardShell name={card.name || '(unnamed)'} tags={card.tags} badges={badges} flavor={flavor}>
+      {isRich ? (
+        <div className="space-y-1.5">
+          {card.effects?.length > 0 && (
+            <ul className="space-y-0.5">
+              {card.effects.map((e, i) => (
+                <li key={i} className="text-xs text-[#3b2f1d]/80 leading-snug">{e}</li>
+              ))}
+            </ul>
+          )}
+          <EncounterTestBlock test={card.test} />
+          {card.choices?.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-[#5c3a1e] uppercase tracking-wide">Choose:</p>
+              {card.choices.map((c, i) => (
+                <div key={i} className="rounded border border-[#8b6b46]/30 bg-white/50 px-2 py-1.5 space-y-1">
+                  <p className="text-xs font-semibold text-blue-800">{c.label}</p>
+                  {c.effects?.length > 0 && (
+                    <ul className="space-y-0.5">
+                      {c.effects.map((e, j) => <li key={j} className="text-xs text-[#3b2f1d]/80">{e}</li>)}
+                    </ul>
+                  )}
+                  <EncounterTestBlock test={c.test} />
+                </div>
+              ))}
+            </div>
+          )}
+          {card.rollTable && (
+            <div className="rounded border border-[#8b6b46]/30 bg-white/50 px-2 py-1.5">
+              <p className="text-[10px] font-bold text-[#5c3a1e] uppercase tracking-wide mb-1">Roll {card.rollTable.dice}:</p>
+              <div className="space-y-1">
+                {Object.entries(card.rollTable.results).map(([range, result]) => (
+                  <div key={range}>
+                    <span className="text-xs font-mono font-bold text-[#5c3a1e]">{range} </span>
+                    <span className="text-xs font-semibold text-[#3b2f1d]">{result.name}</span>
+                    {result.effect && <span className="text-xs text-[#3b2f1d]/80"> — {result.effect}</span>}
+                    {result.test && <EncounterTestBlock test={result.test} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {card.followUp && (
+            <div className="rounded border border-blue-200 bg-blue-50/50 px-2 py-1.5 space-y-1">
+              <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wide">
+                {card.followUp.label || `Then: Roll ${card.followUp.roll}`}
+              </p>
+              {card.followUp.test && <EncounterTestBlock test={card.followUp.test} />}
+              {card.followUp.table && Object.entries(card.followUp.table).map(([r, e]) => (
+                <p key={r} className="text-xs text-[#3b2f1d]/80"><span className="font-mono font-bold">{r}:</span> {e}</p>
+              ))}
+              {card.followUp.effects?.map((e, i) => (
+                <p key={i} className="text-xs text-[#3b2f1d]/80">{e}</p>
+              ))}
+            </div>
+          )}
+          {card.notes && <p className="text-[10px] italic text-[#5c3a1e]/60">{card.notes}</p>}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {card.test && <p className="text-xs font-semibold text-[#3b2f1d]">Test: {card.test}</p>}
+          {card.effect && <p className="text-xs text-[#3b2f1d]/80 leading-snug whitespace-pre-wrap">{card.effect}</p>}
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
 // ── Generic card row ──────────────────────────────────────────────────────────
 function CardRow({ card }) {
-  const tags = [
-    ...(card.tags   || []),
+  const allTags = [
+    ...(card.tags    || []),
     ...(card.subtype || []),
     ...(card.keywords || []),
     card.slot ? card.slot : null,
     card.type ? card.type : null,
   ].filter(Boolean);
 
-  const flavorText = card.flavor || card.flavorText || null;
+  const flavor = card.flavor || card.flavorText || null;
 
   const effectLines = (() => {
     if (Array.isArray(card.effects))   return card.effects;
@@ -68,37 +202,39 @@ function CardRow({ card }) {
     return [];
   })();
 
-  const name = card.name || card.type || '(unnamed)';
+  const badges = (
+    <>
+      {card.consumesDarkStone && (
+        <span className="text-[10px] font-semibold bg-slate-700 text-slate-100 border border-slate-500 rounded px-1.5 py-0.5">◆ Dark Stone</span>
+      )}
+      {card.remainsInPlay && (
+        <span className="text-[10px] font-semibold bg-amber-200 text-amber-900 border border-amber-400 rounded px-1.5 py-0.5">Remains in Play</span>
+      )}
+      {card.value != null && (
+        <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 rounded px-1.5 py-0.5">${card.value}</span>
+      )}
+      {card.weight != null && (
+        <span className="text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-300 rounded px-1.5 py-0.5">Wt {card.weight}</span>
+      )}
+      {card.hands != null && (
+        <span className="text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-300 rounded px-1.5 py-0.5">{card.hands}H</span>
+      )}
+      {card.upgradeSlots > 0 && (
+        <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-300 rounded px-1.5 py-0.5">⬡×{card.upgradeSlots}</span>
+      )}
+    </>
+  );
 
   return (
-    <div className="border border-[#8b6b46]/40 rounded-lg bg-[#fdf6e3] px-3 py-2 space-y-1">
-      <div className="flex items-start justify-between gap-2 flex-wrap">
-        <span className="font-bold text-[#3b2f1d] text-sm leading-snug">{name}</span>
-        <div className="flex items-center gap-1 flex-wrap shrink-0">
-          {card.consumesDarkStone && (
-            <span className="text-[10px] font-semibold bg-slate-700 text-slate-100 border border-slate-500 rounded px-1.5 py-0.5">
-              ◆ Dark Stone
-            </span>
-          )}
-          {card.remainsInPlay && (
-            <span className="text-[10px] font-semibold bg-amber-200 text-amber-900 border border-amber-400 rounded px-1.5 py-0.5">
-              Remains in Play
-            </span>
-          )}
-          {card.value != null && (
-            <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 rounded px-1.5 py-0.5">
-              ${card.value}
-            </span>
-          )}
-          {tags.slice(0, 4).map((t, i) => (
-            <span key={i} className="text-[10px] bg-[#2a1f14]/10 text-[#5c3a1e] rounded-full px-2 py-0.5 border border-[#8b6b46]/30">
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
-      {flavorText && (
-        <p className="text-xs italic text-[#5c3a1e]/70 leading-snug border-l-2 border-[#8b6b46]/30 pl-2">{flavorText}</p>
+    <CardShell
+      name={card.name || card.type || '(unnamed)'}
+      tags={allTags}
+      badges={badges}
+      flavor={flavor}
+      restrictions={card.restrictions}
+    >
+      {(card.test && typeof card.test === 'string') && (
+        <p className="text-xs font-semibold text-[#3b2f1d]">Test: {card.test}</p>
       )}
       {effectLines.length > 0 && (
         <ul className="list-none space-y-0.5">
@@ -107,10 +243,7 @@ function CardRow({ card }) {
           ))}
         </ul>
       )}
-      {card.restrictions?.length > 0 && (
-        <p className="text-[10px] text-red-700/70 italic">{card.restrictions.join(' · ')}</p>
-      )}
-    </div>
+    </CardShell>
   );
 }
 
@@ -336,7 +469,7 @@ function EncounterSection() {
           ) : (
             <div className="space-y-2 max-h-[60vh] overflow-y-auto themed-scrollbar pr-1">
               {filtered.map((card, i) => (
-                <CardRow key={card.id ?? card.name ?? i} card={card} />
+                <EncounterCardRow key={card.id ?? card.name ?? i} card={card} />
               ))}
             </div>
           )}
