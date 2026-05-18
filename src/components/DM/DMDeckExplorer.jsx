@@ -13,6 +13,7 @@ import { ENEMY_TRAIT_CARDS }      from '../../data/enemyCards/enemyTraitCards';
 import { BLACK_FANG_WAR_CHANT }  from '../../data/enemyCards/warChantCards';
 import { TOWN_TYPE_CARDS }        from '../../data/cards/townTypeCards';
 import { townTraitsChart }        from './charts/townTraitsChart';
+import { THREAT_CARDS }           from '../../data/cards/threatCards';
 
 // Flatten enemy trait cards: { enemyName: [cards] } → [{ enemy, name, effect, ... }]
 const flatEnemyTraitCards = Object.entries(ENEMY_TRAIT_CARDS).flatMap(
@@ -289,6 +290,145 @@ function EnemySection() {
   );
 }
 
+// ── Threat card row ───────────────────────────────────────────────────────────
+function ThreatCardRow({ card }) {
+  const tierColors = {
+    low: 'bg-green-100 text-green-800 border-green-300',
+    medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    high: 'bg-orange-100 text-orange-800 border-orange-300',
+    epic: 'bg-red-100 text-red-800 border-red-300',
+    otherworld: 'bg-purple-100 text-purple-800 border-purple-300',
+  };
+  const tc = tierColors[card.tier] || tierColors.low;
+
+  return (
+    <div className="border border-[#8b6b46]/40 rounded-lg bg-[#fdf6e3] px-3 py-2 space-y-1.5">
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <span className="font-bold text-[#3b2f1d] text-sm leading-snug">{card.name}</span>
+        <div className="flex items-center gap-1 flex-wrap shrink-0">
+          <span className={`text-[10px] font-semibold border rounded px-1.5 py-0.5 capitalize ${tc}`}>
+            {card.tier === 'otherworld' && card.world ? card.world : card.tier}
+          </span>
+          {card.promoId && (
+            <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 rounded px-1.5 py-0.5">
+              {card.promoId}
+            </span>
+          )}
+        </div>
+      </div>
+      {card.spawn && (
+        <p className="text-xs text-[#3b2f1d]/80 font-medium">{card.spawn}</p>
+      )}
+      {card.heroTable && (
+        <table className="text-xs w-full border-collapse">
+          <tbody>
+            {card.heroTable.map(row => (
+              <tr key={row.range} className="border-t border-[#8b6b46]/20 first:border-0">
+                <td className="pr-2 py-0.5 font-semibold text-[#5c3a1e] w-10">{row.range}</td>
+                <td className="py-0.5 text-[#3b2f1d]/80">{row.text}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {card.effects?.length > 0 && (
+        <ul className="list-none space-y-0.5">
+          {card.effects.map((e, i) => (
+            <li key={i} className="text-xs italic text-[#3b2f1d]/70 leading-snug">{e}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── Threat card section ───────────────────────────────────────────────────────
+function ThreatCardSection() {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [query, setQuery] = useState('');
+
+  const allWorlds = useMemo(() =>
+    [...new Set(THREAT_CARDS.filter(c => c.world).map(c => c.world))].sort(),
+  []);
+
+  const filtered = useMemo(() => {
+    let list = THREAT_CARDS;
+    if (filter === 'standard') list = list.filter(c => c.tier !== 'otherworld');
+    else if (filter === 'otherworld') list = list.filter(c => c.tier === 'otherworld');
+    else if (filter !== 'all') list = list.filter(c => c.world === filter);
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(c => {
+        const parts = [
+          c.name, c.spawn,
+          ...(c.effects || []),
+          ...(c.heroTable || []).map(r => r.text),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return parts.includes(q);
+      });
+    }
+    return list;
+  }, [filter, query]);
+
+  return (
+    <div className="border border-[#8b6b46] rounded-xl overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#2a1f14] to-[#3d2c1a] hover:from-[#3d2c1a] hover:to-[#5c3a1e] transition-colors"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span className="font-bold text-amber-200 tracking-wide">Threat Cards</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs bg-amber-900/60 text-amber-200 rounded-full px-2.5 py-0.5 font-semibold">
+            {THREAT_CARDS.length} cards
+          </span>
+          <span className="text-amber-400 text-sm">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+      {open && (
+        <div className="bg-[#fdf6e3]/50 p-3 space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { val: 'all', label: 'All' },
+              { val: 'standard', label: 'Standard' },
+              { val: 'otherworld', label: 'OtherWorld' },
+              ...allWorlds.map(w => ({ val: w, label: w })),
+            ].map(({ val, label }) => (
+              <button
+                key={val}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
+                  filter === val
+                    ? 'bg-amber-700 text-amber-100 border-amber-600'
+                    : 'bg-white/80 text-[#5c3a1e] border-[#8b6b46]/40 hover:bg-amber-50'
+                }`}
+                onClick={() => setFilter(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            placeholder="Search threat cards…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#8b6b46]/50 bg-white/80 focus:outline-none focus:ring-1 focus:ring-[#b8860b]/50"
+          />
+          {filtered.length === 0 ? (
+            <p className="text-sm italic text-[#5c3a1e]/60 text-center py-2">No cards match.</p>
+          ) : (
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto themed-scrollbar pr-1">
+              {filtered.map(card => (
+                <ThreatCardRow key={card.id} card={card} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function DMDeckExplorer() {
   const flatTotal = DECKS.reduce((s, d) => s + (Array.isArray(d.cards) ? d.cards.length : 0), 0);
@@ -299,12 +439,13 @@ export default function DMDeckExplorer() {
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-base text-[#3b2f1d]">Deck Explorer</h3>
         <span className="text-xs text-[#5c3a1e]/60">
-          {flatTotal + enemyTotal} total cards
+          {flatTotal + enemyTotal + THREAT_CARDS.length} total cards
         </span>
       </div>
       {DECKS.map(deck => (
         <DeckSection key={deck.id} deck={deck} />
       ))}
+      <ThreatCardSection />
       <EnemySection />
     </div>
   );
