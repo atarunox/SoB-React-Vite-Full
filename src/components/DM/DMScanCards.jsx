@@ -16,6 +16,7 @@ const DECK_TYPES = [
   { id: 'townTrait',    label: 'Town Trait Card' },
   { id: 'enemy',        label: 'Enemy Sheet' },
   { id: 'enemyTrait',   label: 'Enemy Trait Card' },
+  { id: 'threat',       label: 'Threat Card' },
 ];
 
 const WORLDS = [
@@ -42,6 +43,7 @@ const ARTIFACT_SLOTS = ['None', 'Charm', 'Hand Weapon', 'Gun', 'Coat', 'Hat', 'B
 const ENEMY_KEYWORDS = ['Beast', 'Cursed', 'Undead', 'Demon', 'Void', 'Soldier', 'Construct', 'Robot', 'Swarm', 'Spirit', 'Nature', 'Corrupted', 'Werewolf', 'Vampire', 'Tribal', 'Outlaw', 'Targa'];
 const ENEMY_SIZES = ['Small', 'Medium', 'Large', 'XL'];
 const THREAT_TIERS = ['low', 'medium', 'high', 'epic'];
+const THREAT_CARD_TIERS = ['low', 'medium', 'high', 'epic', 'otherworld'];
 
 const LS_KEY = 'sob:scannedCards';
 const LS_API_KEY = 'sob:claudeApiKey';
@@ -156,6 +158,20 @@ function applyToSchema(raw, deckType, enemySide = 'normal') {
         name,
         flavorText: raw.flavorText || '',
         effect,
+      };
+    case 'threat':
+      return {
+        id: toId(name),
+        name,
+        flavorText: raw.flavorText || '',
+        tier: raw.tier || 'medium',
+        world: raw.world || '',
+        enemyGroup: raw.enemyGroup || raw.enemy || '',
+        enemyCount: raw.enemyCount || '',
+        perilCount: raw.perilCount ?? false,
+        lootCount: raw.lootCount ?? 1,
+        xp: raw.xp || '',
+        effects: Array.isArray(raw.effects) ? raw.effects : [effect].filter(Boolean),
       };
     case 'enemy': {
       const move = raw.move != null ? String(raw.move) : '0';
@@ -480,6 +496,54 @@ function FormFields({ deckType, data, onChange }) {
         </div>
       );
 
+    case 'threat':
+      return (
+        <div className="space-y-3">
+          {field('Card Name', 'name', 'text', 'e.g. Lost Army — Generalisimo')}
+          {field('ID (auto)', 'id')}
+          {textarea('Flavor Text (italic, optional)', 'flavorText')}
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Tier</label>
+            <select className="select select-sm w-full mt-0.5" value={data.tier || 'medium'} onChange={e => set('tier', e.target.value)}>
+              {THREAT_CARD_TIERS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+            </select>
+          </div>
+          {data.tier === 'otherworld' && (
+            <div>
+              <label className="text-xs font-semibold text-gray-600">OtherWorld</label>
+              <select className="select select-sm w-full mt-0.5" value={data.world || ''} onChange={e => set('world', e.target.value)}>
+                <option value="">— select world —</option>
+                {WORLDS.map(w => <option key={w} value={w}>{w}</option>)}
+              </select>
+            </div>
+          )}
+          {field('Enemy Group Spawned', 'enemyGroup', 'text', 'e.g. Lost Army')}
+          <div className="grid grid-cols-2 gap-2">
+            {field('Enemy Count (fixed)', 'enemyCount', 'text', 'e.g. 3, or leave blank')}
+            <div>
+              <label className="text-xs font-semibold text-gray-600">Enemy Count by Peril Roll?</label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer mt-1">
+                <input
+                  type="checkbox"
+                  checked={!!data.perilCount}
+                  onChange={e => set('perilCount', e.target.checked)}
+                />
+                <span className="font-medium">⚀ Peril Roll</span>
+                <span className="text-xs text-gray-500">(skull die, result = enemy count)</span>
+              </label>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {field('Loot Cards Drawn', 'lootCount', 'number')}
+            {field('XP Reward', 'xp', 'text', 'e.g. 15+5')}
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Special Fight Rules</label>
+            <EffectsEditor value={data.effects} onChange={v => set('effects', v)} />
+          </div>
+        </div>
+      );
+
     case 'enemy':
       return (
         <div className="space-y-3">
@@ -663,6 +727,9 @@ export default function DMScanCards({ addGroup, combatGroups }) {
   const [enemySide, setEnemySide] = useState(() => {
     try { return sessionStorage.getItem(SS_SIDE_KEY) || 'normal'; } catch { return 'normal'; }
   });
+  const [threatTier, setThreatTier] = useState(() => {
+    try { return sessionStorage.getItem('sob:scanThreatTier') || 'medium'; } catch { return 'medium'; }
+  });
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -699,7 +766,9 @@ export default function DMScanCards({ addGroup, combatGroups }) {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  const pendingKey = NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
+  const pendingKey = deckType === 'threat'
+    ? (threatTier === 'otherworld' ? `threat:otherworld:${world}` : `threat:${threatTier}`)
+    : NEEDS_WORLD.has(deckType) ? `${deckType}:${world}` : deckType;
   const currentPending = pending[pendingKey] || [];
   const useClaudeVision = !!apiKey;
 
@@ -722,6 +791,9 @@ export default function DMScanCards({ addGroup, combatGroups }) {
   useEffect(() => {
     try { sessionStorage.setItem(SS_SIDE_KEY, enemySide); } catch {}
   }, [enemySide]);
+  useEffect(() => {
+    try { sessionStorage.setItem('sob:scanThreatTier', threatTier); } catch {}
+  }, [threatTier]);
 
   const startCamera = useCallback(async () => {
     // On HTTP, getUserMedia is unavailable — fall back to native camera input
@@ -879,13 +951,19 @@ export default function DMScanCards({ addGroup, combatGroups }) {
     try {
       if (useClaudeVision) {
         setProgress(30);
-        const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
-        const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+        const label = deckType === 'threat'
+          ? `${threatTier} threat card${threatTier === 'otherworld' ? ` (${world})` : ''}`
+          : NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
+        const extra = deckType === 'enemy' ? { isEnemy: true, enemySide }
+          : deckType === 'threat' ? { tier: threatTier, world: threatTier === 'otherworld' ? world : undefined }
+          : {};
         const result = await scanWithClaudeVision(imageFile, label, apiKey, extra);
         setProgress(100);
         setScanEngine('claude');
         setRawText('');
-        setFormData(applyToSchema(result, deckType, enemySide));
+        const scanned = applyToSchema(result, deckType, enemySide);
+        if (deckType === 'threat') scanned.tier = scanned.tier || threatTier;
+        setFormData(scanned);
       } else {
         const text = await runOcr(imageFile, setProgress);
         setScanEngine('tesseract');
@@ -1257,7 +1335,7 @@ export default function DMScanCards({ addGroup, combatGroups }) {
             ))}
           </select>
         </div>
-        {NEEDS_WORLD.has(deckType) && (
+        {(NEEDS_WORLD.has(deckType) || (deckType === 'threat' && threatTier === 'otherworld')) && (
           <div>
             <label className="text-xs font-semibold text-gray-600">World</label>
             <select
@@ -1289,6 +1367,33 @@ export default function DMScanCards({ addGroup, combatGroups }) {
             >
               Brutal
             </button>
+          </div>
+        </div>
+      )}
+
+      {deckType === 'threat' && (
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Threat Tier</label>
+          <div className="flex gap-0 rounded-lg overflow-hidden border border-gray-400">
+            {THREAT_CARD_TIERS.map((t, i) => {
+              const colors = {
+                low: 'bg-green-600',
+                medium: 'bg-yellow-500',
+                high: 'bg-orange-600',
+                epic: 'bg-red-700',
+                otherworld: 'bg-purple-700',
+              };
+              return (
+                <button
+                  key={t}
+                  className={`flex-1 py-2 px-2 text-xs font-semibold transition-colors capitalize
+                    ${threatTier === t ? `${colors[t]} text-white` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  onClick={() => { setThreatTier(t); setFormData(f => ({ ...f, tier: t })); }}
+                >
+                  {t}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1552,7 +1657,12 @@ export default function DMScanCards({ addGroup, combatGroups }) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">
-              Queued — {NEEDS_WORLD.has(deckType) ? `${world} ` : ''}{DECK_TYPES.find(d => d.id === deckType)?.label} ({currentPending.length})
+              Queued —{' '}
+              {deckType === 'threat'
+                ? `${threatTier === 'otherworld' ? `OtherWorld (${world}) ` : `${threatTier.charAt(0).toUpperCase() + threatTier.slice(1)} `}Threat Card`
+                : `${NEEDS_WORLD.has(deckType) ? `${world} ` : ''}${DECK_TYPES.find(d => d.id === deckType)?.label}`
+              }
+              {' '}({currentPending.length})
             </h3>
             <div className="flex gap-2">
               <button className="btn btn-sm btn-accent" onClick={handleExport}>
