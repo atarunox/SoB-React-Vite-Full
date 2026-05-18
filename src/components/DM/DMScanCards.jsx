@@ -528,8 +528,8 @@ function FormFields({ deckType, data, onChange }) {
                   checked={!!data.perilCount}
                   onChange={e => set('perilCount', e.target.checked)}
                 />
-                <span className="font-medium text-yellow-700">🟨 Peril Die</span>
-                <span className="text-xs text-gray-500">(yellow cube "P" icon — result = enemy count)</span>
+                <span className="font-medium text-yellow-700">{'{P}'} Peril Die</span>
+                <span className="text-xs text-gray-500">(custom D6: 3,3,4,4,5,6 — result = enemy count)</span>
               </label>
             </div>
           </div>
