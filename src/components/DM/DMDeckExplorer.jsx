@@ -148,24 +148,42 @@ function EnemyRow({ enemy }) {
   );
 }
 
+// ── Sort helper ───────────────────────────────────────────────────────────────
+const SORT_CYCLE = ['default', 'asc', 'desc'];
+const SORT_LABEL = { default: 'Default', asc: 'A→Z', desc: 'Z→A' };
+function nextSort(s) { return SORT_CYCLE[(SORT_CYCLE.indexOf(s) + 1) % SORT_CYCLE.length]; }
+function applySort(list, sort) {
+  if (sort === 'default') return list;
+  const sorted = [...list].sort((a, b) => {
+    const na = (a.name || a.type || '').toLowerCase();
+    const nb = (b.name || b.type || '').toLowerCase();
+    return na < nb ? -1 : na > nb ? 1 : 0;
+  });
+  return sort === 'desc' ? sorted.reverse() : sorted;
+}
+
 // ── Generic deck section ──────────────────────────────────────────────────────
 function DeckSection({ deck }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('default');
   const cards = Array.isArray(deck.cards) ? deck.cards : [];
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return cards;
-    const q = query.toLowerCase();
-    return cards.filter(c => {
-      const parts = [
-        c.name, c.effect, c.text, c.description, c.type, c.slot,
-        ...(c.tags || []), ...(c.subtype || []), ...(c.keywords || []),
-        ...(Array.isArray(c.effects) ? c.effects : []),
-      ].filter(Boolean).join(' ').toLowerCase();
-      return parts.includes(q);
-    });
-  }, [cards, query]);
+    let list = cards;
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(c => {
+        const parts = [
+          c.name, c.effect, c.text, c.description, c.type, c.slot,
+          ...(c.tags || []), ...(c.subtype || []), ...(c.keywords || []),
+          ...(Array.isArray(c.effects) ? c.effects : []),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return parts.includes(q);
+      });
+    }
+    return applySort(list, sort);
+  }, [cards, query, sort]);
 
   return (
     <div className="border border-[#8b6b46] rounded-xl overflow-hidden">
@@ -185,13 +203,25 @@ function DeckSection({ deck }) {
       {open && (
         <div className="bg-[#fdf6e3]/50 p-3 space-y-2">
           {cards.length > 4 && (
-            <input
-              type="text"
-              placeholder="Search…"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#8b6b46]/50 bg-white/80 focus:outline-none focus:ring-1 focus:ring-[#b8860b]/50"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Search…"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-[#8b6b46]/50 bg-white/80 focus:outline-none focus:ring-1 focus:ring-[#b8860b]/50"
+              />
+              <button
+                onClick={() => setSort(s => nextSort(s))}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold whitespace-nowrap transition-colors ${
+                  sort !== 'default'
+                    ? 'bg-amber-700 text-amber-100 border-amber-600'
+                    : 'bg-white/80 text-[#5c3a1e] border-[#8b6b46]/40 hover:bg-amber-50'
+                }`}
+              >
+                {SORT_LABEL[sort]}
+              </button>
+            </div>
           )}
           {filtered.length === 0 ? (
             <p className="text-sm italic text-[#5c3a1e]/60 text-center py-2">No cards match.</p>
@@ -347,6 +377,7 @@ function ThreatCardSection() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('default');
 
   const allWorlds = useMemo(() =>
     [...new Set(THREAT_CARDS.filter(c => c.world).map(c => c.world))].sort(),
@@ -368,8 +399,8 @@ function ThreatCardSection() {
         return parts.includes(q);
       });
     }
-    return list;
-  }, [filter, query]);
+    return applySort(list, sort);
+  }, [filter, query, sort]);
 
   return (
     <div className="border border-[#8b6b46] rounded-xl overflow-hidden">
@@ -407,13 +438,25 @@ function ThreatCardSection() {
               </button>
             ))}
           </div>
-          <input
-            type="text"
-            placeholder="Search threat cards…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            className="w-full text-sm px-3 py-1.5 rounded-lg border border-[#8b6b46]/50 bg-white/80 focus:outline-none focus:ring-1 focus:ring-[#b8860b]/50"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Search threat cards…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-[#8b6b46]/50 bg-white/80 focus:outline-none focus:ring-1 focus:ring-[#b8860b]/50"
+            />
+            <button
+              onClick={() => setSort(s => nextSort(s))}
+              className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold whitespace-nowrap transition-colors ${
+                sort !== 'default'
+                  ? 'bg-amber-700 text-amber-100 border-amber-600'
+                  : 'bg-white/80 text-[#5c3a1e] border-[#8b6b46]/40 hover:bg-amber-50'
+              }`}
+            >
+              {SORT_LABEL[sort]}
+            </button>
+          </div>
           {filtered.length === 0 ? (
             <p className="text-sm italic text-[#5c3a1e]/60 text-center py-2">No cards match.</p>
           ) : (
