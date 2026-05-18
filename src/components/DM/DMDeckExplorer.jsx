@@ -57,13 +57,14 @@ function CardRow({ card }) {
     card.type ? card.type : null,
   ].filter(Boolean);
 
+  const flavorText = card.flavor || card.flavorText || null;
+
   const effectLines = (() => {
-    if (Array.isArray(card.effects))     return card.effects;
-    if (Array.isArray(card.abilities))   return card.abilities;
-    if (card.effect)    return [card.effect];
-    if (card.flavorText)return [card.flavorText];
-    if (card.text)      return [card.text];
-    if (card.description) return [card.description];
+    if (Array.isArray(card.effects))   return card.effects;
+    if (Array.isArray(card.abilities)) return card.abilities;
+    if (card.effect)                   return [card.effect];
+    if (card.text)                     return [card.text];
+    if (card.description)              return [card.description];
     return [];
   })();
 
@@ -96,10 +97,13 @@ function CardRow({ card }) {
           ))}
         </div>
       </div>
+      {flavorText && (
+        <p className="text-xs italic text-[#5c3a1e]/70 leading-snug border-l-2 border-[#8b6b46]/30 pl-2">{flavorText}</p>
+      )}
       {effectLines.length > 0 && (
         <ul className="list-none space-y-0.5">
           {effectLines.map((line, i) => (
-            <li key={i} className="text-xs italic text-[#3b2f1d]/80 leading-snug">{line}</li>
+            <li key={i} className="text-xs text-[#3b2f1d]/80 leading-snug whitespace-pre-wrap">{line}</li>
           ))}
         </ul>
       )}
