@@ -18,6 +18,9 @@ import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters'
 import { canyonEncounters }       from '../../data/encounters/canyonEncounters';
 import { targaEncounters }        from '../../data/targaEncounters';
 
+// Map card lookup by id
+const MAP_CARD_BY_ID = Object.fromEntries(MAP_CARDS.map(c => [c.id, c]));
+
 // Flatten enemy trait cards: { enemyName: [cards] } → [{ enemy, name, effect, ... }]
 const flatEnemyTraitCards = Object.entries(ENEMY_TRAIT_CARDS).flatMap(
   ([enemy, cards]) => cards.map(c => ({ ...c, tags: [enemy] }))
@@ -101,12 +104,18 @@ function EncounterTestBlock({ test }) {
 function EncounterCardRow({ card }) {
   const flavor = card.flavor || card.flavorText || null;
   const isRich = card.test && typeof card.test === 'object';
+  const mapTile = card.mapCard ? MAP_CARD_BY_ID[card.mapCard] : null;
 
   const badges = (
     <>
       {card.remainsInPlay && (
         <span className="text-[10px] font-semibold bg-amber-200 text-amber-900 border border-amber-400 rounded px-1.5 py-0.5">
           Remains in Play
+        </span>
+      )}
+      {mapTile && (
+        <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 border border-blue-300 rounded px-1.5 py-0.5">
+          🗺 {mapTile.name}
         </span>
       )}
     </>

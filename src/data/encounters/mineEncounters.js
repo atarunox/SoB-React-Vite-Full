@@ -78,6 +78,7 @@ export const mineEncounters = [
   {
     id: "lost_army_camp",
     name: "Lost Army Camp Site",
+    mapCard: "lost_army_war_room",
     tags: ["Environment", "Dread"],
     flavor: "An abandoned military encampment with rusted cannons and scattered supplies.",
     choices: [
@@ -143,6 +144,7 @@ export const mineEncounters = [
   {
     id: "underground_waterfall",
     name: "Underground Waterfall",
+    mapCard: "waterfall_room",
     tags: ["Environment", "Water"],
     flavor: "A thundering waterfall crashes down from above, filling the passage with spray and noise.",
     effects: [
@@ -189,6 +191,7 @@ export const mineEncounters = [
   {
     id: "rail_switch",
     name: "Rail Switch",
+    mapCard: "switch_curve",
     tags: ["Environment", "Explore"],
     flavor: "Tracks split ahead with a rusted switch box nearby.",
     test: { stat: "Strength", target: "4+",
@@ -361,6 +364,7 @@ export const mineEncounters = [
   {
     id: "creaking_timbers",
     name: "Creaking Timbers",
+    mapCard: "rickety_bridge",
     tags: ["Environment", "Collapse"],
     flavor: "The ceiling groans under unseen pressure.",
     test: { stat: "Luck", target: "5+",
@@ -408,6 +412,7 @@ export const mineEncounters = [
   {
     id: "void_lair",
     name: "Void Lair",
+    mapCard: "spiders_lair",
     tags: ["Environment", "Void"],
     flavor: "The passage is covered in thick, sticky webs and egg sacs.",
     effects: ["All Heroes need +1 To Hit"],
@@ -424,6 +429,7 @@ export const mineEncounters = [
   {
     id: "flooded_passage",
     name: "Flooded Passage",
+    mapCard: "underground_lake",
     tags: ["Environment", "Water"],
     flavor: "The passage is flooded with knee-deep, murky water.",
     effects: ["Movement costs +1 Move per space"],
@@ -511,6 +517,7 @@ export const mineEncounters = [
   {
     id: "acid_drips",
     name: "Acid Drips",
+    mapCard: "corrosive_pools",
     tags: ["Environment", "Acid"],
     flavor: "Drips of acid fall from the ceiling here, burning anything they touch.",
     effects: [
@@ -535,6 +542,7 @@ export const mineEncounters = [
   {
     id: "reinforced_passage",
     name: "Reinforced Passage",
+    mapCard: "a_reinforced_room",
     tags: ["Active", "Construction"],
     flavor: "The passage here has been reinforced with timbers and framework.",
     effects: [
@@ -611,6 +619,7 @@ export const mineEncounters = [
   {
     id: "dark_stone_deposit",
     name: "Dark Stone Deposit",
+    mapCard: "dark_stone_quarry",
     tags: ["Encounter", "Environment", "Dark Stone"],
     flavor: "Shards of Dark Stone protrude from the walls here, giving the room a faint purple glow.",
     test: "Strength 5+",
@@ -619,6 +628,7 @@ export const mineEncounters = [
   {
     id: "crossroads",
     name: "Crossroads",
+    mapCard: "cross_passage",
     tags: ["Encounter", "Active", "Demon"],
     flavor: "With a flash and a smile, a shiny demon appears at the crossroads up ahead.",
     effect: "There is only 1 exit from this Map Tile and it leads to a Cross Passage. Any one Hero may make a deal with the shiny demon: Spend 100 × your current Hero Level in XP and choose any one Skill from your Skill Upgrade Chart to immediately gain (even if you do not have the one before it). From now on, at the end of every Adventure, you must roll 3D6 (this roll may not be Re-rolled or modified). If triples are rolled, the demon returns to collect, carrying you off forever!\n\nIf no Hero takes the deal, he curses you and vanishes — every Hero is reduced to 0 Grit.",
@@ -740,6 +750,7 @@ export const mineEncounters = [
   {
     id: "flooded_passage_2",
     name: "Flooded Passage",
+    mapCard: "underground_lake",
     tags: ["Encounter", "Environment", "Water"],
     flavor: "The passage is flooded with knee-deep, murky water.",
     effects: ["Movement costs +1 Move per space"],
