@@ -412,6 +412,78 @@ export const THREAT_CARDS_STANDARD = [
       'Super Brute - The Dark Stone Brute has triple its Health for this Fight.',
     ],
   },
+  {
+    id: '1_night_terror_and_p_void_spiders',
+    name: '1 Night Terror and {P} Void Spiders',
+    tier: 'low',
+    spawn: '1 Night Terror and {P} Void Spiders',
+    effects: [],
+  },
+  {
+    id: '1_harvester',
+    name: '1 Harvester',
+    tier: 'low',
+    spawn: '1 Harvester',
+    effects: [
+      'Low Energy — Starts with 2 Wound markers.',
+      'Full Load — Each Hero gains 1 extra Loot if defeated.',
+    ],
+  },
+  {
+    id: 'd3_custodians_of_targa_and_1_targa_pylon',
+    name: 'D3 Custodians of Targa and 1 Targa Pylon',
+    tier: 'low',
+    spawn: 'D3 Custodians of Targa and 1 Targa Pylon',
+    effects: [
+      'A group of Custodian robots from the Targa Plateau have begun terraforming a portion of the Mine here.',
+    ],
+  },
+  {
+    id: '1_dark_stone_brute',
+    name: '1 Dark Stone Brute',
+    tier: 'low',
+    spawn: '1 Dark Stone Brute',
+    effects: [],
+  },
+  {
+    id: 'p_scourge_rats',
+    name: '{P} Scourge Rats',
+    tier: 'low',
+    spawn: '{P} Scourge Rats',
+    effects: [],
+  },
+  {
+    id: 'p_void_swarms_and_1_void_hive',
+    name: '{P} Void Swarms and 1 Void Hive',
+    tier: 'low',
+    spawn: '{P} Void Swarms and 1 Void Hive',
+    effects: [],
+  },
+  {
+    id: '1_ancient_horror',
+    name: '1 Ancient Horror',
+    tier: 'low',
+    spawn: '1 Ancient Horror',
+    effects: [],
+  },
+  {
+    id: '1_heavily_mutated_dark_stone_scorpion',
+    name: '1 Heavily Mutated Dark Stone Scorpion',
+    tier: 'low',
+    spawn: '1 Heavily Mutated Dark Stone Scorpion',
+    effects: [
+      'Heavily Mutated — Dark Stone Scorpions are -1 Combat and only have the fixed amount of base Health (no extra Health per Hero).',
+    ],
+  },
+  {
+    id: 'd3_plus_1_scaffold_gang_and_1_scaffold_lieutenant',
+    name: 'D3+1 Scaffold Gang and 1 Scaffold Lieutenant',
+    tier: 'low',
+    spawn: 'D3+1 Scaffold Gang and 1 Scaffold Lieutenant',
+    effects: [
+      'Draw a Scaffold Lieutenants card to determine which Lieutenant leads this group.',
+    ],
+  },
 ];
 
 // ── OtherWorld threat cards ──────────────────────────────────────────────────
