@@ -519,6 +519,40 @@ export const ENEMY_TRAIT_CARDS = {
       effect: 'Indian Braves — Brothers of the Wolf have Keyword Tribal.\n\nCollect Trophies — Any Hero KO\'d by a Brothers of the Wolf Enemy must also discard an Item, Side Bag Token, or Dark Stone (taken as a trophy).',
     },
   ],
+
+  // ── Tentacles ──────────────────────────────────────────────────────────────
+  'Tentacles': [
+    {
+      name: 'Constricting Grip',
+      flavorText: 'Tentacle Trait',
+      effect: 'At the start of a Hero\'s Activation, they take D3 Wounds, ignoring Defense and Armor, for each adjacent Tentacle that is targeting them.',
+      promoId: 'Promo-299',
+    },
+    {
+      name: 'Bursting Mass',
+      flavorText: 'Tentacle Trait',
+      effect: 'Tentacles always enter play from Ambush.\n\nAs long as one or more Tentacles is on the board, at the end of each turn, roll a D6. On the roll of 1 or 2, add that many new Tentacles into play.\n\nWhen new Tentacles are added like this, all Tentacles count as Ambushing in the following turn.',
+      promoId: 'Promo-300',
+    },
+    {
+      name: 'Grinding Suckers',
+      flavorText: 'Tentacle Trait',
+      effect: 'Whenever a Tentacle causes a Smash Hit on a Hero, that Hero also gains a Stunned marker at the end of the Attack.',
+      promoId: 'Promo-301',
+    },
+    {
+      name: 'Pulling into the Void',
+      flavorText: 'Tentacle Trait',
+      effect: 'Select a Random open Doorway or End Cap on the Map Tile where the Tentacles are placed (if none, select the closest one on an adjacent Map Tile) and place a Gate End Cap there. This Void Gate may not be entered or looked through as it leads directly into the Void.\n\nAt the end of each turn, every Tentacle adjacent to its target Hero moves D3 Spaces along the shortest path to the Void Gate, also dragging the Hero into each space that it leaves (if more than 1, use closest Tentacle to the Gate). If the Tentacle ever moves into the Void Gate (off the board), the Hero is KO\'d by Sanity and left in one of the two Gate spaces. At the end of the Fight, remove the Void Gate.',
+      promoId: 'Promo-302',
+    },
+    {
+      name: 'Acid Ichor',
+      flavorText: 'Tentacle Trait',
+      effect: 'Tentacles have +2 Initiative.\n\nWhenever a Tentacle is killed, every Hero adjacent to it immediately gains a Bleeding marker.',
+      promoId: 'Promo-303',
+    },
+  ],
 };
 
 export default ENEMY_TRAIT_CARDS;
