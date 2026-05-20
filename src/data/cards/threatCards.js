@@ -768,6 +768,62 @@ export const THREAT_CARDS_STANDARD = [
     spawn: '1 Bone Scorpion',
     effects: [],
   },
+
+  // ── Physical deck duplicates (second copies) ─────────────────────────────────
+  {
+    id: '1_harvester_2',
+    name: '1 Harvester',
+    tier: 'low',
+    spawn: '1 Harvester',
+    effects: [
+      'Low Energy — Starts with 2 Wound markers.',
+      'Full Load — Each Hero gains 1 extra Loot if defeated.',
+    ],
+  },
+  {
+    id: '1_dark_stone_brute_2',
+    name: '1 Dark Stone Brute',
+    tier: 'low',
+    spawn: '1 Dark Stone Brute',
+    effects: [],
+  },
+  {
+    id: 'p_scourge_rats_2',
+    name: '{P} Scourge Rats',
+    tier: 'low',
+    spawn: '{P} Scourge Rats',
+    effects: [],
+  },
+  {
+    id: 'p_void_swarms_and_1_void_hive_2',
+    name: '{P} Void Swarms and 1 Void Hive',
+    tier: 'low',
+    spawn: '{P} Void Swarms and 1 Void Hive',
+    effects: [],
+  },
+  {
+    id: '1_ancient_horror_2',
+    name: '1 Ancient Horror',
+    tier: 'low',
+    spawn: '1 Ancient Horror',
+    effects: [],
+  },
+  {
+    id: '1_heavily_mutated_dark_stone_scorpion_2',
+    name: '1 Heavily Mutated Dark Stone Scorpion',
+    tier: 'low',
+    spawn: '1 Heavily Mutated Dark Stone Scorpion',
+    effects: [
+      'Heavily Mutated — Dark Stone Scorpions are -1 Combat and only have the fixed amount of base Health (no extra Health per Hero).',
+    ],
+  },
+  {
+    id: 'p_plus_1_crimson_hand_2',
+    name: '{P}+1 Crimson Hand',
+    tier: 'low',
+    spawn: '{P}+1 Crimson Hand',
+    effects: [],
+  },
 ];
 
 // ── OtherWorld threat cards ──────────────────────────────────────────────────
