@@ -22,6 +22,13 @@ export const THREAT_CARDS_STANDARD = [
     effects: [],
   },
   {
+    id: '1_burrower_3',
+    name: '1 Burrower',
+    tier: 'epic',
+    spawn: '1 Burrower',
+    effects: [],
+  },
+  {
     id: '1_burrower_and_1_threat_card',
     name: '1 Burrower and 1 Threat Card',
     tier: 'epic',
@@ -229,18 +236,18 @@ export const THREAT_CARDS_STANDARD = [
     effects: [],
   },
   {
-    id: 'colonel_scafford_mutations_2',
-    name: 'Colonel Scafford and... (Mutations)',
+    id: 'colonel_scafford_threat_cards',
+    name: 'Colonel Scafford and... (Threat Cards)',
     tier: 'epic',
     heroTable: [
-      { range: '1-2', text: 'D3+1 Scaffold Gang with 1 Hideous Mutation' },
-      { range: '3-4', text: '{P} Scaffold Gang with 2 Hideous Mutations' },
-      { range: '5-6', text: '6 Scaffold Gang with 3 Hideous Mutations' },
+      { range: '1-2', text: '1 Threat Card' },
+      { range: '3-4', text: 'D3+1 Scaffold Gang and 1 Threat Card' },
+      { range: '5-6', text: '{P} Scaffold Gang and 1 Threat Card' },
     ],
     effects: [],
   },
   {
-    id: 'colonel_scafford_threat_cards',
+    id: 'colonel_scafford_threat_cards_2',
     name: 'Colonel Scafford and... (Threat Cards)',
     tier: 'epic',
     heroTable: [
@@ -285,6 +292,13 @@ export const THREAT_CARDS_STANDARD = [
   },
   {
     id: 'black_fang_war_party',
+    name: 'Black Fang War Party',
+    tier: 'epic',
+    spawn: 'Black Fang War Shaman, 6 Black Fang Tribe, and 1 Threat Card',
+    effects: [],
+  },
+  {
+    id: 'black_fang_war_party_2',
     name: 'Black Fang War Party',
     tier: 'epic',
     spawn: 'Black Fang War Shaman, 6 Black Fang Tribe, and 1 Threat Card',
