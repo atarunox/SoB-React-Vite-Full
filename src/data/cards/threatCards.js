@@ -861,6 +861,21 @@ export const THREAT_CARDS_OTHERWORLD = [
     ],
   },
   {
+    id: '1_wasteland_giant_blasted_wastes_3',
+    name: '1 Wasteland Giant',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    spawn: '1 Wasteland Giant',
+    effects: [
+      'A Wasteland Giant is a Magma Giant with the following: +1 Combat, +5 XP.',
+      'Replaces Keyword Cynder with Blasted Wastes.',
+      'All references to Burning markers are changed to Stunned markers instead.',
+      'Elite Chart result 1-2) is replaced with:',
+      '1) Dripping Acid — Any Hero ending their move adjacent to the Wasteland Giant takes 2 Hits that do 2 Damage each.',
+      '2) Erupts From the Sand — Always starts in Ambush and is +1 Damage for each adjacent Hero.',
+    ],
+  },
+  {
     id: '1_sand_kraken_blasted_wastes',
     name: '1 Sand Kraken',
     tier: 'otherworld',
