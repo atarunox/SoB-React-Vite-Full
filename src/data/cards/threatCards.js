@@ -1025,7 +1025,7 @@ export const THREAT_CARDS_OTHERWORLD = [
     world: 'Swamps of Jargono',
     heroTable: [
       { range: '1-2', text: '1 Threat Card' },
-      { range: '3-4', text: '6 Serpentmen Warriors' },
+      { range: '3-4', text: '6 Serpentmen Warriors and 1 Threat Card' },
       { range: '5-6', text: '{P} Serpentmen Warriors and 1 Threat Card' },
     ],
     effects: [],
