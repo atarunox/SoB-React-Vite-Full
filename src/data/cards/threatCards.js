@@ -1094,7 +1094,7 @@ export const THREAT_CARDS_OTHERWORLD = [
       'Replaces Keyword Cynder with Belly of the Beast.',
       'All references to Burning markers are changed to Bleeding markers instead.',
       'Elite Chart result 1-2) is replaced with:',
-      '1-2) Spews Bile — At the start of this Enemy\'s Activation, makes a free Ranged Attack at a Random Hero using: Range 4, Shots 2, Damage {P}.',
+      '1-2) Spews Bile — At the start of this Enemy\'s Activation, makes a free Ranged Attack at a Random Hero using: Range 4, Shots 2, Damage 2.',
     ],
   },
   {
@@ -1108,7 +1108,7 @@ export const THREAT_CARDS_OTHERWORLD = [
       'Replaces Keyword Cynder with Belly of the Beast.',
       'All references to Burning markers are changed to Bleeding markers instead.',
       'Elite Chart result 1-2) is replaced with:',
-      '1-2) Spews Bile — At the start of this Enemy\'s Activation, makes a free Ranged Attack at a Random Hero using: Range 4, Shots 2, Damage {P}.',
+      '1-2) Spews Bile — At the start of this Enemy\'s Activation, makes a free Ranged Attack at a Random Hero using: Range 4, Shots 2, Damage 2.',
     ],
   },
 ];
