@@ -21,6 +21,11 @@ import { targaEncounters }        from '../../data/targaEncounters';
 // Map card lookup by id
 const MAP_CARD_BY_ID = Object.fromEntries(MAP_CARDS.map(c => [c.id, c]));
 
+// Flat set of known enemy names (lowercase) for threat card stat-data markers
+const KNOWN_ENEMY_NAMES = new Set(
+  Object.values(ENEMY_CARDS).flat().map(e => (e.name || '').toLowerCase().trim())
+);
+
 // Flatten enemy trait cards: { enemyName: [cards] } → [{ enemy, name, effect, ... }]
 const flatEnemyTraitCards = Object.entries(ENEMY_TRAIT_CARDS).flatMap(
   ([enemy, cards]) => cards.map(c => ({ ...c, tags: [enemy] }))
@@ -570,6 +575,19 @@ function EnemySection() {
   );
 }
 
+// Check if a threat card's spawn references at least one known enemy stat entry.
+// Looks for any KNOWN_ENEMY_NAMES token inside the spawn/heroTable text.
+function hasStatData(card) {
+  const texts = [
+    card.spawn || '',
+    ...(card.heroTable || []).map(r => r.text || ''),
+  ].join(' ').toLowerCase();
+  for (const name of KNOWN_ENEMY_NAMES) {
+    if (name.length > 2 && texts.includes(name)) return true;
+  }
+  return false;
+}
+
 // ── Threat card row ───────────────────────────────────────────────────────────
 function ThreatCardRow({ card }) {
   const tierColors = {
@@ -580,12 +598,23 @@ function ThreatCardRow({ card }) {
     otherworld: 'bg-purple-100 text-purple-800 border-purple-300',
   };
   const tc = tierColors[card.tier] || tierColors.low;
+  const statData = hasStatData(card);
 
   return (
     <div className="border border-[#8b6b46]/40 rounded-lg bg-[#fdf6e3] px-3 py-2 space-y-1.5">
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <span className="font-bold text-[#3b2f1d] text-sm leading-snug">{card.name}</span>
         <div className="flex items-center gap-1 flex-wrap shrink-0">
+          <span
+            title={statData ? 'Enemy stat sheet available' : 'No stat sheet data'}
+            className={`text-[10px] font-semibold border rounded px-1.5 py-0.5 ${
+              statData
+                ? 'bg-green-100 text-green-800 border-green-300'
+                : 'bg-gray-100 text-gray-500 border-gray-300'
+            }`}
+          >
+            {statData ? '✓ stats' : '✗ stats'}
+          </span>
           <span className={`text-[10px] font-semibold border rounded px-1.5 py-0.5 capitalize ${tc}`}>
             {card.tier === 'otherworld' && card.world ? card.world : card.tier}
           </span>
