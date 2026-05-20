@@ -623,9 +623,19 @@ function ThreatCardRow({ card }) {
 }
 
 // ── Threat card section ───────────────────────────────────────────────────────
+const TIER_FILTER_OPTIONS = [
+  { val: 'all',       label: 'All Tiers',  active: 'bg-gray-600 text-white border-gray-500' },
+  { val: 'low',       label: 'Low',        active: 'bg-green-600 text-white border-green-500' },
+  { val: 'medium',    label: 'Med',        active: 'bg-yellow-600 text-white border-yellow-500' },
+  { val: 'high',      label: 'High',       active: 'bg-orange-600 text-white border-orange-500' },
+  { val: 'epic',      label: 'Epic',       active: 'bg-red-700 text-white border-red-600' },
+  { val: 'otherworld',label: 'OtherWorld', active: 'bg-purple-700 text-white border-purple-600' },
+];
+
 function ThreatCardSection() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [tierFilter, setTierFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('default');
 
@@ -638,6 +648,7 @@ function ThreatCardSection() {
     if (filter === 'standard') list = list.filter(c => c.tier !== 'otherworld');
     else if (filter === 'otherworld') list = list.filter(c => c.tier === 'otherworld');
     else if (filter !== 'all') list = list.filter(c => c.world === filter);
+    if (tierFilter !== 'all') list = list.filter(c => c.tier === tierFilter);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(c => {
@@ -650,7 +661,7 @@ function ThreatCardSection() {
       });
     }
     return applySort(list, sort);
-  }, [filter, query, sort]);
+  }, [filter, tierFilter, query, sort]);
 
   return (
     <div className="border border-[#8b6b46] rounded-xl overflow-hidden">
@@ -669,8 +680,23 @@ function ThreatCardSection() {
       {open && (
         <div className="bg-[#fdf6e3]/50 p-3 space-y-2">
           <div className="flex flex-wrap gap-1.5">
+            {TIER_FILTER_OPTIONS.map(({ val, label, active }) => (
+              <button
+                key={val}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
+                  tierFilter === val
+                    ? active
+                    : 'bg-white/80 text-[#5c3a1e] border-[#8b6b46]/40 hover:bg-amber-50'
+                }`}
+                onClick={() => setTierFilter(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
             {[
-              { val: 'all', label: 'All' },
+              { val: 'all', label: 'All Sources' },
               { val: 'standard', label: 'Standard' },
               { val: 'otherworld', label: 'OtherWorld' },
               ...allWorlds.map(w => ({ val: w, label: w })),
