@@ -10,175 +10,175 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: '1_burrower',
     name: '1 Burrower',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Burrower',
     effects: [],
   },
   {
     id: '1_burrower_2',
     name: '1 Burrower',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Burrower',
     effects: [],
   },
   {
     id: '1_burrower_and_1_threat_card',
     name: '1 Burrower and 1 Threat Card',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Burrower and 1 Threat Card',
     effects: [],
   },
   {
     id: '1_sand_kraken',
     name: '1 Sand Kraken',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Sand Kraken',
     effects: [],
   },
   {
     id: 'the_ancient_one',
     name: 'The Ancient One',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 The Ancient One',
     effects: [],
   },
   {
     id: 'the_ancient_one_2',
     name: 'The Ancient One',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 The Ancient One',
     effects: [],
   },
   {
     id: 'the_ancient_one_and_crimson_hand',
     name: 'The Ancient One and {P} Crimson Hand',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 The Ancient One and {P} Crimson Hand',
     effects: ['Or 1 Threat Card if you do not have Crimson Hand expansion.'],
   },
   {
     id: '1_goliath_and_1_threat_card',
     name: '1 Goliath and 1 Threat Card',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Goliath and 1 Threat Card',
     effects: [],
   },
   {
     id: '1_goliath_and_1_threat_card_2',
     name: '1 Goliath and 1 Threat Card',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Goliath and 1 Threat Card',
     effects: [],
   },
   {
     id: '1_goliath_and_2_low_threat_cards',
     name: '1 Goliath and 2 Low Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Goliath and 2 Low Threat Cards',
     effects: [],
   },
   {
     id: '1_void_magus_and_2_threat_cards',
     name: '1 Void Magus and 2 Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Void Magus and 2 Threat Cards',
     effects: [],
   },
   {
     id: '3_dark_stone_brutes_and_2_threat_cards',
     name: '3 Dark Stone Brutes and 2 Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '3 Dark Stone Brutes and 2 Threat Cards',
     effects: [],
   },
   {
     id: 'heretic_preacher_and_1_threat_card',
     name: 'Heretic Preacher and 1 Threat Card',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Heretic Preacher and 1 Threat Card',
     effects: [],
   },
   {
     id: '1_magma_giant',
     name: '1 Magma Giant',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Magma Giant',
     effects: [],
   },
   {
     id: '1_hell_cannon_and_2_threat_cards',
     name: '1 Hell Cannon and 2 Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Hell Cannon and 2 Threat Cards',
     effects: [],
   },
   {
     id: '1_hell_cannon_and_2_threat_cards_2',
     name: '1 Hell Cannon and 2 Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Hell Cannon and 2 Threat Cards',
     effects: [],
   },
   {
     id: 'thunder_of_cannons',
     name: 'Thunder of Cannons (3 Hell Cannons)',
-    tier: 'low',
+    tier: 'epic',
     spawn: '3 Hell Cannons',
     effects: [],
   },
   {
     id: 'd3_night_terrors_and_2_threat_cards',
     name: 'D3 Night Terrors and 2 Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: 'D3 Night Terrors and 2 Threat Cards',
     effects: [],
   },
   {
     id: '2_dark_stone_scorpions',
     name: '2 Dark Stone Scorpions',
-    tier: 'low',
+    tier: 'epic',
     spawn: '2 Dark Stone Scorpions',
     effects: ['Enraged — Dark Stone Scorpions are Melee To Hit 3+ and change targets each turn.'],
   },
   {
     id: '1_harbinger_and_1_threat_card',
     name: '1 Harbinger and 1 Threat Card',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Harbinger and 1 Threat Card',
     effects: [],
   },
   {
     id: '1_harbinger_and_1_threat_card_2',
     name: '1 Harbinger and 1 Threat Card',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Harbinger and 1 Threat Card',
     effects: [],
   },
   {
     id: 'd3_slashers_and_2_threat_cards',
     name: 'D3 Slashers and 2 Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: 'D3 Slashers and 2 Threat Cards',
     effects: [],
   },
   {
     id: '1_wasteland_terralisk_and_2_threat_cards',
     name: '1 Wasteland Terralisk and 2 Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Wasteland Terralisk and 2 Threat Cards',
     effects: [],
   },
   {
     id: '1_harbinger_and_2_low_threat_cards',
     name: '1 Harbinger and 2 Low Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '1 Harbinger and 2 Low Threat Cards',
     effects: [],
   },
   {
     id: '2_elite_threat_cards',
     name: '2 Elite Threat Cards',
-    tier: 'low',
+    tier: 'epic',
     spawn: '2 Elite Threat Cards',
     effects: ['Draw 2 Low Elite Threat Cards instead of a normal Threat Card.'],
   },
@@ -187,7 +187,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'feral_kin_pack_master',
     name: 'Feral Kin Pack Master and...',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '1 Threat Card' },
       { range: '3-4', text: 'D3+1 Werewolf Feral Kin and 1 Threat Card' },
@@ -198,7 +198,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'death_cult',
     name: 'Death Cult',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '{P}{P} Crimson Hand' },
       { range: '3-4', text: 'Inquisitor and {P}{P} Crimson Hand' },
@@ -209,7 +209,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'death_cult_2',
     name: 'Death Cult',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '{P}{P} Crimson Hand' },
       { range: '3-4', text: 'Inquisitor and {P}{P} Crimson Hand' },
@@ -220,7 +220,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'colonel_scafford_mutations',
     name: 'Colonel Scafford and... (Mutations)',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: 'D3+1 Scaffold Gang with 1 Hideous Mutation' },
       { range: '3-4', text: '{P} Scaffold Gang with 2 Hideous Mutations' },
@@ -231,7 +231,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'colonel_scafford_mutations_2',
     name: 'Colonel Scafford and... (Mutations)',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: 'D3+1 Scaffold Gang with 1 Hideous Mutation' },
       { range: '3-4', text: '{P} Scaffold Gang with 2 Hideous Mutations' },
@@ -242,7 +242,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'colonel_scafford_threat_cards',
     name: 'Colonel Scafford and... (Threat Cards)',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '1 Threat Card' },
       { range: '3-4', text: 'D3+1 Scaffold Gang and 1 Threat Card' },
@@ -253,7 +253,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'werewolf_pack',
     name: 'Werewolf Pack',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '{P} Werewolf Feral Kin' },
       { range: '3-4', text: 'Feral Kin Pack Master and {P} Werewolf Feral Kin' },
@@ -264,7 +264,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'feral_vampire_brood',
     name: 'Feral Vampire Brood',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '{P} Feral Vampires' },
       { range: '3-4', text: 'Feral Vampire Lord and {P} Feral Vampires' },
@@ -275,7 +275,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'feral_vampire_lord',
     name: 'Feral Vampire Lord and...',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '1 Threat Card' },
       { range: '3-4', text: 'D3+1 Feral Vampires and 1 Threat Card' },
@@ -286,14 +286,14 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'black_fang_war_party',
     name: 'Black Fang War Party',
-    tier: 'low',
+    tier: 'epic',
     spawn: 'Black Fang War Shaman, 6 Black Fang Tribe, and 1 Threat Card',
     effects: [],
   },
   {
     id: 'lost_army_generalisimo',
     name: 'Lost Army Generalisimo and...',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '{P} Lost Army' },
       { range: '3-4', text: '{P}+3 Lost Army and 1 Threat Card' },
@@ -304,7 +304,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'crimson_hand_inquisitor',
     name: 'Crimson Hand Inquisitor and...',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '1 Threat Card' },
       { range: '3-4', text: '{P} Crimson Hand and 1 Threat Card' },
@@ -315,7 +315,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'lost_army_battle_group',
     name: 'Lost Army Battle Group',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: 'Lost Army Generalisimo and {P} Lost Army' },
       { range: '3-4', text: 'Lost Army Generalisimo and {P}+3 Lost Army w/ Banner Bearer' },
@@ -326,7 +326,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'undead_gunslinger',
     name: 'The Undead Gunslinger and...',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '{P} Undead Outlaws' },
       { range: '3-4', text: '6 Undead Outlaws' },
@@ -337,7 +337,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'undead_gunslinger_2',
     name: 'The Undead Gunslinger and...',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: '{P} Undead Outlaws' },
       { range: '3-4', text: '6 Undead Outlaws' },
@@ -348,7 +348,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'undead_gunslinger_infamous',
     name: 'The Undead Gunslinger and... (Infamous)',
-    tier: 'low',
+    tier: 'epic',
     heroTable: [
       { range: '1-2', text: 'D3+1 Infamous Undead Outlaws' },
       { range: '3-4', text: '{P} Infamous Undead Outlaws' },
@@ -361,7 +361,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'stone_face_mccoy',
     name: "'Stone Face' McCoy, {P}+1 Scaffold Gang, and 3 Dark Stone Brutes",
-    tier: 'low',
+    tier: 'epic',
     promoId: 'Promo-461',
     spawn: "{P}+1 Scaffold Gang and 3 Dark Stone Brutes (Leader: 'Stone Face' McCoy)",
     effects: ["Leader - 'Stone Face' has double Health for this Fight."],
@@ -369,7 +369,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'fast_draw_jeb_scafford',
     name: "'Fast Draw' Jeb Scafford, {P} Scaffold Gang, and D3 Dark Stone Brutes",
-    tier: 'low',
+    tier: 'epic',
     promoId: 'Promo-405',
     spawn: "{P} Scaffold Gang and D3 Dark Stone Brutes (Leader: 'Fast Draw' Jeb Scafford)",
     effects: ["Leader - 'Fast Draw' Jeb Scafford has double Health and +2 Shots for this Fight."],
@@ -377,7 +377,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'sgt_bunker',
     name: 'Sgt. Bunker, {P} Scaffold Gang, and D3 Dark Stone Brutes',
-    tier: 'low',
+    tier: 'epic',
     promoId: 'Promo-461',
     spawn: '{P} Scaffold Gang and D3 Dark Stone Brutes (Leader: Sgt. Bunker)',
     effects: ['Leader - Sgt. Bunker has double Health for this Fight.'],
@@ -385,7 +385,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'captain_burns',
     name: 'Captain Burns, {P}{P} Scaffold Gang, and 1 Dark Stone Brute',
-    tier: 'low',
+    tier: 'epic',
     promoId: 'Promo-473',
     spawn: '{P}{P} Scaffold Gang and 1 Dark Stone Brute (Leader: Captain Burns)',
     effects: [
@@ -396,7 +396,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'ol_one_eye_jackson',
     name: "Ol 'One Eye' Jackson, {P}+1 Scaffold Gang, and 3 Dark Stone Brutes",
-    tier: 'low',
+    tier: 'epic',
     promoId: 'Promo-472',
     spawn: "{P}+1 Scaffold Gang and 3 Dark Stone Brutes (Leader: Ol 'One Eye' Jackson)",
     effects: ["Leader - Ol 'One Eye' has double Health for this Fight."],
@@ -404,7 +404,7 @@ export const THREAT_CARDS_STANDARD = [
   {
     id: 'silver_back_pa_scafford',
     name: "'Silver Back' Pa Scafford, {P}{P} Scaffold Gang, and 1 Dark Stone Brute",
-    tier: 'low',
+    tier: 'epic',
     promoId: 'Promo-485',
     spawn: "{P}{P} Scaffold Gang and 1 Dark Stone Brute (Leader: 'Silver Back' Pa Scafford)",
     effects: [
