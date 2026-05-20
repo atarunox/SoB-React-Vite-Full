@@ -92,21 +92,7 @@ export const THREAT_CARDS_STANDARD = [
     effects: [],
   },
   {
-    id: '1_void_magus_and_2_threat_cards_2',
-    name: '1 Void Magus and 2 Threat Cards',
-    tier: 'epic',
-    spawn: '1 Void Magus and 2 Threat Cards',
-    effects: [],
-  },
-  {
     id: '3_dark_stone_brutes_and_2_threat_cards',
-    name: '3 Dark Stone Brutes and 2 Threat Cards',
-    tier: 'epic',
-    spawn: '3 Dark Stone Brutes and 2 Threat Cards',
-    effects: [],
-  },
-  {
-    id: '3_dark_stone_brutes_and_2_threat_cards_2',
     name: '3 Dark Stone Brutes and 2 Threat Cards',
     tier: 'epic',
     spawn: '3 Dark Stone Brutes and 2 Threat Cards',
@@ -121,13 +107,6 @@ export const THREAT_CARDS_STANDARD = [
   },
   {
     id: '1_magma_giant',
-    name: '1 Magma Giant',
-    tier: 'epic',
-    spawn: '1 Magma Giant',
-    effects: [],
-  },
-  {
-    id: '1_magma_giant_2',
     name: '1 Magma Giant',
     tier: 'epic',
     spawn: '1 Magma Giant',
@@ -911,6 +890,36 @@ export const THREAT_CARDS_OTHERWORLD = [
     ],
   },
   {
+    id: '1_wasteland_giant_blasted_wastes_4',
+    name: '1 Wasteland Giant',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    spawn: '1 Wasteland Giant',
+    effects: [
+      'A Wasteland Giant is a Magma Giant with the following: +1 Combat, +5 XP.',
+      'Replaces Keyword Cynder with Blasted Wastes.',
+      'All references to Burning markers are changed to Stunned markers instead.',
+      'Elite Chart result 1-2) is replaced with:',
+      '1) Dripping Acid — Any Hero ending their move adjacent to the Wasteland Giant takes 2 Hits that do 2 Damage each.',
+      '2) Erupts From the Sand — Always starts in Ambush and is +1 Damage for each adjacent Hero.',
+    ],
+  },
+  {
+    id: '1_wasteland_giant_blasted_wastes_5',
+    name: '1 Wasteland Giant',
+    tier: 'otherworld',
+    world: 'Blasted Wastes',
+    spawn: '1 Wasteland Giant',
+    effects: [
+      'A Wasteland Giant is a Magma Giant with the following: +1 Combat, +5 XP.',
+      'Replaces Keyword Cynder with Blasted Wastes.',
+      'All references to Burning markers are changed to Stunned markers instead.',
+      'Elite Chart result 1-2) is replaced with:',
+      '1) Dripping Acid — Any Hero ending their move adjacent to the Wasteland Giant takes 2 Hits that do 2 Damage each.',
+      '2) Erupts From the Sand — Always starts in Ambush and is +1 Damage for each adjacent Hero.',
+    ],
+  },
+  {
     id: '1_sand_kraken_blasted_wastes',
     name: '1 Sand Kraken',
     tier: 'otherworld',
@@ -935,14 +944,6 @@ export const THREAT_CARDS_OTHERWORLD = [
     effects: [],
   },
   {
-    id: '1_sand_kraken_and_1_threat_card_blasted_wastes_2',
-    name: '1 Sand Kraken and 1 Threat Card',
-    tier: 'otherworld',
-    world: 'Blasted Wastes',
-    spawn: '1 Sand Kraken and 1 Threat Card',
-    effects: [],
-  },
-  {
     id: '1_burrower_blasted_wastes',
     name: '1 Burrower',
     tier: 'otherworld',
@@ -952,14 +953,6 @@ export const THREAT_CARDS_OTHERWORLD = [
   },
   {
     id: '3_sand_crabs_and_1_threat_card_blasted_wastes',
-    name: '3 Sand Crabs and 1 Threat Card',
-    tier: 'otherworld',
-    world: 'Blasted Wastes',
-    spawn: '3 Sand Crabs and 1 Threat Card',
-    effects: [],
-  },
-  {
-    id: '3_sand_crabs_and_1_threat_card_blasted_wastes_2',
     name: '3 Sand Crabs and 1 Threat Card',
     tier: 'otherworld',
     world: 'Blasted Wastes',
@@ -1092,14 +1085,6 @@ export const THREAT_CARDS_OTHERWORLD = [
     spawn: '1 Onmorake and 6 Scourge Dead',
     effects: [],
   },
-  {
-    id: '1_onmorake_and_6_scourge_dead_2',
-    name: '1 Onmorake and 6 Scourge Dead',
-    tier: 'otherworld',
-    world: 'Caverns of Cynder',
-    spawn: '1 Onmorake and 6 Scourge Dead',
-    effects: [],
-  },
 
   // Swamps of Jargono ─────────────────────────────────────────────────────────
   {
@@ -1192,34 +1177,6 @@ export const THREAT_CARDS_OTHERWORLD = [
   },
   {
     id: '1_bile_giant_belly_of_the_beast_2',
-    name: '1 Bile Giant',
-    tier: 'otherworld',
-    world: 'Belly of the Beast',
-    spawn: '1 Bile Giant',
-    effects: [
-      'A Bile Giant is a Magma Giant with the following: -1 Combat, +1 Damage, -1 Defense.',
-      'Replaces Keyword Cynder with Belly of the Beast.',
-      'All references to Burning markers are changed to Bleeding markers instead.',
-      'Elite Chart result 1-2) is replaced with:',
-      '1-2) Spews Bile — At the start of this Enemy\'s Activation, makes a free Ranged Attack at a Random Hero using: Range 4, Shots 2, Damage {P}.',
-    ],
-  },
-  {
-    id: '1_bile_giant_belly_of_the_beast_3',
-    name: '1 Bile Giant',
-    tier: 'otherworld',
-    world: 'Belly of the Beast',
-    spawn: '1 Bile Giant',
-    effects: [
-      'A Bile Giant is a Magma Giant with the following: -1 Combat, +1 Damage, -1 Defense.',
-      'Replaces Keyword Cynder with Belly of the Beast.',
-      'All references to Burning markers are changed to Bleeding markers instead.',
-      'Elite Chart result 1-2) is replaced with:',
-      '1-2) Spews Bile — At the start of this Enemy\'s Activation, makes a free Ranged Attack at a Random Hero using: Range 4, Shots 2, Damage {P}.',
-    ],
-  },
-  {
-    id: '1_bile_giant_belly_of_the_beast_4',
     name: '1 Bile Giant',
     tier: 'otherworld',
     world: 'Belly of the Beast',
