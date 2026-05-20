@@ -928,14 +928,6 @@ export const THREAT_CARDS_OTHERWORLD = [
     effects: [],
   },
   {
-    id: '1_sand_kraken_blasted_wastes_2',
-    name: '1 Sand Kraken',
-    tier: 'otherworld',
-    world: 'Blasted Wastes',
-    spawn: '1 Sand Kraken',
-    effects: [],
-  },
-  {
     id: '1_sand_kraken_and_1_threat_card_blasted_wastes',
     name: '1 Sand Kraken and 1 Threat Card',
     tier: 'otherworld',
