@@ -4,12 +4,49 @@ import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from "../../hooks/useCombatState";
 
 import { ENEMY_CARDS } from '../../data/enemyCards';
-import { THREAT_DECKS, getThreatDeck } from '../../data/enemies/threatDecks';
+import { THREAT_CARDS } from '../../data/cards/threatCards';
 import { normalizeEnemyData } from '../../utils/enemyUtils';
 
 import DMActiveEnemiesPanel from './DMActiveEnemiesPanel';
 
 const THREAT_LEVELS = ['low', 'medium', 'high', 'epic'];
+
+// Derive recommended tier from posse size (official SoB rules)
+function autoTierForPosse(posseSize) {
+  if (posseSize <= 2) return 'low';
+  if (posseSize <= 4) return 'medium';
+  return 'high';
+}
+
+// Resolve the spawn text for a card given current posse size (heroTable cards vary by count)
+function resolveSpawnText(card, posseSize) {
+  if (card.spawn) return card.spawn;
+  if (card.heroTable) {
+    const row = card.heroTable.find(r => {
+      const [lo, hi] = r.range.split('-').map(Number);
+      return posseSize >= lo && posseSize <= (hi || 99);
+    });
+    return row?.text || card.heroTable[0]?.text || '';
+  }
+  return '';
+}
+
+// Parse spawn text into [{name, count}] for enemy group creation.
+// Handles: N Name, {P} Name, {P}{P} Name, {P}+N Name, D3 Name, D3+N Name
+function parseSpawnToGroups(spawnText, posseSize) {
+  if (!spawnText) return [];
+  const parts = spawnText.split(/\s+and\s+|\s*\+\s*/i).map(s => s.trim()).filter(Boolean);
+  return parts.flatMap(part => {
+    const ppPlus = part.match(/^\{P\}\{P\}\+(\d+)\s+(.+)/);  if (ppPlus) return [{ name: ppPlus[2].trim(), count: posseSize * 2 + parseInt(ppPlus[1]) }];
+    const pp    = part.match(/^\{P\}\{P\}\s+(.+)/);           if (pp)     return [{ name: pp[1].trim(),     count: posseSize * 2 }];
+    const pPlus = part.match(/^\{P\}\+(\d+)\s+(.+)/);         if (pPlus)  return [{ name: pPlus[2].trim(), count: posseSize + parseInt(pPlus[1]) }];
+    const p     = part.match(/^\{P\}\s+(.+)/);                if (p)      return [{ name: p[1].trim(),      count: posseSize }];
+    const d3p   = part.match(/^D3\+(\d+)\s+(.+)/i);           if (d3p)    return [{ name: d3p[2].trim(),   count: Math.ceil(Math.random() * 3) + parseInt(d3p[1]) }];
+    const d3    = part.match(/^D3\s+(.+)/i);                  if (d3)     return [{ name: d3[1].trim(),     count: Math.ceil(Math.random() * 3) }];
+    const num   = part.match(/^(\d+)\s+(.+)/);                if (num)    return [{ name: num[2].trim(),    count: parseInt(num[1]) }];
+    return [];
+  });
+}
 
 // Roll N unique abilities from an elite chart (D6 table, indices 0-5).
 // If the chart has fewer entries than needed, allow repeats.
@@ -63,38 +100,37 @@ export default function DMEnemyPanel() {
   const { posse } = usePosse();
   const { combatGroups, setCombatGroups } = useCombatState();
   const [drawnCard, setDrawnCard] = useState(null);
-  const [threatLevel, setThreatLevel] = useState('low');
+  const [threatLevelOverride, setThreatLevelOverride] = useState(null);
+
+  const posseSize = posse.length || 1;
+  const autoTier = autoTierForPosse(posseSize);
+  const threatLevel = threatLevelOverride ?? autoTier;
 
   const { elite: eliteCount, brutal: isBrutal } = useMemo(
     () => getEliteAndBrutal(posse),
     [posse]
   );
 
-  // Draw threat card and generate groups
   const drawThreatCard = () => {
-    const deck = getThreatDeck(world, threatLevel);
-    if (!Array.isArray(deck) || deck.length === 0) {
-      alert(`No threat deck for world "${world}" (${threatLevel}) or deck is empty.`);
-      return;
-    }
-    const idx = Math.floor(Math.random() * deck.length);
-    const card = deck[idx];
+    const deck = THREAT_CARDS.filter(c => c.tier === threatLevel);
+    if (deck.length === 0) return;
+    const card = deck[Math.floor(Math.random() * deck.length)];
     setDrawnCard(card);
 
-    if (!card || !Array.isArray(card.enemies)) {
-      alert(`Threat card missing or has no enemies array!`);
-      setCombatGroups([]);
-      return;
-    }
+    const spawnText = resolveSpawnText(card, posseSize);
+    const groups = parseSpawnToGroups(spawnText, posseSize);
 
-    const newGroups = card.enemies.map((eg, i) => {
-      const rawEnemyData = ENEMY_CARDS[world]?.find(e => e.name === eg.name) || {};
+    const newGroups = groups.map((eg, i) => {
+      const allEnemies = Object.values(ENEMY_CARDS).flat();
+      const rawEnemyData = allEnemies.find(e =>
+        e.name?.toLowerCase() === eg.name.toLowerCase()
+      ) || {};
       const enemyData = normalizeEnemyData(rawEnemyData, isBrutal);
       const chart = enemyData.eliteChart || [];
       const rolled = rollEliteAbilities(chart, eliteCount);
 
       return {
-        id: `${Date.now()}-${card.name}-grp${i}`,
+        id: `${Date.now()}-${card.id}-grp${i}`,
         name: eg.name,
         count: eg.count,
         baseStats: { ...enemyData, world },
@@ -105,15 +141,18 @@ export default function DMEnemyPanel() {
         manualExtraElite: 0,
         traits: [],
         keywords: [...(enemyData.keywords || [])],
-        threatCard: card
+        threatCard: card,
       };
     });
-    setCombatGroups(prev => [...(prev || []), ...newGroups]);
+    if (newGroups.length > 0) {
+      setCombatGroups(prev => [...(prev || []), ...newGroups]);
+    }
   };
 
-  // Check for Drifter presence for display
   const hasDrifter = posse.some(h => /drifter/i.test(h?.class || h?.heroClass || ''));
   const highestLevel = Math.max(...(posse.map(h => Number(h.level || h.Level || 1) || 1)), 1);
+
+  const tierColors = { low: 'text-green-400', medium: 'text-yellow-400', high: 'text-orange-400', epic: 'text-red-400' };
 
   return (
     <div>
@@ -129,19 +168,31 @@ export default function DMEnemyPanel() {
       </div>
 
       {/* THREAT DRAWER */}
-      <div className="mb-4 flex flex-col sm:flex-row items-start gap-2">
-        <div className="flex gap-2 items-center">
-          <select
-            className="select select-bordered select-sm"
-            value={threatLevel}
-            onChange={e => setThreatLevel(e.target.value)}
-          >
+      <div className="mb-4 space-y-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="flex items-center gap-1.5">
             {THREAT_LEVELS.map(lvl => (
-              <option key={lvl} value={lvl}>{lvl.charAt(0).toUpperCase() + lvl.slice(1)}</option>
+              <button
+                key={lvl}
+                onClick={() => setThreatLevelOverride(lvl === autoTier ? null : lvl)}
+                className={`text-xs px-2.5 py-1 rounded-full border font-semibold transition-colors capitalize ${
+                  threatLevel === lvl
+                    ? lvl === 'low'    ? 'bg-green-700 text-white border-green-600'
+                    : lvl === 'medium' ? 'bg-yellow-600 text-white border-yellow-500'
+                    : lvl === 'high'   ? 'bg-orange-600 text-white border-orange-500'
+                                       : 'bg-red-700 text-white border-red-600'
+                    : 'bg-white/10 text-amber-300/70 border-amber-700/30 hover:bg-white/20'
+                }`}
+              >
+                {lvl}{lvl === autoTier ? ' ★' : ''}
+              </button>
             ))}
-          </select>
-          <button className="btn btn-primary" onClick={drawThreatCard}>
-            Draw Threat Card ({world})
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={drawThreatCard}
+          >
+            Draw {threatLevel.charAt(0).toUpperCase() + threatLevel.slice(1)} Threat
           </button>
           {combatGroups.length > 0 && (
             <button
@@ -151,11 +202,42 @@ export default function DMEnemyPanel() {
               Clear All
             </button>
           )}
+          {threatLevelOverride && (
+            <button
+              className="text-xs text-amber-400/70 hover:text-amber-400 underline"
+              onClick={() => setThreatLevelOverride(null)}
+            >
+              reset to auto ({autoTier})
+            </button>
+          )}
         </div>
+        <div className="text-xs text-amber-400/60">
+          {posseSize} hero{posseSize !== 1 ? 'es' : ''} → auto: <span className={`font-semibold ${tierColors[autoTier]}`}>{autoTier}</span>
+        </div>
+
         {drawnCard && (
-          <div className="mt-2 sm:mt-0">
-            <div className="font-bold">{drawnCard.name}</div>
-            <div className="text-xs text-gray-500">{drawnCard.effect}</div>
+          <div className="p-3 rounded-lg bg-[#2a1f14] border border-amber-700/50 space-y-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-bold text-amber-200 text-sm">{drawnCard.name}</span>
+              <span className={`text-[10px] font-semibold border rounded px-1.5 py-0.5 capitalize ${
+                drawnCard.tier === 'low'    ? 'bg-green-900/50 text-green-300 border-green-700'
+                : drawnCard.tier === 'medium' ? 'bg-yellow-900/50 text-yellow-300 border-yellow-700'
+                : drawnCard.tier === 'high'   ? 'bg-orange-900/50 text-orange-300 border-orange-700'
+                                              : 'bg-red-900/50 text-red-300 border-red-700'
+              }`}>{drawnCard.tier}</span>
+            </div>
+            {drawnCard.spawn && (
+              <p className="text-sm font-semibold text-amber-100">⚔ {drawnCard.spawn}</p>
+            )}
+            {drawnCard.heroTable && (
+              <p className="text-sm font-semibold text-amber-100">
+                ⚔ {resolveSpawnText(drawnCard, posseSize)}
+                <span className="ml-1 text-xs font-normal text-amber-400/60">({posseSize} heroes)</span>
+              </p>
+            )}
+            {(drawnCard.effects || []).map((e, i) => (
+              <p key={i} className="text-xs text-amber-300/80 italic">{e}</p>
+            ))}
           </div>
         )}
       </div>
