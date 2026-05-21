@@ -4,6 +4,9 @@ import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters'
 import { canyonEncounters } from '../../data/encounters/canyonEncounters';
 import { useCombatState } from '../../hooks/useCombatState';
 import { THREAT_CARDS } from '../../data/cards/threatCards';
+import { ENEMY_CARDS } from '../../data/enemyCards';
+import { normalizeEnemyData } from '../../utils/enemyUtils';
+import { v4 as uuidv4 } from 'uuid';
 
 function cardHasThreatDraw(card) {
   if (!card) return false;
@@ -201,7 +204,7 @@ function EncounterCard({ card }) {
 }
 
 export default function DMEncounterDrawer({ world = 'Mines' }) {
-  const { addToHand } = useCombatState();
+  const { addToHand, addGroup } = useCombatState();
   const [deck, setDeck] = useState([]);
   const [current, setCurrent] = useState(null);
   const [discard, setDiscard] = useState([]);
@@ -268,6 +271,28 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
     setDrawnThreat(null);
   };
 
+  const spawnThreatEnemy = () => {
+    if (!current) return;
+    const enemyName = current.spawn || current.name;
+    const allEnemies = Object.values(ENEMY_CARDS).flat();
+    const match = allEnemies.find(e =>
+      (e.name || '').toLowerCase().includes(enemyName.toLowerCase()) ||
+      enemyName.toLowerCase().includes((e.name || '').toLowerCase())
+    );
+    const baseStats = match ? normalizeEnemyData(match, false) : {
+      name: enemyName, health: '?', defense: '?', initiative: '?', combat: '?', damage: '?',
+      toHitMelee: '4+', keywords: [],
+    };
+    addGroup({
+      id: uuidv4(),
+      name: enemyName,
+      count: 1,
+      baseStats,
+      modifiers: [],
+      isBrutal: false,
+    });
+  };
+
   return (
     <div className="p-4 bg-white rounded shadow space-y-4">
       <h2 className="text-xl font-bold">Encounter Deck ({world})</h2>
@@ -293,6 +318,12 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
                 Draw Threat Card
               </button>
             )}
+            <button
+              className="text-xs text-green-400 hover:text-green-300 mt-1 underline ml-3"
+              onClick={spawnThreatEnemy}
+            >
+              spawn to combat
+            </button>
           </div>
           {drawnThreat && (
             <div className="mt-3 p-3 bg-amber-900/30 border border-amber-600/50 rounded-lg">
@@ -312,6 +343,24 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
               ))}
               <button className="text-xs text-amber-500/60 hover:text-amber-400 mt-1.5 underline" onClick={() => setDrawnThreat(null)}>
                 dismiss
+              </button>
+              <button
+                className="text-xs text-green-400 hover:text-green-300 mt-1 underline ml-3"
+                onClick={() => {
+                  const enemyName = drawnThreat.spawn || drawnThreat.name;
+                  const allEnemies = Object.values(ENEMY_CARDS).flat();
+                  const match = allEnemies.find(e =>
+                    (e.name || '').toLowerCase().includes(enemyName.toLowerCase()) ||
+                    enemyName.toLowerCase().includes((e.name || '').toLowerCase())
+                  );
+                  const baseStats = match ? normalizeEnemyData(match, false) : {
+                    name: enemyName, health: '?', defense: '?', initiative: '?', combat: '?', damage: '?',
+                    toHitMelee: '4+', keywords: [],
+                  };
+                  addGroup({ id: uuidv4(), name: enemyName, count: 1, baseStats, modifiers: [], isBrutal: false });
+                }}
+              >
+                spawn to combat
               </button>
             </div>
           )}

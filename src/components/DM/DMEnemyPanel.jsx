@@ -108,7 +108,7 @@ function getEliteAndBrutal(posse) {
   return { elite: Math.max(0, elite), brutal };
 }
 
-export default function DMEnemyPanel() {
+export default function DMEnemyPanel({ globalModifiers = [] }) {
   const { world } = useWorld();
   const { posse } = usePosse();
   const { combatGroups, setCombatGroups } = useCombatState();
@@ -284,7 +284,7 @@ export default function DMEnemyPanel() {
       {/* Active enemies display with cycling/show-all view */}
       <DMActiveEnemiesPanel
         combatGroups={combatGroups}
-        globalModifiers={[]}
+        globalModifiers={globalModifiers || []}
         setCombatGroups={setCombatGroups}
         eliteCount={eliteCount}
         isBrutal={isBrutal}

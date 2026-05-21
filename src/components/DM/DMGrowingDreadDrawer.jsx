@@ -88,6 +88,16 @@ export default function DMGrowingDreadDrawer({ world = "Mines" }) {
     setHandIndex(0);
   };
 
+  const revealAndPlayAll = () => {
+    if (growingDreadHand.length === 0) return;
+    setGrowingDreadActive(prev => [
+      ...prev,
+      ...growingDreadHand.map(c => ({ ...c, hidden: false })),
+    ]);
+    setGrowingDreadHand([]);
+    setHandIndex(0);
+  };
+
   const safeHandIndex = Math.min(handIndex, Math.max(0, growingDreadHand.length - 1));
   const focusedCard = growingDreadHand.length > 0 ? growingDreadHand[safeHandIndex] : null;
 
@@ -103,6 +113,13 @@ export default function DMGrowingDreadDrawer({ world = "Mines" }) {
         </button>
         <button onClick={reshuffle} className="btn btn-secondary">Reshuffle Deck</button>
         <button onClick={resetAll} className="btn btn-warning">Reset (World: {world})</button>
+        <button
+          onClick={revealAndPlayAll}
+          className="btn btn-warning"
+          disabled={growingDreadHand.length === 0}
+        >
+          Reveal All & Play ({growingDreadHand.length})
+        </button>
         <span className="text-sm text-gray-600">Deck: {growingDreadDeck.length}</span>
       </div>
 

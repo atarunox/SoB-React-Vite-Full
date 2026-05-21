@@ -189,6 +189,23 @@ export default function DMTab({ showEndOfDayButton = false }) {
     growingDread, setGrowingDread, addGrowingDread, removeGrowingDread
   } = combat;
 
+  const { darknessActive = [], growingDreadActive = [] } = combat;
+
+  // Convert active darkness cards' stat modifiers to the format getAllStatsWithBreakdown expects
+  const darknessGlobalModifiers = useMemo(() => {
+    const mods = [];
+    for (const card of darknessActive) {
+      if (card.enemyModifiers && typeof card.enemyModifiers === 'object') {
+        for (const [kw, effects] of Object.entries(card.enemyModifiers)) {
+          if (effects && typeof effects === 'object') {
+            mods.push({ name: card.name, keywordFilter: kw, effect: effects, type: 'darkness' });
+          }
+        }
+      }
+    }
+    return mods;
+  }, [darknessActive]);
+
   // Load saved combat groups (legacy shim)
   useEffect(() => {
     const saved = localStorage.getItem('combatGroups');
@@ -339,6 +356,7 @@ export default function DMTab({ showEndOfDayButton = false }) {
                 mergedWorldsCount={mergedWorlds.length}
                 // FYI (some panels may want to show this):
                 eliteAbilities={eliteAbilities}
+                globalModifiers={darknessGlobalModifiers}
               />
             </div>
           );

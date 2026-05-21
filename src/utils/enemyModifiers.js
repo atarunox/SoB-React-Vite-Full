@@ -25,6 +25,11 @@ export function getStatBreakdown(group, globalModifiers = [], statName = "", man
   let steps = [];
 
   for (const mod of globalModifiers) {
+    // Keyword filter: skip if this enemy doesn't have the required keyword
+    if (mod.keywordFilter && mod.keywordFilter !== '__ALL__') {
+      const groupKeywords = (group.baseStats?.keywords || []).map(k => k.toLowerCase());
+      if (!groupKeywords.includes(mod.keywordFilter.toLowerCase())) continue;
+    }
     if (mod.effect && Object.prototype.hasOwnProperty.call(mod.effect, statName)) {
       let modVal = mod.effect[statName];
       if (typeof curValue === "number" && typeof modVal === "number") {

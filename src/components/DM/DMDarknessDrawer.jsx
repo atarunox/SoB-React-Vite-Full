@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { DARKNESS_CARDS } from "../../data/darknessCards";
 import { useCombatState } from "../../hooks/useCombatState";
+import { useAdventure } from '../../context/AdventureContext';
 
 function shuffleFY(arr) {
   const a = [...arr];
@@ -47,6 +48,8 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
     darknessActive, setDarknessActive,
     addToHand,
   } = useCombatState();
+
+  const { advanceDarkness } = useAdventure();
 
   // Queue for drawing multiple cards and resolving them 1 by 1
   const [drawQueue, setDrawQueue] = useState([]);
@@ -97,6 +100,11 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
     const modifiers = extractEnemyModifiers(current);
     const cardWithModifiers = { ...current, enemyModifiers: modifiers };
     setDarknessActive(prev => [...prev, cardWithModifiers]);
+    // Auto-advance darkness for cards that explicitly say "darkness moves N step(s) forward"
+    const advMatch = current.effect?.match(/darkness\s+(?:immediately\s+)?moves?\s+(\d+)\s+step/i);
+    if (advMatch) {
+      advanceDarkness(parseInt(advMatch[1], 10));
+    }
     advanceQueue();
   };
 
@@ -117,6 +125,11 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
     setDarknessHeld(prev => prev.filter((_, i) => i !== idx));
     const modifiers = extractEnemyModifiers(card);
     setDarknessActive(prev => [...prev, { ...card, enemyModifiers: modifiers }]);
+    // Auto-advance darkness
+    const advMatch = card.effect?.match(/darkness\s+(?:immediately\s+)?moves?\s+(\d+)\s+step/i);
+    if (advMatch) {
+      advanceDarkness(parseInt(advMatch[1], 10));
+    }
     if (heldIndex >= darknessHeld.length - 1) setHeldIndex(Math.max(0, heldIndex - 1));
   };
 
@@ -174,6 +187,21 @@ export default function DMDarknessDrawer({ world = "Mines" }) {
           <p className="mt-2"><strong>Effect:</strong> {current.effect}</p>
           {current.remainsInPlay && (
             <p className="text-xs text-blue-400 mt-1">Remains in Play</p>
+          )}
+          {/* Hero effects that need manual resolution */}
+          {(current.effect?.match(/horror hit/i) || current.effect?.match(/corruption hit/i) || current.effect?.match(/growing dread/i)) && (
+            <div className="mt-2 p-2 bg-yellow-900/40 border border-yellow-500/40 rounded text-xs text-yellow-200">
+              <span className="font-bold text-yellow-400">⚠ Manual Resolution Required:</span>
+              {current.effect?.match(/(\d+)\s+horror\s+hit/i) && (
+                <p>• Apply {current.effect.match(/(\d+)\s+horror\s+hit/i)[1]} Horror Hit(s) to affected heroes</p>
+              )}
+              {current.effect?.match(/corruption\s+hit/i) && (
+                <p>• Apply Corruption Hits (Willpower saves allowed unless card says "ignoring Willpower")</p>
+              )}
+              {current.effect?.match(/growing\s+dread/i) && (
+                <p>• Draw Growing Dread card (go to Growing Dread tab)</p>
+              )}
+            </div>
           )}
           <div className="flex flex-wrap gap-2 mt-3">
             <button onClick={playCard} className="btn btn-success btn-sm">Play Now</button>
