@@ -1324,6 +1324,15 @@ export const THREAT_CARDS_STANDARD = [
   { id: '6_hellbats_and_pp_hungry_dead_3_corpse_piles_2', name: '6 Hellbats and {P}{P} Hungry Dead + 3 Corpse Piles',   tier: 'high', spawn: '6 Hellbats and {P}{P} Hungry Dead + 3 Corpse Piles',       effects: [] },
   { id: '2_dark_stone_scorpions_2',                    name: '2 Dark Stone Scorpions',                                   tier: 'high', spawn: '2 Dark Stone Scorpions',                                    effects: [] },
   { id: '6_stranglers_and_12_void_spiders_2',          name: '6 Stranglers and 12 Void Spiders',                         tier: 'high', spawn: '6 Stranglers and 12 Void Spiders',                          effects: [] },
+  // duplicates from scanned batch 2026-05-21
+  { id: '12_lost_army_2',                              name: '12 Lost Army',                                             tier: 'high', spawn: '12 Lost Army',                                             effects: [] },
+  { id: '6_seeker_drones_2',                           name: '6 Seeker Drones',                                          tier: 'high', world: 'Derelict Ship', spawn: '6 Seeker Drones',                  effects: [] },
+  { id: '1_night_terror_and_2_low_threat_cards_2',     name: '1 Night Terror and 2 Low Threat Cards',                    tier: 'high', spawn: '1 Night Terror and 2 Low Threat Cards',                    effects: [] },
+  { id: 'p_plus_6_creeping_shadows_3',                 name: '{P}+6 Creeping Shadows',                                   tier: 'high', spawn: '{P}+6 Creeping Shadows',                                   effects: [] },
+  { id: '1_dark_stone_hydra_2',                        name: '1 Dark Stone Hydra',                                       tier: 'high', spawn: '1 Dark Stone Hydra',                                       effects: [] },
+  { id: '6_bandits_and_1_low_threat_card_4',           name: '6 Bandits and 1 Low Threat Card',                          tier: 'high', spawn: '6 Bandits and 1 Low Threat Card',                          effects: [] },
+  { id: '2_ancient_horrors_2',                         name: '2 Ancient Horrors',                                        tier: 'high', spawn: '2 Ancient Horrors',                                        effects: ['Very Ancient — These Ancient Horrors have double the normal Health.'] },
+  { id: '12_crimson_hand_2',                           name: '12 Crimson Hand',                                          tier: 'high', spawn: '12 Crimson Hand',                                          effects: [] },
   // ── Medium Threat ─────────────────────────────────────────────────────────
   { id: '6_hellbats_med',                              name: '6 Hellbats',                                               tier: 'medium', spawn: '6 Hellbats',                                              effects: [] },
   { id: '6_hellbats_med_2',                            name: '6 Hellbats',                                               tier: 'medium', spawn: '6 Hellbats',                                              effects: [] },
@@ -1360,6 +1369,7 @@ export const THREAT_CARDS_STANDARD = [
     ],
   },
   { id: '1_slasher_and_1_low_threat_card_med',         name: '1 Slasher and 1 Low Threat Card',                          tier: 'medium', spawn: '1 Slasher and 1 Low Threat Card',                          effects: [] },
+  { id: '1_hell_cannon_and_p_lost_army_2',             name: '1 Hell Cannon and {P} Lost Army',                          tier: 'medium', spawn: '1 Hell Cannon and {P} Lost Army',                         effects: ['Draw 1 Threat Card instead if you do not have Lost Army.'] },
 ];
 
 // ── OtherWorld threat cards ──────────────────────────────────────────────────
