@@ -87,6 +87,11 @@ import {
   performXantharLeechTreatment,
 } from '../../utils/locationHandlers/scavengerDocServices';
 
+// Chart lookup helpers for enqueueChartRoll
+import { materializeInjuryByRoll } from '../DM/charts/injuryChart';
+import { materializeMadnessByRoll } from '../DM/charts/madnessChart';
+import { materializeMutationByRoll } from '../DM/charts/mutationChart';
+
 // UI pieces
 import TownEventCard from './TownEventCard';
 import RareFindPanel from './RareFindPanel';
@@ -1120,6 +1125,58 @@ const foWorldArtifactOffer =
       } catch {
         return {};
       }
+    },
+    enqueueChartRoll: async (heroId, chartType) => {
+      const target = posse.find((h) => (h.id || h.localId) === heroId) || null;
+      const heroName = target?.name || 'Hero';
+
+      // Roll D36: tens die + units die → combine to 11-66
+      const tens = Math.floor(Math.random() * 6) + 1;
+      const units = Math.floor(Math.random() * 6) + 1;
+      const roll = tens * 10 + units;
+
+      let condition = null;
+      let conditionField = null;
+
+      if (chartType === 'injury') {
+        condition = materializeInjuryByRoll(roll);
+        conditionField = 'injuries';
+      } else if (chartType === 'madness') {
+        condition = materializeMadnessByRoll(roll);
+        conditionField = 'madness';
+      } else if (chartType === 'mutation') {
+        condition = materializeMutationByRoll(roll);
+        conditionField = 'mutations';
+      }
+
+      if (!condition) {
+        setServiceUi({
+          title: `${chartType} Chart — Roll ${tens}+${units} = ${roll}`,
+          lines: [`No chart entry found for roll ${roll}. DM: resolve manually.`],
+        });
+        return;
+      }
+
+      // Apply condition to hero
+      if (target && conditionField) {
+        updateHero({
+          id: heroId,
+          [conditionField]: [...(target[conditionField] || []), condition],
+        });
+      }
+
+      setServiceUi({
+        title: `${heroName} — ${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart Roll`,
+        lines: [
+          `Rolled [${tens}, ${units}] = ${roll}`,
+          ``,
+          `⚑ ${condition.name}`,
+          condition.flavor ? `"${condition.flavor}"` : '',
+          ``,
+          `Effect: ${condition.effectText || condition.effect || ''}`,
+          condition.temporary ? `(Temporary — lasts until end of Adventure)` : `(Permanent)`,
+        ].filter(l => l !== undefined),
+      });
     },
   };
 
