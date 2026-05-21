@@ -189,6 +189,8 @@ src/
 │   ├── skillTrees/              # 16 classes, 4 levels each
 │   ├── levelingCharts/          # XP→stat tables per class
 │   ├── cards/                   # Encounter, darkness, growing dread, loot, threat, world cards
+│   │   ├── threatCards.js       # THREAT_CARDS_STANDARD + THREAT_CARDS_OTHERWORLD (combined as THREAT_CARDS)
+│   │   ├── scaffordLieutenants.js  # SCAFFORD_LIEUTENANT_CARDS — 6 named lieutenant cards
 │   │   └── townTypeCards.js     # 7 Frontier Town expansion Town Type cards (Mining, Mutant, Outlaw, Plague, Rail, River, Ruins)
 │   ├── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
 │   └── depthEvents/             # World-specific Depth Event charts (6 worlds, roll 1-6 = die value doubled)
@@ -350,6 +352,8 @@ Collapsible sections with card counts and search for every deck:
 | Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
 | OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
 | Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
+| Threat Cards | `data/cards/threatCards.js` `THREAT_CARDS` | Filterable by tier (low/medium/high/epic/otherworld); spawn text + effects |
+| Scafford Lieutenants | `data/cards/scaffordLieutenants.js` | 6 named lieutenant cards drawn when a threat card calls for one |
 | Town Type Cards | `data/cards/townTypeCards.js` | 7 Frontier Town expansion double-sided Town Type cards |
 | Town Traits (D36) | `DM/charts/townTraitsChart.js` | HexCrawl D36 Town Traits chart (all 36 entries) |
 
@@ -387,16 +391,6 @@ On the TV display, enemy entries render with a red-tinted border and show `×cou
 ---
 
 ## Known Issues / Audit Findings
-
-### Data-Not-Persisting Bugs (fields silently dropped by sanitizer)
-- `heroAccess.js:adjustCorruption` writes to `corruption` → use `currentCorruption`
-- `heroAccess.js:applyWounds/healWounds` writes to `wounds` → use `currentHealth`
-- `promptApi.js:137` applyHits fallback writes to `wounds` → use `currentHealth`
-- `saloonHandler.js:156` Bar Fight writes `wounds` → fix
-- `saloonHandler.js:213` Song and Dance heals `health` → fix
-- `streetMarketHandler.js:150` scuffle writes `wounds` → fix
-- `gamblingHallServices.js:318` Robbery writes `wounds` → fix
-- `docsOfficeServices.js:477` injection writes `corruption` → fix
 
 ### Missing Willpower Saves
 Any `currentCorruption +=` write must be preceded by Willpower saves unless card text says "ignoring Willpower".
@@ -719,6 +713,13 @@ Shuffle discard pile when deck empties.
 | Mutation pending alert + duplicate-mutation death warning | `ConditionsTab.jsx` |
 | Prominent HBtD result modal (hero + DM) | `AdventureTrackView.jsx`, `DMAdventureTracker.jsx` |
 | Initiative order: enemies beat heroes on ties | `DisplayScreen.jsx`, `DMTurnTracker.jsx` |
+| Darkness card auto-advance depth track | `DMDarknessDrawer.jsx` — parses "darkness moves N step(s)" from effect text, calls `advanceDarkness(n)` |
+| Darkness card stat boosts flow to enemy groups | `DMTab.jsx` builds `darknessGlobalModifiers` from `darknessActive`; passed via `globalModifiers` prop to `DMEnemyPanel` → `EnemyGroupCard`; `enemyModifiers.js` applies per keyword |
+| Growing Dread "Reveal All & Play" button | `DMGrowingDreadDrawer.jsx` — moves all held GD cards to active simultaneously |
+| Encounter drawer spawn-to-combat link | `DMEncounterDrawer.jsx` — "spawn to combat" button finds enemy by name and calls `addGroup` |
+| `enqueueChartRoll` D36 lookup + apply | `TownTab/index.jsx` — rolls D36, looks up entry in HexCrawl charts, appends condition to hero |
+| Scafford Lieutenants deck | `data/cards/scaffordLieutenants.js` — 6 named lieutenants (Sgt. Bunker, Ol 'One Eye' Jackson, 'Stone Face' McCoy, Captain Burns, 'Fast Draw' Jeb, 'Silver Back' Pa) |
+| Threat card data expanded | `data/cards/threatCards.js` — scanned high-tier batch added (standard, medium, high, epic, otherworld tiers) |
 
 ### Not Yet Implemented — Priority Order
 
@@ -760,12 +761,3 @@ Shuffle discard pile when deck empties.
 | Lava Spaces | Terrain mechanic not modeled |
 | Orphanage / Town Hall | Stubbed empty |
 
-### Known Data-Not-Persisting Bugs (silently dropped by sanitizer)
-- `heroAccess.js:adjustCorruption` writes `corruption` → use `currentCorruption`
-- `heroAccess.js:applyWounds/healWounds` writes `wounds` → use `currentHealth`
-- `promptApi.js:137` applyHits fallback writes `wounds` → fix
-- `saloonHandler.js:156` Bar Fight writes `wounds` → fix
-- `saloonHandler.js:213` Song and Dance heals `health` → fix
-- `streetMarketHandler.js:150` scuffle writes `wounds` → fix
-- `gamblingHallServices.js:318` Robbery writes `wounds` → fix
-- `docsOfficeServices.js:477` injection writes `corruption` → fix
