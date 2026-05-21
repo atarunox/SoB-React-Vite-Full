@@ -373,9 +373,7 @@ export async function performTreatCorruption({ hero, io }) {
   log.push(`[Treat Corruption] Backlash roll: ${backlash}.`);
 
   // Base current HP and apply backlash wounds if any
-  const curHP = Number.isFinite(Number(hero?.currentHealth))
-    ? Number(hero.currentHealth)
-    : Number(hero?.health ?? 0);
+  const curHP = Number(hero?.currentHealth ?? hero?.maxHealth ?? 10);
 
   let nextHealth = curHP;
 

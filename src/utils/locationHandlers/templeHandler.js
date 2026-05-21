@@ -458,11 +458,10 @@ async function applyIdolEvent10(idolRoll, ctx, id, log) {
     case 5: {
       ctx.updateHero?.(id, (h) => {
         const maxSanity = Number(h.maxSanity ?? h.SanityMax ?? 0);
-        const corruption = Math.max(0, (h.corruption ?? 0) - 1);
         return {
           ...h,
           currentSanity: maxSanity,
-          corruption,
+          currentCorruption: Math.max(0, (h.currentCorruption ?? h.corruption ?? 0) - 1),
         };
       });
       const outcome = 'A festival of death and life! Every Hero at the Temple may fully heal their Sanity and remove 1 Corruption Point.';
