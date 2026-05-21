@@ -11,6 +11,7 @@ import { ENEMY_CARDS }         from '../../data/enemyCards';
 import { ENEMY_TRAIT_CARDS }      from '../../data/enemyCards/enemyTraitCards';
 import { BLACK_FANG_WAR_CHANT }  from '../../data/enemyCards/warChantCards';
 import { TOWN_TYPE_CARDS }        from '../../data/cards/townTypeCards';
+import { SCAFFORD_LIEUTENANT_CARDS } from '../../data/cards/scaffordLieutenants';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -53,6 +54,7 @@ const DECKS = [
   { id: 'townTraits',  label: 'Town Traits (D36)',      cards: townTraitsChart         },
   { id: 'enemyTraits',   label: 'Enemy Trait Cards',        cards: flatEnemyTraitCards   },
   { id: 'warChant',     label: 'Black Fang War Chant',     cards: BLACK_FANG_WAR_CHANT  },
+  { id: 'scaffordLieutenants', label: 'Scafford Lieutenants', cards: SCAFFORD_LIEUTENANT_CARDS },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────
@@ -209,7 +211,9 @@ function CardRow({ card }) {
 
   const effectLines = (() => {
     if (Array.isArray(card.effects))   return card.effects;
-    if (Array.isArray(card.abilities)) return card.abilities;
+    if (Array.isArray(card.abilities)) return card.abilities.map(a =>
+      typeof a === 'object' && a !== null ? `${a.name} — ${a.effect}` : a
+    );
     if (card.effect)                   return [card.effect];
     if (card.text)                     return [card.text];
     if (card.description)              return [card.description];
@@ -235,6 +239,21 @@ function CardRow({ card }) {
       )}
       {card.upgradeSlots > 0 && (
         <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-300 rounded px-1.5 py-0.5">⬡×{card.upgradeSlots}</span>
+      )}
+      {card.stats?.health != null && (
+        <span className="text-[10px] font-semibold bg-red-100 text-red-800 border border-red-300 rounded px-1.5 py-0.5">HP {card.stats.health}</span>
+      )}
+      {card.stats?.defense && (
+        <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 border border-blue-300 rounded px-1.5 py-0.5">Def {card.stats.defense}</span>
+      )}
+      {card.stats?.bonusShotsOrCombat && (
+        <span className="text-[10px] font-semibold bg-orange-100 text-orange-800 border border-orange-300 rounded px-1.5 py-0.5">{card.stats.bonusShotsOrCombat}</span>
+      )}
+      {card.stats?.rangeToHit && (
+        <span className="text-[10px] font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300 rounded px-1.5 py-0.5">Range {card.stats.rangeToHit}</span>
+      )}
+      {card.stats?.xp && (
+        <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-300 rounded px-1.5 py-0.5">XP {card.stats.xp}</span>
       )}
     </>
   );
