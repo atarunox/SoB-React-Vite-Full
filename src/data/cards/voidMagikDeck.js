@@ -66,14 +66,14 @@ export const VOID_MAGIK_CARDS = [
     spellLevels: {
       1: 'One Random Hero must instantly discard 1 Dark Stone, a Side Bag Token, or an Item of their choice.',
       2: 'Instead, that Hero must choose all Side Bag Tokens or an Item.',
-      3: 'Instead, that Hero must choose an Item that has a Dark Stone attached or is a Dark Stone item.',
-      4: 'Instead, that Hero must choose an Item.',
+      3: 'Instead, that Hero must choose an Item that has 1 Weight or a Dark Stone attached.',
+      4: 'Instead, that Hero must choose any Item.',
     },
     effects: [
       'Level 1: One Random Hero must instantly discard 1 Dark Stone, a Side Bag Token, or an Item of their choice.',
       'Level 2: Instead, that Hero must choose all Side Bag Tokens or an Item.',
-      'Level 3: Instead, that Hero must choose an Item that has a Dark Stone attached or is a Dark Stone item.',
-      'Level 4: Instead, that Hero must choose an Item.',
+      'Level 3: Instead, that Hero must choose an Item that has 1 Weight or a Dark Stone attached.',
+      'Level 4: Instead, that Hero must choose any Item.',
     ],
   },
   {
@@ -84,13 +84,13 @@ export const VOID_MAGIK_CARDS = [
     spellLevels: {
       1: 'Every Hero on a Map Tile with one or more Void Spellcasters immediately takes D3 Corruption Hits.',
       2: 'D6 Corruption Hits instead.',
-      3: '1 Corruption Hit per Hero in the Posse instead.',
+      3: 'Peril Die {P} Corruption Hits instead.',
       4: 'D3 Corruption Points instead, ignoring Willpower.',
     },
     effects: [
       'Level 1: Every Hero on a Map Tile with one or more Void Spellcasters immediately takes D3 Corruption Hits.',
       'Level 2: D6 Corruption Hits instead.',
-      'Level 3: 1 Corruption Hit per Hero in the Posse instead.',
+      'Level 3: Peril Die {P} Corruption Hits instead.',
       'Level 4: D3 Corruption Points instead, ignoring Willpower.',
     ],
   },
@@ -101,13 +101,13 @@ export const VOID_MAGIK_CARDS = [
     tags: ['Spell', 'Magik', 'Void', 'Summon'],
     spellLevels: {
       1: 'Immediately add D3 Tentacles to the Fight as an Ambush. These new Enemies gain the Initiative bonus for Ambush, but do not Activate until next turn. This does NOT end the current turn.',
-      2: 'Add 1 Tentacle per Hero in the Posse instead.',
+      2: 'Add Peril Die {P} Tentacles instead.',
       3: 'Add 6 Tentacles instead.',
       4: 'Add a Threat Card instead.',
     },
     effects: [
       'Level 1: Immediately add D3 Tentacles to the Fight as an Ambush. These new Enemies gain the Initiative bonus for Ambush, but do not Activate until next turn. This does NOT end the current turn.',
-      'Level 2: Add 1 Tentacle per Hero in the Posse instead.',
+      'Level 2: Add Peril Die {P} Tentacles instead.',
       'Level 3: Add 6 Tentacles instead.',
       'Level 4: Add a Threat Card instead.',
     ],

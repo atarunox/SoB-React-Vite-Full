@@ -358,6 +358,7 @@ Collapsible sections with card counts and search for every deck:
 | Wasteland Warmasters | `data/cards/wastelandWarmasters.js` | 5 named Warmaster leader cards for Wasteland Scavenger encounters |
 | Infamous Feudal Bandits | `data/cards/infamousFeudalBandits.js` | 5 modifier cards drawn when Feudal Bandits spawn (Forbidden Fortress expansion) |
 | Void Magik | `data/cards/voidMagikDeck.js` | 12-card spell deck used by Void Spellcasters (3× Void Chant + 9 spells with 4 Spell Levels each) |
+| Personal Items | `data/cards/personalItems.js` | 11 Personal Item cards drawn at hero creation (1 per hero, some classes draw 2) |
 | Town Type Cards | `data/cards/townTypeCards.js` | 7 Frontier Town expansion double-sided Town Type cards |
 | Town Traits (D36) | `DM/charts/townTraitsChart.js` | HexCrawl D36 Town Traits chart (all 36 entries) |
 
