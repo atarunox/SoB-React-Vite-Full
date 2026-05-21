@@ -12,6 +12,9 @@ import { ENEMY_TRAIT_CARDS }      from '../../data/enemyCards/enemyTraitCards';
 import { BLACK_FANG_WAR_CHANT }  from '../../data/enemyCards/warChantCards';
 import { TOWN_TYPE_CARDS }        from '../../data/cards/townTypeCards';
 import { SCAFFORD_LIEUTENANT_CARDS } from '../../data/cards/scaffordLieutenants';
+import { WASTELAND_WARBAND_CARDS }   from '../../data/cards/wastelandWarbands';
+import { WASTELAND_WARMASTER_CARDS } from '../../data/cards/wastelandWarmasters';
+import { INFAMOUS_FEUDAL_BANDIT_CARDS } from '../../data/cards/infamousFeudalBandits';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -54,7 +57,10 @@ const DECKS = [
   { id: 'townTraits',  label: 'Town Traits (D36)',      cards: townTraitsChart         },
   { id: 'enemyTraits',   label: 'Enemy Trait Cards',        cards: flatEnemyTraitCards   },
   { id: 'warChant',     label: 'Black Fang War Chant',     cards: BLACK_FANG_WAR_CHANT  },
-  { id: 'scaffordLieutenants', label: 'Scafford Lieutenants', cards: SCAFFORD_LIEUTENANT_CARDS },
+  { id: 'scaffordLieutenants',    label: 'Scafford Lieutenants',      cards: SCAFFORD_LIEUTENANT_CARDS  },
+  { id: 'wastelandWarbands',      label: 'Wasteland Warbands',        cards: WASTELAND_WARBAND_CARDS    },
+  { id: 'wastelandWarmasters',    label: 'Wasteland Warmasters',      cards: WASTELAND_WARMASTER_CARDS  },
+  { id: 'infamousFeudalBandits',  label: 'Infamous Feudal Bandits',   cards: INFAMOUS_FEUDAL_BANDIT_CARDS },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────

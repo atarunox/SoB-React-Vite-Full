@@ -354,6 +354,9 @@ Collapsible sections with card counts and search for every deck:
 | Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
 | Threat Cards | `data/cards/threatCards.js` `THREAT_CARDS` | Filterable by tier (low/medium/high/epic/otherworld); spawn text + effects |
 | Scafford Lieutenants | `data/cards/scaffordLieutenants.js` | 6 named lieutenant cards drawn when a threat card calls for one |
+| Wasteland Warbands | `data/cards/wastelandWarbands.js` | 6 warband modifier cards (5 unique + 1 duplicate) drawn when Wasteland Scavengers spawn |
+| Wasteland Warmasters | `data/cards/wastelandWarmasters.js` | 5 named Warmaster leader cards for Wasteland Scavenger encounters |
+| Infamous Feudal Bandits | `data/cards/infamousFeudalBandits.js` | 5 modifier cards drawn when Feudal Bandits spawn (Forbidden Fortress expansion) |
 | Town Type Cards | `data/cards/townTypeCards.js` | 7 Frontier Town expansion double-sided Town Type cards |
 | Town Traits (D36) | `DM/charts/townTraitsChart.js` | HexCrawl D36 Town Traits chart (all 36 entries) |
 
