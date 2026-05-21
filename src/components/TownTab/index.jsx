@@ -82,6 +82,11 @@ import {
   performDocItemPurchase,
 } from '../../utils/locationHandlers/docsOfficeServices';
 
+import {
+  performScavengerDocSurgery,
+  performXantharLeechTreatment,
+} from '../../utils/locationHandlers/scavengerDocServices';
+
 // UI pieces
 import TownEventCard from './TownEventCard';
 import RareFindPanel from './RareFindPanel';
@@ -2455,6 +2460,291 @@ const foWorldArtifactOffer =
       );
       setState(loadTownState());
       return;
+    }
+
+    // ---------- Temple (Blasted Wastes) ----------
+    if (shopId === 'temple') {
+      const meId = hero.id || hero.localId;
+
+      if (svc?.id === 'temple_cleansing_torment') {
+        const cost = 100;
+        if ((hero.gold ?? 0) < cost) { alert(`Not enough gold ($${cost} needed).`); return; }
+        const ok = await promptPay(hero, cost, 'The Cleansing Torment — Pay $100');
+        if (!ok) return;
+        posseApi.updateHero(meId, h => ({ ...h, gold: (h.gold ?? 0) - cost }));
+        const [raw] = await promptRoll(1, 6, 'Cleansing Torment — D6−2 Corruption removed');
+        const removed = Math.max(0, raw - 2);
+        const log = [`Cleansing Torment roll: ${raw} → removes ${removed} Corruption.`];
+        if (removed > 0) {
+          posseApi.updateHero(meId, h => ({
+            ...h, currentCorruption: Math.max(0, (h.currentCorruption ?? 0) - removed),
+          }));
+          log.push(`Removed ${removed} Corruption Point${removed !== 1 ? 's' : ''}.`);
+        } else {
+          const [dmg] = await promptRoll(1, 6, 'Cleansing Torment — D6 Sanity damage (no Willpower)');
+          posseApi.updateHero(meId, h => ({
+            ...h, currentSanity: Math.max(0, (h.currentSanity ?? 0) - dmg),
+          }));
+          log.push(`No Corruption removed — take ${dmg} Sanity damage (ignoring Willpower).`);
+        }
+        setServiceUi({ title: svc.name, outcome: log });
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'temple_banishment_of_madness') {
+        const cost = 250;
+        if ((hero.gold ?? 0) < cost) { alert(`Not enough gold ($${cost} needed).`); return; }
+        const rawMad = getMutationList ? [] : [];
+        const madnessList = Array.isArray(hero.madness) ? hero.madness : [];
+        const injuryList = Array.isArray(hero.injuries) ? hero.injuries : [];
+        const allConditions = [
+          ...madnessList.map((c, i) => ({ label: `Madness: ${c?.name || 'Madness'}`, kind: 'madness', _idx: i, isCurse: false })),
+          ...injuryList.filter(c => c?.curse).map((c, i) => ({ label: `Curse: ${c?.name || 'Curse'}`, kind: 'injury', _idx: i, isCurse: true })),
+        ];
+        if (!allConditions.length) { alert('No Madness or Curses to banish.'); return; }
+        const pick = allConditions.length === 1 ? allConditions[0] : (() => {
+          const msg = 'Choose a condition to banish:\n\n' + allConditions.map((o, i) => `${i+1}. ${o.label}`).join('\n');
+          const raw = window.prompt(msg, '1');
+          if (!raw) return null;
+          const idx = parseInt(raw, 10) - 1;
+          return (idx >= 0 && idx < allConditions.length) ? allConditions[idx] : null;
+        })();
+        if (!pick) return;
+        const ok = await promptPay(hero, cost, `Banishment of Madness — Pay $${cost}`);
+        if (!ok) return;
+        posseApi.updateHero(meId, h => ({ ...h, gold: (h.gold ?? 0) - cost }));
+        const [dieRoll] = await promptRoll(1, 6, 'Banishment — D6 roll (Curse: −1)');
+        const finalRoll = pick.isCurse ? dieRoll - 1 : dieRoll;
+        const log = [`Banishment roll: ${dieRoll}${pick.isCurse ? ' −1 (Curse)' : ''} = ${finalRoll}.`];
+        if (finalRoll <= 0) {
+          log.push('DEAD! Your Hero is killed during the ritual.');
+          posseApi.updateHero(meId, h => ({ ...h, currentHealth: 0 }));
+        } else if (finalRoll === 1) {
+          const [dmg] = await promptRoll(1, 6, 'Demonic Attack — D6 permanent Health/Sanity loss');
+          log.push(`Demonic Attack! Lose ${dmg} Max Health or Sanity permanently (DM chooses split).`);
+        } else if (finalRoll <= 3) {
+          log.push('Failed — the ailment is not healed.');
+        } else {
+          if (pick.kind === 'madness') {
+            posseApi.updateHero(meId, h => ({
+              ...h, madness: (h.madness || []).filter((_, i) => i !== pick._idx),
+            }));
+          } else {
+            posseApi.updateHero(meId, h => ({
+              ...h, injuries: (h.injuries || []).filter((_, i) => i !== pick._idx),
+            }));
+          }
+          log.push(`Success! "${pick.label.split(': ')[1]}" has been banished.`);
+        }
+        setServiceUi({ title: svc.name, outcome: log });
+        setState(loadTownState());
+        return;
+      }
+    }
+
+    // ---------- Scavenger Doc (Blasted Wastes) ----------
+    if (shopId === 'scavengerDoc') {
+      const sdId = hero.id || hero.localId;
+      const sdIo = {
+        roll: promptRoll,
+        pay: (amount, label) => promptPay(hero, amount, label),
+        promptNumber: (label, opts) => promptNumber(label, opts),
+        promptInjuryOrMutation: (h) => {
+          const injAll = Array.isArray(h?.injuries) ? h.injuries : [];
+          const mutAll = Array.isArray(h?.mutations) ? h.mutations : [];
+          const options = [
+            ...injAll.filter(c => !c?.surgeryLocked).map((c, i) => ({ label: `Injury: ${c?.name || 'Injury'}`, kind: 'injury', _idx: i })),
+            ...mutAll.filter(c => !c?.surgeryLocked).map((c, i) => ({ label: `Mutation: ${c?.name || 'Mutation'}`, kind: 'mutation', _idx: i })),
+          ];
+          if (!options.length) { alert('No Injuries or Mutations to operate on.'); return null; }
+          if (options.length === 1) return options[0];
+          const msg = 'Choose condition to operate on:\n\n' + options.map((o, i) => `${i+1}. ${o.label}`).join('\n');
+          const raw = window.prompt(msg, '1');
+          if (!raw) return null;
+          const idx = parseInt(raw, 10) - 1;
+          return (idx >= 0 && idx < options.length) ? options[idx] : null;
+        },
+        notify: (msg) => console.log('[ScavDoc]', msg),
+      };
+
+      if (svc?.id === 'scav_doc_surgery') {
+        const res = await performScavengerDocSurgery({ hero, io: sdIo });
+        if (res?.actions?.length) applyActions(res.actions);
+        setServiceUi(res?.ui || { title: svc.name, outcome: res?.log || ['Surgery complete.'] });
+        setState(loadTownState());
+        return;
+      }
+      if (svc?.id === 'scav_doc_xanthar_leech') {
+        const res = await performXantharLeechTreatment({ hero, io: sdIo });
+        if (res?.actions?.length) applyActions(res.actions);
+        setServiceUi(res?.ui || { title: svc.name, outcome: res?.log || ['Treatment complete.'] });
+        setState(loadTownState());
+        return;
+      }
+    }
+
+    // ---------- Desert Marketplace back alleys (Blasted Wastes) ----------
+    if (shopId === 'desertMarketplace') {
+      const dmId = hero.id || hero.localId;
+
+      if (svc?.id === 'dm_sell_dark_stone') {
+        const stones = Number(hero.darkStone ?? hero.dark_stone ?? 0);
+        if (stones <= 0) { alert('No Dark Stone to sell.'); return; }
+        const countStr = window.prompt(`How many Dark Stone shards to sell? (you have ${stones})`, String(stones));
+        const count = Math.max(0, Math.min(stones, parseInt(countStr ?? '0', 10) || 0));
+        if (!count) return;
+        let total = 0;
+        const rollLog = [];
+        for (let i = 0; i < count; i++) {
+          const [r] = await promptRoll(1, 6, `Dark Stone shard ${i+1} of ${count} — D6×$20`);
+          const val = r * 20;
+          total += val;
+          rollLog.push(`Shard ${i+1}: rolled ${r} → $${val}`);
+        }
+        posseApi.updateHero(dmId, h => ({
+          ...h,
+          gold: (h.gold ?? 0) + total,
+          darkStone: Math.max(0, (h.darkStone ?? 0) - count),
+        }));
+        setServiceUi({ title: svc.name, outcome: [...rollLog, `Total earned: $${total}. Sold ${count} shard${count !== 1 ? 's' : ''}.`] });
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'dm_get_a_drink') {
+        const cost = 10;
+        if ((hero.gold ?? 0) < cost) { alert(`Not enough gold ($${cost} needed).`); return; }
+        posseApi.updateHero(dmId, h => ({ ...h, gold: (h.gold ?? 0) - cost }));
+        const [dmg] = await promptRoll(1, 6, 'Get a Drink — Heal D6 Sanity');
+        posseApi.updateHero(dmId, h => ({
+          ...h,
+          currentSanity: Math.min(h.maxSanity ?? 10, (h.currentSanity ?? 0) + dmg),
+          xp: (h.xp ?? 0) + 5,
+        }));
+        setServiceUi({ title: svc.name, outcome: [`Healed ${dmg} Sanity. Gained 5 XP.`] });
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'dm_alien_dancer') {
+        const cost = 20;
+        if ((hero.gold ?? 0) < cost) { alert(`Not enough gold ($${cost} needed).`); return; }
+        posseApi.updateHero(dmId, h => ({ ...h, gold: (h.gold ?? 0) - cost, xp: (h.xp ?? 0) + 10 }));
+        const lore = Math.max(1, Number(hero?.stats?.Lore ?? hero?.Lore ?? 1));
+        const rolls = await promptRoll(lore, 6, `Alien Dancer — Lore 4+ test (${lore}d6)`);
+        const success = rolls.some(r => r >= 4);
+        const log = [`Lore test (${lore}d6): [${rolls.join(', ')}] — ${success ? 'SUCCESS' : 'FAILED'}.`];
+        if (success) {
+          const maxGrit = Number(hero?.Grit ?? hero?.maxGrit ?? 2);
+          posseApi.updateHero(dmId, h => ({ ...h, currentGrit: Math.min(maxGrit, (h.currentGrit ?? 0) + 1) }));
+          log.push('Recovered 1 Grit.');
+        } else {
+          const wpStr = String(hero?.stats?.Willpower ?? hero?.willpower ?? '5+');
+          const wpTarget = Number(wpStr.match(/\d+/)?.[0]) || 5;
+          const [save] = await promptRoll(1, 6, `Willpower ${wpTarget}+ save vs Corruption Hit`);
+          if (save >= wpTarget) { log.push(`Willpower save: ${save} ≥ ${wpTarget} — Corruption blocked!`); }
+          else {
+            posseApi.updateHero(dmId, h => ({ ...h, currentCorruption: (h.currentCorruption ?? 0) + 1 }));
+            log.push(`Willpower save: ${save} < ${wpTarget} — took 1 Corruption Hit.`);
+          }
+        }
+        setServiceUi({ title: svc.name, outcome: log });
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'dm_slot_pot') {
+        const cost = 25;
+        if ((hero.gold ?? 0) < cost) { alert(`Not enough gold ($${cost} needed).`); return; }
+        posseApi.updateHero(dmId, h => ({ ...h, gold: (h.gold ?? 0) - cost }));
+        const numStr = window.prompt('Slot-Pot: Choose a number between 1 and 6.', '3');
+        const chosen = Math.max(1, Math.min(6, parseInt(numStr ?? '3', 10) || 3));
+        const rolls = await promptRoll(3, 6, `Slot-Pot — rolling 3d6 (your number: ${chosen})`);
+        const matches = rolls.filter(r => r === chosen).length;
+        const log = [`You chose ${chosen}. Rolled [${rolls.join(', ')}] — ${matches} match${matches !== 1 ? 'es' : ''}.`];
+        if (matches === 3) {
+          posseApi.updateHero(dmId, h => ({ ...h, gold: (h.gold ?? 0) + 300 }));
+          log.push('FULL POT! Win $300 and draw an Artifact card (DM handles artifact draw).');
+        } else if (matches > 0) {
+          const win = matches * 100;
+          posseApi.updateHero(dmId, h => ({ ...h, gold: (h.gold ?? 0) + win }));
+          log.push(`Win $${win}.`);
+        } else {
+          log.push('Fumbled the Pot-Bot! Take 1 Corruption Hit. Pay an extra $25 (or roll on Injury Table).');
+          const canPayExtra = (hero.gold ?? 0) >= 25;
+          if (canPayExtra) {
+            const payExtra = window.confirm('Pay the extra $25 penalty?');
+            if (payExtra) {
+              posseApi.updateHero(dmId, h => ({ ...h, gold: Math.max(0, (h.gold ?? 0) - 25) }));
+              log.push('Paid $25 penalty.');
+            } else {
+              log.push('Could not pay — roll on the Injury Table instead (DM resolves).');
+            }
+          } else {
+            log.push('Not enough gold for penalty — roll on the Injury Table instead (DM resolves).');
+          }
+          const wpStr = String(hero?.stats?.Willpower ?? hero?.willpower ?? '5+');
+          const wpTarget = Number(wpStr.match(/\d+/)?.[0]) || 5;
+          const [save] = await promptRoll(1, 6, `Willpower ${wpTarget}+ save vs Corruption Hit`);
+          if (save >= wpTarget) { log.push(`Willpower save: ${save} — Corruption blocked!`); }
+          else { posseApi.updateHero(dmId, h => ({ ...h, currentCorruption: (h.currentCorruption ?? 0) + 1 })); log.push(`Took 1 Corruption Hit.`); }
+        }
+        setServiceUi({ title: svc.name, outcome: log });
+        setState(loadTownState());
+        return;
+      }
+
+      if (svc?.id === 'dm_eanarri_dice') {
+        const betStr = window.prompt("Ean'arri Dice — Enter your bet ($25–$100):", '25');
+        const bet = Math.max(25, Math.min(100, parseInt(betStr ?? '25', 10) || 25));
+        if ((hero.gold ?? 0) < bet) { alert(`Not enough gold for bet of $${bet}.`); return; }
+        posseApi.updateHero(dmId, h => ({ ...h, gold: (h.gold ?? 0) - bet }));
+        const suns = await promptRoll(2, 6, "Ean'arri Dice — Roll 2 Desert Suns");
+        const sunA = suns[0], sunB = suns[1];
+        const betOptions = [
+          { label: `Setting Suns (Wanderer < both ${sunA} and ${sunB})` },
+          { label: `Lost in the Desert (Wanderer between ${sunA} and ${sunB})` },
+          { label: `Fire in the Sky (Wanderer > both ${sunA} and ${sunB})` },
+          { label: `Dust and Bones (Wanderer matches either ${sunA} or ${sunB})` },
+          { label: `Escape to Freedom (matches both — pays 5× bet)` },
+        ];
+        const msg = `Desert Suns: [${sunA}, ${sunB}]\n\nChoose your bet:\n` + betOptions.map((o, i) => `${i+1}. ${o.label}`).join('\n');
+        const choice = Math.max(0, Math.min(4, (parseInt(window.prompt(msg, '1'), 10) || 1) - 1));
+        const log = [`Bet $${bet}. Suns: [${sunA}, ${sunB}]. Bet: "${betOptions[choice].label.split('(')[0].trim()}".`];
+        let payout = 0;
+        for (let push = 0; push < 4; push++) {
+          const [wand] = await promptRoll(1, 6, `Wanderer die #${push + 1}`);
+          log.push(`Wanderer ${push+1}: ${wand}.`);
+          const lo = Math.min(sunA, sunB), hi = Math.max(sunA, sunB);
+          const wins = (choice === 0 && wand < lo) || (choice === 1 && wand > lo && wand < hi) ||
+            (choice === 2 && wand > hi) || (choice === 3 && (wand === sunA || wand === sunB)) ||
+            (choice === 4 && wand === sunA && wand === sunB);
+          const multiplier = choice === 4 ? 5 : 2;
+          if (wins) {
+            const earned = push === 0 ? bet * multiplier : (payout || bet) * 2;
+            payout = earned;
+            log.push(`Match! Total payout would be $${payout}.`);
+            if (push < 3) {
+              const pushOn = window.confirm(`Push your luck? Current payout: $${payout}. Roll another Wanderer die?`);
+              if (!pushOn) break;
+            }
+          } else {
+            log.push('No match — bet lost.');
+            payout = 0;
+            break;
+          }
+        }
+        if (payout > 0) {
+          posseApi.updateHero(dmId, h => ({ ...h, gold: (h.gold ?? 0) + payout }));
+          log.push(`Won $${payout}!`);
+        } else {
+          log.push('Lost your bet.');
+        }
+        setServiceUi({ title: svc.name, outcome: log });
+        setState(loadTownState());
+        return;
+      }
     }
 
     // ---------- Generic fallback ----------
