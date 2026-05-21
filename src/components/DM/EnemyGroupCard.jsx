@@ -3,10 +3,28 @@ import { getAllStatsWithBreakdown } from "../../utils/enemyModifiers";
 import { TRAIT_DECKS } from "../../data/traitDecks";
 import { ENEMY_TRAIT_CARDS, ENEMY_TRAIT_CONFIG, CORRUPTED_TRAIT } from "../../data/enemyCards/enemyTraitCards";
 import { SPECIAL_ENEMIES_BY_BASE } from "../../data/enemyCards/specialEnemies";
+import { ENEMY_CARDS } from "../../data/enemyCards";
 import { DARKNESS_CARDS } from "../../data/darknessCards";
 import { GROWING_DREAD_CARDS } from "../../data/growingDreadCards";
 import StatBreakdownModal from "./StatBreakdownModal";
-import { getEnemyDifficulty } from "../../utils/enemyUtils";
+import { getEnemyDifficulty, normalizeEnemyData } from "../../utils/enemyUtils";
+
+// Parse "Spawner - roll 2 dice, on 4+: place 1 Void Spider adjacent" etc.
+function parseSpawnerAbility(text) {
+  const m = text.match(/^spawners?\s*[-–]\s*roll\s+(d?\d+)\s*(?:dice?)?[,\s]+on\s+(\d+)\+[:\s]+place\s+(\d+)\s+(.+)/i);
+  if (!m) return null;
+  const diceToken = m[1].toLowerCase();
+  const diceCount = diceToken.startsWith('d') ? 1 : parseInt(diceToken);
+  const enemyName = m[4].replace(/\s+adjacent\.?\s*$/, '').trim();
+  return {
+    diceCount: isNaN(diceCount) ? 1 : diceCount,
+    threshold: parseInt(m[2]),
+    spawnCount: parseInt(m[3]),
+    enemyName,
+  };
+}
+
+const ALL_ENEMIES_FLAT = Object.values(ENEMY_CARDS).flat();
 
 export default function EnemyGroupCard({
   group,
@@ -20,6 +38,7 @@ export default function EnemyGroupCard({
   const [manualOverrides, setManualOverrides] = useState(group.manualOverrides || {});
   const [showElite, setShowElite] = useState(false);
   const [traitRoll, setTraitRoll] = useState(null);
+  const [spawnerRolls, setSpawnerRolls] = useState({});
 
   const statBundle = getAllStatsWithBreakdown(group, globalModifiers, manualOverrides);
 
@@ -159,6 +178,31 @@ export default function EnemyGroupCard({
     setCombatGroups(allGroups.filter((_, i) => i !== groupIdx));
   };
 
+  const rollSpawn = (abilityIdx, spawnerData) => {
+    const rolls = Array.from({ length: spawnerData.diceCount }, () => Math.floor(Math.random() * 6) + 1);
+    const successes = rolls.filter(r => r >= spawnerData.threshold).length;
+    setSpawnerRolls(prev => ({ ...prev, [abilityIdx]: { rolls, successes } }));
+    if (successes > 0) {
+      const rawEnemy = ALL_ENEMIES_FLAT.find(e => e.name?.toLowerCase() === spawnerData.enemyName.toLowerCase()) || {};
+      const enemyData = normalizeEnemyData(rawEnemy, isBrutal);
+      const newGroup = {
+        id: `spawn-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: spawnerData.enemyName,
+        count: successes * spawnerData.spawnCount,
+        baseStats: { ...enemyData },
+        modifiers: [],
+        modifiedStats: { ...enemyData },
+        eliteAbilityList: [],
+        eliteChart: enemyData.eliteChart || [],
+        manualExtraElite: 0,
+        traits: [],
+        keywords: [...(enemyData.keywords || [])],
+        spawnedBy: group.name,
+      };
+      setCombatGroups([...allGroups, newGroup]);
+    }
+  };
+
   const bs = group.baseStats || {};
   const keywords = statBundle.keywords || bs.keywords || [];
   const hasStatSystem = typeof bs.brutal === 'boolean';
@@ -169,6 +213,12 @@ export default function EnemyGroupCard({
   const statBarBg  = specialTheme ? specialTheme.bg   : (isBrutal ? 'bg-red-950' : hasStatSystem ? 'bg-green-950' : 'bg-leather-dark');
 
   const specialVariants = SPECIAL_ENEMIES_BY_BASE[group.name] || [];
+
+  const spawnerAbilities = (bs.abilities || []).reduce((acc, ability, idx) => {
+    const data = parseSpawnerAbility(ability);
+    if (data) acc.push({ abilityIdx: idx, data });
+    return acc;
+  }, []);
 
   const statCell = (label, value, highlight = false) => (
     <div className={`flex flex-col items-center justify-center px-2 py-1 ${highlight ? 'bg-black/20' : ''}`}>
@@ -405,6 +455,32 @@ export default function EnemyGroupCard({
                 ★ {s.name}
               </button>
             ))}
+          </div>
+        )}
+        {/* Spawner abilities */}
+        {spawnerAbilities.length > 0 && (
+          <div className="w-full flex flex-col gap-1.5 pt-1 border-t border-leather/30">
+            <span className="text-[10px] text-leather-dark/60 font-semibold uppercase tracking-wide">Spawners:</span>
+            {spawnerAbilities.map(({ abilityIdx, data }) => {
+              const result = spawnerRolls[abilityIdx];
+              return (
+                <div key={abilityIdx} className="flex items-center gap-2 flex-wrap">
+                  <button
+                    className="btn btn-xs btn-warning btn-outline"
+                    onClick={() => rollSpawn(abilityIdx, data)}
+                  >
+                    Roll: {data.enemyName} ({data.diceCount}d6 {data.threshold}+)
+                  </button>
+                  {result && (
+                    <span className="text-[10px] text-leather-dark">
+                      [{result.rolls.join(', ')}] → {result.successes > 0
+                        ? `+${result.successes * data.spawnCount} ${data.enemyName} spawned!`
+                        : 'No spawn'}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
         <button className="btn btn-xs btn-ghost text-red-600 ml-auto" onClick={removeGroup}>Remove</button>

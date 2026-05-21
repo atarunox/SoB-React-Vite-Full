@@ -1,6 +1,7 @@
 // src/components/DM/DrawnMapTilesRow.jsx
 
 import React, { useState, useCallback } from "react";
+import { useCombatState } from "../../hooks/useCombatState";
 
 // Swipe hook: left/right navigation and down-to-close
 function useSwipe({ onLeft, onRight, onDown }) {
@@ -46,6 +47,7 @@ function findEncounter(encounters, name) {
  */
 export default function DrawnMapTilesRow({ tiles, encounters }) {
   const [enlargedIdx, setEnlargedIdx] = useState(null);
+  const { addToHand } = useCombatState();
 
   const goLeft  = useCallback(() => setEnlargedIdx(i => Math.max(i - 1, 0)), []);
   const goRight = useCallback(() => setEnlargedIdx(i => Math.min(i + 1, tiles.length - 1)), [tiles.length]);
@@ -166,6 +168,12 @@ export default function DrawnMapTilesRow({ tiles, encounters }) {
         {tile.advancedEncounter.note}
       </div>
     )}
+    <button
+      className="btn btn-sm btn-info mt-2"
+      onClick={() => addToHand({ type: 'encounter', ...advanced })}
+    >
+      Send to Hand
+    </button>
   </div>
 )}
 

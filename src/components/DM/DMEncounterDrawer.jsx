@@ -3,6 +3,26 @@ import { mineEncounters } from '../../data/encounters/mineEncounters';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
 import { canyonEncounters } from '../../data/encounters/canyonEncounters';
 import { useCombatState } from '../../hooks/useCombatState';
+import { THREAT_CARDS } from '../../data/cards/threatCards';
+
+function cardHasThreatDraw(card) {
+  if (!card) return false;
+  const texts = [
+    card.effect || '',
+    ...(card.effects || []),
+    typeof card.test === 'string' ? card.test : '',
+    ...(card.choices || []).flatMap(c => [...(c.effects || []), typeof c.test === 'string' ? c.test : '']),
+  ].join(' ');
+  return /draw.*threat\s+card|threat\s+card.*draw/i.test(texts);
+}
+
+function detectThreatTier(card) {
+  const texts = [card.effect || '', ...(card.effects || [])].join(' ');
+  if (/high\s+threat/i.test(texts)) return 'high';
+  if (/medium\s+threat|med\s+threat/i.test(texts)) return 'medium';
+  if (/epic\s+threat/i.test(texts)) return 'epic';
+  return 'low';
+}
 
 function shuffle(array) {
   const a = [...array];
@@ -186,6 +206,7 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
   const [current, setCurrent] = useState(null);
   const [discard, setDiscard] = useState([]);
   const [inPlay, setInPlay] = useState([]);
+  const [drawnThreat, setDrawnThreat] = useState(null);
 
   useEffect(() => {
     const cards = WORLD_TO_ENCOUNTER_CARDS[world] || mineEncounters;
@@ -199,6 +220,15 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
     if (deck.length === 0) return;
     setCurrent(deck[0]);
     setDeck(deck.slice(1));
+    setDrawnThreat(null);
+  };
+
+  const drawLinkedThreat = () => {
+    if (!current) return;
+    const tier = detectThreatTier(current);
+    const pool = THREAT_CARDS.filter(c => c.tier === tier);
+    if (!pool.length) return;
+    setDrawnThreat(pool[Math.floor(Math.random() * pool.length)]);
   };
 
   const addCurrentToHand = () => {
@@ -256,7 +286,33 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
             <button className="btn btn-secondary btn-sm min-h-[44px]" onClick={discardCard}>
               {current.remainsInPlay ? 'Place in Play' : 'Discard'}
             </button>
+            {cardHasThreatDraw(current) && (
+              <button className="btn btn-warning btn-sm min-h-[44px]" onClick={drawLinkedThreat}>
+                Draw Threat Card
+              </button>
+            )}
           </div>
+          {drawnThreat && (
+            <div className="mt-3 p-3 bg-amber-900/30 border border-amber-600/50 rounded-lg">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="font-bold text-amber-200 text-sm">{drawnThreat.name}</span>
+                <span className="text-[10px] font-semibold capitalize border rounded px-1.5 py-0.5 bg-amber-900/50 text-amber-300 border-amber-700">
+                  {drawnThreat.tier} threat
+                </span>
+              </div>
+              {(drawnThreat.spawn || (drawnThreat.heroTable && drawnThreat.heroTable[0]?.text)) && (
+                <p className="text-sm text-amber-100">
+                  ⚔ {drawnThreat.spawn || drawnThreat.heroTable[0]?.text}
+                </p>
+              )}
+              {(drawnThreat.effects || []).map((e, i) => (
+                <p key={i} className="text-xs text-amber-300/80 italic mt-0.5">{e}</p>
+              ))}
+              <button className="text-xs text-amber-500/60 hover:text-amber-400 mt-1.5 underline" onClick={() => setDrawnThreat(null)}>
+                dismiss
+              </button>
+            </div>
+          )}
         </div>
       )}
 
