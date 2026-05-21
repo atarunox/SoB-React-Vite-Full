@@ -31,21 +31,34 @@ function resolveSpawnText(card, posseSize) {
   return '';
 }
 
-// Parse spawn text into [{name, count}] for enemy group creation.
-// Handles: N Name, {P} Name, {P}{P} Name, {P}+N Name, D3 Name, D3+N Name
-function parseSpawnToGroups(spawnText, posseSize) {
-  if (!spawnText) return [];
+// Parse spawn text into { enemies, chainDraws }.
+// chainDraws: [{tier, count}] for "N Low/Med/High Threat Card(s)" tokens.
+// enemies: [{name, count}] for everything else.
+function parseSpawnResult(spawnText, posseSize) {
+  if (!spawnText) return { enemies: [], chainDraws: [] };
   const parts = spawnText.split(/\s+and\s+|\s*\+\s*/i).map(s => s.trim()).filter(Boolean);
-  return parts.flatMap(part => {
-    const ppPlus = part.match(/^\{P\}\{P\}\+(\d+)\s+(.+)/);  if (ppPlus) return [{ name: ppPlus[2].trim(), count: posseSize * 2 + parseInt(ppPlus[1]) }];
-    const pp    = part.match(/^\{P\}\{P\}\s+(.+)/);           if (pp)     return [{ name: pp[1].trim(),     count: posseSize * 2 }];
-    const pPlus = part.match(/^\{P\}\+(\d+)\s+(.+)/);         if (pPlus)  return [{ name: pPlus[2].trim(), count: posseSize + parseInt(pPlus[1]) }];
-    const p     = part.match(/^\{P\}\s+(.+)/);                if (p)      return [{ name: p[1].trim(),      count: posseSize }];
-    const d3p   = part.match(/^D3\+(\d+)\s+(.+)/i);           if (d3p)    return [{ name: d3p[2].trim(),   count: Math.ceil(Math.random() * 3) + parseInt(d3p[1]) }];
-    const d3    = part.match(/^D3\s+(.+)/i);                  if (d3)     return [{ name: d3[1].trim(),     count: Math.ceil(Math.random() * 3) }];
-    const num   = part.match(/^(\d+)\s+(.+)/);                if (num)    return [{ name: num[2].trim(),    count: parseInt(num[1]) }];
-    return [];
-  });
+  const enemies = [];
+  const chainDraws = [];
+
+  for (const part of parts) {
+    // "N Low/Med/Medium/High/Epic Threat Card(s)" or "N Threat Card(s)"
+    const tc = part.match(/^(\d+)\s+(?:(low|med|medium|high|epic)\s+)?threat\s+cards?/i);
+    if (tc) {
+      const count = parseInt(tc[1]);
+      const word  = (tc[2] || '').toLowerCase();
+      const tier  = word === 'med' ? 'medium' : word || null; // null = same tier as parent
+      chainDraws.push({ tier, count });
+      continue;
+    }
+    const ppPlus = part.match(/^\{P\}\{P\}\+(\d+)\s+(.+)/);  if (ppPlus) { enemies.push({ name: ppPlus[2].trim(), count: posseSize * 2 + parseInt(ppPlus[1]) }); continue; }
+    const pp    = part.match(/^\{P\}\{P\}\s+(.+)/);           if (pp)     { enemies.push({ name: pp[1].trim(),     count: posseSize * 2 });                        continue; }
+    const pPlus = part.match(/^\{P\}\+(\d+)\s+(.+)/);         if (pPlus)  { enemies.push({ name: pPlus[2].trim(), count: posseSize + parseInt(pPlus[1]) });        continue; }
+    const p     = part.match(/^\{P\}\s+(.+)/);                if (p)      { enemies.push({ name: p[1].trim(),      count: posseSize });                            continue; }
+    const d3p   = part.match(/^D3\+(\d+)\s+(.+)/i);           if (d3p)    { enemies.push({ name: d3p[2].trim(),   count: Math.ceil(Math.random()*3)+parseInt(d3p[1]) }); continue; }
+    const d3    = part.match(/^D3\s+(.+)/i);                  if (d3)     { enemies.push({ name: d3[1].trim(),     count: Math.ceil(Math.random()*3) });           continue; }
+    const num   = part.match(/^(\d+)\s+(.+)/);                if (num)    { enemies.push({ name: num[2].trim(),    count: parseInt(num[1]) });                     continue; }
+  }
+  return { enemies, chainDraws };
 }
 
 // Roll N unique abilities from an elite chart (D6 table, indices 0-5).
@@ -99,7 +112,7 @@ export default function DMEnemyPanel() {
   const { world } = useWorld();
   const { posse } = usePosse();
   const { combatGroups, setCombatGroups } = useCombatState();
-  const [drawnCard, setDrawnCard] = useState(null);
+  const [drawnCards, setDrawnCards] = useState([]); // [{card, isChained}]
   const [threatLevelOverride, setThreatLevelOverride] = useState(null);
 
   const posseSize = posse.length || 1;
@@ -111,32 +124,23 @@ export default function DMEnemyPanel() {
     [posse]
   );
 
-  const drawThreatCard = () => {
-    const deck = THREAT_CARDS.filter(c => c.tier === threatLevel);
-    if (deck.length === 0) return;
-    const card = deck[Math.floor(Math.random() * deck.length)];
-    setDrawnCard(card);
+  const allEnemiesFlat = useMemo(() => Object.values(ENEMY_CARDS).flat(), []);
 
-    const spawnText = resolveSpawnText(card, posseSize);
-    const groups = parseSpawnToGroups(spawnText, posseSize);
-
-    const newGroups = groups.map((eg, i) => {
-      const allEnemies = Object.values(ENEMY_CARDS).flat();
-      const rawEnemyData = allEnemies.find(e =>
+  function makeGroups(card, enemies) {
+    return enemies.map((eg, i) => {
+      const rawEnemyData = allEnemiesFlat.find(e =>
         e.name?.toLowerCase() === eg.name.toLowerCase()
       ) || {};
       const enemyData = normalizeEnemyData(rawEnemyData, isBrutal);
       const chart = enemyData.eliteChart || [];
-      const rolled = rollEliteAbilities(chart, eliteCount);
-
       return {
-        id: `${Date.now()}-${card.id}-grp${i}`,
+        id: `${Date.now()}-${card.id}-grp${i}-${Math.random().toString(36).slice(2)}`,
         name: eg.name,
         count: eg.count,
         baseStats: { ...enemyData, world },
         modifiers: [],
         modifiedStats: { ...enemyData },
-        eliteAbilityList: rolled,
+        eliteAbilityList: rollEliteAbilities(chart, eliteCount),
         eliteChart: chart,
         manualExtraElite: 0,
         traits: [],
@@ -144,9 +148,38 @@ export default function DMEnemyPanel() {
         threatCard: card,
       };
     });
-    if (newGroups.length > 0) {
-      setCombatGroups(prev => [...(prev || []), ...newGroups]);
+  }
+
+  const drawThreatCard = () => {
+    const pickCard = (tier) => {
+      const deck = THREAT_CARDS.filter(c => c.tier === tier);
+      return deck.length ? deck[Math.floor(Math.random() * deck.length)] : null;
+    };
+
+    const primary = pickCard(threatLevel);
+    if (!primary) return;
+
+    const drawn = [{ card: primary, isChained: false }];
+    const newGroups = [];
+
+    // Process primary card
+    const { enemies: pEnemies, chainDraws } = parseSpawnResult(resolveSpawnText(primary, posseSize), posseSize);
+    newGroups.push(...makeGroups(primary, pEnemies));
+
+    // Resolve chain draws (depth 1 — chain draws don't chain further)
+    for (const { tier, count } of chainDraws) {
+      const drawTier = tier || threatLevel;
+      for (let n = 0; n < count; n++) {
+        const chained = pickCard(drawTier);
+        if (!chained) continue;
+        drawn.push({ card: chained, isChained: true, chainedTier: drawTier });
+        const { enemies: cEnemies } = parseSpawnResult(resolveSpawnText(chained, posseSize), posseSize);
+        newGroups.push(...makeGroups(chained, cEnemies));
+      }
     }
+
+    setDrawnCards(drawn);
+    if (newGroups.length > 0) setCombatGroups(prev => [...(prev || []), ...newGroups]);
   };
 
   const hasDrifter = posse.some(h => /drifter/i.test(h?.class || h?.heroClass || ''));
@@ -197,7 +230,7 @@ export default function DMEnemyPanel() {
           {combatGroups.length > 0 && (
             <button
               className="btn btn-sm btn-error btn-outline"
-              onClick={() => { setCombatGroups([]); setDrawnCard(null); }}
+              onClick={() => { setCombatGroups([]); setDrawnCards([]); }}
             >
               Clear All
             </button>
@@ -215,28 +248,34 @@ export default function DMEnemyPanel() {
           {posseSize} hero{posseSize !== 1 ? 'es' : ''} → auto: <span className={`font-semibold ${tierColors[autoTier]}`}>{autoTier}</span>
         </div>
 
-        {drawnCard && (
-          <div className="p-3 rounded-lg bg-[#2a1f14] border border-amber-700/50 space-y-1">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="font-bold text-amber-200 text-sm">{drawnCard.name}</span>
-              <span className={`text-[10px] font-semibold border rounded px-1.5 py-0.5 capitalize ${
-                drawnCard.tier === 'low'    ? 'bg-green-900/50 text-green-300 border-green-700'
-                : drawnCard.tier === 'medium' ? 'bg-yellow-900/50 text-yellow-300 border-yellow-700'
-                : drawnCard.tier === 'high'   ? 'bg-orange-900/50 text-orange-300 border-orange-700'
-                                              : 'bg-red-900/50 text-red-300 border-red-700'
-              }`}>{drawnCard.tier}</span>
-            </div>
-            {drawnCard.spawn && (
-              <p className="text-sm font-semibold text-amber-100">⚔ {drawnCard.spawn}</p>
-            )}
-            {drawnCard.heroTable && (
-              <p className="text-sm font-semibold text-amber-100">
-                ⚔ {resolveSpawnText(drawnCard, posseSize)}
-                <span className="ml-1 text-xs font-normal text-amber-400/60">({posseSize} heroes)</span>
-              </p>
-            )}
-            {(drawnCard.effects || []).map((e, i) => (
-              <p key={i} className="text-xs text-amber-300/80 italic">{e}</p>
+        {drawnCards.length > 0 && (
+          <div className="space-y-1.5">
+            {drawnCards.map(({ card, isChained, chainedTier }, idx) => (
+              <div key={idx} className={`p-3 rounded-lg border space-y-1 ${
+                isChained
+                  ? 'bg-[#1a1a2a] border-blue-700/50'
+                  : 'bg-[#2a1f14] border-amber-700/50'
+              }`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="font-bold text-amber-200 text-sm">
+                    {isChained && <span className="text-blue-400 text-xs mr-1.5">↳ chain draw</span>}
+                    {card.name}
+                  </span>
+                  <span className={`text-[10px] font-semibold border rounded px-1.5 py-0.5 capitalize ${
+                    card.tier === 'low'    ? 'bg-green-900/50 text-green-300 border-green-700'
+                    : card.tier === 'medium' ? 'bg-yellow-900/50 text-yellow-300 border-yellow-700'
+                    : card.tier === 'high'   ? 'bg-orange-900/50 text-orange-300 border-orange-700'
+                                            : 'bg-red-900/50 text-red-300 border-red-700'
+                  }`}>{card.tier}</span>
+                </div>
+                <p className="text-sm font-semibold text-amber-100">
+                  ⚔ {resolveSpawnText(card, posseSize)}
+                  {card.heroTable && <span className="ml-1 text-xs font-normal text-amber-400/60">({posseSize} heroes)</span>}
+                </p>
+                {(card.effects || []).map((e, i) => (
+                  <p key={i} className="text-xs text-amber-300/80 italic">{e}</p>
+                ))}
+              </div>
             ))}
           </div>
         )}
