@@ -214,6 +214,7 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
     setCurrent(null);
     setDiscard([]);
     setInPlay([]);
+    setDrawnThreat(null);
   }, [world]);
 
   const drawCard = () => {
@@ -264,6 +265,7 @@ export default function DMEncounterDrawer({ world = 'Mines' }) {
     setCurrent(null);
     setDiscard([]);
     setInPlay([]);
+    setDrawnThreat(null);
   };
 
   return (

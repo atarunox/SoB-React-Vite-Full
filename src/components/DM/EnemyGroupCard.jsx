@@ -9,18 +9,27 @@ import { GROWING_DREAD_CARDS } from "../../data/growingDreadCards";
 import StatBreakdownModal from "./StatBreakdownModal";
 import { getEnemyDifficulty, normalizeEnemyData } from "../../utils/enemyUtils";
 
-// Parse "Spawner - roll 2 dice, on 4+: place 1 Void Spider adjacent" etc.
+// Parse "Spawner - At the end of each turn, roll 3 dice... For each roll of 4+: place 1 Enemy"
+// Also handles: "Spawn - roll 2 dice, on 4+: place 1 Void Spider adjacent"
 function parseSpawnerAbility(text) {
-  const m = text.match(/^spawners?\s*[-–]\s*roll\s+(d?\d+)\s*(?:dice?)?[,\s]+on\s+(\d+)\+[:\s]+place\s+(\d+)\s+(.+)/i);
-  if (!m) return null;
-  const diceToken = m[1].toLowerCase();
+  if (!/^spawn/i.test(text)) return null;
+  // Extract dice count: "roll 2 dice" or "roll a D6" or "roll 3 dice"
+  const diceMatch = text.match(/roll\s+(?:a\s+)?(d?\d+)\s*(?:dice?)?/i);
+  if (!diceMatch) return null;
+  // Extract threshold: "on 4+" or "of 4+" or "on the roll of 4+"
+  const threshMatch = text.match(/(?:on\s+(?:the\s+)?(?:roll\s+of\s+)?|for\s+each\s+roll\s+of\s+)(\d+)\+/i);
+  if (!threshMatch) return null;
+  // Extract placement: "place 1 new Void Spider" or "place 1 Hungry Dead"
+  const placeMatch = text.match(/place\s+(\d+)\s+(?:new\s+)?(.+?)(?:\s+adjacent|\.\s*If|\s+If|$)/i);
+  if (!placeMatch) return null;
+
+  const diceToken = diceMatch[1].toLowerCase();
   const diceCount = diceToken.startsWith('d') ? 1 : parseInt(diceToken);
-  const enemyName = m[4].replace(/\s+adjacent\.?\s*$/, '').trim();
   return {
     diceCount: isNaN(diceCount) ? 1 : diceCount,
-    threshold: parseInt(m[2]),
-    spawnCount: parseInt(m[3]),
-    enemyName,
+    threshold: parseInt(threshMatch[1]),
+    spawnCount: parseInt(placeMatch[1]),
+    enemyName: placeMatch[2].trim(),
   };
 }
 
