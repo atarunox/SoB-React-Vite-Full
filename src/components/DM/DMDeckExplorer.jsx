@@ -15,6 +15,7 @@ import { SCAFFORD_LIEUTENANT_CARDS } from '../../data/cards/scaffordLieutenants'
 import { WASTELAND_WARBAND_CARDS }   from '../../data/cards/wastelandWarbands';
 import { WASTELAND_WARMASTER_CARDS } from '../../data/cards/wastelandWarmasters';
 import { INFAMOUS_FEUDAL_BANDIT_CARDS } from '../../data/cards/infamousFeudalBandits';
+import { VOID_MAGIK_CARDS }            from '../../data/cards/voidMagikDeck';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -61,6 +62,7 @@ const DECKS = [
   { id: 'wastelandWarbands',      label: 'Wasteland Warbands',        cards: WASTELAND_WARBAND_CARDS    },
   { id: 'wastelandWarmasters',    label: 'Wasteland Warmasters',      cards: WASTELAND_WARMASTER_CARDS  },
   { id: 'infamousFeudalBandits',  label: 'Infamous Feudal Bandits',   cards: INFAMOUS_FEUDAL_BANDIT_CARDS },
+  { id: 'voidMagik',             label: 'Void Magik',                cards: VOID_MAGIK_CARDS             },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────
