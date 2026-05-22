@@ -3,6 +3,7 @@ import DMDeckExplorer from './DMDeckExplorer';
 import DMItemGenerator from './DMItemGenerator';
 import DMScanCards from './DMScanCards';
 import DMBigScorePanel from './DMBigScorePanel';
+import DMWarrantsPanel from './DMWarrantsPanel';
 import { WORLD_CARDS_BY_CAMPAIGN } from '../../data/worldCards';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 
@@ -12,6 +13,7 @@ const SUB_TABS = [
   { id: 'itemGen',      label: 'Item Generator' },
   { id: 'scan',         label: 'Scan Cards' },
   { id: 'modifiers',    label: 'Big Score' },
+  { id: 'warrants',     label: 'Warrants' },
 ];
 
 const HEXCRAWL_TOGGLES = [
@@ -181,6 +183,10 @@ export default function DMOptionsPanel(props) {
 
       {subTab === 'modifiers' && (
         <DMBigScorePanel posse={posse} />
+      )}
+
+      {subTab === 'warrants' && (
+        <DMWarrantsPanel />
       )}
     </div>
   );

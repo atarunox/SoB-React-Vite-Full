@@ -17,6 +17,7 @@ import { WASTELAND_WARMASTER_CARDS } from '../../data/cards/wastelandWarmasters'
 import { INFAMOUS_FEUDAL_BANDIT_CARDS } from '../../data/cards/infamousFeudalBandits';
 import { VOID_MAGIK_CARDS }            from '../../data/cards/voidMagikDeck';
 import { PERSONAL_ITEM_CARDS }         from '../../data/cards/personalItems';
+import { WARRANT_CARDS, WARRANTS_ENCOUNTERS, WARRANTS_GEAR, ON_THE_RUN_TRAIT } from '../../data/missionModifiers/warrants';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -65,6 +66,10 @@ const DECKS = [
   { id: 'infamousFeudalBandits',  label: 'Infamous Feudal Bandits',   cards: INFAMOUS_FEUDAL_BANDIT_CARDS },
   { id: 'voidMagik',             label: 'Void Magik',                cards: VOID_MAGIK_CARDS             },
   { id: 'personalItems',         label: 'Personal Items',            cards: PERSONAL_ITEM_CARDS          },
+  { id: 'warrantCards',          label: 'Warrant Cards',             cards: WARRANT_CARDS                },
+  { id: 'warrantsEncounters',    label: 'Warrants Encounters',       cards: WARRANTS_ENCOUNTERS          },
+  { id: 'warrantsGear',          label: 'Warrants Gear',             cards: WARRANTS_GEAR                },
+  { id: 'onTheRunTrait',         label: 'On the Run (Trait)',        cards: [ON_THE_RUN_TRAIT]           },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────
