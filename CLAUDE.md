@@ -352,7 +352,7 @@ Collapsible sections with card counts and search for every deck:
 | Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
 | OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
 | Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
-| Threat Cards | `data/cards/threatCards.js` `THREAT_CARDS` | Filterable by tier (low/medium/high/epic/otherworld); spawn text + effects |
+| Threat Cards | `data/cards/threatCards.js` `THREAT_CARDS` | Filterable by tier (low/medium/high/epic/otherworld); spawn text + effects. **Physical card background colors: green = low, yellow = medium, red = high, blue = epic.** |
 | Scafford Lieutenants | `data/cards/scaffordLieutenants.js` | 6 named lieutenant cards drawn when a threat card calls for one |
 | Wasteland Warbands | `data/cards/wastelandWarbands.js` | 6 warband modifier cards (5 unique + 1 duplicate) drawn when Wasteland Scavengers spawn |
 | Wasteland Warmasters | `data/cards/wastelandWarmasters.js` | 5 named Warmaster leader cards for Wasteland Scavenger encounters |
