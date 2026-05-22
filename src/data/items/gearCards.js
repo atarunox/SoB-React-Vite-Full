@@ -2232,6 +2232,54 @@ export const gearCards = [
     "darkStone": false,
     "upgradeSlots": 0,
     "restrictions": ["Discard to use"]
+  },
+  {
+    "id": "frontier_deputy_badge",
+    "name": "Frontier Deputy Badge",
+    "slot": "Badge",
+    "effects": [
+      "You gain Keyword Law.",
+      "Once per Adventure, Re-roll a Hold Back the Darkness roll, or cancel and Re-draw a Darkness card just drawn.",
+      "Limit 1 Badge."
+    ],
+    "value": 450,
+    "weight": 1,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "outlaw_shackles",
+    "name": "Outlaw Shackles",
+    "slot": "Tool",
+    "effects": [
+      "Once per Fight, at the start of a Turn, choose an adjacent XL or smaller Enemy and make a Strength test based on the size of the Enemy — Small 5+, Medium 4+, Large 5+, XL 6+.",
+      "If successful, that Enemy loses its Activation this turn."
+    ],
+    "value": 325,
+    "weight": 1,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Law Only"]
+  },
+  {
+    "id": "long_arm_of_the_law",
+    "name": "Long Arm of the Law",
+    "slot": "Gun",
+    "effects": [
+      "Range 8",
+      "Shots 2",
+      "Uses the D8 To Hit and for Damage.",
+      "Once per Turn when you kill an Enemy with this Shotgun, you gain +1 Shot."
+    ],
+    "value": 825,
+    "weight": 2,
+    "twoHanded": true,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": ["Law Only"]
   }
 ];
 
