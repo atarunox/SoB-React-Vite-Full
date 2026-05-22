@@ -11,7 +11,7 @@ const SUB_TABS = [
   { id: 'deckExplorer', label: 'Deck Explorer' },
   { id: 'itemGen',      label: 'Item Generator' },
   { id: 'scan',         label: 'Scan Cards' },
-  { id: 'modifiers',    label: 'Modifiers' },
+  { id: 'modifiers',    label: 'Big Score' },
 ];
 
 const HEXCRAWL_TOGGLES = [
