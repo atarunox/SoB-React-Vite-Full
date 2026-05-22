@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import DMDeckExplorer from './DMDeckExplorer';
 import DMItemGenerator from './DMItemGenerator';
 import DMScanCards from './DMScanCards';
+import DMBigScorePanel from './DMBigScorePanel';
 import { WORLD_CARDS_BY_CAMPAIGN } from '../../data/worldCards';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 
@@ -10,6 +11,7 @@ const SUB_TABS = [
   { id: 'deckExplorer', label: 'Deck Explorer' },
   { id: 'itemGen',      label: 'Item Generator' },
   { id: 'scan',         label: 'Scan Cards' },
+  { id: 'modifiers',    label: 'Modifiers' },
 ];
 
 const HEXCRAWL_TOGGLES = [
@@ -175,6 +177,10 @@ export default function DMOptionsPanel(props) {
           addGroup={addGroup}
           combatGroups={combatGroups}
         />
+      )}
+
+      {subTab === 'modifiers' && (
+        <DMBigScorePanel posse={posse} />
       )}
     </div>
   );

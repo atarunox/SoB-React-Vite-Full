@@ -141,6 +141,57 @@ export const BIG_SCORE_ENCOUNTERS = [
   },
 ];
 
+export const BIG_SCORE_ROLES = [
+  {
+    id: 'the_lookout',
+    name: 'The Lookout',
+    promoId: 'Promo-1123',
+    effect: 'At the start of an Attack, use 1 Grit to give all Heroes +2 Initiative until the end of the Turn and gain 1 Score Token (or 2 Score Tokens if an Ambush Attack).',
+  },
+  {
+    id: 'smooth_talker',
+    name: 'Smooth Talker',
+    promoId: 'Promo-1124',
+    effect: 'Whenever a Random Hero would need to be selected for a Skill test, you may choose to take that test yourself instead. Once per Turn, when you pass a Skill Test on an Encounter, gain 1 Score Token.',
+  },
+  {
+    id: 'brawler',
+    name: 'Brawler',
+    promoId: 'Promo-1125',
+    effect: 'Once per Turn, when you kill an Enemy with a Melee Attack, gain 1 Score Token.',
+  },
+  {
+    id: 'distraction',
+    name: 'Distraction',
+    promoId: 'Promo-1126',
+    effect: "Once per Fight, at the start of an Enemy Group's Activation, use 1 Grit to cause all of those Enemies to only target you this Turn. Those Enemies may move through other models and are +3 Move this Turn. Gain 1 Score Token for each of those Enemies that makes an Attack against you this Turn (up to 3 Score).",
+  },
+  {
+    id: 'sabotage',
+    name: 'Sabotage',
+    promoId: 'Promo-1127',
+    effect: 'Once per Turn, when a card is about to be drawn from a Deck, use 1 Grit to draw 2 cards and choose which to use. As long as the 2 cards do not have the same card title, gain 1 Score Token. If the 2 cards do have the same card title, move the Darkness D3 spaces forward on the Depth Track.',
+  },
+  {
+    id: 'triggerman',
+    name: 'Triggerman',
+    promoId: 'Promo-1128',
+    effect: 'Once per Turn, when you kill an Enemy with a Ranged Attack, gain 1 Score Token.',
+  },
+  {
+    id: 'the_getaway',
+    name: 'The Getaway',
+    promoId: 'Promo-1129',
+    effect: 'Once per Fight, use 1 Grit to gain 1 Score Token and let all Heroes on your Map Tile automatically pass Escape tests until the end of the Turn. Once per Adventure, you may Re-roll a Complication to gain 1 Score Token.',
+  },
+  {
+    id: 'the_brains',
+    name: 'The Brains',
+    promoId: 'Promo-1130',
+    effect: 'At the start of each Turn, roll a D6. On the roll of 5+ you may choose a Hero to Recover a Grit. Whenever a Clue is found, gain D3 Score Tokens.',
+  },
+];
+
 export const BIG_SCORE_MODIFIER = {
   id: 'big_score',
   name: 'The Next Big Score',
@@ -149,7 +200,7 @@ export const BIG_SCORE_MODIFIER = {
   rules: BIG_SCORE_RULES,
   complications: BIG_SCORE_COMPLICATIONS,
   encounters: BIG_SCORE_ENCOUNTERS,
-  roles: [], // populated after role cards are scanned
+  roles: BIG_SCORE_ROLES,
 };
 
 export default BIG_SCORE_MODIFIER;
