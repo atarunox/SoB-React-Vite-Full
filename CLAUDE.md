@@ -206,7 +206,7 @@ src/
 
 **Firestore collections:** `heroes/{heroId}`, `posse`, `shared/world`
 
-**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions), `sob:statsViewMode` (`'tiles'`|`'list'`), `sob:stats:tileColors:{heroId}`, `sob:stats:listOrder:{heroId}`, `sob:stats:layout:{heroId}` (react-grid-layout positions), `dm_options_subtab`, `dm_campaigns`, `dm_current_drawer`, `sob:hexcrawl_settings` (HexCrawl mode toggles — see below)
+**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions), `sob:statsViewMode` (`'tiles'`|`'list'`), `sob:stats:tileColors:{heroId}`, `sob:stats:listOrder:{heroId}`, `sob:stats:layout:{heroId}` (react-grid-layout positions), `dm_options_subtab`, `dm_campaigns`, `dm_current_drawer`, `sob:hexcrawl_settings` (HexCrawl mode toggles — see below), `sob:big_score_state` (Big Score modifier phase/roles/tokens), `sob:warrants_state` (Warrants modifier active warrant/markers)
 
 **Local mode:** If `VITE_FIREBASE_API_KEY` or `VITE_FIREBASE_PROJECT_ID` are missing → localStorage only. Logs `[Firebase] Missing env keys`.
 
@@ -328,11 +328,13 @@ slot 16: Darkness Entry
 
 ### DM Tab — Options Consolidation
 
-The **Options** top-level tab now contains four sub-tabs (state persisted as `dm_options_subtab`):
-- **Settings** — campaign checkboxes (world source selection), select-all/none, merged worlds count
+The **Options** top-level tab now contains six sub-tabs (state persisted as `dm_options_subtab`):
+- **Settings** — campaign checkboxes (world source selection), select-all/none, merged worlds count; HexCrawl mode toggles
 - **Deck Explorer** — browse all card decks (see below)
 - **Item Generator** — moved from former top-level tab
 - **Scan Cards** — moved from former top-level tab
+- **Big Score** — "The Next Big Score" mission modifier (Promo 1122–1135); requires Outlaw or Performer hero
+- **Warrants** — Warrants mission modifier (Promo 975–992); requires Law hero; draw a Warrant card before the adventure
 
 `src/components/DM/DMOptionsPanel.jsx` renders the sub-tab shell and passes props through to each sub-component.
 
@@ -361,6 +363,10 @@ Collapsible sections with card counts and search for every deck:
 | Personal Items | `data/cards/personalItems.js` | 11 Personal Item cards drawn at hero creation (1 per hero, some classes draw 2) |
 | Town Type Cards | `data/cards/townTypeCards.js` | 7 Frontier Town expansion double-sided Town Type cards |
 | Town Traits (D36) | `DM/charts/townTraitsChart.js` | HexCrawl D36 Town Traits chart (all 36 entries) |
+| Warrant Cards | `data/missionModifiers/warrants.js` `WARRANT_CARDS` | 5 Warrant cards for the Warrants modifier (Stolen Goods, For Questioning, Search and Seizure, Dead or Alive, Wanted in 3 Worlds) |
+| Warrants Encounters | `data/missionModifiers/warrants.js` `WARRANTS_ENCOUNTERS` | 4 encounter cards for the Warrants modifier (Taunting Message, Rigged Trap, Doubled Back, Dying Bandit) |
+| Warrants Gear | `data/missionModifiers/warrants.js` `WARRANTS_GEAR` | 3 promo gear items: Frontier Deputy Badge (Law keyword + HBtD reroll), Outlaw Shackles (Strength test to remove enemy activation), Long Arm of the Law (D8 shotgun, Law Only) |
+| On the Run (Trait) | `data/missionModifiers/warrants.js` `ON_THE_RUN_TRAIT` | Enemy trait: Outlaw keyword, +1 Init, +2 Move, Cover 5+, Bounty $25/$100 |
 
 ### HexCrawl Mode (`src/hooks/useHexCrawlSettings.js`)
 
