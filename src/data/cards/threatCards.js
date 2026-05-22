@@ -1426,12 +1426,12 @@ export const THREAT_CARDS_STANDARD = [
   { id: '1_void_sorcerer_1_med_threat_card_med',               name: '1 Void Sorcerer and 1 Med Threat Card',                            tier: 'medium', spawn: '1 Void Sorcerer',                                      effects: ['Also draw 1 Medium Threat Card.'] },
   { id: 'p_plus_3_creeping_shadows_med_2',                     name: '{P}+3 Creeping Shadows',                                           tier: 'medium', spawn: '{P}+3 Creeping Shadows',                               effects: ['No Loot drawn for this Fight.'] },
   { id: '3_werewolf_feral_kin_2',                              name: '3 Werewolf Feral Kin',                                             tier: 'medium', spawn: '3 Werewolf Feral Kin',                                  effects: [] },
-  // ── Duplicates of existing low-tier cards ──────────────────────────────────────
-  { id: '1_wasteland_terralisk_3',                             name: '1 Wasteland Terralisk',                                            tier: 'low',    spawn: '1 Wasteland Terralisk',                                   effects: [] },
-  { id: '1_dark_stone_hydra_3',                                name: '1 Dark Stone Hydra',                                              tier: 'low',    spawn: '1 Dark Stone Hydra',                                      effects: [] },
-  { id: '1_dark_stone_hydra_4',                                name: '1 Dark Stone Hydra',                                              tier: 'low',    spawn: '1 Dark Stone Hydra',                                      effects: [] },
+  // ── Duplicates / additional copies ─────────────────────────────────────────────
+  { id: '1_wasteland_terralisk_3',                             name: '1 Wasteland Terralisk',                                            tier: 'medium', spawn: '1 Wasteland Terralisk',                                  effects: [] },
+  { id: '1_dark_stone_hydra_3',                                name: '1 Dark Stone Hydra',                                              tier: 'medium', spawn: '1 Dark Stone Hydra',                                     effects: [] },
+  { id: '1_dark_stone_hydra_4',                                name: '1 Dark Stone Hydra',                                              tier: 'medium', spawn: '1 Dark Stone Hydra',                                     effects: [] },
   // ── New high-tier card ──────────────────────────────────────────────────────────
-  { id: '3_custodians_targa_1_targa_pylon',                    name: '3 Custodians of Targa and 1 Targa Pylon',                          tier: 'high',   spawn: '3 Custodians of Targa and 1 Targa Pylon',                 effects: ['A group of Custodian robots from the Targa Plateau have begun terraforming a portion of the Mine here.'] },
+  { id: '3_custodians_targa_1_targa_pylon',                    name: '3 Custodians of Targa and 1 Targa Pylon',                          tier: 'medium', spawn: '3 Custodians of Targa and 1 Targa Pylon',               effects: ['A group of Custodian robots from the Targa Plateau have begun terraforming a portion of the Mine here.'] },
 ];
 
 // ── OtherWorld threat cards ──────────────────────────────────────────────────
