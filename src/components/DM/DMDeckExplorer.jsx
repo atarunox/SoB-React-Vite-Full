@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { rollPeril } from '../../utils/diceHelpers';
+import { useDungeonPacks } from '../../hooks/useDungeonPacks';
 import { DARKNESS_CARDS }      from '../../data/darknessCards';
 import { GROWING_DREAD_CARDS } from '../../data/growingDreadCards';
 import { lootCards }           from '../../data/lootDeck';
@@ -73,20 +75,20 @@ const DECKS = [
   { id: 'warrantsEncounters',    label: 'Warrants Encounters',       cards: WARRANTS_ENCOUNTERS          },
   { id: 'warrantsGear',          label: 'Warrants Gear',             cards: WARRANTS_GEAR                },
   { id: 'onTheRunTrait',         label: 'On the Run (Trait)',        cards: [ON_THE_RUN_TRAIT]           },
-  // Dungeon Packs (ESP)
-  { id: 'voidSpidersESP',      label: 'Void Spiders ESP (Mines)',            cards: [...VOID_SPIDERS_PACK.threatCards, ...VOID_SPIDERS_PACK.encounters, ...VOID_SPIDERS_PACK.statusEffects] },
-  { id: 'ancientSpidersESP',   label: 'Ancient Spiders ESP (Targa)',         cards: [...ANCIENT_SPIDERS_PACK.threatCards, ...ANCIENT_SPIDERS_PACK.encounters] },
-  { id: 'trenchSpidersESP',    label: 'Trench Spiders ESP (Trederra)',       cards: [...TRENCH_SPIDERS_PACK.threatCards, ...TRENCH_SPIDERS_PACK.encounters] },
-  { id: 'bileSpidersESP',      label: 'Bile Spiders ESP (Belly)',            cards: [...BILE_SPIDERS_PACK.threatCards, ...BILE_SPIDERS_PACK.encounters] },
-  { id: 'nightshadeSpidersESP',label: 'Nightshade Spiders ESP (Forest)',     cards: [...NIGHTSHADE_SPIDERS_PACK.threatCards, ...NIGHTSHADE_SPIDERS_PACK.encounters] },
-  { id: 'fortressSpidersESP',  label: 'Void Spiders ESP (Fortress)',         cards: FORTRESS_SPIDERS_PACK.encounters },
-  { id: 'crabSpidersESP',      label: 'Crab Spiders ESP (Pharrox)',          cards: [...CRAB_SPIDERS_PACK.threatCards, ...CRAB_SPIDERS_PACK.encounters] },
-  { id: 'spanishSpidersESP',   label: 'Void Spiders ESP (Spanish Fort)',     cards: SPANISH_SPIDERS_PACK.encounters },
-  // Challenge Pack #2
-  { id: 'cp2Threats',    label: 'Challenge Pack #2 — Threats',        cards: CHALLENGE_PACK_2.threatCards    },
-  { id: 'cp2Darkness',   label: 'Challenge Pack #2 — Darkness',       cards: CHALLENGE_PACK_2.darknessCards  },
-  { id: 'cp2Encounters', label: 'Challenge Pack #2 — Encounters',     cards: CHALLENGE_PACK_2.encounterCards },
-  { id: 'cp2BeastTraits',label: 'Challenge Pack #2 — Beast Traits',   cards: CHALLENGE_PACK_2.beastTraits    },
+  // Dungeon Packs (ESP) — packId gates the spawn roller
+  { id: 'voidSpidersESP',      label: 'Void Spiders ESP (Mines)',            packId: 'spiderESP', cards: [...VOID_SPIDERS_PACK.threatCards, ...VOID_SPIDERS_PACK.encounters, ...VOID_SPIDERS_PACK.statusEffects] },
+  { id: 'ancientSpidersESP',   label: 'Ancient Spiders ESP (Targa)',         packId: 'spiderESP', cards: [...ANCIENT_SPIDERS_PACK.threatCards, ...ANCIENT_SPIDERS_PACK.encounters] },
+  { id: 'trenchSpidersESP',    label: 'Trench Spiders ESP (Trederra)',       packId: 'spiderESP', cards: [...TRENCH_SPIDERS_PACK.threatCards, ...TRENCH_SPIDERS_PACK.encounters] },
+  { id: 'bileSpidersESP',      label: 'Bile Spiders ESP (Belly)',            packId: 'spiderESP', cards: [...BILE_SPIDERS_PACK.threatCards, ...BILE_SPIDERS_PACK.encounters] },
+  { id: 'nightshadeSpidersESP',label: 'Nightshade Spiders ESP (Forest)',     packId: 'spiderESP', cards: [...NIGHTSHADE_SPIDERS_PACK.threatCards, ...NIGHTSHADE_SPIDERS_PACK.encounters] },
+  { id: 'fortressSpidersESP',  label: 'Void Spiders ESP (Fortress)',         packId: 'spiderESP', cards: FORTRESS_SPIDERS_PACK.encounters },
+  { id: 'crabSpidersESP',      label: 'Crab Spiders ESP (Pharrox)',          packId: 'spiderESP', cards: [...CRAB_SPIDERS_PACK.threatCards, ...CRAB_SPIDERS_PACK.encounters] },
+  { id: 'spanishSpidersESP',   label: 'Void Spiders ESP (Spanish Fort)',     packId: 'spiderESP', cards: SPANISH_SPIDERS_PACK.encounters },
+  // Challenge Pack #2 — packId gates the spawn roller
+  { id: 'cp2Threats',    label: 'Challenge Pack #2 — Threats',        packId: 'challengePack2', cards: CHALLENGE_PACK_2.threatCards    },
+  { id: 'cp2Darkness',   label: 'Challenge Pack #2 — Darkness',       packId: 'challengePack2', cards: CHALLENGE_PACK_2.darknessCards  },
+  { id: 'cp2Encounters', label: 'Challenge Pack #2 — Encounters',     packId: 'challengePack2', cards: CHALLENGE_PACK_2.encounterCards },
+  { id: 'cp2BeastTraits',label: 'Challenge Pack #2 — Beast Traits',   packId: 'challengePack2', cards: CHALLENGE_PACK_2.beastTraits    },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────
@@ -374,8 +376,77 @@ function applySort(list, sort) {
   return sort === 'desc' ? sorted.reverse() : sorted;
 }
 
+// ── Spawn roller (Peril Die) — only shown when pack is active ─────────────────
+function SpawnRoller({ card }) {
+  const tiers = card.heroScaling || null;
+  const [heroTier, setHeroTier] = useState(tiers ? (tiers[0]?.heroes ?? null) : null);
+  const [result, setResult] = useState(null);
+
+  const spawnText = tiers
+    ? (tiers.find(h => h.heroes === heroTier)?.spawn || tiers[0]?.spawn || '')
+    : (card.spawn || card.spawnText || '');
+
+  const parsePeril = (text) => {
+    if (!text?.includes('{P}')) return null;
+    const pCount = (text.match(/\{P\}/g) || []).length;
+    // grab any +N that immediately follows the last {P} token
+    const afterLastP = text.slice(text.lastIndexOf('{P}') + 3);
+    const flatMatch = afterLastP.match(/^\+?(\d+)/);
+    return { pCount, flat: flatMatch ? parseInt(flatMatch[1], 10) : 0 };
+  };
+
+  const parsed = parsePeril(spawnText);
+  if (!parsed) return null;
+
+  const handleRoll = () => {
+    const rolls = Array.from({ length: parsed.pCount }, () => rollPeril());
+    const total = rolls.reduce((a, b) => a + b, 0) + parsed.flat;
+    setResult({ rolls, total });
+  };
+
+  return (
+    <div className="border border-amber-300 rounded-lg bg-amber-50/80 px-3 py-2 space-y-2">
+      <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wide">Spawn Roller</div>
+      {tiers && (
+        <div className="flex gap-1 flex-wrap">
+          {tiers.map(h => (
+            <button
+              key={h.heroes}
+              onClick={() => { setHeroTier(h.heroes); setResult(null); }}
+              className={`px-2 py-0.5 text-xs rounded font-semibold border transition-colors ${
+                heroTier === h.heroes
+                  ? 'bg-amber-700 text-white border-amber-800'
+                  : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-100'
+              }`}
+            >
+              {h.heroes} heroes
+            </button>
+          ))}
+        </div>
+      )}
+      {tiers && spawnText && (
+        <div className="text-xs text-amber-900/80">{spawnText}</div>
+      )}
+      <button
+        onClick={handleRoll}
+        className="text-xs px-3 py-1.5 rounded-lg bg-amber-700 text-white font-semibold border border-amber-800 hover:bg-amber-800 transition-colors"
+      >
+        🎲 Roll Spawn ({parsed.pCount}× Peril{parsed.flat ? `+${parsed.flat}` : ''})
+      </button>
+      {result && (
+        <div className="text-sm font-bold text-[#3b2f1d]">
+          Spawn: <span className="text-red-700 text-lg">{result.total}</span>
+          <span className="text-xs text-gray-500 ml-2">
+            (rolls: [{result.rolls.join(', ')}]{parsed.flat ? ` +${parsed.flat}` : ''})
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Generic deck section ──────────────────────────────────────────────────────
-function DeckSection({ deck }) {
+function DeckSection({ deck, packActive = false }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('default');
@@ -440,7 +511,10 @@ function DeckSection({ deck }) {
           ) : (
             <div className="space-y-2 max-h-[60vh] overflow-y-auto themed-scrollbar pr-1">
               {filtered.map((card, i) => (
-                <CardRow key={card.id ?? card.name ?? i} card={card} />
+                <div key={card.id ?? card.name ?? i} className="space-y-1">
+                  <CardRow card={card} />
+                  {packActive && <SpawnRoller card={card} />}
+                </div>
               ))}
             </div>
           )}
@@ -830,6 +904,7 @@ function ThreatCardSection() {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function DMDeckExplorer() {
+  const { packs } = useDungeonPacks();
   const flatTotal = DECKS.reduce((s, d) => s + (Array.isArray(d.cards) ? d.cards.length : 0), 0);
   const enemyTotal = Object.values(ENEMY_CARDS).reduce((s, a) => s + a.length, 0);
   const encounterTotal = Object.values(ENCOUNTER_WORLDS).reduce((s, a) => s + a.length, 0);
@@ -843,7 +918,11 @@ export default function DMDeckExplorer() {
         </span>
       </div>
       {DECKS.map(deck => (
-        <DeckSection key={deck.id} deck={deck} />
+        <DeckSection
+          key={deck.id}
+          deck={deck}
+          packActive={deck.packId ? (packs[deck.packId] ?? false) : false}
+        />
       ))}
       <EncounterSection />
       <ThreatCardSection />
