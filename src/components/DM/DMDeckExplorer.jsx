@@ -18,7 +18,9 @@ import { INFAMOUS_FEUDAL_BANDIT_CARDS } from '../../data/cards/infamousFeudalBan
 import { VOID_MAGIK_CARDS }            from '../../data/cards/voidMagikDeck';
 import { PERSONAL_ITEM_CARDS }         from '../../data/cards/personalItems';
 import { WARRANT_CARDS, WARRANTS_ENCOUNTERS, WARRANTS_GEAR, ON_THE_RUN_TRAIT } from '../../data/missionModifiers/warrants';
-import { VOID_SPIDERS_PACK, ANCIENT_SPIDERS_PACK, TRENCH_SPIDERS_PACK } from '../../data/dungeonPacks';
+import { VOID_SPIDERS_PACK, ANCIENT_SPIDERS_PACK, TRENCH_SPIDERS_PACK,
+         BILE_SPIDERS_PACK, NIGHTSHADE_SPIDERS_PACK, FORTRESS_SPIDERS_PACK,
+         CRAB_SPIDERS_PACK, SPANISH_SPIDERS_PACK } from '../../data/dungeonPacks';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -72,9 +74,14 @@ const DECKS = [
   { id: 'warrantsGear',          label: 'Warrants Gear',             cards: WARRANTS_GEAR                },
   { id: 'onTheRunTrait',         label: 'On the Run (Trait)',        cards: [ON_THE_RUN_TRAIT]           },
   // Dungeon Packs (ESP)
-  { id: 'voidSpidersThreats',    label: 'Void Spiders ESP (Mines)',        cards: [...VOID_SPIDERS_PACK.threatCards, ...VOID_SPIDERS_PACK.encounters, ...VOID_SPIDERS_PACK.statusEffects] },
-  { id: 'ancientSpidersThreats', label: 'Ancient Spiders ESP (Targa)',     cards: [...ANCIENT_SPIDERS_PACK.threatCards, ...ANCIENT_SPIDERS_PACK.encounters] },
-  { id: 'trenchSpidersThreats',  label: 'Trench Spiders ESP (Trederra)',   cards: [...TRENCH_SPIDERS_PACK.threatCards, ...TRENCH_SPIDERS_PACK.encounters] },
+  { id: 'voidSpidersESP',      label: 'Void Spiders ESP (Mines)',            cards: [...VOID_SPIDERS_PACK.threatCards, ...VOID_SPIDERS_PACK.encounters, ...VOID_SPIDERS_PACK.statusEffects] },
+  { id: 'ancientSpidersESP',   label: 'Ancient Spiders ESP (Targa)',         cards: [...ANCIENT_SPIDERS_PACK.threatCards, ...ANCIENT_SPIDERS_PACK.encounters] },
+  { id: 'trenchSpidersESP',    label: 'Trench Spiders ESP (Trederra)',       cards: [...TRENCH_SPIDERS_PACK.threatCards, ...TRENCH_SPIDERS_PACK.encounters] },
+  { id: 'bileSpidersESP',      label: 'Bile Spiders ESP (Belly)',            cards: [...BILE_SPIDERS_PACK.threatCards, ...BILE_SPIDERS_PACK.encounters] },
+  { id: 'nightshadeSpidersESP',label: 'Nightshade Spiders ESP (Forest)',     cards: [...NIGHTSHADE_SPIDERS_PACK.threatCards, ...NIGHTSHADE_SPIDERS_PACK.encounters] },
+  { id: 'fortressSpidersESP',  label: 'Void Spiders ESP (Fortress)',         cards: FORTRESS_SPIDERS_PACK.encounters },
+  { id: 'crabSpidersESP',      label: 'Crab Spiders ESP (Pharrox)',          cards: [...CRAB_SPIDERS_PACK.threatCards, ...CRAB_SPIDERS_PACK.encounters] },
+  { id: 'spanishSpidersESP',   label: 'Void Spiders ESP (Spanish Fort)',     cards: SPANISH_SPIDERS_PACK.encounters },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────

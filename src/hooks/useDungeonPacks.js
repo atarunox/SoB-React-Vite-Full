@@ -3,9 +3,14 @@ import { useState, useCallback } from 'react';
 const STORAGE_KEY = 'sob:dungeon_packs';
 
 const DEFAULT = {
-  voidSpiders:    false,
-  ancientSpiders: false,
-  trenchSpiders:  false,
+  voidSpiders:       false,
+  ancientSpiders:    false,
+  trenchSpiders:     false,
+  bileSpiders:       false,
+  nightshadeSpiders: false,
+  fortressSpiders:   false,
+  crabSpiders:       false,
+  spanishSpiders:    false,
 };
 
 function load() {
