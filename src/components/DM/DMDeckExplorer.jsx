@@ -20,7 +20,7 @@ import { PERSONAL_ITEM_CARDS }         from '../../data/cards/personalItems';
 import { WARRANT_CARDS, WARRANTS_ENCOUNTERS, WARRANTS_GEAR, ON_THE_RUN_TRAIT } from '../../data/missionModifiers/warrants';
 import { VOID_SPIDERS_PACK, ANCIENT_SPIDERS_PACK, TRENCH_SPIDERS_PACK,
          BILE_SPIDERS_PACK, NIGHTSHADE_SPIDERS_PACK, FORTRESS_SPIDERS_PACK,
-         CRAB_SPIDERS_PACK, SPANISH_SPIDERS_PACK } from '../../data/dungeonPacks';
+         CRAB_SPIDERS_PACK, SPANISH_SPIDERS_PACK, CHALLENGE_PACK_2 } from '../../data/dungeonPacks';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -82,6 +82,11 @@ const DECKS = [
   { id: 'fortressSpidersESP',  label: 'Void Spiders ESP (Fortress)',         cards: FORTRESS_SPIDERS_PACK.encounters },
   { id: 'crabSpidersESP',      label: 'Crab Spiders ESP (Pharrox)',          cards: [...CRAB_SPIDERS_PACK.threatCards, ...CRAB_SPIDERS_PACK.encounters] },
   { id: 'spanishSpidersESP',   label: 'Void Spiders ESP (Spanish Fort)',     cards: SPANISH_SPIDERS_PACK.encounters },
+  // Challenge Pack #2
+  { id: 'cp2Threats',    label: 'Challenge Pack #2 — Threats',        cards: CHALLENGE_PACK_2.threatCards    },
+  { id: 'cp2Darkness',   label: 'Challenge Pack #2 — Darkness',       cards: CHALLENGE_PACK_2.darknessCards  },
+  { id: 'cp2Encounters', label: 'Challenge Pack #2 — Encounters',     cards: CHALLENGE_PACK_2.encounterCards },
+  { id: 'cp2BeastTraits',label: 'Challenge Pack #2 — Beast Traits',   cards: CHALLENGE_PACK_2.beastTraits    },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import NIGHTSHADE_SPIDERS_PACK from './nightshadeSpidersPack';
 import FORTRESS_SPIDERS_PACK from './fortressSpidersPack';
 import CRAB_SPIDERS_PACK from './crabSpidersPack';
 import SPANISH_SPIDERS_PACK from './spanishSpidersPack';
+import CHALLENGE_PACK_2 from './challengePack2';
 
 export {
   VOID_SPIDERS_PACK,
@@ -16,9 +17,11 @@ export {
   FORTRESS_SPIDERS_PACK,
   CRAB_SPIDERS_PACK,
   SPANISH_SPIDERS_PACK,
+  CHALLENGE_PACK_2,
 };
 
-export const ALL_DUNGEON_PACKS = [
+// All ESP spider packs grouped under a single toggle
+export const SPIDER_ESP_PACKS = [
   VOID_SPIDERS_PACK,
   ANCIENT_SPIDERS_PACK,
   TRENCH_SPIDERS_PACK,

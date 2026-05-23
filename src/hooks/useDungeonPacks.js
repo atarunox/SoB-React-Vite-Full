@@ -3,14 +3,8 @@ import { useState, useCallback } from 'react';
 const STORAGE_KEY = 'sob:dungeon_packs';
 
 const DEFAULT = {
-  voidSpiders:       false,
-  ancientSpiders:    false,
-  trenchSpiders:     false,
-  bileSpiders:       false,
-  nightshadeSpiders: false,
-  fortressSpiders:   false,
-  crabSpiders:       false,
-  spanishSpiders:    false,
+  spiderESP:      false,  // All Spider Extra Spawning Packs (8 worlds)
+  challengePack2: false,  // Challenge Pack #2
 };
 
 function load() {
@@ -35,13 +29,5 @@ export function useDungeonPacks() {
     });
   }, []);
 
-  const setAll = useCallback((value) => {
-    setPacks(() => {
-      const next = Object.fromEntries(Object.keys(DEFAULT).map(k => [k, value]));
-      save(next);
-      return next;
-    });
-  }, []);
-
-  return { packs, toggle, setAll };
+  return { packs, toggle };
 }

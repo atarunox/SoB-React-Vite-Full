@@ -7,7 +7,6 @@ import DMWarrantsPanel from './DMWarrantsPanel';
 import { WORLD_CARDS_BY_CAMPAIGN } from '../../data/worldCards';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 import { useDungeonPacks } from '../../hooks/useDungeonPacks';
-import { ALL_DUNGEON_PACKS } from '../../data/dungeonPacks';
 
 const SUB_TABS = [
   { id: 'settings',     label: 'Settings' },
@@ -113,29 +112,30 @@ function SettingsPanel({ selectedCampaigns, setSelectedCampaigns, mergedWorldsCo
 
       {/* Dungeon Packs */}
       <div className="rounded-md border border-[#8b6b46]/40 p-3 bg-white/80">
-        <div className="font-semibold mb-1 text-[#3b2f1d]">Dungeon Packs (ESP)</div>
+        <div className="font-semibold mb-1 text-[#3b2f1d]">Dungeon Packs</div>
         <p className="text-xs text-gray-500 mb-2">
-          Extra Spawning Packs add spider threat cards and encounters to specific world decks. Activate a pack before the adventure to include it.
+          Activate before the adventure. Cards for each pack are in the Deck Explorer.
         </p>
         <div className="flex flex-col gap-2">
-          {ALL_DUNGEON_PACKS.map(pack => (
-            <label key={pack.id} className="inline-flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="checkbox mt-0.5"
-                checked={packs[pack.id] ?? false}
-                onChange={() => togglePack(pack.id)}
-              />
-              <span>
-                <span className="font-medium text-[#3b2f1d] text-sm">{pack.name}</span>
-                <span className="block text-xs text-gray-500">{pack.world}</span>
-              </span>
-            </label>
-          ))}
+          <label className="inline-flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" className="checkbox mt-0.5" checked={packs.spiderESP ?? false} onChange={() => togglePack('spiderESP')} />
+            <span>
+              <span className="font-medium text-[#3b2f1d] text-sm">Spider ESP Packs</span>
+              <span className="block text-xs text-gray-500">8 world-specific Extra Spawning Packs (Mines, Targa, Trederra, Belly, Forest, Fortress, Pharrox, Spanish Fort)</span>
+            </span>
+          </label>
+          <label className="inline-flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" className="checkbox mt-0.5" checked={packs.challengePack2 ?? false} onChange={() => togglePack('challengePack2')} />
+            <span>
+              <span className="font-medium text-[#3b2f1d] text-sm">Challenge Pack #2</span>
+              <span className="block text-xs text-gray-500">Devouring Swarm, Armored Hunting Pack, Void Tide, Bestial Eruption, Darkness cards, Encounters, Beast Traits</span>
+            </span>
+          </label>
         </div>
-        {Object.values(packs).some(Boolean) && (
+        {(packs.spiderESP || packs.challengePack2) && (
           <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-300 text-xs text-amber-800">
-            Active packs: {ALL_DUNGEON_PACKS.filter(p => packs[p.id]).map(p => p.name).join(', ')}. Shuffle their threat cards into the matching world deck before the adventure.
+            {packs.spiderESP && <div>Spider ESP: shuffle the matching world's spider cards into the threat deck.</div>}
+            {packs.challengePack2 && <div>Challenge Pack #2: shuffle threat, darkness, and encounter cards into their respective decks.</div>}
           </div>
         )}
       </div>
