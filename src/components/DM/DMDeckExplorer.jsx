@@ -18,6 +18,7 @@ import { INFAMOUS_FEUDAL_BANDIT_CARDS } from '../../data/cards/infamousFeudalBan
 import { VOID_MAGIK_CARDS }            from '../../data/cards/voidMagikDeck';
 import { PERSONAL_ITEM_CARDS }         from '../../data/cards/personalItems';
 import { WARRANT_CARDS, WARRANTS_ENCOUNTERS, WARRANTS_GEAR, ON_THE_RUN_TRAIT } from '../../data/missionModifiers/warrants';
+import { VOID_SPIDERS_PACK, ANCIENT_SPIDERS_PACK, TRENCH_SPIDERS_PACK } from '../../data/dungeonPacks';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -70,6 +71,10 @@ const DECKS = [
   { id: 'warrantsEncounters',    label: 'Warrants Encounters',       cards: WARRANTS_ENCOUNTERS          },
   { id: 'warrantsGear',          label: 'Warrants Gear',             cards: WARRANTS_GEAR                },
   { id: 'onTheRunTrait',         label: 'On the Run (Trait)',        cards: [ON_THE_RUN_TRAIT]           },
+  // Dungeon Packs (ESP)
+  { id: 'voidSpidersThreats',    label: 'Void Spiders ESP (Mines)',        cards: [...VOID_SPIDERS_PACK.threatCards, ...VOID_SPIDERS_PACK.encounters, ...VOID_SPIDERS_PACK.statusEffects] },
+  { id: 'ancientSpidersThreats', label: 'Ancient Spiders ESP (Targa)',     cards: [...ANCIENT_SPIDERS_PACK.threatCards, ...ANCIENT_SPIDERS_PACK.encounters] },
+  { id: 'trenchSpidersThreats',  label: 'Trench Spiders ESP (Trederra)',   cards: [...TRENCH_SPIDERS_PACK.threatCards, ...TRENCH_SPIDERS_PACK.encounters] },
 ];
 
 // ── Shared card shell ─────────────────────────────────────────────────────────

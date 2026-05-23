@@ -6,6 +6,8 @@ import DMBigScorePanel from './DMBigScorePanel';
 import DMWarrantsPanel from './DMWarrantsPanel';
 import { WORLD_CARDS_BY_CAMPAIGN } from '../../data/worldCards';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
+import { useDungeonPacks } from '../../hooks/useDungeonPacks';
+import { ALL_DUNGEON_PACKS } from '../../data/dungeonPacks';
 
 const SUB_TABS = [
   { id: 'settings',     label: 'Settings' },
@@ -27,6 +29,7 @@ const HEXCRAWL_TOGGLES = [
 function SettingsPanel({ selectedCampaigns, setSelectedCampaigns, mergedWorldsCount }) {
   const ALL_KEYS = Object.keys(WORLD_CARDS_BY_CAMPAIGN);
   const { settings, toggle: toggleHex, setAll } = useHexCrawlSettings();
+  const { packs, toggle: togglePack } = useDungeonPacks();
 
   const isChecked = (k) => selectedCampaigns.includes(k);
   const toggleCampaign = (k) => {
@@ -106,6 +109,35 @@ function SettingsPanel({ selectedCampaigns, setSelectedCampaigns, mergedWorldsCo
           <button className="btn btn-sm" onClick={() => setAll(true)}>All On</button>
           <button className="btn btn-sm btn-ghost" onClick={() => setAll(false)}>All Off</button>
         </div>
+      </div>
+
+      {/* Dungeon Packs */}
+      <div className="rounded-md border border-[#8b6b46]/40 p-3 bg-white/80">
+        <div className="font-semibold mb-1 text-[#3b2f1d]">Dungeon Packs (ESP)</div>
+        <p className="text-xs text-gray-500 mb-2">
+          Extra Spawning Packs add spider threat cards and encounters to specific world decks. Activate a pack before the adventure to include it.
+        </p>
+        <div className="flex flex-col gap-2">
+          {ALL_DUNGEON_PACKS.map(pack => (
+            <label key={pack.id} className="inline-flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="checkbox mt-0.5"
+                checked={packs[pack.id] ?? false}
+                onChange={() => togglePack(pack.id)}
+              />
+              <span>
+                <span className="font-medium text-[#3b2f1d] text-sm">{pack.name}</span>
+                <span className="block text-xs text-gray-500">{pack.world}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {Object.values(packs).some(Boolean) && (
+          <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-300 text-xs text-amber-800">
+            Active packs: {ALL_DUNGEON_PACKS.filter(p => packs[p.id]).map(p => p.name).join(', ')}. Shuffle their threat cards into the matching world deck before the adventure.
+          </div>
+        )}
       </div>
     </div>
   );
