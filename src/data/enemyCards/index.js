@@ -11,6 +11,7 @@ import { forestEnemies as forest } from './forestEnemies';
 import { mountainEnemies as mountain } from './mountainEnemies';
 import { valleyEnemies as valley } from './valleyEnemies';
 import { fortressEnemies as fortress } from './fortressEnemies';
+import { adventuresEnemies as adventures } from './adventuresEnemies';
 import westernEnemies from './westernEnemies';
 import { scannedEnemies } from './scannedEnemies';
 
@@ -51,5 +52,6 @@ export const ENEMY_CARDS = {
   "OtherWorld: Forest of the Dead": [...forest, ...scannedByKeyword('Forest of the Dead')],
   "OtherWorld: Cursed Mountain": mountain,
   "OtherWorld: Valley of the Serpent Kings": valley,
-  "Forbidden Fortress": fortress
+  "Forbidden Fortress": fortress,
+  "Adventures": adventures,
 };
