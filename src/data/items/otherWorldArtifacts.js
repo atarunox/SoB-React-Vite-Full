@@ -19,6 +19,21 @@ export const otherWorldArtifacts = [
   },
 
   {
+    id: 'dark_stone_blade',
+    name: 'Dark Stone Blade',
+    world: 'Jargono',
+    slot: 'Main Hand',
+    tags: ['Other World', 'Jargono', 'Artifact', 'Dark Stone', 'Hand Weapon'],
+    effects: [
+      'Your Combat Hits are Critical Hits on rolls of 5 or 6 (instead of only on 6).',
+    ],
+    weight: 1,
+    twoHanded: false,
+    darkStone: true,
+    upgradeSlots: 0,
+    value: 475,
+  },
+  {
     id: 'swamp_raptor_claw',
     name: 'Swamp Raptor Claw',
     world: 'Jargono',

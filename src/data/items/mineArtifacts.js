@@ -882,6 +882,22 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'tribal_void_dance',
+    name: 'Tribal Void Dance',
+    type: 'Artifact',
+    slot: 'None',
+    value: 500,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: [
+      'Once per Adventure, make a Spirit 6+ test. If successful, replace any one open Doorway with a Gate and you may choose which World card the Gate leads to.',
+      'May not be used in a Mission that does not use Gates.',
+      'Limit of 1 Dance may be used per Turn.',
+    ],
+    tags: ['Artifact', 'Tribal', 'Dance', 'Void'],
+    restrictions: ['Tribal Only'],
+  },
+  {
     id: 'moon_stone',
     name: 'Moon Stone',
     type: 'Artifact',
