@@ -2280,6 +2280,65 @@ export const gearCards = [
     "darkStone": false,
     "upgradeSlots": 0,
     "restrictions": ["Law Only"]
+  },
+  {
+    "id": "dead_mans_boots",
+    "name": "Dead Man's Boots",
+    "slot": "Feet",
+    "keywords": ["Clothing", "Boots"],
+    "effects": [
+      "Any time you roll a 6 for Move, you may Heal 2 Sanity."
+    ],
+    "value": 150,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": [],
+    "promoId": "Promo-692"
+  },
+  {
+    "id": "pipe",
+    "name": "Pipe",
+    "slot": "Extra 1",
+    "keywords": [],
+    "effects": [
+      "+1 Lore.",
+      "Recover 1 Grit any time you pass a Lore Test (limit once per turn)."
+    ],
+    "value": 75,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "bugle",
+    "name": "Bugle",
+    "slot": "Extra 1",
+    "keywords": ["Music", "Military"],
+    "effects": [
+      "Once per Adventure, you may blow the Bugle to cancel a Growing Dread card on a D6 roll of 3+, or to prevent the Darkness from moving on the Depth Track."
+    ],
+    "value": 300,
+    "twoHanded": false,
+    "darkStone": false,
+    "upgradeSlots": 0,
+    "restrictions": []
+  },
+  {
+    "id": "dark_stone_daggers",
+    "name": "Dark Stone Daggers",
+    "slot": "Main Hand",
+    "keywords": ["Jargono", "Dark Stone", "Hand Weapon"],
+    "effects": [
+      "+2 Combat",
+      "+1 Initiative"
+    ],
+    "value": 625,
+    "twoHanded": true,
+    "darkStone": true,
+    "upgradeSlots": 3,
+    "restrictions": ["Tribal Only"]
   }
 ];
 

@@ -137,12 +137,11 @@ export const HEROES = {
       willpower: "4+",
       special: 0,
       abilities: [
-        "Jungle Lore: Immune to Jungle Hazards.",
-        "Tribal Weapons: Spears and Bows gain +1 Damage.",
-        "Warrior’s Dance: Once per Fight, may make a free Move and Attack.",
-        "Native Knowledge: +1 to Navigation rolls while in Jargono."
+        "Starting Upgrade (choose 1): Pit Fighter, Serpent Slayer, or Treetop Hunter.",
+        "Serpent Slayer: +1 Move, may move through other models, immune to Poison markers. Starting Gear becomes Dark Stone Daggers (replaces Tribal Shield and Dark Stone Blade).",
+        "Fighting Style: When leveling up, choose a Specialty column from the upgrade chart; each Upgrade in that column also grants a bonus."
       ],
-      startingItems: ["Spear", "Tribal Charm"]
+      startingItems: ["Tribal Shield", "Dark Stone Blade"]
     },
     "Orphan": {
       stats: { Agility: 4, Cunning: 3, Spirit: 2, Strength: 2, Lore: 2, Luck: 3, Initiative: 6 },
