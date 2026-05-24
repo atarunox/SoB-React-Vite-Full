@@ -880,6 +880,20 @@ export const mineArtifacts = [
     upgradeSlots: 0,
     effects: ["Draw an Artifact from the Canyon Deck."],
     tags: ["Artifact", "Otherworld"]
+  },
+  {
+    id: 'moon_stone',
+    name: 'Moon Stone',
+    type: 'Artifact',
+    slot: 'None',
+    value: 450,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: [
+      'Once per Adventure, you may cancel a Darkness card.',
+      'Until used each Adventure, you take 1 less Damage from all Beast Enemy Attacks.',
+    ],
+    tags: ['Artifact', 'Tribal', 'Moon'],
   }
 ];
 export default mineArtifacts;

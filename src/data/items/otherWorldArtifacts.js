@@ -18,6 +18,20 @@ export const otherWorldArtifacts = [
     value: 0,
   },
 
+  {
+    id: 'swamp_raptor_claw',
+    name: 'Swamp Raptor Claw',
+    world: 'Jargono',
+    tags: ['Other World', 'Jargono', 'Artifact'],
+    effects: [
+      'Free Attack (Once per Fight): 1 Combat, Critical Hit on a 4, 5, or 6.',
+    ],
+    weight: 1,
+    darkStone: false,
+    upgradeSlots: 0,
+    value: 300,
+  },
+
   // TARGA (Targa Plateau)
   {
     id: 'targa_artifact001',
@@ -340,6 +354,22 @@ export const otherWorldArtifacts = [
     upgradeSlots: 0,
     value: 0,
   },
+  {
+    id: 'scorpion_claw_blade',
+    name: 'Scorpion Claw Blade',
+    world: 'Blasted Wastes',
+    slot: 'Main Hand',
+    tags: ['Other World', 'Blasted Wastes', 'Artifact', 'Hand Weapon', 'Blade'],
+    effects: [
+      '+1 Combat.',
+      'Once per turn, you may ignore an Enemy\'s Armor ability for one of your Combat Hits.',
+    ],
+    weight: 1,
+    twoHanded: false,
+    darkStone: false,
+    upgradeSlots: 3,
+    value: 600,
+  },
 
   // THE CANYONS
   {
@@ -352,6 +382,23 @@ export const otherWorldArtifacts = [
     darkStone: false,
     upgradeSlots: 0,
     value: 0,
+  },
+  {
+    id: 'twelfth_cavalry_jacket',
+    name: '12th Cavalry Jacket',
+    world: 'The Canyons',
+    slot: 'Coat',
+    tags: ['Other World', 'The Canyons', 'Artifact', 'Clothing', 'Coat', '12th'],
+    effects: [
+      '+2 Move.',
+      'Armor 6+.',
+      'Once per Adventure, Recover 1 Grit.',
+    ],
+    weight: 1,
+    twoHanded: false,
+    darkStone: false,
+    upgradeSlots: 1,
+    value: 550,
   },
 ];
 

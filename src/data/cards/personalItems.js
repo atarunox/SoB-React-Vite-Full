@@ -124,6 +124,17 @@ export const PERSONAL_ITEM_CARDS = [
       "'Voices in the Dark' now only does D3 Hits to you (instead of D6).",
     ],
   },
+  {
+    id: 'tribal_tattoos',
+    name: 'Tribal Tattoos',
+    type: 'Personal',
+    tags: ['Jargono', 'Personal', 'Tattoo'],
+    statBonus: { Strength: 1 },
+    effects: [
+      '+1 Strength.',
+      'You always get Defense rolls, even against Hits that would normally ignore Defense.',
+    ],
+  },
 ];
 
 export default PERSONAL_ITEM_CARDS;
