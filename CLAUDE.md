@@ -367,6 +367,10 @@ Collapsible sections with card counts and search for every deck:
 | Warrants Encounters | `data/missionModifiers/warrants.js` `WARRANTS_ENCOUNTERS` | 4 encounter cards for the Warrants modifier (Taunting Message, Rigged Trap, Doubled Back, Dying Bandit) |
 | Warrants Gear | `data/missionModifiers/warrants.js` `WARRANTS_GEAR` | 3 promo gear items: Frontier Deputy Badge (Law keyword + HBtD reroll), Outlaw Shackles (Strength test to remove enemy activation), Long Arm of the Law (D8 shotgun, Law Only) |
 | On the Run (Trait) | `data/missionModifiers/warrants.js` `ON_THE_RUN_TRAIT` | Enemy trait: Outlaw keyword, +1 Init, +2 Move, Cover 5+, Bounty $25/$100 |
+| Spider ESP Packs | `data/dungeonPacks/` (8 files) | 8 world-specific Extra Spawning Packs; all under the `spiderESP` toggle |
+| Challenge Pack #2 | `data/dungeonPacks/challengePack2.js` | 16 threat, 4 darkness, 5 encounter, 5 beast trait cards; `challengePack2` toggle |
+
+**Dungeon Pack Spawn Roller:** `DeckSection` accepts a `packActive` prop. When `true`, a `SpawnRoller` component renders below each card that contains `{P}` notation in its `spawn` text or has a `heroScaling` array. The roller parses `{P}` count + flat bonus, shows hero-tier buttons for scaling cards, rolls the Peril Die (`rollPeril()` from `diceHelpers.js`) N times, and displays each roll + total. Packs that are not enabled in DM Options → Settings show no roller. Add `packId: 'spiderESP'` or `packId: 'challengePack2'` to a DECKS entry to opt it in.
 
 ### HexCrawl Mode (`src/hooks/useHexCrawlSettings.js`)
 
