@@ -424,8 +424,6 @@ export default function EnemyGroupCard({
         </div>
         <div className="flex gap-1 flex-wrap">
           <button className="btn btn-xs btn-outline" onClick={drawTrait}>Trait</button>
-          <button className="btn btn-xs btn-outline" onClick={drawDarkness}>Darkness</button>
-          <button className="btn btn-xs btn-outline" onClick={drawGrowingDread}>Grd</button>
           {/* Corrupted universal trait — only for non-Demon/Undead */}
           {!(group.baseStats?.keywords || []).some(k => k === 'Demon' || k === 'Undead') && (
             <button
