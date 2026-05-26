@@ -46,25 +46,27 @@ function classifyTarget(enc = {}) {
   const explicit = String(enc.target || '').trim();
   if (explicit) return explicit;
 
-  // Build a searchable string from all text fields (handles both flat and rich schemas)
+  // Build a searchable string from all text fields (both flat and rich schemas)
   const testText = typeof enc.test === 'string'
     ? enc.test
-    : [
-        ...(enc.test?.success || []),
-        ...(enc.test?.fail || []),
-      ].join(' ');
+    : [...(enc.test?.success || []), ...(enc.test?.fail || [])].join(' ');
   const effectsText = Array.isArray(enc.effects)
     ? enc.effects.join(' ')
     : (enc.effect || '');
   const hay = `${testText} ${effectsText} ${enc.flavor || ''}`.toLowerCase();
 
-  if (/each hero ending move/.test(hay)) return 'Each Hero ending move';
-  if (/each hero|every hero|all heroes/.test(hay)) return 'Each Hero';
-  if (/random hero/.test(hay)) return 'Random Hero';
-  if (/chosen hero|one hero|a hero may|any hero/.test(hay)) return 'One Hero';
-  if (enc.remainsInPlay && /(weather|start of each turn|while in\b)/.test(hay)) return 'All Heroes';
-  // Rich-schema cards with a test object are rolled by each hero individually
-  if (enc.test && typeof enc.test === 'object') return 'Each Hero';
+  // Order matters: more specific patterns first
+  if (/each hero ending move/.test(hay))                         return 'Each Hero (on move)';
+  if (/one random hero|a random hero/.test(hay))                 return 'Random Hero';
+  if (/random hero/.test(hay))                                   return 'Random Hero';
+  if (/all heroes/.test(hay))                                    return 'All Heroes';
+  if (/each hero|every hero/.test(hay))                          return 'Each Hero';
+  if (/posse.*choose|one hero.*choose|chosen hero|a hero of your choice/.test(hay))
+                                                                 return 'One Hero (Posse chooses)';
+  if (/one hero|a hero may|any hero/.test(hay))                  return 'One Hero (Posse chooses)';
+  if (enc.remainsInPlay)                                         return 'All Heroes';
+  // Rich-schema test cards: each hero rolls individually
+  if (enc.test && typeof enc.test === 'object')                  return 'Each Hero';
   return 'Environmental';
 }
 
