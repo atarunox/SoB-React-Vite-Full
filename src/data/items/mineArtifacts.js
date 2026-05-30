@@ -286,6 +286,17 @@ export const mineArtifacts = [
     tags: ["Artifact", "Otherworld"]
   },
   {
+    id: 'mine_otherworld_artifact_blasted_wastes_2',
+    name: "Otherworld Artifact (Blasted Wastes)",
+    type: "Artifact",
+    slot: "None",
+    value: null,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: ["Draw an Artifact from the Blasted Wastes Deck."],
+    tags: ["Artifact", "Otherworld"]
+  },
+  {
     id: 'mine_vial_of_brimstone_ash',
     name: "Vial of Brimstone Ash",
     type: "Artifact - Void",
@@ -299,7 +310,34 @@ export const mineArtifacts = [
     tags: ["Artifact", "Void"]
   },
   {
+    id: 'mine_vial_of_brimstone_ash_2',
+    name: "Vial of Brimstone Ash",
+    type: "Artifact - Void",
+    slot: "None",
+    value: 125,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: [
+      "Free Attack: Discard to do 1 Wound to every adjacent Enemy, ignoring Defense."
+    ],
+    tags: ["Artifact", "Void"]
+  },
+  {
     id: 'mine_crushed_dark_stone',
+    name: "Crushed Dark Stone",
+    type: "Artifact - Dark Stone",
+    slot: "None",
+    value: 150,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: [
+      "Consume (discard) to heal 2D6 Wounds and double your Combat until the end of the turn.",
+      "Gain 1 Corruption Point, ignoring Willpower."
+    ],
+    tags: ["Artifact", "Dark Stone"]
+  },
+  {
+    id: 'mine_crushed_dark_stone_2',
     name: "Crushed Dark Stone",
     type: "Artifact - Dark Stone",
     slot: "None",
