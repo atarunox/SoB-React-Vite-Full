@@ -1432,6 +1432,18 @@ export const THREAT_CARDS_STANDARD = [
   { id: '1_dark_stone_hydra_4',                                name: '1 Dark Stone Hydra',                                              tier: 'medium', spawn: '1 Dark Stone Hydra',                                     effects: [] },
   // ── New high-tier card ──────────────────────────────────────────────────────────
   { id: '3_custodians_targa_1_targa_pylon',                    name: '3 Custodians of Targa and 1 Targa Pylon',                          tier: 'medium', spawn: '3 Custodians of Targa and 1 Targa Pylon',               effects: ['A group of Custodian robots from the Targa Plateau have begun terraforming a portion of the Mine here.'] },
+  { id: '3_custodians_targa_1_targa_pylon_2',                 name: '3 Custodians of Targa and 1 Targa Pylon',                          tier: 'medium', spawn: '3 Custodians of Targa and 1 Targa Pylon',               effects: ['A group of Custodian robots from the Targa Plateau have begun terraforming a portion of the Mine here.'] },
+  { id: 'd3_void_sorcerers_med_2',                            name: 'D3 Void Sorcerers',                                                tier: 'medium', spawn: 'D3 Void Sorcerers',                                     effects: [] },
+  { id: 'stone_face_mccoy_p_scafford_gang_1_brute_med_2',     name: "'Stone Face' McCoy, {P} Scafford Gang, and 1 Dark Stone Brute",    tier: 'medium', promoId: 'Promo-479', spawn: "{P} Scafford Gang and 1 Dark Stone Brute (Leader: 'Stone Face' McCoy)",   effects: [] },
+  { id: 'p_plus_3_void_swarms_d3_void_hives_med',             name: '{P}+3 Void Swarms and D3 Void Hives',                              tier: 'medium', spawn: '{P}+3 Void Swarms and D3 Void Hives',                   effects: [] },
+  { id: '3_werewolf_feral_kin_3',                             name: '3 Werewolf Feral Kin',                                             tier: 'medium', spawn: '3 Werewolf Feral Kin',                                  effects: [] },
+  { id: '1_dark_stone_hydra_5',                               name: '1 Dark Stone Hydra',                                               tier: 'medium', spawn: '1 Dark Stone Hydra',                                    effects: [] },
+  { id: '1_void_sorcerer_3_void_hounds_med_2',                name: '1 Void Sorcerer and 3 Void Hounds',                                tier: 'medium', spawn: '1 Void Sorcerer and 3 Void Hounds',                    effects: [] },
+  { id: '3_feral_vampires_med_3',                             name: '3 Feral Vampires',                                                 tier: 'medium', spawn: '3 Feral Vampires',                                      effects: [] },
+  { id: '6_scourge_rats_1_rats_nest_med_3',                   name: '6 Scourge Rats and 1 Rats Nest',                                   tier: 'medium', spawn: '6 Scourge Rats and 1 Rats Nest',                       effects: [] },
+  { id: '1_void_sorcerer_1_med_threat_card_med_2',            name: '1 Void Sorcerer and 1 Med Threat Card',                            tier: 'medium', spawn: '1 Void Sorcerer',                                      effects: ['Also draw 1 Medium Threat Card.'] },
+  { id: 'd3_void_hounds_med_3',                               name: 'D3 Void Hounds',                                                   tier: 'medium', spawn: 'D3 Void Hounds',                                        effects: [] },
+  { id: 'p_ghost_warriors_med_3',                             name: '{P} Ghost Warriors',                                               tier: 'medium', spawn: '{P} Ghost Warriors',                                    effects: [] },
 ];
 
 // ── OtherWorld threat cards ──────────────────────────────────────────────────
