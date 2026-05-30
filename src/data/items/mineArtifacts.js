@@ -962,7 +962,7 @@ export const mineArtifacts = [
     value: 650,
     weight: 1,
     twoHanded: false,
-    darkStone: false,
+    darkStone: true,
     upgradeSlots: 0,
     effects: ['Spirit Armor 5+.'],
     tags: ['Artifact', 'Magik', 'Amulet'],
