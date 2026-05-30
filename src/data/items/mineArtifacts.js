@@ -1233,5 +1233,70 @@ export const mineArtifacts = [
     ],
     tags: ['Artifact', 'Book', 'Occult'],
   },
+
+  // --- Batch 9 ---------------------------------------------------------------
+  {
+    id: 'mine_tome_of_ro_kal',
+    name: "Tome of Ro'kal",
+    type: "Artifact - Book - Magik - Occult",
+    slot: "None",
+    value: 625,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: [
+      "+1 Lore.",
+      "Once per turn, you may take D6 Corruption Hits to Recover a Grit."
+    ],
+    requires: "Spirit 4 or Higher to use",
+    tags: ["Artifact", "Book", "Magik", "Occult"]
+  },
+  {
+    id: 'mine_vampire_fang',
+    name: "Vampire Fang",
+    type: "Artifact - Charm - Vampire",
+    slot: "None",
+    value: 700,
+    weight: 1,
+    upgradeSlots: 0,
+    effects: [
+      "Whenever you kill an Enemy, you may Heal 2 Wounds.",
+      "You are immune to the Vampiric Bite Enemy ability."
+    ],
+    tags: ["Artifact", "Charm", "Vampire"]
+  },
+  { id: 'mine_trederran_trench_pistol_2', name: "Trederran Trench Pistol", type: "Artifact - Gun - Pistol - Trederran", slot: "Hand Weapon", value: 500, weight: 1, upgradeSlots: 1, effects: ["Take 1 Corruption Hit to fire.", "Range 5; Shots 3; Damage +1."], tags: ["Artifact", "Gun", "Pistol", "Trederran"] },
+  { id: 'mine_hell_bullets_2', name: "Hell Bullets", type: "Artifact - Demonic - Ammo", slot: "Ammo", value: 150, weight: 1, upgradeSlots: 0, effects: ["Discard to use.", "Until end of the Adventure, all your Gun To Hit rolls of 1 count as Critical Hits, but also cause 1 Corruption Hit to you.", "Limit 1 Ammo at a time."], tags: ["Artifact", "Demonic", "Ammo"] },
+  { id: 'mine_jewel_of_the_void_2', name: "Jewel of the Void", type: "Artifact - Void", slot: "None", value: 250, weight: 1, upgradeSlots: 0, effects: ["+1 Spirit.", "Discard to heal a Mutation or to remove a Parasite."], tags: ["Artifact", "Void"] },
+  { id: 'mine_void_ring_2', name: "Void Ring", type: "Artifact - Ring - Magik - Void", slot: "Ring", value: 200, weight: 1, upgradeSlots: 1, effects: ["+1 Spirit.", "Once per Adventure, prevent the Darkness from moving on the Depth Track."], tags: ["Artifact", "Ring", "Magik", "Void"] },
+  { id: 'mine_hellfire_ring_2', name: "Hellfire Ring", type: "Artifact - Ring - Magik", slot: "Ring", value: 425, weight: 1, upgradeSlots: 1, effects: ["Once per Adventure, you may make the following Free Attack:", "Choose any space on your Map Tile. Every model in an adjacent space takes a Hit causing 2D6 Damage."], tags: ["Artifact", "Ring", "Magik"] },
+  { id: 'mine_otherworld_artifact_swamps_of_jargono_2', name: "Otherworld Artifact (Swamps of Jargono)", type: "Artifact", slot: "None", value: null, weight: 1, upgradeSlots: 0, effects: ["Draw an Artifact from the Swamps of Jargono Artifacts Deck."], tags: ["Artifact", "Otherworld"] },
+  { id: 'mine_amulet_of_balorn_2', name: "Amulet of Bālorn", type: "Artifact - Magik - Amulet", slot: "Amulet", value: 425, weight: 1, upgradeSlots: 1, effects: ["+1 Strength.", "Use 1 Grit to make all your Attacks +1 Damage until the end of the turn."], tags: ["Artifact", "Magik", "Amulet"] },
+  { id: 'mine_axe_of_savagery_2', name: "Axe of Savagery", type: "Artifact - Hand Weapon - Tribal", slot: "Hand Weapon", value: 725, weight: 1, upgradeSlots: 1, effects: ["+1 Combat.", "+1 Lore.", "When you do one or more Wounds to an Enemy with your Combat Hits, roll a D6. On 5+, also add a Bleeding Marker to that Enemy."], tags: ["Artifact", "Hand Weapon", "Tribal"] },
+  { id: 'mine_void_hound_tooth_2', name: "Void Hound Tooth", type: "Artifact - Void - Charm", slot: "Charm", value: 375, weight: 1, upgradeSlots: 1, effects: ["You take 1 less Damage from each Hit done to you by a Void Enemy (minimum of 1)."], tags: ["Artifact", "Void", "Charm"] },
+  { id: 'mine_journal_from_the_alamo_2', name: "Journal from the Alamo", type: "Artifact - Book - Relic", slot: "None", value: 850, weight: 1, upgradeSlots: 0, effects: ["+1 Lore.", "Once per Adventure, all Heroes may Recover 1 Grit."], tags: ["Artifact", "Book", "Relic"] },
+
+  // --- Batch 10 --------------------------------------------------------------
+  { id: 'mine_otherworld_artifact_targa_plateau_3', name: "Otherworld Artifact (Targa Plateau)", type: "Artifact", slot: "None", value: null, weight: 1, upgradeSlots: 0, effects: ["Draw an Artifact from the Targa Plateau Artifacts Deck."], tags: ["Artifact", "Otherworld"] },
+  { id: 'mine_otherworld_artifact_targa_plateau_4', name: "Otherworld Artifact (Targa Plateau)", type: "Artifact", slot: "None", value: null, weight: 1, upgradeSlots: 0, effects: ["Draw an Artifact from the Targa Plateau Artifacts Deck."], tags: ["Artifact", "Otherworld"] },
+  { id: 'mine_otherworld_artifact_swamps_of_jargono_3', name: "Otherworld Artifact (Swamps of Jargono)", type: "Artifact", slot: "None", value: null, weight: 1, upgradeSlots: 0, effects: ["Draw an Artifact from the Swamps of Jargono Artifacts Deck."], tags: ["Artifact", "Otherworld"] },
+  { id: 'mine_void_hood_2', name: "Void Hood", type: "Artifact - Void - Clothing - Hat", slot: "Hat", value: 550, weight: 1, upgradeSlots: 1, effects: ["You always get your normal Defense/Willpower saves, even against things that would ignore them.", "Gain +1 Spirit for every 2 Mutations you have (limit +3)."], tags: ["Artifact", "Void", "Clothing", "Hat"] },
+  { id: 'mine_brace_of_dark_stone_pistols_2', name: "Brace of Dark Stone Pistols", type: "Artifact - Gun - Pistol - Dark Stone", slot: "Hand Weapon", value: 1250, twoHanded: true, weight: 1, upgradeSlots: 1, effects: ["Range 6; Shots 4.", "Uses the Peril Die for Damage.", "Frontier or Outlaw Only."], tags: ["Artifact", "Gun", "Pistol", "Dark Stone", "Frontier/Outlaw Only"] },
+  { id: 'mine_void_scroll_3', name: "Void Scroll", type: "Artifact - Void - Scroll - Magik", slot: "None", value: 250, weight: 1, upgradeSlots: 0, effects: ["Discard for the following Free Attack:", "Range 12; Shots 2.", "Any Hits count as Critical Hits."], tags: ["Artifact", "Void", "Scroll", "Magik"] },
+  { id: 'mine_horrific_statue_2', name: "Horrific Statue", type: "Artifact - Dark Stone - Statue", slot: "None", value: 275, weight: 1, upgradeSlots: 0, effects: ["+1 Lore.", "You may break the Statue (discard) to cancel every Darkness card currently in play on the D6 roll of 3+ each."], tags: ["Artifact", "Dark Stone", "Statue"] },
+  { id: 'mine_scroll_of_flames_2', name: "Scroll of Flames", type: "Artifact - Scroll - Magik", slot: "None", value: 400, weight: 1, upgradeSlots: 0, effects: ["Discard to gain: Free Attack", "Place 4 Hellfire markers in any spaces within Range 8 (limit 1 per space). All Hellfire markers must form a single continuous chain.", "Hellfire markers do 1 Hit with 2D6 Damage to anything in their space, and are then removed."], requires: "Spirit 3 or Higher to use", tags: ["Artifact", "Scroll", "Magik"] },
+  { id: 'mine_jewel_of_the_void_3', name: "Jewel of the Void", type: "Artifact - Void", slot: "None", value: 250, weight: 1, upgradeSlots: 0, effects: ["+1 Spirit.", "Discard to heal a Mutation or to remove a Parasite."], tags: ["Artifact", "Void"] },
+  { id: 'mine_ring_of_corruption_2', name: "Ring of Corruption", type: "Artifact - Ring - Magik", slot: "Ring", value: 400, weight: 1, upgradeSlots: 1, effects: ["Once per Adventure, you may take D3 Corruption Hits to change any single die just rolled to a 1 or 6.", "You can now hold one more Corruption Point before getting a Mutation."], tags: ["Artifact", "Ring", "Magik"] },
+
+  // --- Batch 11 --------------------------------------------------------------
+  { id: 'mine_shadow_shard_2', name: "Shadow Shard", type: "Artifact - Magik - Darkness", slot: "None", value: 650, weight: 1, upgradeSlots: 0, effects: ["Use 1 Grit to cancel a Darkness card just drawn and place it here.", "Whenever the Darkness moves one or more spaces on the Depth Track, take Horror Hits equal to the number of Darkness cards here (2 Sanity Damage each).", "At end of the Adventure, discard any Darkness cards here."], tags: ["Artifact", "Magik", "Darkness"] },
+  { id: 'mine_lost_army_pistol_2', name: "Lost Army Pistol", type: "Artifact - Gun - Pistol - Lost Army", slot: "Hand Weapon", value: 700, weight: 1, upgradeSlots: 1, effects: ["Range 7; Shots 1.", "Uses the D8 for Damage.", "You may take up to 3 Corruption Hits to add +1 Shot for each.", "While equipped, gain +1 Combat."], tags: ["Artifact", "Gun", "Pistol", "Lost Army"] },
+  { id: 'mine_masterclass_revolver_2', name: "Masterclass Revolver", type: "Artifact - Gun - Pistol", slot: "Hand Weapon", value: 550, weight: 1, upgradeSlots: 1, effects: ["Range 8; Shots 2.", "If equipped as Off-hand, +1 Shot, +1 Damage, and ignores Armor."], tags: ["Artifact", "Gun", "Pistol"] },
+  { id: 'mine_divine_scroll_of_protection_2', name: "Divine Scroll of Protection", type: "Artifact - Holy - Scroll", slot: "None", value: 150, weight: 1, upgradeSlots: 0, effects: ["When drawn, place 2 Holy markers here.", "Once per turn, discard a Holy marker (or this card) to cancel a Darkness card on the D6 roll of 3+."], tags: ["Artifact", "Holy", "Scroll"] },
+  { id: 'mine_brace_of_dark_stone_pistols_3', name: "Brace of Dark Stone Pistols", type: "Artifact - Gun - Pistol - Dark Stone", slot: "Hand Weapon", value: 1250, twoHanded: true, weight: 1, upgradeSlots: 1, effects: ["Range 6; Shots 4.", "Uses the Peril Die for Damage.", "Frontier or Outlaw Only."], tags: ["Artifact", "Gun", "Pistol", "Dark Stone", "Frontier/Outlaw Only"] },
+  { id: 'mine_ornate_mask_2', name: "Ornate Mask", type: "Artifact - Clothing - Face - Cult", slot: "Face", value: 450, weight: 1, upgradeSlots: 1, effects: ["-2 Sanity.", "+2 Health.", "Any time you would take a Corruption Point, ignore it on the D6 roll of 4+."], tags: ["Artifact", "Clothing", "Face", "Cult"] },
+  { id: 'mine_amulet_of_heinghal_2', name: "Amulet of Hein'ghal", type: "Artifact - Magik - Amulet", slot: "Amulet", value: 225, weight: 1, upgradeSlots: 1, effects: ["Once per Adventure, add an extra D6 Damage to a single Hit."], tags: ["Artifact", "Magik", "Amulet"] },
+  { id: 'mine_otherworld_artifact_caverns_of_cynder_4', name: "Otherworld Artifact (Caverns of Cynder)", type: "Artifact", slot: "None", value: null, weight: 1, upgradeSlots: 0, effects: ["Draw an Artifact from the Caverns of Cynder Artifacts Deck."], tags: ["Artifact", "Otherworld"] },
+  { id: 'mine_olde_bell_2', name: "Olde Bell", type: "Artifact - Icon", slot: "None", value: 850, weight: 1, upgradeSlots: 0, effects: ["Once per Adventure, you may ring the Olde Bell to cancel a Darkness or Growing Dread card.", "Then choose another Darkness or Growing Dread card and cancel it on the D6 roll of 4+.", "You may continue to choose and cancel cards like this until you fail one of these rolls."], requires: "Lore 4+ to use", tags: ["Artifact", "Icon"] },
+  { id: 'mine_cross_of_kandor_2', name: "Cross of Kandor", type: "Artifact - Hand Weapon - Holy", slot: "Hand Weapon", value: 825, weight: 1, upgradeSlots: 1, effects: ["+1 Combat.", "All Undead Enemies adjacent to you (or on your Map Tile, if you are Holy) are -1 Defense."], requires: "Spirit 3 or higher to use", tags: ["Artifact", "Hand Weapon", "Holy"] },
 ];
 export default mineArtifacts;
