@@ -463,7 +463,7 @@ export const mineArtifacts = [
     slot: "Hand Weapon",
     value: 550,
     weight: 1,
-    upgradeSlots: 1,
+    upgradeSlots: 3,
     effects: [
       "Range 8; Shots 2.",
       "If equipped as Off-hand, +1 Shot, +1 Damage, and ignores Armor."
