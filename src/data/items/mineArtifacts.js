@@ -253,7 +253,7 @@ export const mineArtifacts = [
     slot: "Hand Weapon",
     value: 425,
     weight: 1,
-    upgradeSlots: 2,
+    upgradeSlots: 1,
     effects: [
       "+1 Combat.",
       "Use 1 Dark Stone to add +3 Damage to one of your Combat Hits."
@@ -580,7 +580,7 @@ export const mineArtifacts = [
     slot: "Hand Weapon",
     value: 550,
     weight: 1,
-    upgradeSlots: 2,
+    upgradeSlots: 1,
     effects: [
       "On each Combat Hit with the Hell Sword, you may take up to 3 Corruption Hits to do +1 Damage each.",
       "Any Hero may use this Item, regardless of class restrictions."
