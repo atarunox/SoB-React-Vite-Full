@@ -22,7 +22,8 @@ import { PERSONAL_ITEM_CARDS }         from '../../data/cards/personalItems';
 import { WARRANT_CARDS, WARRANTS_ENCOUNTERS, WARRANTS_GEAR, ON_THE_RUN_TRAIT } from '../../data/missionModifiers/warrants';
 import { VOID_SPIDERS_PACK, ANCIENT_SPIDERS_PACK, TRENCH_SPIDERS_PACK,
          BILE_SPIDERS_PACK, NIGHTSHADE_SPIDERS_PACK, FORTRESS_SPIDERS_PACK,
-         CRAB_SPIDERS_PACK, SPANISH_SPIDERS_PACK, CHALLENGE_PACK_2 } from '../../data/dungeonPacks';
+         CRAB_SPIDERS_PACK, SPANISH_SPIDERS_PACK,
+         CHALLENGE_PACK_1, CHALLENGE_PACK_2 } from '../../data/dungeonPacks';
 import { townTraitsChart }        from './charts/townTraitsChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
@@ -84,6 +85,10 @@ const DECKS = [
   { id: 'fortressSpidersESP',  label: 'Void Spiders ESP (Fortress)',         packId: 'spiderESP', cards: FORTRESS_SPIDERS_PACK.encounters },
   { id: 'crabSpidersESP',      label: 'Crab Spiders ESP (Pharrox)',          packId: 'spiderESP', cards: [...CRAB_SPIDERS_PACK.threatCards, ...CRAB_SPIDERS_PACK.encounters] },
   { id: 'spanishSpidersESP',   label: 'Void Spiders ESP (Spanish Fort)',     packId: 'spiderESP', cards: SPANISH_SPIDERS_PACK.encounters },
+  // Challenge Pack #1 — packId gates the spawn roller
+  { id: 'cp1Threats',    label: 'Challenge Pack #1 — Threats',        packId: 'challengePack1', cards: CHALLENGE_PACK_1.threatCards    },
+  { id: 'cp1Darkness',   label: 'Challenge Pack #1 — Darkness',       packId: 'challengePack1', cards: CHALLENGE_PACK_1.darknessCards  },
+  { id: 'cp1EnemyTraits',label: 'Challenge Pack #1 — Enemy Traits',   packId: 'challengePack1', cards: CHALLENGE_PACK_1.enemyTraits   },
   // Challenge Pack #2 — packId gates the spawn roller
   { id: 'cp2Threats',    label: 'Challenge Pack #2 — Threats',        packId: 'challengePack2', cards: CHALLENGE_PACK_2.threatCards    },
   { id: 'cp2Darkness',   label: 'Challenge Pack #2 — Darkness',       packId: 'challengePack2', cards: CHALLENGE_PACK_2.darknessCards  },

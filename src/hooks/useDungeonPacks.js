@@ -3,8 +3,9 @@ import { useState, useCallback } from 'react';
 const STORAGE_KEY = 'sob:dungeon_packs';
 
 const DEFAULT = {
-  spiderESP:      false,  // All Spider Extra Spawning Packs (8 worlds)
-  challengePack2: false,  // Challenge Pack #2
+  spiderESP:       false,  // All Spider Extra Spawning Packs (8 worlds)
+  challengePack1:  false,  // Challenge Pack #1
+  challengePack2:  false,  // Challenge Pack #2
 };
 
 function load() {

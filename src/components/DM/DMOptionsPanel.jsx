@@ -125,6 +125,13 @@ function SettingsPanel({ selectedCampaigns, setSelectedCampaigns, mergedWorldsCo
             </span>
           </label>
           <label className="inline-flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" className="checkbox mt-0.5" checked={packs.challengePack1 ?? false} onChange={() => togglePack('challengePack1')} />
+            <span>
+              <span className="font-medium text-[#3b2f1d] text-sm">Challenge Pack #1</span>
+              <span className="block text-xs text-gray-500">Hell Swarm, Broken Pact, Tide of Vermin, Legions of the Damned — Threat, Darkness &amp; Enemy Trait cards</span>
+            </span>
+          </label>
+          <label className="inline-flex items-start gap-2 cursor-pointer">
             <input type="checkbox" className="checkbox mt-0.5" checked={packs.challengePack2 ?? false} onChange={() => togglePack('challengePack2')} />
             <span>
               <span className="font-medium text-[#3b2f1d] text-sm">Challenge Pack #2</span>
@@ -132,9 +139,10 @@ function SettingsPanel({ selectedCampaigns, setSelectedCampaigns, mergedWorldsCo
             </span>
           </label>
         </div>
-        {(packs.spiderESP || packs.challengePack2) && (
+        {(packs.spiderESP || packs.challengePack1 || packs.challengePack2) && (
           <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-300 text-xs text-amber-800">
             {packs.spiderESP && <div>Spider ESP: shuffle the matching world's spider cards into the threat deck.</div>}
+            {packs.challengePack1 && <div>Challenge Pack #1: shuffle threat and darkness cards into their respective decks. Add the Bound by Darkness trait card to the enemy trait pool.</div>}
             {packs.challengePack2 && <div>Challenge Pack #2: shuffle threat, darkness, and encounter cards into their respective decks.</div>}
           </div>
         )}

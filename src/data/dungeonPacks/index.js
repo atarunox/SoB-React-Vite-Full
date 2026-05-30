@@ -6,6 +6,7 @@ import NIGHTSHADE_SPIDERS_PACK from './nightshadeSpidersPack';
 import FORTRESS_SPIDERS_PACK from './fortressSpidersPack';
 import CRAB_SPIDERS_PACK from './crabSpidersPack';
 import SPANISH_SPIDERS_PACK from './spanishSpidersPack';
+import CHALLENGE_PACK_1 from './challengePack1';
 import CHALLENGE_PACK_2 from './challengePack2';
 
 export {
@@ -17,6 +18,7 @@ export {
   FORTRESS_SPIDERS_PACK,
   CRAB_SPIDERS_PACK,
   SPANISH_SPIDERS_PACK,
+  CHALLENGE_PACK_1,
   CHALLENGE_PACK_2,
 };
 
