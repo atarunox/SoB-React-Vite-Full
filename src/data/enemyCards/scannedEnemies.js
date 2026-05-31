@@ -622,5 +622,63 @@ export const scannedEnemies = [
 {"name":"Corpse Pile","keywords":["Undead"],"Size":"Medium","initiative":0,"move":"0","escape":"1+","toHit":{"melee":"-","ranged":"-"},"stats":{"normal":{"combat":0,"damage":0,"defense":2,"health":6,"xp":"10+5"},"brutal":null},"abilities":["Immobile - Corpse Piles cannot be moved in any way.","Fear (1) - A Hero starting their Activation adjacent automatically takes 1 Horror Hit.","Spawner - At the end of each Fight Round, roll a D6 for each Corpse Pile. On the roll of 4+, place 1 new Hungry Dead adjacent to it. If there are no empty spaces adjacent, instead every Hero adjacent to the Corpse Pile takes 1 Hit (Damage 3)."],"eliteAbilities":["Heaping Pile - +4 Health","Unholy Stench - Fear (1) is replaced with: Unspeakable Terror (2) - Any Hero starting on the same or adjacent Map Tile automatically takes 2 Horror Hits.","Regeneration (2) - Heals 2 Wounds at the start of each turn.","Bloated Remains - +1 Defense","Squirming Pile - Corpse Piles now spawn a new Hungry Dead on the roll of 3+.","Freshly Stacked - Corpse Piles now roll twice each turn to spawn a Hungry Dead."],"threatTier":"medium"},
 {"name":"Necronauts","keywords":["Undead","Derelict Ship"],"Size":"Medium","initiative":2,"move":"3","escape":"5+","toHit":{"melee":"4+","ranged":null},"stats":{"normal":{"combat":2,"damage":4,"defense":4,"health":5,"xp":"15+5"},"brutal":{"combat":3,"damage":5,"defense":4,"health":8,"xp":"20+5"}},"abilities":["Terror (1) - A Hero starting their Activation on the same Map Tile automatically takes 1 Horror Hit.","Endurance (2) - This Enemy cannot take more than 2 Wounds from any single Hit (extra Damage is wasted).","Nightmarish - For every Hit done by a Necronaut, the Hero also takes 1 Horror Hit."],"eliteAbilities":["Cold Hunger - Necronaut Combat Hits are +1 Damage for every full 2 Sanity Damage the target had at the start of the attack.","Tangling Hoses - Adjacent Heroes cannot get Critical Hits.","Heavy Enviro-suits - +3 Health and immune to damage from Explosives.","Death Grip - Necronauts are now Escape 6+ and +1 Combat.","Jagged Helmets - Necronaut Melee To Hit rolls of 6 now cause a Bleeding Marker in addition to the normal Damage.","Forgotten Mission - Necronauts prioritize targets based on highest Hero Level followed by whoever currently has the most XP at that Hero Level. They also get +X Combat, where X is the target's Hero Level."],"threatTier":"medium"},
 {"name":"Void Hive","keywords":["Void"],"Size":"Large","initiative":0,"move":"0","escape":"2+","toHit":{"melee":null,"ranged":null},"stats":{"normal":{"combat":0,"damage":0,"defense":2,"health":20,"xp":"5+5"},"brutal":null},"abilities":["Immobile - A Void Hive cannot be moved in any way.","Spawn - At the end of each turn, roll a D6 for the Void Hive. On the roll of 3+, place 1 new Void Swarm adjacent to it. If a Void Swarm cannot be placed for any reason, instead every Hero adjacent to the Void Hive takes 3 Hits that do 2 Damage each.","Stirring the Hive - Whenever a Hero assigns a Combat Hit to the Void Hive, immediately roll for it to Spawn a Void Swarm as above.","Void Nectar - Every Hero adjacent when destroyed may gain a Tonic Side Bag Token."],"eliteAbilities":["Terrifying Buzzing - Terror (1) (Heroes starting their Activation on the same Map Tile take 1 Horror Hit).","Void Gases - Any Hero adjacent to the Void Hive is -1 on their Defense rolls.","Sticky Combs - Regeneration (3) (Heals 3 Wounds at the start of each turn).","Mega-Hive - +10 Health and Void Nectar gives 2 Tonic Tokens.","Full Swarm - Void Hives now roll twice for Spawn at the end of each turn and when assigned a Combat Hit.","Scent of the Swarm Queen - All Void Swarms on the same Map Tile as one or more Void Hives are +2 Damage on their Combat Hits."],"threatTier":"medium"},
-{"name":"Void Hounds","keywords":["Void","Beast"],"Size":"Large","initiative":7,"move":"10","escape":"4+","toHit":{"melee":"3+","ranged":null},"stats":{"normal":{"combat":6,"damage":1,"defense":"*","health":5,"xp":"20+5"},"brutal":null},"abilities":["Laying in Wait - Always starts from Ambush and each Hero takes 3 Horror Hits at the start of the turn in which the Void Hounds appear.","*Void Phasing - A Void Hound's Defense is equal to the current Initiative Level in the turn order. Void Hounds may move through other models.","Pack Attack - At the start of the Void Hound Activation (after initial Ambush), roll a D6. On 1 or 2 all Void Hounds change targets, on 6, all Void Hounds re-target to a single random Hero."],"eliteAbilities":["Vicious Attack - Void Hound Melee To Hit is now 2+.","On the Scent - The Pack Attack ability now has all Void Hounds re-target to a single Hero on the roll of 5 or 6.","Reality Phasing - +3 Health","Nightmare Howl - At the start of each turn, as long as at least one Void Hound is alive, all Heroes take 2 Horror Hits.","Lashing Tail - +2 Combat","Snapping Jaws - Void Hound Melee attacks are now Damage +2."],"threatTier":"medium"}
+{"name":"Void Hounds","keywords":["Void","Beast"],"Size":"Large","initiative":7,"move":"10","escape":"4+","toHit":{"melee":"3+","ranged":null},"stats":{"normal":{"combat":6,"damage":1,"defense":"*","health":5,"xp":"20+5"},"brutal":null},"abilities":["Laying in Wait - Always starts from Ambush and each Hero takes 3 Horror Hits at the start of the turn in which the Void Hounds appear.","*Void Phasing - A Void Hound's Defense is equal to the current Initiative Level in the turn order. Void Hounds may move through other models.","Pack Attack - At the start of the Void Hound Activation (after initial Ambush), roll a D6. On 1 or 2 all Void Hounds change targets, on 6, all Void Hounds re-target to a single random Hero."],"eliteAbilities":["Vicious Attack - Void Hound Melee To Hit is now 2+.","On the Scent - The Pack Attack ability now has all Void Hounds re-target to a single Hero on the roll of 5 or 6.","Reality Phasing - +3 Health","Nightmare Howl - At the start of each turn, as long as at least one Void Hound is alive, all Heroes take 2 Horror Hits.","Lashing Tail - +2 Combat","Snapping Jaws - Void Hound Melee attacks are now Damage +2."],"threatTier":"medium"},
+{
+  "name": "Dark Acolytes",
+  "keywords": ["Cult", "Fanatic", "Cunning", "Hand", "Magic"],
+  "Size": "Medium",
+  "initiative": 5,
+  "move": 5,
+  "escape": "3+",
+  "toHit": { "melee": "4+", "ranged": "4+" },
+  "stats": {
+    "normal": { "combat": 3, "damage": 2, "defense": 3, "health": 8, "xp": 35 },
+    "brutal": { "combat": 5, "damage": 2, "defense": 3, "health": 10, "xp": 45 }
+  },
+  "abilities": [
+    "Zealots - This Enemy does +1 Damage on all of its Combat Hits for each Wound marker it currently has.",
+    "Runic Protection - This Enemy is immune to Critical Hits unless the Attacker is adjacent. They also have a Cover 4+ save against all Damage/effects caused by Spells, Explosives, and by Attacks that are Modified or made by an item with a Magic icon. This Cover cannot be ignored.",
+    "Arcane Lore - At the start of this Enemy's Activation, roll a D6 for each model in the group. On the roll of 4+, draw and play an Arcane Magik Spell, cast by that model, in addition to its normal Attack for the turn."
+  ],
+  "eliteAbilities": [
+    "Ceremonial Daggers - Melee To Hit rolls of 6+ now ignore Defense.",
+    "Ritual Sacrifice - At the start of this Enemy's Activation, one Random adjacent Hero takes D3 Wounds, ignoring Defense.",
+    "Servants of Ro'Kal - All other Cult keyword Enemies on the board are +1 Combat.",
+    "Amulets of So'hat Kur - While there are any Dark Acolytes on the board, all Enemies gain +1 Defense.",
+    "Dark Arts - For each Darkness card that currently Remains in Play, discard cards from the Darkness deck until a Remains in Play card is discarded, then put that card into play.",
+    "Forbidden Lore - Arcane Lore rolls now cast spells on 3+ instead."
+  ]
+},
+{
+  "name": "Serpent King on Ki'Tarri Beast",
+  "keywords": ["Serpentmen", "Jargono", "Targa", "Tulla Beast"],
+  "Size": "XXL",
+  "initiative": 5,
+  "move": 10,
+  "escape": "4+",
+  "toHit": { "melee": "3+", "ranged": "3+" },
+  "stats": {
+    "normal": { "combat": 5, "damage": 3, "defense": 3, "health": 15, "xp": 45 },
+    "brutal": { "combat": 6, "damage": 5, "defense": 3, "health": 23, "xp": "25+5" }
+  },
+  "abilities": [
+    "Serpentmen Tribe - If there is not already a Serpentmen Tribe card in play, draw one to determine the tribal territory you are in.",
+    "Unspeakable Terror (2) - A Hero starting their Activation adjacent to (or touching) this Enemy immediately takes 2 Horror Hits. These Hits may not be avoided.",
+    "Flight - Moves through other models and changes targets each turn.",
+    "Warrior King - All Serpentmen keyword Enemies on the same Map Tile are +1 Combat.",
+    "Ki'Tarri Attack (3) - After moving, the Serpent King makes 3 separate Combat Attacks against up to 3 different targets. If fewer than 3 targets are in range, extra Attacks may be applied to the same target.",
+    "Battle Formation - At the start of each Enemy Phase, D3 Serpentmen Enemies on the board may be moved up to 3 spaces each by the DM.",
+    "Archon of the Serpent Gods - Whenever a Serpentmen Tribe card would be drawn, draw 2 and choose which applies.",
+    "Reinforcement - When this Fight starts, immediately place D3 Serpentmen Warriors anywhere on the current Map Tile."
+  ],
+  "eliteAbilities": [
+    "All Enemies are +3 Health, or +1 Health per Hero, whichever is greater.",
+    "Lord of the Promised - The Serpent King's Ki'Tarri Attacks are each +D3 Damage.",
+    "Skilled Sorcerer - At the start of each turn, draw and cast 1 Serpent Magik spell in addition to normal Attacks.",
+    "Blood-Drinker - For each Wound dealt to Heroes by this Enemy this turn, heal 1 Wound.",
+    "All of the Servants - Immediately place D6 Serpentmen Warriors anywhere on the current Map Tile.",
+    "Take Flight - After resolving all Ki'Tarri Attacks, this Enemy may move up to its full Move, moving through all models freely.",
+    "Tough - Immune to Critical Hits."
+  ]
+}
 ];
