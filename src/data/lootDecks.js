@@ -7,5 +7,6 @@ import wastesLootDeck from './lootDecks/wastesLootDeck';
 export const LOOT_DECKS = {
   Mines: mineLootDeck,
   "Blasted Wastes": wastesLootDeck,
+  "The Canyons": wastesLootDeck,
   // ...add other worlds
 };
