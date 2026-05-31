@@ -146,7 +146,9 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
   if (!adventure) return null;
   const { state, updateAdventure, advanceDepth, retreatDepth, advanceDarkness, retreatDarkness, rollHBtD, resetAdventure, endAdventure } = adventure;
   const { updateHero } = usePosse();
+  const { darknessActive = [] } = useCombatState();
   const { settings: hexSettings } = useHexCrawlSettings();
+  const piercingTheVeil = darknessActive.some(c => /piercing.*veil/i.test(c?.name || ''));
   const [showConfig, setShowConfig] = useState(false);
   const [configDraft, setConfigDraft] = useState({});
   const [lanternUsedThisTurn, setLanternUsedThisTurn] = useState(false);
@@ -182,9 +184,10 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
     resetAdventure(config);
     setLanternUsedThisTurn(false);
     // Rules: every hero starts each mission with exactly 1 Grit (SoB core rules p.22)
+    // Also reset session-level gear exhaustion (once-per-adventure items refresh)
     posse.forEach(h => {
       const id = h.id || h.localId;
-      if (id) updateHero(id, hero => ({ ...hero, currentGrit: 1 }));
+      if (id) updateHero(id, hero => ({ ...hero, currentGrit: 1, gearExhausted: {} }));
     });
   }, [resetAdventure, configDraft, state, posse, updateHero]);
 
@@ -271,10 +274,12 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
     endAdventure();
 
     // Strip conditions marked temporary (e.g. "until end of adventure" injuries)
+    // Also reset gear exhaustion — items refresh between adventures
     const stripTemporary = arr => Array.isArray(arr) ? arr.filter(c => !c?.temporary) : arr;
     posse.forEach(h => {
       const id = h.id || h.localId;
       if (!id) return;
+      updateHero(id, hh => ({ ...hh, gearExhausted: {} }));
       const conds = h.conditions ?? {};
       if (Array.isArray(conds)) {
         // flat conditions array format
@@ -499,6 +504,14 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
       {dangerZone && (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 text-sm font-medium text-center py-2 rounded">
           Darkness is {state.darkness} space{state.darkness !== 1 ? 's' : ''} from the entrance!
+        </div>
+      )}
+
+      {/* Piercing the Veil — armor suppressed */}
+      {piercingTheVeil && (
+        <div className="bg-amber-100 border border-amber-500 text-amber-900 text-sm font-semibold px-3 py-2 rounded flex items-center gap-2">
+          <span>⚠</span>
+          <span>Piercing the Veil is in play — heroes <strong>cannot make Armor rolls</strong> this round.</span>
         </div>
       )}
 

@@ -911,6 +911,8 @@ export default function StatsTab({
   const curCor = toNum(activeHero.currentCorruption ?? 0, 0);
 
   const curDS = toNum(activeHero.darkStone ?? 0, 0);
+  const curHiddenDS = toNum(activeHero.hiddenDarkStone ?? 0, 0);
+  const curCollectionTokens = toNum(activeHero.collectionTokens ?? 0, 0);
   const curGold = toNum(activeHero.gold ?? 0, 0);
   const curScrap = toNum(activeHero.scrap ?? 0, 0);
   const curTech = toNum(activeHero.tech ?? 0, 0);
@@ -1370,6 +1372,36 @@ export default function StatsTab({
             incLabel="+1"
             incDisabled={false}
           />
+          {(curHiddenDS > 0 || curCollectionTokens > 0) && (
+            <div className="col-span-2 flex flex-wrap gap-2">
+              {(curHiddenDS > 0 || true) && (
+                <div className="flex-1 rounded-xl border border-gray-400 bg-gray-50 px-3 py-2 flex items-center justify-between gap-2 min-w-[120px]">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-gray-600">Hidden DS</div>
+                    <div className="text-lg font-black text-gray-800">{curHiddenDS}</div>
+                    <div className="text-[9px] text-gray-500">Not rolled at end of adventure</div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button className="btn btn-xs" onClick={() => updateHeroFunc({ hiddenDarkStone: curHiddenDS + 1 })}>+1</button>
+                    <button className="btn btn-xs" onClick={() => updateHeroFunc({ hiddenDarkStone: Math.max(0, curHiddenDS - 1) })} disabled={curHiddenDS <= 0}>−1</button>
+                  </div>
+                </div>
+              )}
+              {(curCollectionTokens > 0 || true) && (
+                <div className="flex-1 rounded-xl border border-purple-300 bg-purple-50 px-3 py-2 flex items-center justify-between gap-2 min-w-[120px]">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-purple-700">Collected</div>
+                    <div className="text-lg font-black text-purple-900">{curCollectionTokens}</div>
+                    <div className="text-[9px] text-purple-600">Collection Jar tokens</div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button className="btn btn-xs" onClick={() => updateHeroFunc({ collectionTokens: curCollectionTokens + 1 })}>+1</button>
+                    <button className="btn btn-xs" onClick={() => updateHeroFunc({ collectionTokens: Math.max(0, curCollectionTokens - 1) })} disabled={curCollectionTokens <= 0}>−1</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {/* Gold — kept inline due to $10 step */}
           <div className="rounded-xl overflow-hidden border border-yellow-300 bg-yellow-50 shadow-md flex flex-col">
             <div className="bg-gradient-to-r from-yellow-700 to-yellow-600 text-white text-[10px] font-bold py-1 px-2 text-center tracking-widest uppercase">Gold</div>

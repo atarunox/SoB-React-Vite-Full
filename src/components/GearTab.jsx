@@ -832,8 +832,11 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
               const slotForbidden = condRules.forbidSlots.has(slot);
 
               return (
-                <div key={slot} className="rounded-xl border p-2 bg-white">
-                  <div className="text-[10px] uppercase tracking-wide text-gray-600 text-center">{slot}</div>
+                <div key={slot} className={`rounded-xl border p-2 bg-white transition-opacity ${viewHero.gearExhausted?.[slot] ? 'opacity-60 border-amber-400' : ''}`}>
+                  <div className="text-[10px] uppercase tracking-wide text-gray-600 text-center flex items-center justify-center gap-1">
+                    {slot}
+                    {viewHero.gearExhausted?.[slot] && <span className="text-amber-600 font-bold text-[9px]">USED</span>}
+                  </div>
 
                   <div className="mt-1 text-base font-bold min-h-[1.5rem] flex items-center gap-2">
                     {eqSafe ? eqSafe.name.replace(/\s*\(Spirit \d\+\+?\)$/, '') : <span className="text-gray-400 italic">Empty</span>}
@@ -983,6 +986,22 @@ export default function GearTab({ hero: heroProp, updateHero: updateHeroProp }) 
                   )}
 
                   <div className="mt-2 flex flex-col gap-2">
+                    {eqSafe && (() => {
+                      const isExhausted = !!(viewHero.gearExhausted?.[slot]);
+                      const toggleExhausted = () => {
+                        const next = { ...(viewHero.gearExhausted || {}), [slot]: !isExhausted };
+                        saveHero({ ...viewHero, gearExhausted: next, updatedAt: Date.now() });
+                      };
+                      return (
+                        <button
+                          onClick={toggleExhausted}
+                          className={`btn btn-xs ${isExhausted ? 'btn-warning' : 'btn-outline'}`}
+                          title={isExhausted ? 'Mark as ready (un-exhaust)' : 'Mark as exhausted (once-per-turn/adventure used)'}
+                        >
+                          {isExhausted ? '⊘ Exhausted' : '◉ Ready'}
+                        </button>
+                      );
+                    })()}
                     {eqSafe && (
                       <button onClick={() => { equipGear(slot, ''); }} className="btn btn-xs btn-error">
                         Unequip

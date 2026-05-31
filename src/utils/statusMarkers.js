@@ -48,6 +48,12 @@ export const MARKER_TYPES = {
     applyAtActivation: true,
     effect: 'immobilize',
   },
+  invisible: {
+    name: 'Invisible',
+    description: 'Hero cannot be targeted by enemies. Ends if the hero makes an attack or is adjacent to an enemy at the start of their activation.',
+    applyAtActivation: false,
+    effect: 'concealment',
+  },
 };
 
 /* ==================== Marker Management ==================== */

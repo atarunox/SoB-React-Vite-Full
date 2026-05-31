@@ -490,8 +490,56 @@ export default function EnemyGroupCard({
             })}
           </div>
         )}
+        {/* Status effect toggles */}
+        <div className="w-full flex gap-1 flex-wrap pt-1 border-t border-leather/30">
+          <span className="text-[10px] text-leather-dark/60 self-center font-semibold uppercase tracking-wide">Status:</span>
+          {[
+            { key: 'roped',       label: 'Roped',       title: '−1 Combat, −1 Defense, cannot move (Rope/Lasso)' },
+            { key: 'immobilized', label: 'Immobilized',  title: 'Cannot move this activation' },
+            { key: 'burning',     label: 'Burning',      title: 'D6 Wounds at start of activation (roll 4+ to extinguish)' },
+          ].map(({ key, label, title }) => {
+            const active = !!(group.statusEffects?.[key]);
+            return (
+              <button
+                key={key}
+                title={title}
+                className={`btn btn-xs ${active ? 'btn-warning' : 'btn-outline'}`}
+                onClick={() => {
+                  const newGroups = [...allGroups];
+                  newGroups[groupIdx].statusEffects = {
+                    ...(newGroups[groupIdx].statusEffects || {}),
+                    [key]: !active,
+                  };
+                  setCombatGroups(newGroups);
+                }}
+              >
+                {active ? `✓ ${label}` : label}
+              </button>
+            );
+          })}
+        </div>
         <button className="btn btn-xs btn-ghost text-red-600 ml-auto" onClick={removeGroup}>Remove</button>
       </div>
+      {/* Active status effects summary */}
+      {group.statusEffects && Object.values(group.statusEffects).some(Boolean) && (
+        <div className="bg-amber-50 border-t border-amber-300 px-3 py-1.5 flex flex-wrap gap-2">
+          {group.statusEffects.roped && (
+            <span className="text-[10px] font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded">
+              ROPED — −1 Combat, −1 Defense, no move
+            </span>
+          )}
+          {group.statusEffects.immobilized && (
+            <span className="text-[10px] font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded">
+              IMMOBILIZED — no move
+            </span>
+          )}
+          {group.statusEffects.burning && (
+            <span className="text-[10px] font-bold text-red-800 bg-red-200 px-1.5 py-0.5 rounded">
+              BURNING — D6 Wounds / activation (4+ out)
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

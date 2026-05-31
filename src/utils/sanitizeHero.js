@@ -242,6 +242,11 @@ export function sanitizeHero(inputHero) {
 
     // Transformation Curse — null | 'zombie' | 'werewolf' | 'vampire'
     transformation: hero.transformation ?? null,
+
+    // Session tracking
+    gearExhausted:    hero.gearExhausted    ?? {},   // { slotName: bool } — reset each adventure
+    hiddenDarkStone:  hero.hiddenDarkStone  ?? 0,    // Dark Stone Satchel etc. — excluded from end-of-adventure roll
+    collectionTokens: hero.collectionTokens ?? 0,    // Collection Jar — unique enemy types collected
   };
 }
 
