@@ -27,6 +27,9 @@ React + Vite app for tracking Heroes, Town Visits, and game state for *Shadows o
 | `Grit` | Max Grit cap | 2 |
 | `gold` | Currency | 0 |
 | `xp` | Experience points | 0 |
+| `gearExhausted` | `{ slotName: bool }` — session-level exhaustion (once-per-adventure items); cleared on adventure start/end | `{}` |
+| `hiddenDarkStone` | Dark Stone excluded from end-of-adventure corruption roll (Dark Stone Satchel etc.) | 0 |
+| `collectionTokens` | Unique enemy types collected (Collection Jar mechanic) | 0 |
 
 **Core stats (inside `hero.stats`):**
 | Stat | Type | Default |
@@ -358,7 +361,7 @@ Collapsible sections with card counts and search for every deck:
 | Encounter Cards | `encounterCards.js` | `ENCOUNTER_CARDS` |
 | Loot Cards | `lootDeck.js` | `lootCards` |
 | World Cards | `worldCards.js` | `WORLD_CARDS` |
-| Map Cards | `mapCards.js` | `MAP_CARDS` |
+| Map Cards | `mapCards.js` | `MAP_CARDS` — images at `public/assets/images/maps/mine/` (PNG) and `public/assets/images/maps/blasted_wastes/` (JPG) |
 | Gear Cards | `items/gearCards.js` | slot, value, effects, restrictions |
 | Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
 | OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
@@ -491,7 +494,14 @@ Any `currentCorruption +=` write must be preceded by Willpower saves unless card
 | `web` | "Webbed marker" |
 | `snare` | "Snare marker" |
 | `noise` | "Noise marker" |
+| `invisible` | Concealment — hero cannot be targeted; ends on attack or when adjacent to enemy |
 | `voidVenom` | NOT in system — used by all Spider variants |
+
+### Enemy Status Effects (`EnemyGroupCard.jsx`)
+Per-group status stored in `group.statusEffects = { roped, immobilized, burning }`. Toggled via buttons in each enemy group card. Visual badge strip shows active statuses with mechanical reminders:
+- **Roped** — −1 Combat, −1 Defense, cannot move
+- **Immobilized** — cannot move this activation
+- **Burning** — D6 Wounds at start of activation; roll 4+ to extinguish
 
 ### Enemy Mechanics NOT Implemented
 - Regeneration (X) — heals X wounds at turn start (Hell Vermin, Undead Gunslinger, etc.)
@@ -502,6 +512,14 @@ Any `currentCorruption +=` write must be preceded by Willpower saves unless card
 - Shootout mechanics — Undead Gunslinger/Outlaws
 - Formation — Lost Army defensive stance
 - Enemy special card decks — Serpent Magik, Shaman Juju Trinkets, etc.
+- Artifact theft — enemy steals a random item from adjacent hero
+- Linked minion enemies — killing minion boss also removes the minion group
+- Extra enemy activation — some enemies activate twice per round
+- Melee range extension — some large enemies attack from 2 spaces away
+- Defense type override — Hex Bag replaces Defense with D6 roll regardless of hit count
+- Conditional enemy revive — Endless Waves: killed enemies re-enter at dungeon edge
+- Stolen Victim markers — enemy that captures a hero; specific rescue mechanic
+- Void Gate placement — Void Hive ability places a Gate token on the board
 
 ### Enemy Data Schema (3 formats, all handled by `enemyUtils.js:normalizeEnemyData`)
 1. **Old** (mineEnemies): flat `health`, `defense`, `melee: { toHit, damage }`, `eliteChart`
@@ -783,6 +801,12 @@ Shuffle discard pile when deck empties.
 | Challenge Pack #1 fully wired | `data/dungeonPacks/challengePack1.js` — threat, darkness (4 cards), enemy trait cards; toggle in Settings; sections in Deck Explorer |
 | Mission system | `data/missions/` + `useActiveMission` + `DMMissionsPanel` — browse by pack, select active mission, persisted in localStorage |
 | Wasteland Loot Deck | `data/lootDecks/wastesLootDeck.js` — 17 cards; wired for Blasted Wastes and The Canyons worlds |
+| Gear exhaustion tracking | `GearTab.jsx` — per-slot Exhaust/Ready toggle; dimmed + USED badge on exhausted slots; `gearExhausted` cleared on adventure start/end in `DMAdventureTracker.jsx` |
+| Hidden Dark Stone | `sanitizeHero.js` + `StatsTab.jsx` — `hiddenDarkStone` excluded from end-of-adventure corruption roll; +/− controls visible in Stats tab |
+| Collection Jar tokens | `sanitizeHero.js` + `StatsTab.jsx` — `collectionTokens` counter with +/− controls |
+| Invisible hero marker | `statusMarkers.js` — concealment effect, no activation penalty, ends on attack or adjacency |
+| Enemy status effect toggles | `EnemyGroupCard.jsx` — Roped / Immobilized / Burning toggles per group; badge strip shows active statuses with mechanical reminders |
+| Piercing the Veil armor suppression banner | `DMAdventureTracker.jsx` — detects Piercing the Veil in `darknessActive`; shows amber warning that heroes cannot make Armor rolls |
 
 ### Not Yet Implemented — Priority Order
 

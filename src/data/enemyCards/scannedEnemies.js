@@ -629,7 +629,7 @@ export const scannedEnemies = [
       "Serpentmen",
       "Tribal",
       "Magic",
-      "Argono"
+      "Jargono"
     ],
     "Size": "Medium",
     "initiative": 7,
@@ -752,7 +752,7 @@ export const scannedEnemies = [
     "keywords": [
       "Serpentmen",
       "Tribal",
-      "Argono"
+      "Jargono"
     ],
     "Size": "Medium",
     "initiative": 5,
