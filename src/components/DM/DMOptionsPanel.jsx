@@ -4,12 +4,14 @@ import DMItemGenerator from './DMItemGenerator';
 import DMScanCards from './DMScanCards';
 import DMBigScorePanel from './DMBigScorePanel';
 import DMWarrantsPanel from './DMWarrantsPanel';
+import DMMissionsPanel from './DMMissionsPanel';
 import { WORLD_CARDS_BY_CAMPAIGN } from '../../data/worldCards';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 import { useDungeonPacks } from '../../hooks/useDungeonPacks';
 
 const SUB_TABS = [
   { id: 'settings',     label: 'Settings' },
+  { id: 'missions',     label: 'Missions' },
   { id: 'deckExplorer', label: 'Deck Explorer' },
   { id: 'itemGen',      label: 'Item Generator' },
   { id: 'scan',         label: 'Scan Cards' },
@@ -199,6 +201,8 @@ export default function DMOptionsPanel(props) {
           mergedWorldsCount={mergedWorldsCount}
         />
       )}
+
+      {subTab === 'missions' && <DMMissionsPanel />}
 
       {subTab === 'deckExplorer' && <DMDeckExplorer />}
 
