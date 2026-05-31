@@ -134,6 +134,7 @@ src/
 ├── hooks/
 │   ├── useCombatState.jsx       # Darkness deck, growing dread, enemy groups (localStorage key: sob_combat_state_v4)
 │   ├── useHexCrawlSettings.js   # HexCrawl mode per-chart toggles (localStorage key: sob:hexcrawl_settings)
+│   ├── useActiveMission.js      # Active mission selection (localStorage key: sob:active_mission)
 │   ├── useLootPool.jsx
 │   └── usePersistentMapDrawn.js
 ├── screens/
@@ -143,7 +144,8 @@ src/
 ├── components/
 │   ├── DM/                      # DMTab, DMTurnTracker, DMEnemyPanel, DMLootPoolPanel, DMMapDrawer, etc.
 │   │   ├── DMDeckExplorer.jsx   # Collapsible deck browser (all card types incl. enemies)
-│   │   └── DMOptionsPanel.jsx   # Options sub-tab shell (Settings/DeckExplorer/ItemGen/Scan)
+│   │   ├── DMMissionsPanel.jsx  # Mission browser: grouped by pack, collapsible detail cards, select/clear active mission
+│   │   └── DMOptionsPanel.jsx   # Options sub-tab shell (Settings/Missions/DeckExplorer/ItemGen/Scan/BigScore/Warrants)
 │   ├── TownTab/                 # Town phase UI + LocationPanel
 │   ├── Town/                    # Town event drawers, travel hazards
 │   ├── Shops/                   # Shop/service UI
@@ -193,6 +195,12 @@ src/
 │   │   ├── scaffordLieutenants.js  # SCAFFORD_LIEUTENANT_CARDS — 6 named lieutenant cards
 │   │   └── townTypeCards.js     # 7 Frontier Town expansion Town Type cards (Mining, Mutant, Outlaw, Plague, Rail, River, Ruins)
 │   ├── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
+│   ├── dungeonPacks/            # challengePack1.js, challengePack2.js, 8 Spider ESP files, index.js
+│   ├── lootDecks/               # wastesLootDeck.js (Blasted Wastes + The Canyons shared 17-card deck)
+│   ├── missions/                # Mission data files aggregated via index.js
+│   │   ├── enemySwarmPack3.js   # ESP3 missions (Burn 'Em Out)
+│   │   ├── hellMouthMissions.js # Hell Mouth Terrain Pack missions
+│   │   └── index.js             # Exports ALL_MISSIONS flat array
 │   └── depthEvents/             # World-specific Depth Event charts (6 worlds, roll 1-6 = die value doubled)
 │       ├── depthEvents_Mines.js, _TargaPlateau.js, _Jargono.js, _DerelictShip.js, _Canyons.js, _BlastedWastes.js
 │       └── depthEventLookup.js  # getDepthEvent(world, dieValue) + getHBtDThreshold(depth)
@@ -206,7 +214,7 @@ src/
 
 **Firestore collections:** `heroes/{heroId}`, `posse`, `shared/world`
 
-**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions), `sob:statsViewMode` (`'tiles'`|`'list'`), `sob:stats:tileColors:{heroId}`, `sob:stats:listOrder:{heroId}`, `sob:stats:layout:{heroId}` (react-grid-layout positions), `dm_options_subtab`, `dm_campaigns`, `dm_current_drawer`, `sob:hexcrawl_settings` (HexCrawl mode toggles — see below), `sob:big_score_state` (Big Score modifier phase/roles/tokens), `sob:warrants_state` (Warrants modifier active warrant/markers)
+**localStorage keys:** `activeHeroId`, `{heroId}` (hero JSON cache), `sob:lastTab:{heroId}`, `sob_combat_state_v4`, `sob_adventure_state` (adventure track — schema v3, auto-discards older versions), `sob:statsViewMode` (`'tiles'`|`'list'`), `sob:stats:tileColors:{heroId}`, `sob:stats:listOrder:{heroId}`, `sob:stats:layout:{heroId}` (react-grid-layout positions), `dm_options_subtab`, `dm_campaigns`, `dm_current_drawer`, `sob:hexcrawl_settings` (HexCrawl mode toggles — see below), `sob:active_mission` (active mission ID string), `sob:dungeon_packs` (enabled dungeon pack flags), `sob:big_score_state` (Big Score modifier phase/roles/tokens), `sob:warrants_state` (Warrants modifier active warrant/markers)
 
 **Local mode:** If `VITE_FIREBASE_API_KEY` or `VITE_FIREBASE_PROJECT_ID` are missing → localStorage only. Logs `[Firebase] Missing env keys`.
 
@@ -328,8 +336,9 @@ slot 16: Darkness Entry
 
 ### DM Tab — Options Consolidation
 
-The **Options** top-level tab now contains six sub-tabs (state persisted as `dm_options_subtab`):
-- **Settings** — campaign checkboxes (world source selection), select-all/none, merged worlds count; HexCrawl mode toggles
+The **Options** top-level tab now contains seven sub-tabs (state persisted as `dm_options_subtab`):
+- **Settings** — campaign checkboxes (world source selection), select-all/none, merged worlds count; HexCrawl mode toggles; Dungeon Pack toggles
+- **Missions** — browse missions grouped by pack; select/clear active mission (persisted in `sob:active_mission`)
 - **Deck Explorer** — browse all card decks (see below)
 - **Item Generator** — moved from former top-level tab
 - **Scan Cards** — moved from former top-level tab
@@ -368,9 +377,45 @@ Collapsible sections with card counts and search for every deck:
 | Warrants Gear | `data/missionModifiers/warrants.js` `WARRANTS_GEAR` | 3 promo gear items: Frontier Deputy Badge (Law keyword + HBtD reroll), Outlaw Shackles (Strength test to remove enemy activation), Long Arm of the Law (D8 shotgun, Law Only) |
 | On the Run (Trait) | `data/missionModifiers/warrants.js` `ON_THE_RUN_TRAIT` | Enemy trait: Outlaw keyword, +1 Init, +2 Move, Cover 5+, Bounty $25/$100 |
 | Spider ESP Packs | `data/dungeonPacks/` (8 files) | 8 world-specific Extra Spawning Packs; all under the `spiderESP` toggle |
+| Challenge Pack #1 — Threats | `data/dungeonPacks/challengePack1.js` | Hell Swarm, Broken Pact, Tide of Vermin, Legions of the Damned threat cards; `challengePack1` toggle |
+| Challenge Pack #1 — Darkness | `data/dungeonPacks/challengePack1.js` | 4 darkness cards: Soul Crush ×2, In the Grip of Darkness, Piercing the Veil; `challengePack1` toggle |
+| Challenge Pack #1 — Enemy Traits | `data/dungeonPacks/challengePack1.js` | Enemy trait cards; `challengePack1` toggle |
 | Challenge Pack #2 | `data/dungeonPacks/challengePack2.js` | 16 threat, 4 darkness, 5 encounter, 5 beast trait cards; `challengePack2` toggle |
 
-**Dungeon Pack Spawn Roller:** `DeckSection` accepts a `packActive` prop. When `true`, a `SpawnRoller` component renders below each card that contains `{P}` notation in its `spawn` text or has a `heroScaling` array. The roller parses `{P}` count + flat bonus, shows hero-tier buttons for scaling cards, rolls the Peril Die (`rollPeril()` from `diceHelpers.js`) N times, and displays each roll + total. Packs that are not enabled in DM Options → Settings show no roller. Add `packId: 'spiderESP'` or `packId: 'challengePack2'` to a DECKS entry to opt it in.
+**Dungeon Pack Spawn Roller:** `DeckSection` accepts a `packActive` prop. When `true`, a `SpawnRoller` component renders below each card that contains `{P}` notation in its `spawn` text or has a `heroScaling` array. The roller parses `{P}` count + flat bonus, shows hero-tier buttons for scaling cards, rolls the Peril Die (`rollPeril()` from `diceHelpers.js`) N times, and displays each roll + total. Packs that are not enabled in DM Options → Settings show no roller. Add `packId: 'spiderESP'`, `packId: 'challengePack1'`, or `packId: 'challengePack2'` to a DECKS entry to opt it in.
+
+### Mission System (`src/data/missions/`, `src/hooks/useActiveMission.js`, `src/components/DM/DMMissionsPanel.jsx`)
+
+Mission data lives in `src/data/missions/` — one file per pack, aggregated in `index.js` as `ALL_MISSIONS`.
+
+**Mission object shape:**
+```js
+{
+  id: 'unique_snake_case_id',
+  name: 'Mission Name',
+  pack: 'Pack Display Name',     // used for grouping in UI
+  packId: 'pack_id_slug',
+  missionNumber: 1,
+  description: '...',            // italicized flavor text
+  setup: '...',                  // optional setup instructions
+  heroScaling: [                 // optional table rows
+    { heroes: '2–3', text: '...' },
+    { heroes: '4+',  text: '...' },
+  ],
+  specialRules: [                // optional named rules
+    { name: 'Rule Name', text: '...' },
+  ],
+  objectives: ['...', '...'],    // bulleted list
+  reward: '...',                 // shown in green box
+  failure: '...',                // shown in red box
+}
+```
+
+**Active mission:** Stored in `localStorage` under `sob:active_mission`. `useActiveMission()` returns `{ activeMissionId, setMission, clearMission }`. The selected mission name displays in the amber banner at the top of DMMissionsPanel.
+
+**Adding new missions:** Create or extend a file in `src/data/missions/`, import it in `index.js`, and spread it into `ALL_MISSIONS`. No component changes needed — the panel auto-groups by `mission.pack`.
+
+**Wasteland Loot Deck:** Blasted Wastes and The Canyons worlds use a separate loot deck instead of the standard mine loot deck. Data is in `src/data/lootDecks/wastesLootDeck.js` (17 cards) and wired in `src/data/lootDecks.js` under both world name keys.
 
 ### HexCrawl Mode (`src/hooks/useHexCrawlSettings.js`)
 
@@ -702,7 +747,7 @@ Shuffle discard pile when deck empties.
 
 ---
 
-## Full Mechanics Audit (2026-05-16)
+## Full Mechanics Audit (2026-05-31)
 
 ### Implemented
 
@@ -734,7 +779,10 @@ Shuffle discard pile when deck empties.
 | Encounter drawer spawn-to-combat link | `DMEncounterDrawer.jsx` — "spawn to combat" button finds enemy by name and calls `addGroup` |
 | `enqueueChartRoll` D36 lookup + apply | `TownTab/index.jsx` — rolls D36, looks up entry in HexCrawl charts, appends condition to hero |
 | Scafford Lieutenants deck | `data/cards/scaffordLieutenants.js` — 6 named lieutenants (Sgt. Bunker, Ol 'One Eye' Jackson, 'Stone Face' McCoy, Captain Burns, 'Fast Draw' Jeb, 'Silver Back' Pa) |
-| Threat card data expanded | `data/cards/threatCards.js` — scanned high-tier batch added (standard, medium, high, epic, otherworld tiers) |
+| Threat card data expanded | `data/cards/threatCards.js` — physical medium standard deck + 27 Blasted Wastes OW cards added; BW OW cards use `heroTable: [{ range, text }]` format |
+| Challenge Pack #1 fully wired | `data/dungeonPacks/challengePack1.js` — threat, darkness (4 cards), enemy trait cards; toggle in Settings; sections in Deck Explorer |
+| Mission system | `data/missions/` + `useActiveMission` + `DMMissionsPanel` — browse by pack, select active mission, persisted in localStorage |
+| Wasteland Loot Deck | `data/lootDecks/wastesLootDeck.js` — 17 cards; wired for Blasted Wastes and The Canyons worlds |
 
 ### Not Yet Implemented — Priority Order
 
@@ -757,7 +805,6 @@ Shuffle discard pile when deck empties.
 | Threat cards → loot count link | `threatDecks.js` exists; not wired to loot draw count |
 | Grit recovery (Rest action) | Skip explore → heal D6 HP or gain 1 Grit; no UI |
 | Wanted/Outlaw status tracking | Smuggler's Den data exists; no persistent flag on hero |
-| Mission card selection/objectives | No mission structure; DM manages manually |
 | OtherWorld-specific mutation tables | Only the base table stub exists |
 
 #### Low (expansion content / advanced rules)
