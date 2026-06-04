@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { resolveActivationMarkers, getAllMarkers } from '../../utils/statusMarkers';
 import { rollND } from '../../utils/diceHelpers';
 
@@ -158,6 +158,25 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
   );
 
   const current = turnOrder[currentIdx] || null;
+
+  // The cursor is an index into a derived, re-sortable list. Track the active
+  // combatant by stable id so that when the order changes (initiative edits,
+  // a group spawned/removed mid-round), the highlight follows the same
+  // combatant instead of jumping to whoever now occupies that index.
+  const currentIdRef = useRef(null);
+  useEffect(() => {
+    if (current?.id != null) currentIdRef.current = current.id;
+  }, [current]);
+  useEffect(() => {
+    if (turnOrder.length === 0) return;
+    const prevId = currentIdRef.current;
+    if (prevId == null) return;
+    const foundIdx = turnOrder.findIndex(e => e.id === prevId);
+    setCurrentIdx(idx =>
+      foundIdx === -1 ? Math.min(idx, turnOrder.length - 1) : foundIdx
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnOrder]);
 
   const toggleExclude = useCallback((id) => {
     setExcluded(prev => {

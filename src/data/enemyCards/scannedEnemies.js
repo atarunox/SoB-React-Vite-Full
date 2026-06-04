@@ -1088,7 +1088,7 @@ export const scannedEnemies = [
     "keywords": [
       "Mutant",
       "Outlaw",
-      "Scaffold"
+      "Scafford"
     ],
     "Size": "Medium",
     "initiative": 4,
@@ -1109,18 +1109,18 @@ export const scannedEnemies = [
       "brutal": null
     },
     "abilities": [
-      "Shootout - Scaffold Pistol - Ranged Attack: Range - 8 Shots - 4 Damage 2",
+      "Shootout - Scafford Pistol - Ranged Attack: Range - 8 Shots - 4 Damage 2",
       "Firefight - At Initiative 1, if this Enemy is not adjacent to a Hero, it will make an additional Ranged Attack (without moving - target using Shootout).",
-      "Give 'em Hell Boys - All Scaffold models (including himself) gain +2 Shots while using their Firefight ability.",
+      "Give 'em Hell Boys - All Scafford models (including himself) gain +2 Shots while using their Firefight ability.",
       "Tough - Immune to Critical Hits"
     ],
     "eliteAbilities": [
       "Hardened Veteran of the War - +6 Health and +2 Combat",
       "Iron Will - +1 Defense",
       "Dark Stone Greed - Captain Burns' Attacks are +2 Damage against any Hero that is carrying one or more Artifact Items.",
-      "Bitter Feud - All Scaffold models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
+      "Bitter Feud - All Scafford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
       "Leading from the Front - +3 Health and Melee To Hit 3+",
-      "Burns' Charge - While there are any other Scaffold models on the board, Captain Burns gains Endurance (2) (may not take more than 2 Wounds per Hit. Extra Damage is wasted)."
+      "Burns' Charge - While there are any other Scafford models on the board, Captain Burns gains Endurance (2) (may not take more than 2 Wounds per Hit. Extra Damage is wasted)."
     ],
     "threatTier": "medium"
   },
@@ -1165,11 +1165,11 @@ export const scannedEnemies = [
     "threatTier": "medium"
   },
   {
-    "name": "Colonel Scaffold",
+    "name": "Colonel Scafford",
     "keywords": [
       "Mutant",
       "Outlaw",
-      "Scaffold"
+      "Scafford"
     ],
     "Size": "Medium",
     "initiative": 7,
@@ -1192,15 +1192,15 @@ export const scannedEnemies = [
     "abilities": [
       "Shootout - The Colonel's Pistols - Ranged Attack: Range 8, Shots 4, Damage 2",
       "Firefight - At Initiative 1, if this Enemy is not adjacent to a Hero, it will make an additional Ranged Attack (without moving - target using Shootout).",
-      "Southern Grit - Has 2 Grit markers (or 3 if 6 Heroes). Whenever any Scaffold model suffers 3 or more Wounds from a Single Hit, discard one Grit to give that model Armor 4+ against the Wounds from that Hit. These Grit Re-fill at the start of each turn.",
-      "Scaffold Leader - All other Scaffold Enemies gain +2 Initiative and +1 Shot/Combat for their Attacks.",
+      "Southern Grit - Has 2 Grit markers (or 3 if 6 Heroes). Whenever any Scafford model suffers 3 or more Wounds from a Single Hit, discard one Grit to give that model Armor 4+ against the Wounds from that Hit. These Grit Re-fill at the start of each turn.",
+      "Scafford Leader - All other Scafford Enemies gain +2 Initiative and +1 Shot/Combat for their Attacks.",
       "Tough - Immune to Critical Hits."
     ],
     "eliteAbilities": [
-      "\"You'll Never Take Me Alive!\" - Colonel Scaffold has 1 Revive Token - When killed, he is instantly healed back to 10 Health.",
-      "Ruthless Leader - Heroes may not target Colonel Scaffold with a Ranged Attack if there is another Scaffold model closer.",
-      "Dark Stone Horde - Colonel Scaffold's Attacks are +1 Damage for each Dark Stone shard or Item the target is carrying (max +3). At the end of the Fight, all Heroes gain D6 Dark Stone.",
-      "Bitter Feud - All Scaffold models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
+      "\"You'll Never Take Me Alive!\" - Colonel Scafford has 1 Revive Token - When killed, he is instantly healed back to 10 Health.",
+      "Ruthless Leader - Heroes may not target Colonel Scafford with a Ranged Attack if there is another Scafford model closer.",
+      "Dark Stone Horde - Colonel Scafford's Attacks are +1 Damage for each Dark Stone shard or Item the target is carrying (max +3). At the end of the Fight, all Heroes gain D6 Dark Stone.",
+      "Bitter Feud - All Scafford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
       "Mutant Sitte - Gains +3 Health for each Hero with no Mutations.",
       "\"The South Will Rise Again!\" - All Enemies gain Regeneration (2)."
     ],
@@ -1926,11 +1926,11 @@ export const scannedEnemies = [
     "threatTier": "medium"
   },
   {
-    "name": "Silver Back' Pa Scaffold",
+    "name": "Silver Back' Pa Scafford",
     "keywords": [
       "Mutant",
       "Outlaw",
-      "Scaffold",
+      "Scafford",
       "Legendary"
     ],
     "Size": "Medium",
@@ -1954,16 +1954,16 @@ export const scannedEnemies = [
     "abilities": [
       "Shootout - Blunderbliss - Ranged Attack: Range - 5 Shots - * Damage D8. Uses the D8 To Hit. * Shots are equal to the number of Noise markers on the target.",
       "Firefight - At Initiative 1, if this Enemy is not adjacent to a Hero, it will make an additional Ranged Attack (without moving - target using Shootout).",
-      "Ear Horn - While Pa Scaffold is on the board, Heroes collect Noise Markers. Only targets Heroes with 1 or more Noise markers.",
-      "'Ol Sum Bih' - Pa Scaffold has Tough (Immune to Critical Hits) and Endurance (1) (takes no more than 1 Wound per Hit. Extra Damage is wasted)."
+      "Ear Horn - While Pa Scafford is on the board, Heroes collect Noise Markers. Only targets Heroes with 1 or more Noise markers.",
+      "'Ol Sum Bih' - Pa Scafford has Tough (Immune to Critical Hits) and Endurance (1) (takes no more than 1 Wound per Hit. Extra Damage is wasted)."
     ],
     "eliteAbilities": [
       "\"Git off ma' Land!\" - The Blunderbliss now has 2 Shots for each Noise marker the target has.",
       "Moonshine - Whenever the 'Hold Back the Darkness' roll is failed, Heals D6 Wounds (or D3 if only 1 or 2 Heroes).",
-      "Dark Stone Pipe - Comes into play with D6 Dark Stone shards. Whenever Pa Scaffold would take a Wound or make an Attack, remove 1 Dark Stone from him to ignore that Wound or add +2 Damage during that Attack.",
+      "Dark Stone Pipe - Comes into play with D6 Dark Stone shards. Whenever Pa Scafford would take a Wound or make an Attack, remove 1 Dark Stone from him to ignore that Wound or add +2 Damage during that Attack.",
       "Straining to Hear - At the start of each turn, every Hero gains 1 Noise marker.",
       "Long Grey Beard - +3 Health and +1 Combat.",
-      "\"Ifs My Day...\" - All Heroes within 2 spaces of Pa Scaffold need to roll 1 higher than normal To Hit and for Defense and Willpower (6+ still succeeds)."
+      "\"Ifs My Day...\" - All Heroes within 2 spaces of Pa Scafford need to roll 1 higher than normal To Hit and for Defense and Willpower (6+ still succeeds)."
     ],
     "threatTier": "medium"
   },
@@ -2212,7 +2212,7 @@ export const scannedEnemies = [
     "keywords": [
       "Mutant",
       "Outlaw",
-      "Scaffold"
+      "Scafford"
     ],
     "Size": "Medium",
     "initiative": 4,
@@ -2233,17 +2233,17 @@ export const scannedEnemies = [
       "brutal": null
     },
     "abilities": [
-      "Shootout - Scaffold Pistol - Ranged Attack: Range 6 Shots 3 Damage 2",
+      "Shootout - Scafford Pistol - Ranged Attack: Range 6 Shots 3 Damage 2",
       "Firefight - At Initiative 1, if this Enemy is not adjacent to a Hero, it will make an additional Ranged Attack (without moving - target using Shootout). Ignore it Rebel Yell was triggered",
-      "Rebel Yell - Roll a D6 at the start of the turn. On the roll of 4+, all Scaffold models ignore Shootout and their Ranged Attacks this turn, moving and tanging normally for Melee Attacks. They also gain +5 Move and +2 Combat for this Activation."
+      "Rebel Yell - Roll a D6 at the start of the turn. On the roll of 4+, all Scafford models ignore Shootout and their Ranged Attacks this turn, moving and tanging normally for Melee Attacks. They also gain +5 Move and +2 Combat for this Activation."
     ],
     "eliteAbilities": [
       "Veteran of the War - +5 Health and +1 Initiative",
       "Iron Will - +1 Defense",
       "Dark Stone Greed - Sgt. Bunker's Attacks are +2 Damage against any Hero that is carrying one or more Items",
-      "Bitter Feud - All Scaffold models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse",
+      "Bitter Feud - All Scafford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse",
       "Ruthless Mutant - All of Sgt. Bunker's Attacks are now Damage +1",
-      "Southern Fury - Whenever Rebel Yell is triggered, all Heroes on the same Map Tile as one or more Scaffold models take D6 Horror Hits"
+      "Southern Fury - Whenever Rebel Yell is triggered, all Heroes on the same Map Tile as one or more Scafford models take D6 Horror Hits"
     ],
     "threatTier": "medium"
   },
@@ -2401,7 +2401,7 @@ export const scannedEnemies = [
       "Rocky Skin - +5 Wounds per Hit. Extra Damage is wasted.",
       "Massive Stone Fist - +1 Combat and +3 Damage on Combat Hits.",
       "Chunky Cigar - +3 Health and Regeneration (2) - (Heals 2 Wounds at the start of each turn).",
-      "Bitter Feud - All Scaffold models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
+      "Bitter Feud - All Scafford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
       "Poker Face - When using Firefight, Stone Face now makes an even free Ranged Attack.",
       "Rockslide Rage - Whenever a Hero does 3 or more Wounds to Stone Face from a single Hit, Stone Face immediately makes a free move toward that Hero, and makes a free Melee Attack against them, outside of the normal turn sequence."
     ],
@@ -2841,8 +2841,7 @@ export const scannedEnemies = [
     "keywords": [
       "Cult",
       "Fanatic",
-      "Cunning",
-      "Hand",
+      "Crimson Hand",
       "Magic"
     ],
     "Size": "Medium",

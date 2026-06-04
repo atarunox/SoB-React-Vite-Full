@@ -99,10 +99,22 @@ export function CombatProvider({ children }) {
   const removeGroup = (id) => setCombatGroups((prev) => prev.filter((g) => g.id !== id));
   const clearCombat = () => setCombatGroups([]);
 
+  // Full reset between missions: clear enemy groups, discard active/held darkness
+  // and growing dread cards, and reshuffle both decks fresh.
+  const resetCombatForAdventure = () => {
+    setCombatGroups([]);
+    setDarknessActive([]);
+    setDarknessHeld([]);
+    setDarknessDeck(shuffle([...DARKNESS_CARDS]));
+    setGrowingDreadActive([]);
+    setGrowingDreadHand([]);
+    setGrowingDreadDeck(shuffle([...GROWING_DREAD_CARDS]));
+  };
+
   return (
     <CombatContext.Provider value={{
       // old state (still available)
-      combatGroups, setCombatGroups, addGroup, removeGroup, clearCombat,
+      combatGroups, setCombatGroups, addGroup, removeGroup, clearCombat, resetCombatForAdventure,
       darkness, setDarkness, growingDread, setGrowingDread,
       // New: Growing Dread full persistent state
       growingDreadDeck, setGrowingDreadDeck,

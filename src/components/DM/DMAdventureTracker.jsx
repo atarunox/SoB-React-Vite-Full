@@ -146,7 +146,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
   if (!adventure) return null;
   const { state, updateAdventure, advanceDepth, retreatDepth, advanceDarkness, retreatDarkness, rollHBtD, resetAdventure, endAdventure } = adventure;
   const { updateHero } = usePosse();
-  const { darknessActive = [] } = useCombatState();
+  const { darknessActive = [], resetCombatForAdventure } = useCombatState();
   const { settings: hexSettings } = useHexCrawlSettings();
   const piercingTheVeil = darknessActive.some(c => /piercing.*veil/i.test(c?.name || ''));
   const [showConfig, setShowConfig] = useState(false);
@@ -272,6 +272,8 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
     setShowEndModal(false);
     setDsRollResults(null);
     endAdventure();
+    // Clear enemy groups + darkness/dread cards so they don't bleed into next mission
+    resetCombatForAdventure?.();
 
     // Strip conditions marked temporary (e.g. "until end of adventure" injuries)
     // Also reset gear exhaustion — items refresh between adventures
@@ -314,7 +316,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
         }));
       }
     });
-  }, [endAdventure, posse, updateHero]);
+  }, [endAdventure, posse, updateHero, resetCombatForAdventure]);
 
   const missionFailed = state.darkness > state.trackLength && state.active;
   const dangerZone = state.darkness >= state.trackLength - 2 && !missionFailed && state.active;

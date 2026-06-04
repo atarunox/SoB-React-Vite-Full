@@ -68,20 +68,28 @@ export default function EnemyGroupCard({
   // Use brutal flag from enemy data OR from posse level
   const isBrutal = brutal || group.baseStats?.brutal;
 
-  function setManualElite(val) {
+  // Replace the current group with a copied, mutated version — never mutate the
+  // shared combat-state group objects in place (they're referenced by other
+  // consumers like DMTurnTracker and by React's memoization).
+  function patchCurrentGroup(patch) {
     const newGroups = [...allGroups];
-    newGroups[groupIdx].manualExtraElite = val;
+    const g = newGroups[groupIdx];
+    newGroups[groupIdx] = typeof patch === 'function' ? patch({ ...g }) : { ...g, ...patch };
     setCombatGroups(newGroups);
+  }
+  const addModifier = (mod) =>
+    patchCurrentGroup((g) => ({ ...g, modifiers: [...(g.modifiers || []), mod] }));
+
+  function setManualElite(val) {
+    patchCurrentGroup({ manualExtraElite: val });
   }
 
   const applyCorrupted = () => {
-    const newGroups = [...allGroups];
-    newGroups[groupIdx].modifiers.push({
+    addModifier({
       type: 'corrupted',
       name: CORRUPTED_TRAIT.name,
       description: CORRUPTED_TRAIT.effect,
     });
-    setCombatGroups(newGroups);
   };
 
   const spawnSpecial = (special) => {
@@ -130,32 +138,26 @@ export default function EnemyGroupCard({
     const idx = Math.floor(Math.random() * traitDeck.length);
     const card = traitDeck[idx];
     if (!card) return;
-    const newGroups = [...allGroups];
-    newGroups[groupIdx].modifiers.push({
+    addModifier({
       type: "trait", name: card.name, effect: card.effect || {},
       addKeywords: card.keywords || [], description: card.description || "",
     });
-    setCombatGroups(newGroups);
   };
   const drawDarkness = () => {
     const idx = Math.floor(Math.random() * DARKNESS_CARDS.length);
     const card = DARKNESS_CARDS[idx];
-    const newGroups = [...allGroups];
-    newGroups[groupIdx].modifiers.push({
+    addModifier({
       type: "darkness", name: card.name, effect: card.effect || {},
       addKeywords: card.keywords || [], description: card.description || "",
     });
-    setCombatGroups(newGroups);
   };
   const drawGrowingDread = () => {
     const idx = Math.floor(Math.random() * GROWING_DREAD_CARDS.length);
     const card = GROWING_DREAD_CARDS[idx];
-    const newGroups = [...allGroups];
-    newGroups[groupIdx].modifiers.push({
+    addModifier({
       type: "growingDread", name: card.name, effect: card.effect || {},
       addKeywords: card.keywords || [], description: card.description || "",
     });
-    setCombatGroups(newGroups);
   };
   const drawEnemyTrait = () => {
     const deck = ENEMY_TRAIT_CARDS[group.name] || [];
@@ -169,19 +171,15 @@ export default function EnemyGroupCard({
     }
     const card = deck[Math.floor(Math.random() * deck.length)];
     setTraitRoll({ roll, card });
-    const newGroups = [...allGroups];
-    newGroups[groupIdx].modifiers.push({
+    addModifier({
       type: "enemyTrait",
       name: card.name,
       description: card.effect || '',
     });
-    setCombatGroups(newGroups);
   };
 
   const removeModifier = (i) => {
-    const newGroups = [...allGroups];
-    newGroups[groupIdx].modifiers.splice(i, 1);
-    setCombatGroups(newGroups);
+    patchCurrentGroup((g) => ({ ...g, modifiers: (g.modifiers || []).filter((_, idx) => idx !== i) }));
   };
   const removeGroup = () => {
     setCombatGroups(allGroups.filter((_, i) => i !== groupIdx));
@@ -505,12 +503,10 @@ export default function EnemyGroupCard({
                 title={title}
                 className={`btn btn-xs ${active ? 'btn-warning' : 'btn-outline'}`}
                 onClick={() => {
-                  const newGroups = [...allGroups];
-                  newGroups[groupIdx].statusEffects = {
-                    ...(newGroups[groupIdx].statusEffects || {}),
-                    [key]: !active,
-                  };
-                  setCombatGroups(newGroups);
+                  patchCurrentGroup((g) => ({
+                    ...g,
+                    statusEffects: { ...(g.statusEffects || {}), [key]: !active },
+                  }));
                 }}
               >
                 {active ? `✓ ${label}` : label}
