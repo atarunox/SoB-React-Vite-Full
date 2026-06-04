@@ -459,18 +459,16 @@ On the TV display, enemy entries render with a red-tinted border and show `×cou
 Any `currentCorruption +=` write must be preceded by Willpower saves unless card text says "ignoring Willpower".
 
 ### Not Yet Implemented
-- Enemy attack engine (only hero defense is modeled)
-- Critical hit handling (nat 6 → ignore Defense)
-- Dark Stone end-of-adventure corruption roll (two-stage)
-- Grit reroll restrictions (no chart rerolls)
+- Enemy attack engine in DM UI — combat resolution functions exist in `combatResolution.js` but no DM panel triggers them; attacks are narrated manually
+- Grit reroll restrictions (no chart rerolls enforced)
 - Bleeding/Fear/Madness auto-application post-combat
-- Grit spend during combat
+- Grit spend during combat (Grit reroll for saves IS in `combatResolution.js` functions; no DM combat flow UI exists to trigger it)
 - Dark Stone allergy auto-damage (`dsAllergy` flag exists but not enforced)
 - `gritCap` enforcement from conditions
 - `forbidSlots` enforcement in all gear equip paths
 - Wanted/Outlaw status tracking
 - OtherWorld-specific mutation tables
-- Injury/Madness/Mutation charts (D66 — currently only 2-3 stub entries each)
+- Standard Brimstone D66 charts (2–3 stub entries each in `src/data/charts/`) — HexCrawl D36 charts are complete (36 entries in `src/components/DM/charts/`)
 - Spirit Guides (Eagle, Snake, Beaver) — in `finish-general-store` branch, not yet merged
 - Doc's Office Medical Attention tab disable — in `disable-medical-attention` branch, not yet merged
 - Orphanage and Town Hall locations (stubbed empty)
@@ -726,7 +724,8 @@ Shuffle discard pile when deck empties.
 ### Dark Stone
 
 - Each Dark Stone carried → end-of-adventure risk: roll D6; on 1-3 take a Corruption Hit → Willpower save
-- No Grit rerolls on the D6 risk roll itself; Grit CAN be used on the Willpower save
+- No Grit rerolls on the D6 risk roll itself; Grit CAN be used on the Willpower save (NOTE: current auto-roll in `handleEndAdventure` does not prompt for Grit — both rolls happen silently)
+- `hiddenDarkStone` (Dark Stone Satchel etc.) is tracked separately and excluded from the end-of-adventure roll; only `darkStone` (visible/exposed stones) count
 - Dark Stone weapons grant bonus attack dice but increase corruption exposure
 - Items with `darkStone: true` flag count for end-of-adventure rolls
 
@@ -807,26 +806,33 @@ Shuffle discard pile when deck empties.
 | Invisible hero marker | `statusMarkers.js` — concealment effect, no activation penalty, ends on attack or adjacency |
 | Enemy status effect toggles | `EnemyGroupCard.jsx` — Roped / Immobilized / Burning toggles per group; badge strip shows active statuses with mechanical reminders |
 | Piercing the Veil armor suppression banner | `DMAdventureTracker.jsx` — detects Piercing the Veil in `darknessActive`; shows amber warning that heroes cannot make Armor rolls |
+| Critical hits (nat 6 → ignore Defense) | `combatResolution.js` `resolveHeroAttack` — crits bypass Defense, deal raw damage; Tough enemies immune |
+| Off-hand weapon To-Hit penalty (+1) | `combatResolution.js` line ~119 — off-hand attacks require 1 higher To-Hit; neither weapon can crit when dual-wielding |
+| Hero attack vs enemy: Defense + Armor + Cover + Endurance + DR | `combatResolution.js` `resolveHeroAttack` — full chain incl. enemy traits parsed from ability text |
+| Enemy attack vs hero: hit gen + Defense + Armor (physical) + Willpower + Spirit Armor (horror) | `combatResolution.js` `resolveFullEnemyAttack` + save functions — Grit reroll offered on each save |
+| Corruption Hit resolution (Willpower save per hit, Sociopathy bypass) | `combatResolution.js` `resolveCorruptionHits` |
+| Hex Hits (Willpower save, wounds + Armor) | `combatResolution.js` `resolveHexHits` |
+| Toxin Hits (Defense save → Poison tokens) | `combatResolution.js` `resolveToxinHits` |
+| Post-combat D3 healing (any mix Health/Sanity) | `combatResolution.js` `resolvePostCombatHealing` — utility function; DM calls manually |
+| Scavenge action (3D6, each 6 draws from loot deck) | `DMLootPoolPanel.jsx` `rollScavenge` |
+| Growing Dread "Reveal All" for mission climax | `DMGrowingDreadDrawer.jsx` — moves all held GD cards to active simultaneously |
 
 ### Not Yet Implemented — Priority Order
 
 #### High (core loop, happens every session)
 | Mechanic | Notes |
 |---|---|
-| Injury/Madness/Mutation D66 full chart data | Only 2-3 stub entries each; all 36 needed per chart |
-| Critical hits (nat 6 → ignore Defense) | `combatResolution.js` needs `isCrit = roll === 6` path |
-| Enemy attack engine | Only hero defense is modeled; enemy attacks are narrated manually |
+| Standard Brimstone D66 chart data | HexCrawl D36 charts are complete (36 entries each); standard Brimstone charts in `src/data/charts/` are stubs (2–3 entries). Digital lookup only available in HexCrawl mode |
+| Enemy attack engine in DM UI | `combatResolution.js` has full resolution functions; no DM panel triggers them — attacks narrated manually |
 | Corruption overflow auto-prompt in UI | Sanitizer adds placeholder mutation but no in-session alert fires at the moment of overflow |
 
 #### Medium (important but not every round)
 | Mechanic | Notes |
 |---|---|
 | Elite enemy abilities | `eliteChart` in data but no roll/apply/track mechanic |
-| GD card simultaneous reveal trigger | DM panel needs "Reveal all GD cards" button for mission climax |
-| Off-hand weapon To-Hit penalty | +1 to To-Hit for weapons in `Off Hand` slot; not enforced in stat pipeline |
+| Off-hand weapon To-Hit penalty in stat pipeline | +1 applied in `combatResolution.js` when resolving attacks; not reflected in displayed stats |
 | Travel hazard phase UI | `travelHazardChart.js` exists; no phase UI between adventure and town |
-| Scavenge action | Roll 3D6; each 6 → draw Scavenge card; no UI |
-| Threat cards → loot count link | `threatDecks.js` exists; not wired to loot draw count |
+| Threat cards → loot count auto-link | DM manually selects 1–3 threat cards in loot pool UI; not automatically linked to threat deck draw count |
 | Grit recovery (Rest action) | Skip explore → heal D6 HP or gain 1 Grit; no UI |
 | Wanted/Outlaw status tracking | Smuggler's Den data exists; no persistent flag on hero |
 | OtherWorld-specific mutation tables | Only the base table stub exists |

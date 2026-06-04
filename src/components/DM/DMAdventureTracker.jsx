@@ -464,7 +464,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
             {/* Step 4: Proceed */}
             <div className="border rounded-lg p-3">
               <div className="font-bold text-amber-900">4. Proceed to Town Phase</div>
-              <p className="text-xs text-gray-600">Sell Dark Stone at Frontier Outpost ($25/stone), then visit town locations.</p>
+              <p className="text-xs text-gray-600">Sell Dark Stone at Frontier Outpost (D6×$25/stone), then visit town locations.</p>
             </div>
           </div>
 
