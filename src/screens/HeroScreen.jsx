@@ -110,7 +110,10 @@ export default function HeroScreen({
       {/* Tab Navigation */}
       <div className="bg-gradient-to-b from-[#3a2814] to-leather-dark border-b border-brass/30 px-2 py-1.5 overflow-x-auto hide-scrollbar">
         <div className="flex items-center gap-1 min-w-max mx-auto">
-          {TABS.map(tab => (
+          {TABS.map(tab => {
+            const hasMutationPending = tab === 'Conditions' &&
+              activeHero?.mutations?.some(m => m.name === 'Mutation — Roll Needed');
+            return (
             <button
               key={tab}
               onClick={() => setSelectedTab(tab)}
@@ -124,8 +127,12 @@ export default function HeroScreen({
               `}
             >
               {tab}
+              {hasMutationPending && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border border-red-300 animate-pulse" />
+              )}
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 

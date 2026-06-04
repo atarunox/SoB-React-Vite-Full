@@ -84,6 +84,18 @@ export default function EnemyGroupCard({
     patchCurrentGroup({ manualExtraElite: val });
   }
 
+  const rollEliteAbility = () => {
+    const chart = bs.eliteChart || [];
+    if (chart.length === 0) return;
+    const roll = Math.floor(Math.random() * Math.min(chart.length, 6)) + 1;
+    const idx = roll - 1;
+    const text = chart[idx] || chart[0];
+    patchCurrentGroup(g => ({
+      ...g,
+      eliteAbilityList: [...(g.eliteAbilityList || []), { roll, text }],
+    }));
+  };
+
   const applyCorrupted = () => {
     addModifier({
       type: 'corrupted',
@@ -332,14 +344,20 @@ export default function EnemyGroupCard({
       {/* ── Elite abilities (when rolled) ── */}
       {Array.isArray(group.eliteAbilityList) && group.eliteAbilityList.length > 0 && (
         <div className="bg-amber-50 border-t border-amber-300 px-3 py-2">
-          <div className="text-xs font-bold uppercase tracking-widest text-amber-800 mb-1">Elite Abilities</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs font-bold uppercase tracking-widest text-amber-800">Elite Abilities</div>
+            <button
+              className="text-[10px] text-amber-600 hover:text-red-600"
+              onClick={() => patchCurrentGroup(g => ({ ...g, eliteAbilityList: [] }))}
+            >Clear</button>
+          </div>
           <ul className="space-y-1">
             {group.eliteAbilityList.map((a, i) => {
               const [title, ...rest] = (a.text || '').split(/\s[–-]\s/);
               const desc = rest.join(' – ');
               return (
                 <li key={i} className="text-xs leading-snug text-amber-900">
-                  <b>{a.roll}. {title}</b>{desc && ` – ${desc}`}
+                  <span className="font-bold text-amber-700">D6={a.roll}:</span> <b>{title}</b>{desc && ` – ${desc}`}
                 </li>
               );
             })}
@@ -415,10 +433,19 @@ export default function EnemyGroupCard({
 
       {/* ── Controls ── */}
       <div className="bg-parchment border-t border-leather px-3 py-2 flex flex-wrap gap-2 items-center">
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           <button className="btn btn-xs btn-outline" onClick={() => setManualElite(manualExtraElite + 1)}>+1 Elite</button>
           <button className="btn btn-xs btn-outline" disabled={manualExtraElite === 0}
             onClick={() => setManualElite(Math.max(0, manualExtraElite - 1))}>−1 Elite</button>
+          {(bs.eliteChart || []).length > 0 && (
+            <button
+              className="btn btn-xs btn-warning"
+              onClick={rollEliteAbility}
+              title="Roll D6 → randomly assign one Elite Ability from this enemy's chart"
+            >
+              Roll Elite
+            </button>
+          )}
         </div>
         <div className="flex gap-1 flex-wrap">
           <button className="btn btn-xs btn-outline" onClick={drawTrait}>Trait</button>
