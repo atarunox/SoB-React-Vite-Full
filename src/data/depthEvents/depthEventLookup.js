@@ -8,8 +8,11 @@ import { DEPTH_EVENTS_BLASTED } from './depthEvents_BlastedWastes';
 const CHART_BY_WORLD = {
   'Mines':            DEPTH_EVENTS_MINES,
   'Targa Plateau':    DEPTH_EVENTS_TARGA,
+  // World-card names use 'Jargono' / 'The Canyons'; keep the longer aliases too
+  'Jargono':          DEPTH_EVENTS_JARGONO,
   'Swamps of Jargono': DEPTH_EVENTS_JARGONO,
   'Derelict Ship':    DEPTH_EVENTS_DERELICT,
+  'The Canyons':      DEPTH_EVENTS_CANYONS,
   'Canyons':          DEPTH_EVENTS_CANYONS,
   'Blasted Wastes':   DEPTH_EVENTS_BLASTED,
 };

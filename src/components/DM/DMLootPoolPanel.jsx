@@ -337,8 +337,12 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
       patch.sideBag = [...(hero.sideBag || []), "Random Token"];
     }
 
+    // Resolve the resource payout ONCE and persist it onto the card, so that
+    // a dice-payout card (e.g. "Gain D6 x 50 Gold") doesn't re-roll a new amount
+    // on each claim and CAN be correctly reverted on Return to Pool.
+    let resolved = null;
     if (!card._isExpanded) {
-      const resolved = card.resolvedResources || resolvePayoutFromName(card.name || card.effect || "");
+      resolved = card.resolvedResources || resolvePayoutFromName(card.name || card.effect || "");
       if (resolved) {
         const delta = deltaFromResolved(resolved);
         for (const [field, amt] of Object.entries(delta)) patch[field] = n(hero[field]) + n(amt);
@@ -346,11 +350,11 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
     }
 
     updateHero(patch);
-    setLootPool(prev => { const copy = [...prev]; copy[idx] = { ...card, claimedBy: heroId, resolvedResources: card._isExpanded ? null : (card.resolvedResources || null) }; return copy; });
+    setLootPool(prev => { const copy = [...prev]; copy[idx] = { ...card, claimedBy: heroId, resolvedResources: card._isExpanded ? null : (resolved || null) }; return copy; });
     setClaimed(prev => ({ ...prev, [heroId]: [...(prev[heroId] || []), idx] }));
     setLootHistory(prev => [...prev, {
       action: "claim", card, from: "pool", to: heroId, time: Date.now(),
-      note: card._isExpanded ? `Claimed ${card.type}: ${card.name}` : (card.resolvedResources?.breakdown || undefined),
+      note: card._isExpanded ? `Claimed ${card.type}: ${card.name}` : (resolved?.breakdown || undefined),
     }]);
   }
 

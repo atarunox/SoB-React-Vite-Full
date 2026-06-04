@@ -1763,7 +1763,7 @@ export const scannedEnemies = [
       "Veteran of the War - +5 Health and +1 Initiative",
       "Blind Vengeance - +1 Defense",
       "Dark Stone Greed - 'Fast Draw' Jeb's Attacks are +2 Damage against any Hero that is carrying one or more Cursed Items.",
-      "Bitter Feud - All Scafford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Low or Outlaw in the Hero Posse.",
+      "Bitter Feud - All Scafford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
       "Ruthless Mutant - All of 'Fast Draw' Jeb's Attacks are now Damage +1",
       "Ultimate Gunfighter - 'Fast Draw' Jeb now has +D6 Shots each time he makes a Ranged Attack."
     ],
@@ -1910,16 +1910,16 @@ export const scannedEnemies = [
       "brutal": null
     },
     "abilities": [
-      "Shootout - Scattyford Pistol - Ranged Attack: Range - 8, Shots - 2, Damage 2",
+      "Shootout - Scafford Pistol - Ranged Attack: Range - 8, Shots - 2, Damage 2",
       "Firefight - At Initiative 1, if this Enemy is not adjacent to a Hero, it will make an additional Ranged Attack (without moving - target using Shootout).",
       "Void Eye - At the start of each turn, one Random Hero in Ol' One Eye Jackson's Line of Sight takes D6 Corruption Hits",
-      "Band of Misfits - All other Scattyford models in this Fight are +2 Health and +2 Combat. This effect persists even if Ol' One Eye Jackson is killed."
+      "Band of Misfits - All other Scafford models in this Fight are +2 Health and +2 Combat. This effect persists even if Ol' One Eye Jackson is killed."
     ],
     "eliteAbilities": [
       "Rejected Son - +5 Health and Melee To Hit rolls of 6+ do +3 Damage.",
       "Worthing Tentacle Mass - +1 Defense and +3 Health",
       "Need for Approval - Ol' One Eye loses Shootout but gains Assault. He now prioritizes his targets based on the Hero with the lowest current Health.",
-      "Bitter Feud - All Scattyford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Low or Outlaw in the Hero Posse.",
+      "Bitter Feud - All Scafford models are both +1 Health and +1 Shot/Combat for each Hero that is Keyword Law or Outlaw in the Hero Posse.",
       "Unstable Mutant - At the start of each turn, draw a Hideous Mutation card to play on Ol' One Eye. The effects of that card only last until the end of the turn.",
       "\"Look Into My EYE!!!\" - Void Eye now does 2D6 Horror Hits in addition to the Corruption Hits."
     ],

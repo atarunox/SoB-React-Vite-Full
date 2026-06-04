@@ -17,20 +17,20 @@ function shuffle(array) {
 export function CombatProvider({ children }) {
   // --- Standard state ---
   const [combatGroups, setCombatGroups] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).combatGroups : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).combatGroups ?? [] : []; } catch { return []; }
   });
   const [darkness, setDarkness] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darkness : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).darkness ?? [] : []; } catch { return []; }
   });
   const [growingDread, setGrowingDread] = useState(() => {
-    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDread : []; } catch { return []; }
+    try { const data = localStorage.getItem(LS_KEY); return data ? JSON.parse(data).growingDread ?? [] : []; } catch { return []; }
   });
 
   // --- Growing Dread persistent state ---
   const [growingDreadDeck, setGrowingDreadDeck] = useState(() => {
     try {
       const data = localStorage.getItem(LS_KEY);
-      return data ? JSON.parse(data).growingDreadDeck : shuffle([...GROWING_DREAD_CARDS]);
+      return data ? JSON.parse(data).growingDreadDeck ?? shuffle([...GROWING_DREAD_CARDS]) : shuffle([...GROWING_DREAD_CARDS]);
     } catch { return shuffle([...GROWING_DREAD_CARDS]); }
   });
   const [growingDreadHand, setGrowingDreadHand] = useState(() => {
@@ -49,7 +49,7 @@ export function CombatProvider({ children }) {
   const [darknessDeck, setDarknessDeck] = useState(() => {
     try {
       const data = localStorage.getItem(LS_KEY);
-      return data ? JSON.parse(data).darknessDeck : shuffle([...DARKNESS_CARDS]);
+      return data ? JSON.parse(data).darknessDeck ?? shuffle([...DARKNESS_CARDS]) : shuffle([...DARKNESS_CARDS]);
     } catch { return shuffle([...DARKNESS_CARDS]); }
   });
   const [darknessHeld, setDarknessHeld] = useState(() => {
