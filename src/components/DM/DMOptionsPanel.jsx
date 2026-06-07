@@ -4,6 +4,7 @@ import DMItemGenerator from './DMItemGenerator';
 import DMScanCards from './DMScanCards';
 import DMBigScorePanel from './DMBigScorePanel';
 import DMWarrantsPanel from './DMWarrantsPanel';
+import DMRuinousNightmaresPanel from './DMRuinousNightmaresPanel';
 import DMMissionsPanel from './DMMissionsPanel';
 import { WORLD_CARDS_BY_CAMPAIGN } from '../../data/worldCards';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
@@ -17,6 +18,7 @@ const SUB_TABS = [
   { id: 'scan',         label: 'Scan Cards' },
   { id: 'modifiers',    label: 'Big Score' },
   { id: 'warrants',     label: 'Warrants' },
+  { id: 'nightmares',   label: 'Nightmares' },
 ];
 
 const HEXCRAWL_TOGGLES = [
@@ -231,6 +233,10 @@ export default function DMOptionsPanel(props) {
 
       {subTab === 'warrants' && (
         <DMWarrantsPanel />
+      )}
+
+      {subTab === 'nightmares' && (
+        <DMRuinousNightmaresPanel />
       )}
     </div>
   );
