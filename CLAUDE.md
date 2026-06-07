@@ -199,7 +199,7 @@ src/
 │   │   └── townTypeCards.js     # 7 Frontier Town expansion Town Type cards (Mining, Mutant, Outlaw, Plague, Rail, River, Ruins)
 │   ├── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
 │   ├── dungeonPacks/            # challengePack1.js, challengePack2.js, 8 Spider ESP files, index.js
-│   ├── lootDecks/               # wastesLootDeck.js (Blasted Wastes + The Canyons shared 17-card deck)
+│   ├── lootDecks/               # wastesLootDeck.js (Blasted Wastes + The Canyons shared 16-card deck)
 │   ├── missions/                # Mission data files aggregated via index.js
 │   │   ├── enemySwarmPack3.js   # ESP3 missions (Burn 'Em Out)
 │   │   ├── hellMouthMissions.js # Hell Mouth Terrain Pack missions
@@ -420,7 +420,7 @@ Mission data lives in `src/data/missions/` — one file per pack, aggregated in 
 
 **Adding new missions:** Create or extend a file in `src/data/missions/`, import it in `index.js`, and spread it into `ALL_MISSIONS`. No component changes needed — the panel auto-groups by `mission.pack`.
 
-**Wasteland Loot Deck:** Blasted Wastes and The Canyons worlds use a separate loot deck instead of the standard mine loot deck. Data is in `src/data/lootDecks/wastesLootDeck.js` (17 cards) and wired in `src/data/lootDecks.js` under both world name keys.
+**Wasteland Loot Deck:** Blasted Wastes and The Canyons worlds use a separate loot deck instead of the standard mine loot deck. Data is in `src/data/lootDecks/wastesLootDeck.js` (16 cards) and wired in `src/data/lootDecks.js` under both world name keys.
 
 ### HexCrawl Mode (`src/hooks/useHexCrawlSettings.js`)
 
@@ -801,7 +801,7 @@ Shuffle discard pile when deck empties.
 | Threat card data expanded | `data/cards/threatCards.js` — physical medium standard deck + 27 Blasted Wastes OW cards added; BW OW cards use `heroTable: [{ range, text }]` format |
 | Challenge Pack #1 fully wired | `data/dungeonPacks/challengePack1.js` — threat, darkness (4 cards), enemy trait cards; toggle in Settings; sections in Deck Explorer |
 | Mission system | `data/missions/` + `useActiveMission` + `DMMissionsPanel` — browse by pack, select active mission, persisted in localStorage |
-| Wasteland Loot Deck | `data/lootDecks/wastesLootDeck.js` — 17 cards; wired for Blasted Wastes and The Canyons worlds |
+| Wasteland Loot Deck | `data/lootDecks/wastesLootDeck.js` — 16 cards; wired for Blasted Wastes and The Canyons worlds |
 | Gear exhaustion tracking | `GearTab.jsx` — per-slot Exhaust/Ready toggle; dimmed + USED badge on exhausted slots; `gearExhausted` cleared on adventure start/end in `DMAdventureTracker.jsx` |
 | Hidden Dark Stone | `sanitizeHero.js` + `StatsTab.jsx` — `hiddenDarkStone` excluded from end-of-adventure corruption roll; +/− controls visible in Stats tab |
 | Collection Jar tokens | `sanitizeHero.js` + `StatsTab.jsx` — `collectionTokens` counter with +/− controls |

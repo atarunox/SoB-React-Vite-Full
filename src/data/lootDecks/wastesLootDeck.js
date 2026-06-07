@@ -1,4 +1,4 @@
-// Wasteland Loot Deck — used in Canyons and Blasted Wastes instead of standard loot deck
+// Wasteland Loot Deck — used in Canyons and Blasted Wastes instead of standard loot deck (16 cards)
 // Duplicates are intentional — they match the physical card count.
 
 export default [
