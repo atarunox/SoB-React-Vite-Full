@@ -6,6 +6,7 @@ import DMBigScorePanel from './DMBigScorePanel';
 import DMWarrantsPanel from './DMWarrantsPanel';
 import DMRuinousNightmaresPanel from './DMRuinousNightmaresPanel';
 import DMMissionsPanel from './DMMissionsPanel';
+import DMHexCrawlPanel from './DMHexCrawlPanel';
 import { WORLD_CARDS_BY_CAMPAIGN } from '../../data/worldCards';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 import { useDungeonPacks } from '../../hooks/useDungeonPacks';
@@ -13,6 +14,7 @@ import { useDungeonPacks } from '../../hooks/useDungeonPacks';
 const SUB_TABS = [
   { id: 'settings',     label: 'Settings' },
   { id: 'missions',     label: 'Missions' },
+  { id: 'hexcrawl',     label: 'HexCrawl' },
   { id: 'deckExplorer', label: 'Deck Explorer' },
   { id: 'itemGen',      label: 'Item Generator' },
   { id: 'scan',         label: 'Scan Cards' },
@@ -22,11 +24,15 @@ const SUB_TABS = [
 ];
 
 const HEXCRAWL_TOGGLES = [
-  { key: 'injuryChart',      label: 'Injury Chart (D36)',              desc: 'HexCrawl expanded 36-entry injury chart' },
-  { key: 'madnessChart',     label: 'Madness Chart (D36)',             desc: 'HexCrawl expanded 36-entry madness chart' },
-  { key: 'mutationChart',    label: 'Mutation Chart (D36)',            desc: 'HexCrawl expanded 36-entry mutation chart' },
-  { key: 'townTraits',       label: 'Town Traits Chart (D36)',         desc: 'Roll for town traits when entering a new town' },
-  { key: 'persistentHealth', label: 'Persistent Health',              desc: 'No full heal at adventure end — Catch Your Breath only' },
+  { key: 'injuryChart',          label: 'Injury Chart (D36)',          desc: 'HexCrawl expanded 36-entry injury chart' },
+  { key: 'madnessChart',         label: 'Madness Chart (D36)',         desc: 'HexCrawl expanded 36-entry madness chart' },
+  { key: 'mutationChart',        label: 'Mutation Chart (D36)',        desc: 'HexCrawl expanded 36-entry mutation chart' },
+  { key: 'townTraits',           label: 'Town Traits Chart (D36)',     desc: 'Roll for town traits when entering a new town' },
+  { key: 'persistentHealth',     label: 'Persistent Health',          desc: 'No full heal at adventure end — Catch Your Breath only' },
+  { key: 'jobsBoard',            label: 'Jobs Board (D100)',           desc: 'HexCrawl overland side-quests; roll D100 at the Jobs Board' },
+  { key: 'terrainEncounters',    label: 'Terrain Encounters (D20)',    desc: 'Terrain-specific encounter tables for Overland Searches' },
+  { key: 'wildernessEncounters', label: 'Wilderness Encounters (D100)', desc: 'Daily D8 Wilderness Encounter roll during Overland travel' },
+  { key: 'townSetup',            label: 'Town Setup Wizard',           desc: 'Random town generation: Size, Type, Traits, Locations' },
 ];
 
 function SettingsPanel({ selectedCampaigns, setSelectedCampaigns, mergedWorldsCount }) {
@@ -205,6 +211,8 @@ export default function DMOptionsPanel(props) {
       )}
 
       {subTab === 'missions' && <DMMissionsPanel />}
+
+      {subTab === 'hexcrawl' && <DMHexCrawlPanel />}
 
       {subTab === 'deckExplorer' && <DMDeckExplorer />}
 

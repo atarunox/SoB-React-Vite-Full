@@ -3,11 +3,15 @@ import { useState, useCallback } from 'react';
 const STORAGE_KEY = 'sob:hexcrawl_settings';
 
 const DEFAULTS = {
-  injuryChart:      true,
-  madnessChart:     true,
-  mutationChart:    true,
-  townTraits:       true,
-  persistentHealth: false,
+  injuryChart:          true,
+  madnessChart:         true,
+  mutationChart:        true,
+  townTraits:           true,
+  persistentHealth:     false,
+  jobsBoard:            true,
+  terrainEncounters:    true,
+  wildernessEncounters: true,
+  townSetup:            true,
 };
 
 function load() {
