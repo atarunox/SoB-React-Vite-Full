@@ -24,7 +24,8 @@ import { VOID_SPIDERS_PACK, ANCIENT_SPIDERS_PACK, TRENCH_SPIDERS_PACK,
          BILE_SPIDERS_PACK, NIGHTSHADE_SPIDERS_PACK, FORTRESS_SPIDERS_PACK,
          CRAB_SPIDERS_PACK, SPANISH_SPIDERS_PACK,
          CHALLENGE_PACK_1, CHALLENGE_PACK_2 } from '../../data/dungeonPacks';
-import { townTraitsChart }        from './charts/townTraitsChart';
+import { townTraitsChart }                  from './charts/townTraitsChart';
+import { wastelandTravelHazardChart }       from './charts/wastelandTravelHazardChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
@@ -63,7 +64,8 @@ const DECKS = [
   { id: 'mineArt',    label: 'Mine Artifacts',         cards: mineArtifacts       },
   { id: 'owArt',      label: 'OtherWorld Artifacts',   cards: otherWorldArtifacts },
   { id: 'townTypes',   label: 'Town Type Cards',        cards: TOWN_TYPE_CARDS         },
-  { id: 'townTraits',  label: 'Town Traits (D36)',      cards: townTraitsChart         },
+  { id: 'townTraits',              label: 'Town Traits (D36)',                    cards: townTraitsChart              },
+  { id: 'wastelandTravelHazards', label: 'Wasteland Travel Hazards (D36)',       cards: wastelandTravelHazardChart   },
   { id: 'enemyTraits',   label: 'Enemy Trait Cards',        cards: flatEnemyTraitCards   },
   { id: 'warChant',     label: 'Black Fang War Chant',     cards: BLACK_FANG_WAR_CHANT  },
   { id: 'scaffordLieutenants',    label: 'Scafford Lieutenants',      cards: SCAFFORD_LIEUTENANT_CARDS  },

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { travelHazardChart } from '../../data/charts/travelHazardChart';
+import { wastelandTravelHazardChart } from './charts/wastelandTravelHazardChart';
 import { townTraitsChart } from './charts/townTraitsChart';
+
+const WASTELAND_WORLDS = new Set(['Blasted Wastes', 'The Canyons']);
 import TownVisitPanel from './TownVisitPanel';
 import TownStayManager from './TownStayManager';
 
@@ -8,9 +11,20 @@ export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier
   const [hazardRolled, setHazardRolled] = useState(null);
   const [traitRolled, setTraitRolled] = useState(null);
 
+  const hazardChart = WASTELAND_WORLDS.has(world) ? wastelandTravelHazardChart : travelHazardChart;
+
   const rollHazard = () => {
-    const idx = Math.floor(Math.random() * travelHazardChart.length);
-    setHazardRolled(travelHazardChart[idx]);
+    if (WASTELAND_WORLDS.has(world)) {
+      // D36: roll two dice (tens 1–6, ones 1–6)
+      const tens = Math.ceil(Math.random() * 6);
+      const ones = Math.ceil(Math.random() * 6);
+      const roll = tens * 10 + ones;
+      const result = wastelandTravelHazardChart.find(e => e.roll === roll);
+      setHazardRolled(result ? { ...result, rolledValue: roll } : null);
+    } else {
+      const idx = Math.floor(Math.random() * hazardChart.length);
+      setHazardRolled(hazardChart[idx]);
+    }
   };
   const rollTrait = () => {
     const d1 = Math.ceil(Math.random() * 6);
@@ -30,8 +44,15 @@ export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier
         <button className="btn btn-secondary" onClick={rollTrait}>Roll Town Trait</button>
       </div>
       {hazardRolled && (
-        <div className="mt-2 p-2 bg-yellow-50 border rounded">
-          <strong>Travel Hazard:</strong> {hazardRolled.name} — <span className="italic">{hazardRolled.effect}</span>
+        <div className="mt-2 p-3 bg-yellow-50 border border-yellow-300 rounded-lg space-y-1">
+          <div className="flex items-center gap-2">
+            {hazardRolled.rolledValue && (
+              <span className="text-xs font-mono bg-yellow-200 text-yellow-900 px-2 py-0.5 rounded">{hazardRolled.rolledValue}</span>
+            )}
+            <strong className="text-yellow-900">{hazardRolled.name}</strong>
+          </div>
+          {hazardRolled.flavor && <p className="text-sm italic text-yellow-700">{hazardRolled.flavor}</p>}
+          <p className="text-sm text-yellow-900 whitespace-pre-wrap">{hazardRolled.effect}</p>
         </div>
       )}
       {traitRolled && (
