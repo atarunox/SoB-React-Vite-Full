@@ -9,6 +9,35 @@ import {
   TOWN_LOCATION_TABLE_NO_FT,
   TOWN_TRAITS_CHART,
 } from '../../data/hexcrawl/townSetup';
+import { JOBS_BOARD } from '../../data/hexcrawl/jobsBoard';
+import { WILDERNESS_ENCOUNTERS } from '../../data/hexcrawl/wildernessEncounters';
+import { mountainEncounters } from '../../data/encounters/mountainEncounters';
+import { plainsEncounters } from '../../data/encounters/plainsEncounters';
+import { railroadEncounters } from '../../data/encounters/railroadEncounters';
+import { forestEncounters } from '../../data/encounters/forestEncounters';
+import { desertEncounters } from '../../data/encounters/desertEncounters';
+import { mineTerrainEncounters } from '../../data/encounters/mineTerrainEncounters';
+import { riverEncounters } from '../../data/encounters/riverEncounters';
+import { roadEncounters } from '../../data/encounters/roadEncounters';
+import { swampEncounters } from '../../data/encounters/swampEncounters';
+import { townEncounters } from '../../data/encounters/townEncounters';
+import { townRuinsEncounters } from '../../data/encounters/townRuinsEncounters';
+import { growingDreadEncounters } from '../../data/encounters/growingDreadEncounters';
+
+const TERRAIN_TABLES = [
+  { id: 'desert',       label: 'Desert',          data: desertEncounters },
+  { id: 'forest',       label: 'Forest',           data: forestEncounters },
+  { id: 'growingDread', label: 'Growing Dread',    data: growingDreadEncounters },
+  { id: 'mine',         label: 'Mine',             data: mineTerrainEncounters },
+  { id: 'mountain',     label: 'Mountain',         data: mountainEncounters },
+  { id: 'plains',       label: 'Plains',           data: plainsEncounters },
+  { id: 'railroad',     label: 'Railroad',         data: railroadEncounters },
+  { id: 'river',        label: 'River',            data: riverEncounters },
+  { id: 'road',         label: 'Road',             data: roadEncounters },
+  { id: 'swamp',        label: 'Swamp',            data: swampEncounters },
+  { id: 'town',         label: 'Town',             data: townEncounters },
+  { id: 'townRuins',    label: 'Town Ruins',       data: townRuinsEncounters },
+];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -271,12 +300,312 @@ function TownTraitsBrowser() {
   );
 }
 
-// ─── Placeholder panels for jobs/encounters (populated when agent data arrives) ──
+// ─── Encounter Entry Display ─────────────────────────────────────────────────
 
-function PlaceholderPanel({ label, settingKey }) {
+function EncounterEntry({ entry, rollLabel }) {
+  if (!entry) return null;
   return (
-    <div className="rounded border border-[#8b6b46]/30 p-4 bg-white/60 text-center text-sm text-gray-500">
-      {label} data is loading from source books. This panel will be available soon.
+    <div className="rounded border-2 border-amber-400 p-3 bg-amber-50 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <span className="text-xs text-gray-500 font-mono mr-1">{rollLabel ?? entry.roll}</span>
+          <span className="font-bold text-[#3b2f1d]">{entry.name}</span>
+        </div>
+        <div className="flex flex-wrap gap-1 justify-end">
+          {(entry.tags ?? []).map(t => (
+            <span key={t} className="px-1.5 py-0.5 rounded text-[10px] bg-[#3d2c1a]/10 text-[#3d2c1a] font-medium">{t}</span>
+          ))}
+        </div>
+      </div>
+      {entry.flavor && (
+        <p className="text-xs text-gray-600 italic leading-relaxed">{entry.flavor}</p>
+      )}
+      {entry.test && (
+        <div className="rounded bg-yellow-100 border border-yellow-300 p-2 text-xs space-y-1">
+          <div className="font-semibold text-[#3b2f1d]">
+            {entry.test.stat} {entry.test.target}
+            {entry.test.alt && ` or ${entry.test.alt.stat} ${entry.test.alt.target}`}
+          </div>
+          {entry.test.success?.map((s, i) => (
+            <div key={i} className="text-green-800">✓ {s}</div>
+          ))}
+          {entry.test.fail?.map((f, i) => (
+            <div key={i} className="text-red-800">✗ {f}</div>
+          ))}
+        </div>
+      )}
+      {entry.effect && (
+        <p className="text-xs text-gray-700 leading-relaxed">{entry.effect}</p>
+      )}
+      {entry.table && (
+        <div className="rounded bg-white/80 border border-[#8b6b46]/30 p-2 text-xs space-y-0.5">
+          {entry.table.map((row, i) => (
+            <div key={i}><span className="font-mono text-gray-500 mr-1">{row.roll}</span>{row.text}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Jobs Board Panel ────────────────────────────────────────────────────────
+
+function JobsBoardPanel() {
+  const [results, setResults] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const roll = useCallback(() => {
+    const idx = Math.floor(Math.random() * 100);
+    const prev = (idx - 1 + 100) % 100;
+    const next = (idx + 1) % 100;
+    const get = i => JOBS_BOARD.find(j => parseInt(j.roll, 10) === i) || JOBS_BOARD[i];
+    setResults({ main: get(idx), prev: get(prev), next: get(next), rolled: idx });
+  }, []);
+
+  const filtered = search
+    ? JOBS_BOARD.filter(j =>
+        j.title.toLowerCase().includes(search.toLowerCase()) ||
+        j.keywords.some(k => k.toLowerCase().includes(search.toLowerCase())) ||
+        (j.location ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2 flex-wrap">
+        <button
+          className="btn btn-sm bg-[#3d2c1a] text-amber-200 border-[#8b6b46] hover:bg-[#5c3a1e]"
+          onClick={roll}
+        >
+          Roll D100 (3 Jobs)
+        </button>
+        <input
+          type="text"
+          placeholder="Search jobs..."
+          className="input input-sm input-bordered flex-1 bg-white/80 text-[#3b2f1d] min-w-0"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {results && !search && (
+        <div className="space-y-2">
+          <div className="text-xs text-gray-500">Rolled {String(results.rolled).padStart(2, '0')} — showing ±1 range</div>
+          {[results.prev, results.main, results.next].map((job, i) => (
+            <div key={i} className={`rounded border p-3 space-y-1.5 text-xs ${i === 1 ? 'border-2 border-amber-500 bg-amber-50' : 'border-[#8b6b46]/40 bg-white/80'}`}>
+              <div className="flex flex-wrap items-start justify-between gap-1">
+                <div>
+                  <span className="font-mono text-gray-500 mr-1">{job.roll}</span>
+                  <span className="font-bold text-[#3b2f1d] text-sm">{job.title}</span>
+                  {job.mandatory && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">MANDATORY</span>}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {job.keywords.map(k => (
+                    <span key={k} className="px-1.5 py-0.5 rounded bg-[#3d2c1a]/10 text-[#3d2c1a] text-[10px] font-medium">{k}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 text-gray-600">
+                <span><strong>Location:</strong> {job.location}</span>
+                <span><strong>Time:</strong> {job.timeLimit}</span>
+              </div>
+              <p className="text-gray-700 leading-relaxed">{job.description}</p>
+              <div className="rounded bg-green-50 border border-green-200 p-1.5 text-green-800">
+                <strong>Reward:</strong> {job.reward}
+              </div>
+              {job.failure && (
+                <div className="rounded bg-red-50 border border-red-200 p-1.5 text-red-800">
+                  <strong>Failure:</strong> {job.failure}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {filtered && (
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {filtered.length === 0 && <div className="text-sm text-gray-500">No jobs match.</div>}
+          {filtered.map(job => (
+            <div key={job.roll} className="rounded border border-[#8b6b46]/30 p-2 bg-white/70 text-xs space-y-1">
+              <div className="flex flex-wrap items-start justify-between gap-1">
+                <div>
+                  <span className="font-mono text-gray-500 mr-1">{job.roll}</span>
+                  <span className="font-semibold text-[#3b2f1d]">{job.title}</span>
+                  {job.mandatory && <span className="ml-2 px-1 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">MANDATORY</span>}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {job.keywords.map(k => (
+                    <span key={k} className="px-1 py-0.5 rounded bg-[#3d2c1a]/10 text-[#3d2c1a] text-[10px]">{k}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="text-gray-500">{job.location} · {job.timeLimit}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Terrain Encounters Panel ────────────────────────────────────────────────
+
+function TerrainEncountersPanel() {
+  const [terrain, setTerrain] = useState('mountain');
+  const [result, setResult] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const table = TERRAIN_TABLES.find(t => t.id === terrain);
+
+  const roll = useCallback(() => {
+    if (!table) return;
+    const idx = Math.floor(Math.random() * table.data.length);
+    const entry = table.data[idx];
+    setResult({ entry, rolled: entry.roll });
+    setSearch('');
+  }, [table]);
+
+  const filtered = search && table
+    ? table.data.filter(e =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        (e.flavor ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (e.effect ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2 flex-wrap">
+        <select
+          className="select select-sm select-bordered bg-white/80 text-[#3b2f1d]"
+          value={terrain}
+          onChange={e => { setTerrain(e.target.value); setResult(null); setSearch(''); }}
+        >
+          {TERRAIN_TABLES.map(t => (
+            <option key={t.id} value={t.id}>{t.label}</option>
+          ))}
+        </select>
+        <button
+          className="btn btn-sm bg-[#3d2c1a] text-amber-200 border-[#8b6b46] hover:bg-[#5c3a1e]"
+          onClick={roll}
+        >
+          Roll D20
+        </button>
+        <input
+          type="text"
+          placeholder="Search encounters..."
+          className="input input-sm input-bordered flex-1 bg-white/80 text-[#3b2f1d] min-w-0"
+          value={search}
+          onChange={e => { setSearch(e.target.value); setResult(null); }}
+        />
+      </div>
+
+      {result && !search && (
+        <div className="space-y-1">
+          <div className="text-xs text-gray-500">Rolled {result.rolled} on {table?.label} table</div>
+          <EncounterEntry entry={result.entry} />
+        </div>
+      )}
+
+      {filtered && (
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {filtered.length === 0 && <div className="text-sm text-gray-500">No encounters match.</div>}
+          {filtered.map(e => (
+            <div key={e.roll} className="rounded border border-[#8b6b46]/30 p-2 bg-white/70 text-xs">
+              <span className="font-mono text-gray-500 mr-1">{e.roll}</span>
+              <span className="font-semibold text-[#3b2f1d]">{e.name}</span>
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {(e.tags ?? []).map(t => (
+                  <span key={t} className="px-1 py-0.5 rounded bg-[#3d2c1a]/10 text-[#3d2c1a] text-[10px]">{t}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!result && !filtered && table && (
+        <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
+          {table.data.map(e => (
+            <div key={e.roll} className="rounded border border-[#8b6b46]/30 p-2 bg-white/70 text-xs">
+              <span className="font-mono text-gray-500 mr-1">{e.roll}</span>
+              <span className="font-semibold text-[#3b2f1d]">{e.name}</span>
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {(e.tags ?? []).map(t => (
+                  <span key={t} className="px-1 py-0.5 rounded bg-[#3d2c1a]/10 text-[#3d2c1a] text-[10px]">{t}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Wilderness Encounters Panel ─────────────────────────────────────────────
+
+function WildernessEncountersPanel() {
+  const [result, setResult] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const roll = useCallback(() => {
+    const idx = Math.floor(Math.random() * 100);
+    const entry = WILDERNESS_ENCOUNTERS[idx];
+    setResult({ entry, rolled: String(idx).padStart(2, '0') });
+    setSearch('');
+  }, []);
+
+  const filtered = search
+    ? WILDERNESS_ENCOUNTERS.filter(e =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        (e.flavor ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (e.tags ?? []).some(t => t.toLowerCase().includes(search.toLowerCase()))
+      )
+    : null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2 flex-wrap">
+        <button
+          className="btn btn-sm bg-[#3d2c1a] text-amber-200 border-[#8b6b46] hover:bg-[#5c3a1e]"
+          onClick={roll}
+        >
+          Roll D100
+        </button>
+        <input
+          type="text"
+          placeholder="Search wilderness encounters..."
+          className="input input-sm input-bordered flex-1 bg-white/80 text-[#3b2f1d] min-w-0"
+          value={search}
+          onChange={e => { setSearch(e.target.value); setResult(null); }}
+        />
+      </div>
+
+      {result && !search && (
+        <div className="space-y-1">
+          <div className="text-xs text-gray-500">Rolled {result.rolled}</div>
+          <EncounterEntry entry={result.entry} />
+        </div>
+      )}
+
+      {filtered && (
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {filtered.length === 0 && <div className="text-sm text-gray-500">No encounters match.</div>}
+          {filtered.map(e => (
+            <div key={e.roll} className="rounded border border-[#8b6b46]/30 p-2 bg-white/70 text-xs">
+              <span className="font-mono text-gray-500 mr-1">{e.roll}</span>
+              <span className="font-semibold text-[#3b2f1d]">{e.name}</span>
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {(e.tags ?? []).map(t => (
+                  <span key={t} className="px-1 py-0.5 rounded bg-[#3d2c1a]/10 text-[#3d2c1a] text-[10px]">{t}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -354,7 +683,7 @@ export default function DMHexCrawlPanel() {
             Roll D100 (2D10) and pick a Job from the rolled number ±1. Jobs are short-duration side-quests.
           </p>
           {settings.jobsBoard ? (
-            <PlaceholderPanel label="Jobs Board" settingKey="jobsBoard" />
+            <JobsBoardPanel />
           ) : (
             <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
               Jobs Board is disabled in HexCrawl Settings.
@@ -370,7 +699,7 @@ export default function DMHexCrawlPanel() {
             When an Encounter result is revealed while Searching, roll D20 on the matching terrain type chart.
           </p>
           {settings.terrainEncounters ? (
-            <PlaceholderPanel label="Terrain Encounters" settingKey="terrainEncounters" />
+            <TerrainEncountersPanel />
           ) : (
             <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
               Terrain Encounters is disabled in HexCrawl Settings.
@@ -386,7 +715,7 @@ export default function DMHexCrawlPanel() {
             At the start of each day, roll D8 (or D6 on foot) — on a 1 or 2, a Wilderness Encounter occurs. Roll D100 on this chart.
           </p>
           {settings.wildernessEncounters ? (
-            <PlaceholderPanel label="Wilderness Encounters" settingKey="wildernessEncounters" />
+            <WildernessEncountersPanel />
           ) : (
             <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
               Wilderness Encounters is disabled in HexCrawl Settings.
