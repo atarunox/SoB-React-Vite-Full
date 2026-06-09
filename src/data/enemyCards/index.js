@@ -14,6 +14,7 @@ import { fortressEnemies as fortress } from './fortressEnemies';
 import { adventuresEnemies as adventures } from './adventuresEnemies';
 import westernEnemies from './westernEnemies';
 import { scannedEnemies } from './scannedEnemies';
+import { hexcrawlVillains } from './hexcrawlVillains';
 
 function scannedByKeyword(kw) {
   return scannedEnemies.filter(e => e.keywords?.some(k => k.toLowerCase() === kw.toLowerCase()));
@@ -54,4 +55,5 @@ export const ENEMY_CARDS = {
   "OtherWorld: Valley of the Serpent Kings": valley,
   "Forbidden Fortress": fortress,
   "Adventures": adventures,
+  "HexCrawl Villains": hexcrawlVillains,
 };
