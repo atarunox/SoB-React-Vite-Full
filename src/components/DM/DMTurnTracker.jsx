@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { resolveActivationMarkers, getAllMarkers } from '../../utils/statusMarkers';
+import { resolveWillpowerPerHitThenSpiritArmorPerWound } from '../../utils/combatResolution';
 import { rollND } from '../../utils/diceHelpers';
 
 const LS_KEY = 'sob_turnTracker';
@@ -295,6 +296,36 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     }
   }, [current, updateHero, markActivated, advanceTurn]);
 
+  const handleApplyFear = useCallback(async (fearEffect) => {
+    if (!current || current.type !== 'hero') return;
+    const hero = current.hero;
+    const heroId = current.id;
+
+    const ui = {
+      roll: async (count, sides) => rollND(count, sides),
+      toast: (msg) => console.log(`[Fear] ${msg}`),
+    };
+    const getStat = (h, k) => h?.stats?.[k] ?? null;
+
+    try {
+      const result = await resolveWillpowerPerHitThenSpiritArmorPerWound({
+        ui, hero, hits: fearEffect.hits, woundsPerHit: 1, getStat, updateHero, heroId,
+      });
+
+      if (result.wounds > 0 && updateHero) {
+        updateHero(heroId, (h) => ({
+          ...h,
+          currentSanity: Math.max(0, (h.currentSanity ?? h.maxSanity ?? 10) - result.wounds),
+        }));
+      }
+
+      const prefix = [`${fearEffect.enemyName} ${fearEffect.label}:`];
+      setActivationLog([...prefix, ...result.log, `→ ${result.wounds} Sanity Damage applied.`]);
+    } catch (err) {
+      setActivationLog([`Error resolving Fear: ${err.message}`]);
+    }
+  }, [current, updateHero]);
+
   const prevTurn = useCallback(() => {
     setActivationLog(null);
     if (currentIdx > 0) {
@@ -420,14 +451,24 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
             <div className="space-y-1">
               <p className="text-xs font-bold text-gray-600 uppercase">Start of Activation:</p>
               {effects.map((eff, i) => (
-                <div key={i} className={`text-sm px-2 py-1 rounded ${
+                <div key={i} className={`text-sm px-2 py-1 rounded flex items-center justify-between gap-2 ${
                   eff.type === 'fear'    ? 'bg-purple-100 text-purple-800 border border-purple-200' :
                   eff.type === 'markers' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
                   eff.type === 'trait'   ? 'bg-orange-100 text-orange-800 border border-orange-200' :
                   'bg-gray-100'
                 }`}>
-                  {eff.type === 'trait' && <span className="mr-1">⚠</span>}
-                  {eff.label}
+                  <span>
+                    {eff.type === 'trait' && <span className="mr-1">⚠</span>}
+                    {eff.label}
+                  </span>
+                  {eff.type === 'fear' && (
+                    <button
+                      className="btn btn-xs bg-purple-600 hover:bg-purple-700 text-white border-0 shrink-0 min-h-[32px]"
+                      onClick={() => handleApplyFear(eff)}
+                    >
+                      Roll WP Saves
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

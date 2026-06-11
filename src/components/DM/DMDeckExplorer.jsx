@@ -27,6 +27,7 @@ import { VOID_SPIDERS_PACK, ANCIENT_SPIDERS_PACK, TRENCH_SPIDERS_PACK,
 import { townTraitsChart }                  from './charts/townTraitsChart';
 import { HEXCRAWL_TERRAIN_CARDS }          from '../../data/cards/hexcrawlTerrainCards';
 import { wastelandTravelHazardChart }       from './charts/wastelandTravelHazardChart';
+import { travelHazardChart }               from '../../data/charts/travelHazardChart';
 import { THREAT_CARDS }           from '../../data/cards/threatCards';
 import { mineEncounters }         from '../../data/encounters/mineEncounters';
 import { blastedWastesEncounters } from '../../data/encounters/wastesEncounters';
@@ -67,7 +68,8 @@ const DECKS = [
   { id: 'townTypes',   label: 'Town Type Cards',        cards: TOWN_TYPE_CARDS         },
   { id: 'townTraits',              label: 'Town Traits (D36)',                    cards: townTraitsChart              },
   { id: 'hexcrawlTerrain',        label: 'HexCrawl Terrain Cards',               cards: HEXCRAWL_TERRAIN_CARDS        },
-  { id: 'wastelandTravelHazards', label: 'Wasteland Travel Hazards (D36)',       cards: wastelandTravelHazardChart   },
+  { id: 'travelHazards',          label: 'Frontier Travel Hazards (D36)',        cards: travelHazardChart             },
+  { id: 'wastelandTravelHazards', label: 'Wasteland Travel Hazards (D36)',       cards: wastelandTravelHazardChart    },
   { id: 'enemyTraits',   label: 'Enemy Trait Cards',        cards: flatEnemyTraitCards   },
   { id: 'warChant',     label: 'Black Fang War Chant',     cards: BLACK_FANG_WAR_CHANT  },
   { id: 'scaffordLieutenants',    label: 'Scafford Lieutenants',      cards: SCAFFORD_LIEUTENANT_CARDS  },

@@ -14,17 +14,12 @@ export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier
   const hazardChart = WASTELAND_WORLDS.has(world) ? wastelandTravelHazardChart : travelHazardChart;
 
   const rollHazard = () => {
-    if (WASTELAND_WORLDS.has(world)) {
-      // D36: roll two dice (tens 1–6, ones 1–6)
-      const tens = Math.ceil(Math.random() * 6);
-      const ones = Math.ceil(Math.random() * 6);
-      const roll = tens * 10 + ones;
-      const result = wastelandTravelHazardChart.find(e => e.roll === roll);
-      setHazardRolled(result ? { ...result, rolledValue: roll } : null);
-    } else {
-      const idx = Math.floor(Math.random() * hazardChart.length);
-      setHazardRolled(hazardChart[idx]);
-    }
+    // Both charts are D36 — roll D6×10 + D6
+    const tens = Math.ceil(Math.random() * 6);
+    const ones = Math.ceil(Math.random() * 6);
+    const roll = tens * 10 + ones;
+    const result = hazardChart.find(e => e.roll === roll);
+    setHazardRolled(result ? { ...result, rolledValue: roll } : null);
   };
   const rollTrait = () => {
     const d1 = Math.ceil(Math.random() * 6);
