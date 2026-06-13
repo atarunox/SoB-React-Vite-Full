@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { resolveActivationMarkers, getAllMarkers } from '../../utils/statusMarkers';
-import { resolveWillpowerPerHitThenSpiritArmorPerWound } from '../../utils/combatResolution';
+import { resolveWillpowerPerHitThenSpiritArmorPerWound, resolveFullEnemyAttack } from '../../utils/combatResolution';
 import { rollND } from '../../utils/diceHelpers';
 
 const LS_KEY = 'sob_turnTracker';
@@ -84,6 +84,45 @@ function parseFearFromGroup(group) {
   return null;
 }
 
+// Parse "Regeneration (X)" / "Regenerate X wounds" from a group's abilities.
+function parseRegenFromGroup(group) {
+  const sources = [
+    ...(group.baseStats?.abilities || []),
+    ...(group.eliteAbilityList || []).map(a => a.text || ''),
+    ...(group.modifiers || []).filter(m => m.type === 'enemyTrait').map(m => m.description || ''),
+  ];
+  for (const a of sources) {
+    const m = a.match(/regenerat(?:e|ion)\s*\(?\s*(d?\d+)/i);
+    if (m) {
+      const tok = m[1].toLowerCase();
+      return { amountText: tok.startsWith('d') ? tok.toUpperCase() : tok };
+    }
+  }
+  return null;
+}
+
+// Build melee/ranged attack profiles for resolveFullEnemyAttack from a group's base stats.
+function getEnemyAttackProfiles(group) {
+  const bs = group.baseStats || {};
+  const combat = Number(bs.combat) || 1;
+  const profiles = [];
+  if (bs.melee?.toHit) {
+    profiles.push({
+      type: 'melee', label: 'Melee',
+      combat, toHit: bs.melee.toHit,
+      damage: Number(bs.melee.damage ?? bs.damage ?? 1) || 1,
+    });
+  }
+  if (bs.ranged?.toHit) {
+    profiles.push({
+      type: 'ranged', label: 'Ranged',
+      combat, toHit: bs.ranged.toHit,
+      damage: Number(bs.ranged.damage ?? bs.damage ?? 1) || 1,
+    });
+  }
+  return profiles;
+}
+
 // Returns trait reminder text for a specific timing from a group's active enemyTrait modifiers.
 function getTraitRemindersForGroup(group, timing) {
   if (!group?.modifiers) return [];
@@ -142,6 +181,8 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
   const [showSettings, setShowSettings] = useState(false);
   const [activationLog, setActivationLog] = useState(null);
   const [activatedThisRound, setActivatedThisRound] = useState(new Set());
+  // Enemy attack flow: { profile } once an attack type is chosen, awaiting target pick
+  const [pendingEnemyAttack, setPendingEnemyAttack] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(LS_KEY + '_excluded', JSON.stringify(excluded));
@@ -236,6 +277,7 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
 
   const advanceTurn = useCallback(() => {
     setActivationLog(null);
+    setPendingEnemyAttack(null);
     if (turnOrder.length === 0) return;
 
     const nextIdx = currentIdx + 1;
@@ -326,8 +368,61 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     }
   }, [current, updateHero]);
 
+  const handleEnemyAttack = useCallback(async (profile, targetHero) => {
+    if (!targetHero) return;
+    const heroId = targetHero.id || targetHero.localId;
+
+    const ui = {
+      roll: async (count, sides) => rollND(count, sides),
+      toast: (msg) => console.log(`[Enemy Attack] ${msg}`),
+      // Grit reroll on saves: index 0 = spend. Return non-zero so we never
+      // silently spend a hero's Grit during DM-driven resolution — the player
+      // can spend Grit themselves via the hero sheet if they choose.
+      promptChoice: async () => 1,
+    };
+    const getStat = (h, k) => h?.stats?.[k] ?? null;
+
+    // Number of attacking models = group count (each model rolls its Combat dice)
+    const count = Math.max(1, Number(profile.count) || 1);
+
+    try {
+      const result = await resolveFullEnemyAttack({
+        ui,
+        hero: targetHero,
+        attack: { combat: profile.combat, toHit: profile.toHit, damage: profile.damage, type: profile.type },
+        count,
+        getStat, updateHero, heroId,
+      });
+
+      if (updateHero) {
+        if (result.physicalWounds > 0) {
+          updateHero(heroId, (h) => ({
+            ...h,
+            currentHealth: Math.max(0, (h.currentHealth ?? h.maxHealth ?? 10) - result.physicalWounds),
+          }));
+        }
+        if (result.sanityWounds > 0) {
+          updateHero(heroId, (h) => ({
+            ...h,
+            currentSanity: Math.max(0, (h.currentSanity ?? h.maxSanity ?? 10) - result.sanityWounds),
+          }));
+        }
+      }
+
+      setActivationLog([
+        `${profile.enemyName} → ${targetHero.name} (${profile.label} ×${count}):`,
+        ...result.log,
+        `→ ${result.physicalWounds} Wound(s)${result.sanityWounds ? `, ${result.sanityWounds} Sanity` : ''} applied.`,
+      ]);
+    } catch (err) {
+      setActivationLog([`Error resolving enemy attack: ${err.message}`]);
+    }
+    setPendingEnemyAttack(null);
+  }, [updateHero]);
+
   const prevTurn = useCallback(() => {
     setActivationLog(null);
+    setPendingEnemyAttack(null);
     if (currentIdx > 0) {
       setCurrentIdx(currentIdx - 1);
     } else if (round > 1) {
@@ -486,6 +581,73 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
                     <span className="font-semibold">[{r.cardName}]</span> {r.text}
                   </div>
                 ))}
+              </div>
+            );
+          })()}
+
+          {/* Enemy: Regeneration reminder */}
+          {current.type === 'enemy' && (() => {
+            const regen = parseRegenFromGroup(current.group);
+            if (!regen) return null;
+            return (
+              <div className="text-sm px-2 py-1 rounded bg-green-100 text-green-900 border border-green-300">
+                <span className="font-semibold">♻ Regeneration ({regen.amountText})</span> — at the start of this Activation, each {current.group.name} heals {regen.amountText} Wounds (up to its starting Health).
+              </div>
+            );
+          })()}
+
+          {/* Enemy: Attack engine */}
+          {current.type === 'enemy' && (() => {
+            const profiles = getEnemyAttackProfiles(current.group);
+            if (profiles.length === 0) {
+              return (
+                <p className="text-xs text-gray-500 italic">No parsable attack stats — resolve special attacks manually.</p>
+              );
+            }
+            const targets = posse.filter(h => !excluded[h.id || h.localId]);
+            return (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-gray-600 uppercase">Resolve Attack:</p>
+                {!pendingEnemyAttack ? (
+                  <div className="flex flex-wrap gap-2">
+                    {profiles.map((p) => (
+                      <button
+                        key={p.type}
+                        className="btn btn-xs btn-error text-white min-h-[36px]"
+                        onClick={() => setPendingEnemyAttack({
+                          ...p,
+                          count: current.group.count || 1,
+                          enemyName: current.group.name,
+                        })}
+                      >
+                        ⚔ {p.label} ({current.group.count || 1}×{p.combat}d6, {p.toHit}, Dmg {p.damage})
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 bg-white/70 rounded p-2 border border-red-200">
+                    <p className="text-xs text-red-800 font-semibold">
+                      {pendingEnemyAttack.label} attack — pick the target Hero:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {targets.map((h) => (
+                        <button
+                          key={h.id || h.localId}
+                          className="btn btn-xs btn-outline btn-error min-h-[36px]"
+                          onClick={() => handleEnemyAttack(pendingEnemyAttack, h)}
+                        >
+                          {h.name} ({h.currentHealth ?? h.maxHealth ?? '?'} HP)
+                        </button>
+                      ))}
+                      <button
+                        className="btn btn-xs btn-ghost min-h-[36px]"
+                        onClick={() => setPendingEnemyAttack(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}

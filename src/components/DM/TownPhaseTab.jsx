@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { travelHazardChart } from '../../data/charts/travelHazardChart';
 import { wastelandTravelHazardChart } from './charts/wastelandTravelHazardChart';
 import { townTraitsChart } from './charts/townTraitsChart';
+import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
 
 const WASTELAND_WORLDS = new Set(['Blasted Wastes', 'The Canyons']);
 import TownVisitPanel from './TownVisitPanel';
@@ -10,6 +11,8 @@ import TownStayManager from './TownStayManager';
 export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier Town' }) {
   const [hazardRolled, setHazardRolled] = useState(null);
   const [traitRolled, setTraitRolled] = useState(null);
+  const { settings: hexSettings } = useHexCrawlSettings();
+  const townTraitsEnabled = hexSettings.townTraits ?? true;
 
   const hazardChart = WASTELAND_WORLDS.has(world) ? wastelandTravelHazardChart : travelHazardChart;
 
@@ -33,10 +36,26 @@ export default function TownPhaseTab({ posse = [], updateHero, world = 'Frontier
     <div className="p-4 bg-white rounded shadow space-y-4">
       <h2 className="text-xl font-bold">Town Phase</h2>
 
+      {/* HexCrawl Town Traits auto-prompt on town entry */}
+      {townTraitsEnabled && !traitRolled && (
+        <div className="bg-blue-100 border border-blue-400 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+          <span className="text-sm text-blue-900 font-semibold">
+            🏘 HexCrawl — roll this town's Trait on entry (D36).
+          </span>
+          <button className="btn btn-sm btn-primary shrink-0" onClick={rollTrait}>Roll Now</button>
+        </div>
+      )}
+
       {/* Travel Hazard / Town Trait rolls */}
       <div className="flex gap-2 flex-wrap">
         <button className="btn btn-primary" onClick={rollHazard}>Roll Travel Hazard</button>
-        <button className="btn btn-secondary" onClick={rollTrait}>Roll Town Trait</button>
+        {townTraitsEnabled ? (
+          <button className="btn btn-secondary" onClick={rollTrait}>Roll Town Trait</button>
+        ) : (
+          <span className="text-xs text-gray-500 italic self-center px-2 py-1 bg-gray-100 rounded border border-gray-300">
+            📖 Town Traits OFF — roll the physical chart (enable in DM Options → Settings → HexCrawl Mode)
+          </span>
+        )}
       </div>
       {hazardRolled && (
         <div className="mt-2 p-3 bg-yellow-50 border border-yellow-300 rounded-lg space-y-1">

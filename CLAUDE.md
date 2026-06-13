@@ -461,7 +461,6 @@ On the TV display, enemy entries render with a red-tinted border and show `×cou
 Any `currentCorruption +=` write must be preceded by Willpower saves unless card text says "ignoring Willpower".
 
 ### Not Yet Implemented
-- Enemy attack engine in DM UI — combat resolution functions exist in `combatResolution.js` but no DM panel triggers them; attacks are narrated manually
 - Grit reroll restrictions (no chart rerolls enforced)
 - Bleeding/Fear/Madness auto-application post-combat
 - Grit spend during combat (Grit reroll for saves IS in `combatResolution.js` functions; no DM combat flow UI exists to trigger it)
@@ -818,6 +817,13 @@ Shuffle discard pile when deck empties.
 | Post-combat D3 healing (any mix Health/Sanity) | `combatResolution.js` `resolvePostCombatHealing` — utility function; DM calls manually |
 | Scavenge action (3D6, each 6 draws from loot deck) | `DMLootPoolPanel.jsx` `rollScavenge` |
 | Growing Dread "Reveal All" for mission climax | `DMGrowingDreadDrawer.jsx` — moves all held GD cards to active simultaneously |
+| Enemy attack engine in DM Turn Tracker | `DMTurnTracker.jsx` — when an enemy group is the active activation, "⚔ Melee/Ranged" buttons build an attack profile from `baseStats` and run `resolveFullEnemyAttack` against a picked target hero; wounds/sanity applied automatically. Does NOT auto-spend hero Grit on saves |
+| Fear / Terror / Unspeakable Terror apply | `DMTurnTracker.jsx` — "Roll WP Saves" button on a hero's activation runs Willpower + Spirit Armor saves for the parsed Fear hits and applies sanity damage |
+| Enemy Regeneration (X) reminder | `DMTurnTracker.jsx` `parseRegenFromGroup` — green reminder on enemy activation (enemy groups have no current-wound tracking, so DM heals manually) |
+| Rest action (skip explore → Heal D6 or +1 Grit) | `DMAdventureTracker.jsx` `RestPanel` — per-hero Heal D6 / +1 Grit buttons |
+| Frontier Travel Hazard Chart (D36, 36 entries) | `data/charts/travelHazardChart.js`; rolled D36 in `TownPhaseTab.jsx` |
+| Depth events for all 8 selectable worlds | `data/depthEvents/` — added Caverns of Cynder + Trederra; `getDepthEvent` warns on fallback for worlds without a chart |
+| HexCrawl Town Traits auto-prompt on town entry | `TownPhaseTab.jsx` — banner prompts the D36 Town Trait roll when `settings.townTraits` is on; shows "roll physical chart" note when off |
 
 ### Not Yet Implemented — Priority Order
 
@@ -825,7 +831,6 @@ Shuffle discard pile when deck empties.
 | Mechanic | Notes |
 |---|---|
 | Standard Brimstone D66 chart data | HexCrawl D36 charts are complete (36 entries each); standard Brimstone charts in `src/data/charts/` are stubs (2–3 entries). Digital lookup only available in HexCrawl mode |
-| Enemy attack engine in DM UI | `combatResolution.js` has full resolution functions; no DM panel triggers them — attacks narrated manually |
 | Corruption overflow auto-prompt in UI | Sanitizer adds placeholder mutation but no in-session alert fires at the moment of overflow |
 
 #### Medium (important but not every round)
@@ -833,9 +838,7 @@ Shuffle discard pile when deck empties.
 |---|---|
 | Elite enemy abilities | `eliteChart` in data but no roll/apply/track mechanic |
 | Off-hand weapon To-Hit penalty in stat pipeline | +1 applied in `combatResolution.js` when resolving attacks; not reflected in displayed stats |
-| Travel hazard phase UI | `travelHazardChart.js` exists; no phase UI between adventure and town |
 | Threat cards → loot count auto-link | DM manually selects 1–3 threat cards in loot pool UI; not automatically linked to threat deck draw count |
-| Grit recovery (Rest action) | Skip explore → heal D6 HP or gain 1 Grit; no UI |
 | Wanted/Outlaw status tracking | Smuggler's Den data exists; no persistent flag on hero |
 | OtherWorld-specific mutation tables | Only the base table stub exists |
 
@@ -843,14 +846,12 @@ Shuffle discard pile when deck empties.
 | Mechanic | Notes |
 |---|---|
 | OtherWorld Gates (portal transport) | Exploration token mechanic; not modeled |
-| Enemy Regeneration (X) | Heals X wounds at turn start |
-| Fear / Terror / Unspeakable Terror | Auto Horror Hits on enemy activation |
 | Enemy Spawning | Mid-fight enemy adds (Egg Sacks, etc.) |
 | Formation | Lost Army defensive stance |
 | Shootout mechanics | Undead Gunslinger / Outlaws |
 | D8 die type | Magma Giant Massive Fists; only D6 modeled |
 | Enemy special card decks | Serpent Magik, Shaman Juju Trinkets, etc. |
-| Depth events for 7+ worlds | Belly of the Beast, Forest of the Dead, Cursed Mountain, Valley of the Serpent Kings, Valhalla, etc. |
+| Depth events for remaining non-selectable worlds | All 8 selectable worlds now have charts (Mines, Targa, Jargono, Derelict Ship, Canyons, Blasted Wastes, Caverns of Cynder, Trederra). Belly of the Beast, Forest of the Dead, Cursed Mountain, Valley of the Serpent Kings, Valhalla fall back to Mines (logs a dev warning) |
 | Exploration token draw randomization | DM resolves manually |
 | Lava Spaces | Terrain mechanic not modeled |
 | Orphanage / Town Hall | Stubbed empty |

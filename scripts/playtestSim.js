@@ -11,7 +11,7 @@ import {
   resolveHeroAttack, resolveFullEnemyAttack, resolveCorruptionHits,
   resolvePostCombatHealing,
 } from '../src/utils/combatResolution';
-import { getDepthEvent, getHBtDThreshold } from '../src/data/depthEvents/depthEventLookup';
+import { getDepthEvent, getHBtDThreshold, hasDepthEventChart } from '../src/data/depthEvents/depthEventLookup';
 import { ENEMY_CARDS } from '../src/data/enemyCards';
 import { lootCards } from '../src/data/lootDeck';
 import { gearCards } from '../src/data/items/gearCards';
@@ -443,6 +443,29 @@ export async function run() {
     posse.forEach(h => updateHero(h.id, p => ({ ...p, xp: (p.xp ?? 0) + vStats.xp })));
     check('villain XP awarded', posse.every(h => h.xp >= vStats.xp));
   }
+
+  // ─────────────────────────────────────────────
+  // DEPTH EVENT COVERAGE — every selectable world has its own chart
+  // ─────────────────────────────────────────────
+  say('\n── DEPTH EVENT COVERAGE ──');
+  const selectableWorlds = [
+    'Mines', 'Targa Plateau', 'Jargono', 'Derelict Ship',
+    'The Canyons', 'Blasted Wastes', 'Caverns of Cynder', 'Trederra',
+  ];
+  for (const w of selectableWorlds) {
+    check(`${w} has dedicated depth chart`, hasDepthEventChart(w), 'falls back to Mines');
+    for (let dv = 1; dv <= 6; dv++) {
+      const ev = getDepthEvent(w, dv);
+      check(`${w} depth event die=${dv} valid`, !!ev?.name && !!ev?.effect);
+    }
+  }
+  dm(`Verified depth-event charts for ${selectableWorlds.length} worlds (6 entries each).`);
+  // New worlds specifically
+  const cynder = getDepthEvent('Caverns of Cynder', 1);
+  const trederra = getDepthEvent('Trederra', 1);
+  dm(`Caverns of Cynder die=1: "${cynder.name}"; Trederra die=1: "${trederra.name}"`);
+  check('Cynder chart is distinct from Mines', cynder.name !== getDepthEvent('Mines', 1).name);
+  check('Trederra chart is distinct from Mines', trederra.name !== getDepthEvent('Mines', 1).name);
 
   // Wrap up
   say('\n── FINAL POSSE STATE ──');

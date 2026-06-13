@@ -620,6 +620,9 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
         </div>
       </div>
 
+      {/* Rest action — skip exploration to heal D6 or recover 1 Grit */}
+      <RestPanel posse={posse} updateHero={updateHero} />
+
       {/* Lantern bearer */}
       <div className="space-y-1">
         <label className="text-xs font-semibold text-gray-600">Lantern Bearer</label>
@@ -670,5 +673,87 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
       )}
     </div>
     </>
+  );
+}
+
+// Rest action: a Hero who skips exploration to Rest may either Heal D6 Wounds
+// OR recover 1 Grit (SoB core rules). Collapsible to keep the tracker compact.
+function RestPanel({ posse = [], updateHero }) {
+  const [open, setOpen] = useState(false);
+  const [lastRest, setLastRest] = useState(null);
+
+  const healD6 = (hero) => {
+    const id = hero.id || hero.localId;
+    if (!id) return;
+    const roll = Math.ceil(Math.random() * 6);
+    updateHero(id, h => ({
+      ...h,
+      currentHealth: Math.min(h.maxHealth ?? h.Health ?? 10, (h.currentHealth ?? 0) + roll),
+    }));
+    setLastRest({ name: hero.name, text: `healed ${roll} Wounds (D6=${roll})` });
+  };
+
+  const recoverGrit = (hero) => {
+    const id = hero.id || hero.localId;
+    if (!id) return;
+    const cap = Number(hero.Grit ?? hero.maxGrit ?? 2);
+    updateHero(id, h => ({
+      ...h,
+      currentGrit: Math.min(cap, (Number(h.currentGrit ?? 0)) + 1),
+    }));
+    setLastRest({ name: hero.name, text: '+1 Grit recovered' });
+  };
+
+  if (posse.length === 0) return null;
+
+  return (
+    <div className="border border-emerald-300 rounded-lg bg-emerald-50 p-2 space-y-2">
+      <button
+        className="w-full flex items-center justify-between text-sm font-semibold text-emerald-900"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span>🛌 Rest Action (skip exploration)</span>
+        <span className="text-xs text-emerald-600">{open ? '▲ Hide' : '▼ Show'}</span>
+      </button>
+      {open && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] text-emerald-700">
+            A Hero who skips their Action to Rest may <strong>either</strong> Heal D6 Wounds <strong>or</strong> recover 1 Grit.
+          </p>
+          {posse.map(h => {
+            const id = h.id || h.localId;
+            const cap = Number(h.Grit ?? h.maxGrit ?? 2);
+            const grit = Number(h.currentGrit ?? 0);
+            return (
+              <div key={id} className="flex items-center justify-between gap-2 bg-white/70 rounded px-2 py-1">
+                <span className="text-xs font-medium truncate">
+                  {h.name}
+                  <span className="text-gray-400 ml-1">
+                    {h.currentHealth ?? h.maxHealth ?? '?'}/{h.maxHealth ?? '?'} HP · Grit {grit}/{cap}
+                  </span>
+                </span>
+                <div className="flex gap-1 shrink-0">
+                  <button className="btn btn-xs btn-outline btn-success min-h-[32px]" onClick={() => healD6(h)}>
+                    Heal D6
+                  </button>
+                  <button
+                    className="btn btn-xs btn-outline btn-warning min-h-[32px]"
+                    onClick={() => recoverGrit(h)}
+                    disabled={grit >= cap}
+                  >
+                    +1 Grit
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {lastRest && (
+            <p className="text-[11px] text-emerald-800 font-semibold bg-emerald-100 rounded px-2 py-1">
+              {lastRest.name}: {lastRest.text}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
