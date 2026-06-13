@@ -190,25 +190,35 @@ src/
 │   ├── heroes.jsx               # 14 character class definitions
 │   ├── items/                   # gearCards.js, mineArtifacts.js, otherWorldArtifacts.js
 │   ├── enemies/ + enemyCards/   # Enemy stat blocks per world (13 worlds)
+│   │   ├── index.js             # ENEMY_CARDS object keyed by world/set name
+│   │   └── hexcrawlVillains.js  # 18 entries: 9 villain archetypes × Normal + Brutal (villainCard: true)
 │   ├── townLocations/           # 13/15 locations implemented
 │   ├── skillTrees/              # 16 classes, 4 levels each
 │   ├── levelingCharts/          # XP→stat tables per class
 │   ├── cards/                   # Encounter, darkness, growing dread, loot, threat, world cards
 │   │   ├── threatCards.js       # THREAT_CARDS_STANDARD + THREAT_CARDS_OTHERWORLD (combined as THREAT_CARDS)
 │   │   ├── scaffordLieutenants.js  # SCAFFORD_LIEUTENANT_CARDS — 6 named lieutenant cards
-│   │   └── townTypeCards.js     # 7 Frontier Town expansion Town Type cards (Mining, Mutant, Outlaw, Plague, Rail, River, Ruins)
+│   │   ├── townTypeCards.js     # 7 Frontier Town expansion Town Type cards (Mining, Mutant, Outlaw, Plague, Rail, River, Ruins)
+│   │   └── hexcrawlTerrainCards.js # 9 HexCrawl terrain cards: Crates, Barrels, TNT Barrels, Corpses, Monster Bodies, Dark Stone Shards, Toxic Fumes, Unstable, Plant Growth
 │   ├── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
+│   │   └── travelHazardChart.js # Complete D36 Frontier Travel Hazard chart (36 entries, rolls 11-66)
 │   ├── dungeonPacks/            # challengePack1.js, challengePack2.js, 8 Spider ESP files, index.js
 │   ├── lootDecks/               # wastesLootDeck.js (Blasted Wastes + The Canyons shared 16-card deck)
 │   ├── missions/                # Mission data files aggregated via index.js
 │   │   ├── enemySwarmPack3.js   # ESP3 missions (Burn 'Em Out)
 │   │   ├── hellMouthMissions.js # Hell Mouth Terrain Pack missions
 │   │   └── index.js             # Exports ALL_MISSIONS flat array
-│   └── depthEvents/             # World-specific Depth Event charts (6 worlds, roll 1-6 = die value doubled)
+│   └── depthEvents/             # World-specific Depth Event charts (8 worlds now)
 │       ├── depthEvents_Mines.js, _TargaPlateau.js, _Jargono.js, _DerelictShip.js, _Canyons.js, _BlastedWastes.js
-│       └── depthEventLookup.js  # getDepthEvent(world, dieValue) + getHBtDThreshold(depth)
+│       ├── depthEvents_CavernsOfCynder.js  # 6 fire/lava/Dark Stone events
+│       ├── depthEvents_Trederra.js         # 6 alien tech/radiation events
+│       └── depthEventLookup.js  # getDepthEvent(world, dieValue) + getHBtDThreshold(depth) + hasDepthEventChart(world)
 └── firebase/
     └── firebaseConfig.js        # Env key reading, Firestore init, long-polling, emulator config
+
+scripts/                         # Dev/test utilities (not bundled)
+├── playtest.mjs                 # Vite SSR entry — run: node scripts/playtest.mjs
+└── playtestSim.js               # Full campaign simulation using real app modules (~120 assertions)
 ```
 
 ---
@@ -445,6 +455,203 @@ Per-chart toggles stored in `localStorage` under key `sob:hexcrawl_settings`. Ma
 
 **UI:** DM Options → Settings sub-tab → "HexCrawl Mode" section (5 checkboxes + All On / All Off buttons).
 
+**HexCrawl villain enemies** (`src/data/enemyCards/hexcrawlVillains.js`):
+- 18 entries: Bandido, Outlaw, Rancher, Preacher (Normal + Brutal) — stats from HexCrawl PDF
+- Gunslinger, Saloon Girl, Indian Scout, Corrupt Marshal, Corrupt Lawman — **approximated stats, unverified** (need PDF pp.21-30)
+- Schema: western format — `stats: { normal, brutal }`, `toHit: { melee, ranged }`, `villainCard: true`
+- Wired into `enemyCards/index.js` as `"HexCrawl Villains"` key; appears in Deck Explorer enemy picker
+
+**HexCrawl terrain cards** (`src/data/cards/hexcrawlTerrainCards.js`): 9 cards wired into Deck Explorer.
+
+### Playtest Harness
+
+Runs real app modules (not mocks) via Vite's SSR pipeline. Catches sanitizer field-name bugs and stat pipeline regressions:
+
+```bash
+node scripts/playtest.mjs
+```
+
+**What it covers (~120 assertions per run):** sanitizeHero schema, calculateStats pipeline, HBtD depth track, depth events (all 8 worlds), combat resolution (hero + enemy attacks, crits, Defense, Armor, Willpower), loot/XP, level-up detection, Dark Stone two-stage corruption roll, town phase (town traits, selling, shopping), corruption overflow → Mutation chart, Injury chart on KO, HexCrawl villain fight.
+
+**Critical Node.js shims in `scripts/playtest.mjs`:**
+```js
+globalThis.localStorage = { getItem, setItem, removeItem, clear, key, length };
+globalThis.window = globalThis;
+// DO NOT set globalThis.navigator — getter-only in Node 22, throws TypeError
+```
+
+**Defense value parsing** (enemy `defense` field may be `"4+"` string):
+```js
+const num = (v, dflt) => { const n = Number(String(v ?? '').match(/\d+/)?.[0]); return Number.isFinite(n) ? n : dflt; };
+const defTarget = num(stats.defense, 4);
+```
+
+### Initiative Order — Enemies Included
+
+- Tailwind `sm:` / `md:` / `lg:` breakpoints. Default is mobile-first.
+- Tap targets: minimum 44×44px on all interactive elements.
+- Modals/drawers: `max-h-[80vh] overflow-y-auto`.
+- Text: use `break-words` / `overflow-wrap: anywhere` for long effect descriptions.
+- Grids: `grid-cols-1 sm:grid-cols-2 md:grid-cols-3` pattern.
+- Font sizes: minimum `text-sm` (14px) for mobile readability.
+- UI scale: global scale factor via `UIScaleContext` + `html[data-btn-size]` for button sizes.
+
+---
+
+## What Has Been Built
+
+- 14 character classes with full stats, abilities, starting items
+- 16 skill trees (4 upgrade levels each), leveling charts per class
+- Full hero character sheet: Stats (draggable blocks), Gear, Upgrade, Conditions, Misc, Posse, Town, DM tabs
+- Posse management with real-time Firebase sync
+- DM panel: enemy spawning, darkness/growing dread card decks, loot pools, maps, **initiative/turn tracker**
+- **Adventure Tracker** (DM + Hero views): 15-space depth track matching physical board layout `[Posse Entry][15][14]…[1][Darkness Entry]`; correct HBtD (2D6, depth-based threshold 7+/8+/9+, doubles → world-specific Depth Event chart, darkness does not advance on doubles); lantern bearer detection; GD spaces green, BS spaces red
+- **Map tile → depth advance**: Drawing a map tile in DMMapDrawer shows an amber banner prompting DM to advance the depth marker
+- **TV/Display screen** (`/display`): Read-only full-screen display for a second monitor/TV; world-themed (Mines, Targa, Jargono, Derelict Ship, Canyons, Blasted Wastes, Frontier Town); shows depth track, last HBtD roll, initiative order (heroes + active enemies, enemies win ties), per-hero HP/Sanity/Corruption bars + Grit + full stats; real-time via Firebase; opened via "📺 Display" button in DM tab
+- **Camera OCR**: scan enemy cards via live camera viewfinder (tesseract.js)
+- **PWA support** for offline/mobile use
+- Town phase: 13/15 locations with event tables and services
+- Combat: Defense/Armor/Willpower/SpiritArmor resolution paths
+- Condition system: injuries, madness, mutations, corruption tracking
+- Enemy data: 13 worlds/locations with full stat blocks
+- Loot generation, equipment tracking, artifact deck by world
+- Hero ejection/sync system for town/hero state
+- Firebase persistence with localStorage fallback + ErrorBoundary
+
+### Stats Tab (Hero Sheet)
+
+- **Two layout modes** (toggled from MiscTab → "Stats View Mode"):
+  - **Tiles** — draggable react-grid-layout blocks, layout saved per-hero in `sob:stats:layout:{heroId}`
+  - **List** — D&D-style vertical list; reorderable via drag-and-drop when layout edit mode is active; order saved in `sob:stats:listOrder:{heroId}`
+- **Tile color customization**: right-click (desktop) or long-press (mobile) any stat tile to pick a background + text color theme; saved per-hero in `sob:stats:tileColors:{heroId}`
+- **Resource cards**: Health, Sanity, Grit, Corruption, Gold each rendered as colored gradient cards with +/− buttons and a progress bar that pulses red at ≤33%
+- **XP card**: shows `currentXP / nextLevelXP`, progress bar, and a "⬆ Level Up!" button when threshold is reached. Buttons: −5 · +10 · +50 · +100
+- **`statOrder`** is declared at **module scope** (before the component function) — do not move it inside the component or useState lazy initializers will crash with a TDZ ReferenceError
+
+### Level-Up System
+
+- **`src/utils/levelingUtils.js`**: `XP_THRESHOLDS`, `xpForLevel(level, hero)` (Drifter pays double), `getNextLevelXP(hero)`, `canLevelUp(hero)`
+- **`src/components/LevelUpModal.jsx`**: 3-step modal
+  - Step 1: Preview + apply full heal/sanity/+1 maxGrit
+  - Step 2: Roll **2D6** → land on the class leveling chart (keys 2–12). Re-rolls automatically if the slot is already in `hero.levelTrack`. Shows dice history. Interactive per component type:
+    - **Fixed** (`+1 Move`) — shown, applied automatically
+    - **D6** (`+D6 Health`) — "Auto Roll" button or manual 1–6 input; adds to `maxHealth`/`maxSanity`
+    - **Choice** (`+1 Strength or +1 Initiative`) — radio buttons showing current effective stat (gear included) and 6-max reminder; capped options disabled in red
+    - **D6 Split** (`+D6 Health/Sanity any mix`) — roll total then distribute via linked inputs
+    - **Narrative** (Vendetta, Dark Stone Resistance) — description shown, no stat change
+  - Step 3: Prompt to visit Upgrade tab for skill tree choice
+- **`hero.levelTrack`**: keyed by 2D6 chart result (2–12), not by character level — tracks which chart slots have been used
+- **`hero.levelBonuses`**: keyed by chart result, stores what was applied at each slot
+- **Leveling charts** (`src/data/levelingCharts/`): objects keyed 2–12 with `{ name?, description?, bonus?, extra?, effects?, extraRoll? }`. `bonus`/`extra` are strings parsed at runtime; `effects`/`extraRoll` are legacy structured format. Most classes use the string format.
+
+### DM Tab — Options Consolidation
+
+The **Options** top-level tab now contains seven sub-tabs (state persisted as `dm_options_subtab`):
+- **Settings** — campaign checkboxes (world source selection), select-all/none, merged worlds count; HexCrawl mode toggles; Dungeon Pack toggles
+- **Missions** — browse missions grouped by pack; select/clear active mission (persisted in `sob:active_mission`)
+- **Deck Explorer** — browse all card decks (see below)
+- **Item Generator** — moved from former top-level tab
+- **Scan Cards** — moved from former top-level tab
+- **Big Score** — "The Next Big Score" mission modifier (Promo 1122–1135); requires Outlaw or Performer hero
+- **Warrants** — Warrants mission modifier (Promo 975–992); requires Law hero; draw a Warrant card before the adventure
+- **Nightmares** — Ruinous Nightmares modifier; choose Nightmare Level 1/2/3; draw N cards per Fight; +20 XP or $200 per card per Hero
+
+`src/components/DM/DMOptionsPanel.jsx` renders the sub-tab shell and passes props through to each sub-component.
+
+### Deck Explorer (`src/components/DM/DMDeckExplorer.jsx`)
+
+Collapsible sections with card counts and search for every deck:
+
+| Section | Source | Notes |
+|---|---|---|
+| Darkness Cards | `darknessCards.js` | `DARKNESS_CARDS` |
+| Growing Dread | `growingDreadCards.js` | `GROWING_DREAD_CARDS` |
+| Encounter Cards | `encounterCards.js` | `ENCOUNTER_CARDS` |
+| Loot Cards | `lootDeck.js` | `lootCards` |
+| World Cards | `worldCards.js` | `WORLD_CARDS` |
+| Map Cards | `mapCards.js` | `MAP_CARDS` — images at `public/assets/images/maps/mine/` (PNG) and `public/assets/images/maps/blasted_wastes/` (JPG) |
+| Gear Cards | `items/gearCards.js` | slot, value, effects, restrictions |
+| Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
+| OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
+| Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
+| Threat Cards | `data/cards/threatCards.js` `THREAT_CARDS` | Filterable by tier (low/medium/high/epic/otherworld); spawn text + effects. **Physical card background colors: green = low, yellow = medium, red = high, blue = epic.** |
+| Scafford Lieutenants | `data/cards/scaffordLieutenants.js` | 6 named lieutenant cards drawn when a threat card calls for one |
+| Wasteland Warbands | `data/cards/wastelandWarbands.js` | 6 warband modifier cards (5 unique + 1 duplicate) drawn when Wasteland Scavengers spawn |
+| Wasteland Warmasters | `data/cards/wastelandWarmasters.js` | 5 named Warmaster leader cards for Wasteland Scavenger encounters |
+| Infamous Feudal Bandits | `data/cards/infamousFeudalBandits.js` | 5 modifier cards drawn when Feudal Bandits spawn (Forbidden Fortress expansion) |
+| Void Magik | `data/cards/voidMagikDeck.js` | 12-card spell deck used by Void Spellcasters (3× Void Chant + 9 spells with 4 Spell Levels each) |
+| Personal Items | `data/cards/personalItems.js` | 11 Personal Item cards drawn at hero creation (1 per hero, some classes draw 2) |
+| Town Type Cards | `data/cards/townTypeCards.js` | 7 Frontier Town expansion double-sided Town Type cards |
+| Town Traits (D36) | `DM/charts/townTraitsChart.js` | HexCrawl D36 Town Traits chart (all 36 entries) |
+| Warrant Cards | `data/missionModifiers/warrants.js` `WARRANT_CARDS` | 5 Warrant cards for the Warrants modifier (Stolen Goods, For Questioning, Search and Seizure, Dead or Alive, Wanted in 3 Worlds) |
+| Warrants Encounters | `data/missionModifiers/warrants.js` `WARRANTS_ENCOUNTERS` | 4 encounter cards for the Warrants modifier (Taunting Message, Rigged Trap, Doubled Back, Dying Bandit) |
+| Warrants Gear | `data/missionModifiers/warrants.js` `WARRANTS_GEAR` | 3 promo gear items: Frontier Deputy Badge (Law keyword + HBtD reroll), Outlaw Shackles (Strength test to remove enemy activation), Long Arm of the Law (D8 shotgun, Law Only) |
+| On the Run (Trait) | `data/missionModifiers/warrants.js` `ON_THE_RUN_TRAIT` | Enemy trait: Outlaw keyword, +1 Init, +2 Move, Cover 5+, Bounty $25/$100 |
+| Ruinous Nightmares | `data/missionModifiers/ruinousNightmares.js` `NIGHTMARE_CARDS` | 15-card deck (12 types, 3× duplicates) for Ruinous Nightmares modifier; Burns to the Touch ×2, Fed By Hatred ×2, Shifting Shadows ×2, plus 9 singles |
+| Spider ESP Packs | `data/dungeonPacks/` (8 files) | 8 world-specific Extra Spawning Packs; all under the `spiderESP` toggle |
+| Challenge Pack #1 — Threats | `data/dungeonPacks/challengePack1.js` | Hell Swarm, Broken Pact, Tide of Vermin, Legions of the Damned threat cards; `challengePack1` toggle |
+| Challenge Pack #1 — Darkness | `data/dungeonPacks/challengePack1.js` | 4 darkness cards: Soul Crush ×2, In the Grip of Darkness, Piercing the Veil; `challengePack1` toggle |
+| Challenge Pack #1 — Enemy Traits | `data/dungeonPacks/challengePack1.js` | Enemy trait cards; `challengePack1` toggle |
+| Challenge Pack #2 | `data/dungeonPacks/challengePack2.js` | 16 threat, 4 darkness, 5 encounter, 5 beast trait cards; `challengePack2` toggle |
+
+**Dungeon Pack Spawn Roller:** `DeckSection` accepts a `packActive` prop. When `true`, a `SpawnRoller` component renders below each card that contains `{P}` notation in its `spawn` text or has a `heroScaling` array. The roller parses `{P}` count + flat bonus, shows hero-tier buttons for scaling cards, rolls the Peril Die (`rollPeril()` from `diceHelpers.js`) N times, and displays each roll + total. Packs that are not enabled in DM Options → Settings show no roller. Add `packId: 'spiderESP'`, `packId: 'challengePack1'`, or `packId: 'challengePack2'` to a DECKS entry to opt it in.
+
+### Mission System (`src/data/missions/`, `src/hooks/useActiveMission.js`, `src/components/DM/DMMissionsPanel.jsx`)
+
+Mission data lives in `src/data/missions/` — one file per pack, aggregated in `index.js` as `ALL_MISSIONS`.
+
+**Mission object shape:**
+```js
+{
+  id: 'unique_snake_case_id',
+  name: 'Mission Name',
+  pack: 'Pack Display Name',     // used for grouping in UI
+  packId: 'pack_id_slug',
+  missionNumber: 1,
+  description: '...',            // italicized flavor text
+  setup: '...',                  // optional setup instructions
+  heroScaling: [                 // optional table rows
+    { heroes: '2–3', text: '...' },
+    { heroes: '4+',  text: '...' },
+  ],
+  specialRules: [                // optional named rules
+    { name: 'Rule Name', text: '...' },
+  ],
+  objectives: ['...', '...'],    // bulleted list
+  reward: '...',                 // shown in green box
+  failure: '...',                // shown in red box
+}
+```
+
+**Active mission:** Stored in `localStorage` under `sob:active_mission`. `useActiveMission()` returns `{ activeMissionId, setMission, clearMission }`. The selected mission name displays in the amber banner at the top of DMMissionsPanel.
+
+**Adding new missions:** Create or extend a file in `src/data/missions/`, import it in `index.js`, and spread it into `ALL_MISSIONS`. No component changes needed — the panel auto-groups by `mission.pack`.
+
+**Wasteland Loot Deck:** Blasted Wastes and The Canyons worlds use a separate loot deck instead of the standard mine loot deck. Data is in `src/data/lootDecks/wastesLootDeck.js` (16 cards) and wired in `src/data/lootDecks.js` under both world name keys.
+
+### HexCrawl Mode (`src/hooks/useHexCrawlSettings.js`)
+
+Per-chart toggles stored in `localStorage` under key `sob:hexcrawl_settings`. Managed via `useHexCrawlSettings()` hook (returns `{ settings, toggle, setAll }`).
+
+**Settings shape:**
+```js
+{
+  injuryChart:      true,   // use D36 HexCrawl injury chart in DM Chart Panel
+  madnessChart:     true,   // use D36 HexCrawl madness chart in DM Chart Panel
+  mutationChart:    true,   // use D36 HexCrawl mutation chart in DM Chart Panel
+  townTraits:       true,   // roll Town Traits on town entry (D36)
+  persistentHealth: false,  // no full heal at adventure end — Catch Your Breath only
+}
+```
+
+**Defaults:** all charts ON, persistentHealth OFF. When a chart is OFF, `DMChartPanel` shows a callout banner instructing the DM to roll the physical D66 chart instead.
+
+**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart). These are the digital lookups. Standard Brimstone charts in `src/data/charts/` are stubs only (2–3 entries) — no digital lookup for standard mode.
+
+**Persistent Health:** When ON, end-of-adventure confirmation shows a "Catch Your Breath" instruction instead of the "Full Heal All Heroes" button. DM resolves the 2D6 heal manually per hero.
+
+**UI:** DM Options → Settings sub-tab → "HexCrawl Mode" section (5 checkboxes + All On / All Off buttons).
+
 ### Initiative Order — Enemies Included
 
 Both `DisplayScreen.jsx` and `DMTurnTracker.jsx` now merge heroes and active enemy groups into a single sorted list. **Tie-break: enemies activate before heroes** at equal initiative.
@@ -502,10 +709,12 @@ Per-group status stored in `group.statusEffects = { roped, immobilized, burning 
 - **Immobilized** — cannot move this activation
 - **Burning** — D6 Wounds at start of activation; roll 4+ to extinguish
 
-### Enemy Mechanics NOT Implemented
-- Regeneration (X) — heals X wounds at turn start (Hell Vermin, Undead Gunslinger, etc.)
+### DM UI Also Handles (`DMTurnTracker.jsx`)
+- Fear/Terror/Unspeakable Terror — "Roll WP Saves" button runs Willpower + Spirit Armor saves and applies sanity damage
+- Regeneration (X) — green reminder banner on enemy activation; DM applies wounds manually (enemy groups have no current-wound tracker)
+
+### Enemy Mechanics NOT Implemented in Combat Engine
 - Spawning — mid-fight enemy adds (Egg Sacks, Corpse Pile)
-- Fear/Terror/Unspeakable Terror — automatic Horror Hits on activation
 - D8 dice for To Hit — Magma Giant (Massive Fists)
 - Lava Spaces — terrain markers
 - Shootout mechanics — Undead Gunslinger/Outlaws
