@@ -218,7 +218,7 @@ src/
 
 scripts/                         # Dev/test utilities (not bundled)
 ├── playtest.mjs                 # Vite SSR entry — run: node scripts/playtest.mjs
-└── playtestSim.js               # Full campaign simulation using real app modules (~120 assertions)
+└── playtestSim.js               # Full campaign simulation using real app modules (~215 assertions)
 ```
 
 ---
@@ -369,13 +369,13 @@ Collapsible sections with card counts and search for every deck:
 |---|---|---|
 | Darkness Cards | `darknessCards.js` | `DARKNESS_CARDS` |
 | Growing Dread | `growingDreadCards.js` | `GROWING_DREAD_CARDS` |
-| Encounter Cards | `encounterCards.js` | `ENCOUNTER_CARDS` |
+| Encounter Cards | `encounterCards.js` | `ENCOUNTER_CARDS` — includes 25 Blasted Wastes cards tagged `world: 'Blasted Wastes'` |
 | Loot Cards | `lootDeck.js` | `lootCards` |
 | World Cards | `worldCards.js` | `WORLD_CARDS` |
 | Map Cards | `mapCards.js` | `MAP_CARDS` — images at `public/assets/images/maps/mine/` (PNG) and `public/assets/images/maps/blasted_wastes/` (JPG) |
 | Gear Cards | `items/gearCards.js` | slot, value, effects, restrictions |
 | Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
-| OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
+| OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects — per-world counts: Blasted Wastes 21, Derelict Ship 20, Jargono 3, Canyons 2, Cynder/Targa/Trederra 1 each |
 | Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
 | Threat Cards | `data/cards/threatCards.js` `THREAT_CARDS` | Filterable by tier (low/medium/high/epic/otherworld); spawn text + effects. **Physical card background colors: green = low, yellow = medium, red = high, blue = epic.** |
 | Scafford Lieutenants | `data/cards/scaffordLieutenants.js` | 6 named lieutenant cards drawn when a threat card calls for one |
@@ -449,7 +449,7 @@ Per-chart toggles stored in `localStorage` under key `sob:hexcrawl_settings`. Ma
 
 **Defaults:** all charts ON, persistentHealth OFF. When a chart is OFF, `DMChartPanel` shows a callout banner instructing the DM to roll the physical D66 chart instead.
 
-**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart). These are the digital lookups. Standard Brimstone charts in `src/data/charts/` are stubs only (2–3 entries) — no digital lookup for standard mode.
+**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart, travelHazardChart, wastelandTravelHazardChart — 36 entries each). These are the digital lookups. `TownPhaseTab.jsx` uses `wastelandTravelHazardChart` instead of the standard hazard chart when the world is Blasted Wastes or The Canyons. Standard Brimstone charts in `src/data/charts/` are stubs only (2–3 entries; the standard injury stub is parked as `injuryChart(no).js` so it can't be imported by accident) — no digital lookup for standard mode. Exception: `src/data/charts/travelHazardChart.js` is complete (36 entries).
 
 **Persistent Health:** When ON, end-of-adventure confirmation shows a "Catch Your Breath" instruction instead of the "Full Heal All Heroes" button. DM resolves the 2D6 heal manually per hero.
 
@@ -471,7 +471,7 @@ Runs real app modules (not mocks) via Vite's SSR pipeline. Catches sanitizer fie
 node scripts/playtest.mjs
 ```
 
-**What it covers (~120 assertions per run):** sanitizeHero schema, calculateStats pipeline, HBtD depth track, depth events (all 8 worlds), combat resolution (hero + enemy attacks, crits, Defense, Armor, Willpower), loot/XP, level-up detection, Dark Stone two-stage corruption roll, town phase (town traits, selling, shopping), corruption overflow → Mutation chart, Injury chart on KO, HexCrawl villain fight.
+**What it covers (~215 assertions per run):** sanitizeHero schema, calculateStats pipeline, HBtD depth track, depth events (all 8 worlds), combat resolution (hero + enemy attacks, crits, Defense, Armor, Willpower), loot/XP, level-up detection, Dark Stone two-stage corruption roll, town phase (town traits, selling, shopping), corruption overflow → Mutation chart, Injury chart on KO, HexCrawl villain fight, Blasted Wastes content validation (encounter deck + artifact schema).
 
 **Critical Node.js shims in `scripts/playtest.mjs`:**
 ```js
@@ -566,13 +566,13 @@ Collapsible sections with card counts and search for every deck:
 |---|---|---|
 | Darkness Cards | `darknessCards.js` | `DARKNESS_CARDS` |
 | Growing Dread | `growingDreadCards.js` | `GROWING_DREAD_CARDS` |
-| Encounter Cards | `encounterCards.js` | `ENCOUNTER_CARDS` |
+| Encounter Cards | `encounterCards.js` | `ENCOUNTER_CARDS` — includes 25 Blasted Wastes cards tagged `world: 'Blasted Wastes'` |
 | Loot Cards | `lootDeck.js` | `lootCards` |
 | World Cards | `worldCards.js` | `WORLD_CARDS` |
 | Map Cards | `mapCards.js` | `MAP_CARDS` — images at `public/assets/images/maps/mine/` (PNG) and `public/assets/images/maps/blasted_wastes/` (JPG) |
 | Gear Cards | `items/gearCards.js` | slot, value, effects, restrictions |
 | Mine Artifacts | `items/mineArtifacts.js` | type, value, effects |
-| OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects |
+| OtherWorld Artifacts | `items/otherWorldArtifacts.js` | type, value, effects — per-world counts: Blasted Wastes 21, Derelict Ship 20, Jargono 3, Canyons 2, Cynder/Targa/Trederra 1 each |
 | Enemy Cards | `enemyCards/index.js` `ENEMY_CARDS` | World picker dropdown → searchable list; HP/Def/Init/To-Hit badges + abilities |
 | Threat Cards | `data/cards/threatCards.js` `THREAT_CARDS` | Filterable by tier (low/medium/high/epic/otherworld); spawn text + effects. **Physical card background colors: green = low, yellow = medium, red = high, blue = epic.** |
 | Scafford Lieutenants | `data/cards/scaffordLieutenants.js` | 6 named lieutenant cards drawn when a threat card calls for one |
@@ -646,7 +646,7 @@ Per-chart toggles stored in `localStorage` under key `sob:hexcrawl_settings`. Ma
 
 **Defaults:** all charts ON, persistentHealth OFF. When a chart is OFF, `DMChartPanel` shows a callout banner instructing the DM to roll the physical D66 chart instead.
 
-**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart). These are the digital lookups. Standard Brimstone charts in `src/data/charts/` are stubs only (2–3 entries) — no digital lookup for standard mode.
+**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart, travelHazardChart, wastelandTravelHazardChart — 36 entries each). These are the digital lookups. `TownPhaseTab.jsx` uses `wastelandTravelHazardChart` instead of the standard hazard chart when the world is Blasted Wastes or The Canyons. Standard Brimstone charts in `src/data/charts/` are stubs only (2–3 entries; the standard injury stub is parked as `injuryChart(no).js` so it can't be imported by accident) — no digital lookup for standard mode. Exception: `src/data/charts/travelHazardChart.js` is complete (36 entries).
 
 **Persistent Health:** When ON, end-of-adventure confirmation shows a "Catch Your Breath" instruction instead of the "Full Heal All Heroes" button. DM resolves the 2D6 heal manually per hero.
 
@@ -712,6 +712,9 @@ Per-group status stored in `group.statusEffects = { roped, immobilized, burning 
 ### DM UI Also Handles (`DMTurnTracker.jsx`)
 - Fear/Terror/Unspeakable Terror — "Roll WP Saves" button runs Willpower + Spirit Armor saves and applies sanity damage
 - Regeneration (X) — green reminder banner on enemy activation; DM applies wounds manually (enemy groups have no current-wound tracker)
+
+### Hero Transformations (`DMTransformationPanel.jsx`, `src/data/transformations.js`)
+Transformation Curses applied by the DM (rendered in `DMTab.jsx`). Data: `TRANSFORMATIONS` keyed object + `TRANSFORMATION_LIST` array — 3 types: **Zombie Hero** (Zombie Bite), **Werewolf** (Werewolf Scratch), **Vampire** (Vampire Drain). Each has a `keyword`, themed styling, and an `abilities[]` list (e.g. Zombie: half Cunning/Initiative, doubled base Health, Endurance (3), Rotting Body start-of-adventure roll, Zombie Hunger escape test). Rules: a hero can hold only ONE transformation — gaining a second becomes 3 Corruption Hits instead. Treated as a special Mutation for removal (Doc's Office cannot cure).
 
 ### Enemy Mechanics NOT Implemented in Combat Engine
 - Spawning — mid-fight enemy adds (Egg Sacks, Corpse Pile)
@@ -1030,6 +1033,10 @@ Shuffle discard pile when deck empties.
 | Fear / Terror / Unspeakable Terror apply | `DMTurnTracker.jsx` — "Roll WP Saves" button on a hero's activation runs Willpower + Spirit Armor saves for the parsed Fear hits and applies sanity damage |
 | Enemy Regeneration (X) reminder | `DMTurnTracker.jsx` `parseRegenFromGroup` — green reminder on enemy activation (enemy groups have no current-wound tracking, so DM heals manually) |
 | Rest action (skip explore → Heal D6 or +1 Grit) | `DMAdventureTracker.jsx` `RestPanel` — per-hero Heal D6 / +1 Grit buttons |
+| Hero Transformations (Zombie/Werewolf/Vampire) | `DMTransformationPanel.jsx` + `data/transformations.js` — one-per-hero curse; second curse → 3 Corruption Hits |
+| Wasteland Travel Hazards (D36) | `DM/charts/wastelandTravelHazardChart.js` — used by `TownPhaseTab.jsx` for Blasted Wastes/The Canyons instead of the frontier chart |
+| Blasted Wastes encounter deck (25 cards) | `data/encounterCards.js` — weather remains-in-play (Sand Storm, Blistering Suns, Ion Storm, Heat Lightning), strangers, salvage, hazards; tagged `world: 'Blasted Wastes'` |
+| Blasted Wastes OW artifacts (21 cards) | `data/items/otherWorldArtifacts.js` — full promo set: Rail Gun, Desert Pike, Vento Glaive, Life Water, Wasteland Survival Gear, Reclamator, etc. |
 | Frontier Travel Hazard Chart (D36, 36 entries) | `data/charts/travelHazardChart.js`; rolled D36 in `TownPhaseTab.jsx` |
 | Depth events for all 8 selectable worlds | `data/depthEvents/` — added Caverns of Cynder + Trederra; `getDepthEvent` warns on fallback for worlds without a chart |
 | HexCrawl Town Traits auto-prompt on town entry | `TownPhaseTab.jsx` — banner prompts the D36 Town Trait roll when `settings.townTraits` is on; shows "roll physical chart" note when off |
