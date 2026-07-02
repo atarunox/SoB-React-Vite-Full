@@ -22,6 +22,8 @@ import { townTraitsChart } from '../src/components/DM/charts/townTraitsChart.js'
 import { DARKNESS_CARDS } from '../src/data/darknessCards';
 import { GROWING_DREAD_CARDS } from '../src/data/growingDreadCards';
 import { hexcrawlVillains } from '../src/data/enemyCards/hexcrawlVillains.js';
+import { ENCOUNTER_CARDS } from '../src/data/encounterCards.js';
+import { otherWorldArtifacts } from '../src/data/items/otherWorldArtifacts.js';
 
 const d6 = () => 1 + Math.floor(Math.random() * 6);
 const d36 = () => d6() * 10 + d6();
@@ -466,6 +468,39 @@ export async function run() {
   dm(`Caverns of Cynder die=1: "${cynder.name}"; Trederra die=1: "${trederra.name}"`);
   check('Cynder chart is distinct from Mines', cynder.name !== getDepthEvent('Mines', 1).name);
   check('Trederra chart is distinct from Mines', trederra.name !== getDepthEvent('Mines', 1).name);
+
+  // ─────────────────────────────────────────────
+  // BLASTED WASTES CONTENT — encounter deck + artifacts
+  // ─────────────────────────────────────────────
+  say('\n── BLASTED WASTES CONTENT ──');
+  const VALID_SKILLS = new Set(['Agility', 'Cunning', 'Spirit', 'Strength', 'Lore', 'Luck']);
+  const bwEncounters = ENCOUNTER_CARDS.filter(c => c.world === 'Blasted Wastes');
+  check('BW encounter deck has 25+ cards', bwEncounters.length >= 25, `got ${bwEncounters.length}`);
+  const bwIds = new Set(bwEncounters.map(c => c.id));
+  check('BW encounter ids unique', bwIds.size === bwEncounters.length);
+  for (const c of bwEncounters) {
+    check(`BW encounter "${c.name}" resolvable`,
+      !!c.name && !!(c.effect || c.skillCheck || c.choices),
+      'missing name or effect/skillCheck/choices');
+    const skillChecks = [
+      c.skillCheck,
+      ...(c.choices ?? []).map(ch => ch.skillCheck),
+    ].filter(Boolean);
+    for (const sc of skillChecks) {
+      check(`BW "${c.name}" skill "${sc.stat}" valid`, VALID_SKILLS.has(sc.stat), `stat=${sc.stat}`);
+      check(`BW "${c.name}" target ${sc.value} in 2–6`, sc.value >= 2 && sc.value <= 6);
+    }
+  }
+  const bwArtifacts = otherWorldArtifacts.filter(a => a.world === 'Blasted Wastes');
+  check('BW artifacts have 20+ entries', bwArtifacts.length >= 20, `got ${bwArtifacts.length}`);
+  const bwArtIds = new Set(bwArtifacts.map(a => a.id));
+  check('BW artifact ids unique', bwArtIds.size === bwArtifacts.length);
+  for (const a of bwArtifacts) {
+    check(`BW artifact "${a.name}" well-formed`, !!a.id && !!a.name, 'missing id/name');
+    const isWeapon = (a.tags ?? []).some(t => /Weapon|Gun|Rifle|Blade/i.test(t));
+    if (isWeapon) check(`BW weapon "${a.name}" has slot`, !!a.slot, 'weapon without slot');
+  }
+  dm(`Blasted Wastes deck check: ${bwEncounters.length} encounters, ${bwArtifacts.length} artifacts — all resolvable.`);
 
   // Wrap up
   say('\n── FINAL POSSE STATE ──');
