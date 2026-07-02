@@ -49,10 +49,8 @@ function setGoldPatch(prev, delta) {
 function decHealthIgnoringDefense(prev, wounds) {
   const cur = num(prev?.currentHealth ?? prev?.health?.current ?? prev?.health, 0);
   const next = Math.max(0, cur - Math.max(0, wounds));
-  return {
-    currentHealth: next,
-    health: { ...(prev?.health || {}), current: next },
-  };
+  // Only write the canonical field — `health` is dropped by sanitizeHero.
+  return { currentHealth: next };
 }
 function addPermanentCondition(prev, condObj) {
   const perm = asArr(prev?.conditions?.permanent);
@@ -238,7 +236,6 @@ export async function performBackAlleyDoc({ hero, posseApi, ui }) {
       const perm = asArr(prev?.conditions?.permanent);
       return {
         ...prev,
-        health: { ...(prev.health || {}), max: newMax, current: newCur },
         maxHealth: newMax,
         currentHealth: newCur,
         conditions: {
@@ -290,7 +287,7 @@ export async function performBackAlleyDoc({ hero, posseApi, ui }) {
   if (r === 1) {
     log.push('<b>Dead!</b> Your Hero dies on the table during the attempt.');
     ui?.notify?.('Back-Alley Doc: Dead! Your Hero dies on the table during the attempt.');
-    const patch = { dead: true, currentHealth: 0, health: { ...(hero.health || {}), current: 0 } };
+    const patch = { dead: true, currentHealth: 0 };
     return { log, actions: [{ type: 'update', ...patch }], ui: { title: 'Back-Alley Doc', outcome: log } };
   }
   if (r === 2 || r === 3) {
@@ -479,7 +476,6 @@ export async function performBankHeist({ hero, posseApi, ui }) {
           return {
             ...prev,
             currentHealth: next,
-            health: { ...(prev?.health || {}), current: next }
           };
         });
         ui?.notify?.(`Bank Heist: Took ${wounds} Wound(s) after defense (${blocks} blocked).`);
