@@ -48,6 +48,7 @@ export default function EnemyGroupCard({
   const [showElite, setShowElite] = useState(false);
   const [traitRoll, setTraitRoll] = useState(null);
   const [spawnerRolls, setSpawnerRolls] = useState({});
+  const [lastKill, setLastKill] = useState(null);
 
   const statBundle = getAllStatsWithBreakdown(group, globalModifiers, manualOverrides);
 
@@ -195,6 +196,40 @@ export default function EnemyGroupCard({
   };
   const removeGroup = () => {
     setCombatGroups(allGroups.filter((_, i) => i !== groupIdx));
+  };
+
+  // Wound tracking — group.wounds is damage on the "current" model.
+  // When wounds reach per-model health, that model dies: count −1, overflow carries.
+  const perModelHealth = Number(String(group.baseStats?.health ?? '').match(/\d+/)?.[0]) || 0;
+  const xpPerModel = Number(String(group.baseStats?.xp ?? '').match(/\d+/)?.[0]) || 0;
+  const adjustWounds = (delta) => {
+    const g = allGroups[groupIdx];
+    let wounds = Math.max(0, (g.wounds || 0) + delta);
+    let count = g.count || 1;
+    let kills = 0;
+    if (perModelHealth > 0) {
+      while (wounds >= perModelHealth && count > 0) {
+        wounds -= perModelHealth;
+        count -= 1;
+        kills += 1;
+      }
+    }
+    if (kills > 0) setLastKill({ kills, xp: xpPerModel * kills });
+    if (count <= 0) {
+      setCombatGroups(allGroups.filter((_, i) => i !== groupIdx));
+      return;
+    }
+    const newGroups = [...allGroups];
+    newGroups[groupIdx] = { ...g, wounds, count };
+    setCombatGroups(newGroups);
+  };
+  const killModel = () => {
+    setLastKill({ kills: 1, xp: xpPerModel });
+    if ((group.count || 1) <= 1) {
+      removeGroup();
+      return;
+    }
+    patchCurrentGroup((g) => ({ ...g, count: (g.count || 1) - 1, wounds: 0 }));
   };
 
   const rollSpawn = (abilityIdx, spawnerData) => {
@@ -403,6 +438,29 @@ export default function EnemyGroupCard({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Wound tracker ── */}
+      <div className="bg-red-950/90 border-t border-red-800 px-3 py-2 flex flex-wrap items-center gap-2">
+        <span className="text-[10px] uppercase tracking-widest text-red-300 font-bold">Wounds</span>
+        <div className="flex items-center gap-1">
+          <button className="w-9 h-9 rounded bg-red-900 text-red-100 font-bold text-lg leading-none" onClick={() => adjustWounds(-1)} disabled={(group.wounds || 0) <= 0}>−</button>
+          <span className="text-parchment font-bold text-lg min-w-[3.5rem] text-center">
+            {group.wounds || 0}{perModelHealth > 0 && <span className="text-parchment/50 text-sm"> / {perModelHealth}</span>}
+          </span>
+          <button className="w-9 h-9 rounded bg-red-700 text-white font-bold text-lg leading-none" onClick={() => adjustWounds(1)}>+</button>
+          <button className="w-9 h-9 rounded bg-red-700 text-white font-bold text-sm leading-none" onClick={() => adjustWounds(3)}>+3</button>
+          <button className="w-9 h-9 rounded bg-red-700 text-white font-bold text-sm leading-none" onClick={() => adjustWounds(6)}>+6</button>
+        </div>
+        <button className="ml-auto px-2 h-9 rounded bg-black/40 text-red-200 text-xs font-bold border border-red-800" onClick={killModel}>
+          ☠ Kill Model
+        </button>
+        {lastKill && (
+          <div className="w-full flex items-center justify-between text-xs text-amber-300 bg-black/30 rounded px-2 py-1">
+            <span>☠ {lastKill.kills} model{lastKill.kills > 1 ? 's' : ''} slain{lastKill.xp > 0 ? ` — +${lastKill.xp} XP` : ''}</span>
+            <button className="text-amber-500 hover:text-amber-200" onClick={() => setLastKill(null)}>✕</button>
+          </div>
+        )}
       </div>
 
       {/* ── Elite chart ── */}
