@@ -238,16 +238,33 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
       const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
       const rolls = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
       const hits = rolls.filter(r => r <= 3).length;
-      const saves = Array.from({ length: hits }, () => Math.ceil(Math.random() * 6));
+      let saves = Array.from({ length: hits }, () => Math.ceil(Math.random() * 6));
+      let gritSpent = false;
+      // Grit CAN reroll the Willpower saves (not the D6 risk roll itself).
+      const curGrit = Number(h.currentGrit ?? 0);
+      const failedSaves = saves.filter(s => s < wpTarget).length;
+      if (failedSaves > 0 && curGrit > 0) {
+        gritSpent = window.confirm(
+          `${h.name} — Dark Stone Willpower ${wpTarget}+ saves: [${saves.join(', ')}] → ${failedSaves} failed.\n` +
+          `Current Grit: ${curGrit}\n\nSpend 1 Grit to reroll the ${failedSaves} failed save(s)?`
+        );
+        if (gritSpent) {
+          saves = saves.map(s => s >= wpTarget ? s : Math.ceil(Math.random() * 6));
+        }
+      }
       const blocked = saves.filter(s => s >= wpTarget).length;
       const corruption = Math.max(0, hits - blocked);
-      return { id: h.id || h.localId, name: h.name, count, rolls, hits, saves, blocked, corruption, wpTarget };
+      return { id: h.id || h.localId, name: h.name, count, rolls, hits, saves, blocked, corruption, wpTarget, gritSpent };
     }).filter(r => r.count > 0);
 
-    // Apply corruption to each hero
+    // Apply corruption + Grit spend to each hero
     results.forEach(r => {
-      if (r.corruption > 0 && r.id) {
+      if (!r.id) return;
+      if (r.corruption > 0) {
         updateHero(r.id, h => ({ ...h, currentCorruption: (h.currentCorruption ?? 0) + r.corruption }));
+      }
+      if (r.gritSpent) {
+        updateHero(r.id, h => ({ ...h, currentGrit: Math.max(0, (h.currentGrit ?? 0) - 1) }));
       }
     });
 
@@ -622,6 +639,7 @@ export default function DMAdventureTracker({ posse: posseProp = [] }) {
 
       {/* Rest action — skip exploration to heal D6 or recover 1 Grit */}
       <RestPanel posse={posse} updateHero={updateHero} />
+      <ExplorationTokenPanel />
 
       {/* Lantern bearer */}
       <div className="space-y-1">
@@ -751,6 +769,60 @@ function RestPanel({ posse = [], updateHero }) {
             <p className="text-[11px] text-emerald-800 font-semibold bg-emerald-100 rounded px-2 py-1">
               {lastRest.name}: {lastRest.text}
             </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Official base-game exploration token mix (12 tokens).
+const EXPLORATION_TOKENS = [
+  { name: 'Attack!', reminder: 'Draw a Threat card — a Fight breaks out!' },
+  { name: 'Attack!', reminder: 'Draw a Threat card — a Fight breaks out!' },
+  { name: 'Attack! + Clue', reminder: 'Draw a Threat card. After the Fight, this counts as a Clue icon.' },
+  { name: 'Encounter', reminder: 'Draw an Encounter card.' },
+  { name: 'Encounter', reminder: 'Draw an Encounter card.' },
+  { name: 'Encounter', reminder: 'Draw an Encounter card.' },
+  { name: 'Clue', reminder: 'A Clue icon — progress toward the mission objective.' },
+  { name: 'Clue', reminder: 'A Clue icon — progress toward the mission objective.' },
+  { name: 'Gate', reminder: 'An OtherWorld Gate opens on this tile.' },
+  { name: 'Nothing', reminder: 'Nothing here. Heroes may Scavenge or Rest.' },
+  { name: 'Nothing', reminder: 'Nothing here. Heroes may Scavenge or Rest.' },
+  { name: 'Nothing', reminder: 'Nothing here. Heroes may Scavenge or Rest.' },
+];
+
+function ExplorationTokenPanel() {
+  const [open, setOpen] = useState(false);
+  const [drawn, setDrawn] = useState(null);
+
+  const draw = () => {
+    const token = EXPLORATION_TOKENS[Math.floor(Math.random() * EXPLORATION_TOKENS.length)];
+    setDrawn(token);
+  };
+
+  return (
+    <div className="border border-sky-300 rounded-lg bg-sky-50 p-2 space-y-2">
+      <button
+        className="w-full flex items-center justify-between text-sm font-semibold text-sky-900"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span>🗺 Exploration Token</span>
+        <span className="text-xs text-sky-600">{open ? '▲ Hide' : '▼ Show'}</span>
+      </button>
+      {open && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] text-sky-700">
+            Draw a random Exploration Token when the posse enters a new room (base-game 12-token mix).
+          </p>
+          <button className="btn btn-sm btn-primary w-full min-h-[44px]" onClick={draw}>
+            Draw Token
+          </button>
+          {drawn && (
+            <div className="bg-white/80 border border-sky-200 rounded px-2 py-1.5">
+              <div className="text-sm font-bold text-sky-900">{drawn.name}</div>
+              <div className="text-[11px] text-sky-700 break-words">{drawn.reminder}</div>
+            </div>
           )}
         </div>
       )}

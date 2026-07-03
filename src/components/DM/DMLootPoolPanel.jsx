@@ -183,7 +183,7 @@ function makeExpandedItemEntry(item, kind, sourceLootName, drawnFor) {
 /* =========================================================
    Component
 ========================================================= */
-export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHero }) {
+export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHero, combatGroups = [] }) {
   const sourceCards = useMemo(() => LOOT_DECKS[world] || LOOT_DECKS["Mines"] || [], [world]);
 
   // remaining: array of indices into sourceCards (shuffled order)
@@ -198,6 +198,12 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
   const [claimed, setClaimed] = useState({});
   const [lootHistory, setLootHistory] = useState([]);
   const [threatCount, setThreatCount] = useState(1);
+  // Auto-link: default the loot count to the live fight size (1 loot per Threat, max 3).
+  // The 1/2/3 buttons below remain a manual override.
+  const fightThreatCount = Math.min(3, Math.max(1, combatGroups.length || 1));
+  useEffect(() => {
+    if (combatGroups.length > 0) setThreatCount(fightThreatCount);
+  }, [combatGroups.length, fightThreatCount]);
   const [scavengeRolls, setScavengeRolls] = useState(null);
   const deck = useDeckRegistry();
 
@@ -424,6 +430,11 @@ export default function DMLootPoolPanel({ posse = [], world = "Mines", updateHer
           <span className="text-xs text-gray-400">
             = {posse.length} hero{posse.length !== 1 ? 'es' : ''} × {threatCount} card{threatCount !== 1 ? 's' : ''} = {posse.length * threatCount} total
           </span>
+          {combatGroups.length > 0 && threatCount === fightThreatCount && (
+            <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300 rounded px-1.5 py-0.5">
+              auto from fight ({combatGroups.length} group{combatGroups.length !== 1 ? 's' : ''})
+            </span>
+          )}
         </div>
 
         <button className="btn btn-primary w-full" onClick={drawLootForFight}>

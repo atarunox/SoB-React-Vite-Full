@@ -375,10 +375,12 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
     const ui = {
       roll: async (count, sides) => rollND(count, sides),
       toast: (msg) => console.log(`[Enemy Attack] ${msg}`),
-      // Grit reroll on saves: index 0 = spend. Return non-zero so we never
-      // silently spend a hero's Grit during DM-driven resolution — the player
-      // can spend Grit themselves via the hero sheet if they choose.
-      promptChoice: async () => 1,
+      // Grit reroll on saves: index 0 = spend. combatResolution deducts the
+      // Grit itself when we return 0, so just ask the table.
+      promptChoice: async (msg, options) => {
+        const spendLabel = options?.[0]?.label ?? 'Spend 1 Grit';
+        return window.confirm(`${targetHero.name}:\n\n${msg}\n\nOK = ${spendLabel}`) ? 0 : 1;
+      },
     };
     const getStat = (h, k) => h?.stats?.[k] ?? null;
 
