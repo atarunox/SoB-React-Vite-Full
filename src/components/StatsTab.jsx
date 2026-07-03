@@ -925,6 +925,31 @@ export default function StatsTab({
 
   return (
     <div onPointerMove={handlePointerMove}>
+      {toNum(activeHero.currentHealth ?? 0, 0) <= 0 && (
+        <div className="mb-3 p-3 rounded-lg bg-red-700 border-2 border-red-400 text-white text-center animate-pulse break-words">
+          <strong>💀 KNOCKED OUT (0 Health)</strong>
+          <br />
+          <span className="text-sm">At the end of the Fight, roll on the <strong>Injury Chart</strong> and heal 2D6 (split Wounds/Sanity).</span>
+        </div>
+      )}
+      {toNum(activeHero.currentSanity ?? 0, 0) <= 0 && (
+        <div className="mb-3 p-3 rounded-lg bg-purple-800 border-2 border-purple-400 text-white text-center animate-pulse break-words">
+          <strong>🧠 KNOCKED OUT (0 Sanity)</strong>
+          <br />
+          <span className="text-sm">At the end of the Fight, roll on the <strong>Madness Chart</strong> and heal 2D6 (split Wounds/Sanity).</span>
+        </div>
+      )}
+      {!layoutEditMode && undoStack.length > 0 && (
+        <div className="flex justify-end mb-2">
+          <button
+            className="btn btn-sm"
+            onClick={handleUndo}
+            title="Undo last stat change"
+          >
+            ↩ Undo ({undoStack.length})
+          </button>
+        </div>
+      )}
       {layoutEditMode && statsViewMode === 'list' && (
         <div className="flex justify-end mb-2 gap-2 flex-wrap">
           <span className="text-xs text-leather/70 self-center italic">Drag items to reorder</span>

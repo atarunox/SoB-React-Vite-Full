@@ -108,7 +108,10 @@ export default function HeroScreen({
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-gradient-to-b from-[#3a2814] to-leather-dark border-b border-brass/30 px-2 py-1.5 overflow-x-auto hide-scrollbar">
+      <div className="relative">
+        {/* Right-edge fade — mobile hint that more tabs are off-screen */}
+        <div className="sm:hidden pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-leather-dark to-transparent z-10" />
+        <div className="bg-gradient-to-b from-[#3a2814] to-leather-dark border-b border-brass/30 px-2 py-1.5 overflow-x-auto hide-scrollbar">
         <div className="flex items-center gap-1 min-w-max mx-auto">
           {TABS.map(tab => {
             const hasMutationPending = tab === 'Conditions' &&
@@ -133,6 +136,7 @@ export default function HeroScreen({
             </button>
             );
           })}
+        </div>
         </div>
       </div>
 
