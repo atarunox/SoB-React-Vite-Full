@@ -159,7 +159,6 @@ src/
 │   ├── UpgradeTab.jsx           # Skill trees, perks
 │   ├── MiscTab.jsx              # XP, Gold, Skills, Level tracking + stats view mode toggle
 │   ├── PosseTab.jsx             # Multi-hero posse management
-│   ├── SidebagsTab.jsx          # Side Bag token tracking
 │   └── ErrorBoundary.jsx
 ├── utils/
 │   ├── sanitizeHero.js          # CANONICAL HERO SCHEMA — source of truth
@@ -670,7 +669,6 @@ Any `currentCorruption +=` write must be preceded by Willpower saves unless card
 ### Not Yet Implemented
 - Grit reroll restrictions (no chart rerolls enforced)
 - Bleeding/Fear/Madness auto-application post-combat
-- Grit spend during combat (Grit reroll for saves IS in `combatResolution.js` functions; no DM combat flow UI exists to trigger it)
 - Dark Stone allergy auto-damage (`dsAllergy` flag exists but not enforced)
 - `gritCap` enforcement from conditions
 - `forbidSlots` enforcement in all gear equip paths
@@ -1037,6 +1035,13 @@ Shuffle discard pile when deck empties.
 | Wasteland Travel Hazards (D36) | `DM/charts/wastelandTravelHazardChart.js` — used by `TownPhaseTab.jsx` for Blasted Wastes/The Canyons instead of the frontier chart |
 | Blasted Wastes encounter deck (25 cards) | `data/encounterCards.js` — weather remains-in-play (Sand Storm, Blistering Suns, Ion Storm, Heat Lightning), strangers, salvage, hazards; tagged `world: 'Blasted Wastes'` |
 | Blasted Wastes OW artifacts (21 cards) | `data/items/otherWorldArtifacts.js` — full promo set: Rail Gun, Desert Pike, Vento Glaive, Life Water, Wasteland Survival Gear, Reclamator, etc. |
+| Enemy group wound tracker | `EnemyGroupCard.jsx` — +1/+3/+6/− wound counter per group; model dies at per-model health (count −1, overflow carries), XP tally; ☠ Kill Model button |
+| Grit prompt on enemy-attack saves | `DMTurnTracker.jsx` `handleEnemyAttack` — confirm dialog surfaces the engine's Grit reroll offer; engine deducts the Grit |
+| Grit prompt on Dark Stone WP saves | `DMAdventureTracker.jsx` `handleEndAdventure` — per-hero confirm to reroll failed saves (D6 risk roll stays un-rerollable) |
+| Threat→loot auto-link | `DMLootPoolPanel.jsx` — threat-card count defaults from live `combatGroups.length` (clamped 1–3); manual 1/2/3 override kept |
+| Exploration token roller | `DMAdventureTracker.jsx` `ExplorationTokenPanel` — official 12-token mix (3 Attack incl. 1 Clue, 3 Encounter, 2 Clue, 1 Gate, 3 Nothing) |
+| KO banners at 0 HP / 0 Sanity | `StatsTab.jsx` — pulsing red/purple banner with Injury/Madness chart + 2D6 heal reminder |
+| Always-visible undo for stat taps | `StatsTab.jsx` — ↩ Undo button shows whenever the undo stack is non-empty (full undo/redo pair still in layout-edit mode) |
 | Frontier Travel Hazard Chart (D36, 36 entries) | `data/charts/travelHazardChart.js`; rolled D36 in `TownPhaseTab.jsx` |
 | Depth events for all 8 selectable worlds | `data/depthEvents/` — added Caverns of Cynder + Trederra; `getDepthEvent` warns on fallback for worlds without a chart |
 | HexCrawl Town Traits auto-prompt on town entry | `TownPhaseTab.jsx` — banner prompts the D36 Town Trait roll when `settings.townTraits` is on; shows "roll physical chart" note when off |
@@ -1054,7 +1059,6 @@ Shuffle discard pile when deck empties.
 |---|---|
 | Elite enemy abilities | `eliteChart` in data but no roll/apply/track mechanic |
 | Off-hand weapon To-Hit penalty in stat pipeline | +1 applied in `combatResolution.js` when resolving attacks; not reflected in displayed stats |
-| Threat cards → loot count auto-link | DM manually selects 1–3 threat cards in loot pool UI; not automatically linked to threat deck draw count |
 | Wanted/Outlaw status tracking | Smuggler's Den data exists; no persistent flag on hero |
 | OtherWorld-specific mutation tables | Only the base table stub exists |
 
@@ -1068,7 +1072,6 @@ Shuffle discard pile when deck empties.
 | D8 die type | Magma Giant Massive Fists; only D6 modeled |
 | Enemy special card decks | Serpent Magik, Shaman Juju Trinkets, etc. |
 | Depth events for remaining non-selectable worlds | All 8 selectable worlds now have charts (Mines, Targa, Jargono, Derelict Ship, Canyons, Blasted Wastes, Caverns of Cynder, Trederra). Belly of the Beast, Forest of the Dead, Cursed Mountain, Valley of the Serpent Kings, Valhalla fall back to Mines (logs a dev warning) |
-| Exploration token draw randomization | DM resolves manually |
 | Lava Spaces | Terrain mechanic not modeled |
 | Orphanage / Town Hall | Stubbed empty |
 
