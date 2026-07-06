@@ -1,1 +1,0 @@
-export const mutationChart = [{"id": 1, "name": "Extra Arm", "effect": "Gain an additional Hand slot."}, {"id": 2, "name": "Warped Flesh", "effect": "+1 Health permanently."}];

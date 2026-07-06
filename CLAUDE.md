@@ -98,7 +98,7 @@ if (unblocked > 0) ctx.updateHero?.(id, hh => ({ ...hh, currentCorruption: (hh.c
 | `/dm` | `DMTab` | DM panel — enemies, loot, card decks, maps, turn tracker |
 | `/display` | `DisplayScreen` | Read-only TV display — depth track, posse stats, initiative order |
 | `/active-enemies` | `ActiveEnemyStatsPage` | Currently-engaged enemy stats |
-| `/enemies` | `EnemyStatsPage` | All-enemies searchable reference |
+| `/enemies` | `EnemyReferencePage` | All-enemies searchable reference |
 
 **HeroScreen tabs:** Stats → Gear → Town → Upgrade → Conditions → Posse → Misc → DM
 
@@ -137,13 +137,10 @@ src/
 ├── hooks/
 │   ├── useCombatState.jsx       # Darkness deck, growing dread, enemy groups (localStorage key: sob_combat_state_v4)
 │   ├── useHexCrawlSettings.js   # HexCrawl mode per-chart toggles (localStorage key: sob:hexcrawl_settings)
-│   ├── useActiveMission.js      # Active mission selection (localStorage key: sob:active_mission)
-│   ├── useLootPool.jsx
-│   └── usePersistentMapDrawn.js
+│   └── useActiveMission.js      # Active mission selection (localStorage key: sob:active_mission)
 ├── screens/
 │   ├── HeroScreen.jsx           # Tab router + AdventureTrackView
-│   ├── DisplayScreen.jsx        # Read-only TV display (/display route), world-themed
-│   └── EnemyStatsPage.jsx
+│   └── DisplayScreen.jsx        # Read-only TV display (/display route), world-themed
 ├── components/
 │   ├── DM/                      # DMTab, DMTurnTracker, DMEnemyPanel, DMLootPoolPanel, DMMapDrawer, etc.
 │   │   ├── DMDeckExplorer.jsx   # Collapsible deck browser (all card types incl. enemies)
@@ -166,10 +163,7 @@ src/
 │   ├── levelingUtils.js         # XP_THRESHOLDS, xpForLevel, getNextLevelXP, canLevelUp
 │   ├── conditionRules.js        # Non-numeric rule aggregation
 │   ├── combatResolution.js      # Defense/Armor + Willpower/SpiritArmor resolution
-│   ├── heroAccess.js            # adjustGrit, applyWounds, etc.
 │   ├── diceHelpers.js           # rollD6, rollND, d3, 2d6
-│   ├── promptApi.js             # UI-layer dice/prompt bridge
-│   ├── TownEngine.js            # Town phase orchestration
 │   ├── townState.js             # Town visit state (localStorage)
 │   └── locationHandlers/        # 26+ handler files (one per location)
 │       ├── blacksmithHandler.js
@@ -199,8 +193,8 @@ src/
 │   │   ├── scaffordLieutenants.js  # SCAFFORD_LIEUTENANT_CARDS — 6 named lieutenant cards
 │   │   ├── townTypeCards.js     # 7 Frontier Town expansion Town Type cards (Mining, Mutant, Outlaw, Plague, Rail, River, Ruins)
 │   │   └── hexcrawlTerrainCards.js # 9 HexCrawl terrain cards: Crates, Barrels, TNT Barrels, Corpses, Monster Bodies, Dark Stone Shards, Toxic Fumes, Unstable, Plant Growth
-│   ├── charts/                  # Mutation/Injury/Madness D66 tables (mostly stubs — 2-3 entries each)
-│   │   └── travelHazardChart.js # Complete D36 Frontier Travel Hazard chart (36 entries, rolls 11-66)
+│   ├── charts/
+│   │   └── travelHazardChart.js # Complete D36 Frontier Travel Hazard chart (36 entries, rolls 11-66) — only file; D66 stubs removed
 │   ├── dungeonPacks/            # challengePack1.js, challengePack2.js, 8 Spider ESP files, index.js
 │   ├── lootDecks/               # wastesLootDeck.js (Blasted Wastes + The Canyons shared 16-card deck)
 │   ├── missions/                # Mission data files aggregated via index.js
@@ -448,7 +442,7 @@ Per-chart toggles stored in `localStorage` under key `sob:hexcrawl_settings`. Ma
 
 **Defaults:** all charts ON, persistentHealth OFF. When a chart is OFF, `DMChartPanel` shows a callout banner instructing the DM to roll the physical D66 chart instead.
 
-**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart, travelHazardChart, wastelandTravelHazardChart — 36 entries each). These are the digital lookups. `TownPhaseTab.jsx` uses `wastelandTravelHazardChart` instead of the standard hazard chart when the world is Blasted Wastes or The Canyons. Standard Brimstone charts in `src/data/charts/` are stubs only (2–3 entries; the standard injury stub is parked as `injuryChart(no).js` so it can't be imported by accident) — no digital lookup for standard mode. Exception: `src/data/charts/travelHazardChart.js` is complete (36 entries).
+**Charts:** `src/components/DM/charts/` contains the full HexCrawl D36 entries (injuryChart, madnessChart, mutationChart, townTraitsChart, travelHazardChart, wastelandTravelHazardChart — 36 entries each). These are the digital lookups. `TownPhaseTab.jsx` uses `wastelandTravelHazardChart` instead of the standard hazard chart when the world is Blasted Wastes or The Canyons. The only file in `src/data/charts/` is the complete D36 `travelHazardChart.js` (36 entries) — standard-Brimstone D66 Injury/Madness/Mutation charts have no digital lookup (the old 2–3 entry stubs were removed as dead code).
 
 **Persistent Health:** When ON, end-of-adventure confirmation shows a "Catch Your Breath" instruction instead of the "Full Heal All Heroes" button. DM resolves the 2D6 heal manually per hero.
 
@@ -510,7 +504,7 @@ Any `currentCorruption +=` write must be preceded by Willpower saves unless card
 - `forbidSlots` enforcement in all gear equip paths
 - Wanted/Outlaw status tracking
 - OtherWorld-specific mutation tables
-- Standard Brimstone D66 charts (2–3 stub entries each in `src/data/charts/`) — HexCrawl D36 charts are complete (36 entries in `src/components/DM/charts/`)
+- Standard Brimstone D66 charts (no data — old stubs removed) — HexCrawl D36 charts are complete (36 entries in `src/components/DM/charts/`)
 - Spirit Guides (Eagle, Snake, Beaver) — in `finish-general-store` branch, not yet merged
 - Doc's Office Medical Attention tab disable — in `disable-medical-attention` branch, not yet merged
 - Orphanage and Town Hall locations (stubbed empty)
@@ -879,7 +873,7 @@ Shuffle discard pile when deck empties.
 #### High (core loop, happens every session)
 | Mechanic | Notes |
 |---|---|
-| Standard Brimstone D66 chart data | HexCrawl D36 charts are complete (36 entries each); standard Brimstone charts in `src/data/charts/` are stubs (2–3 entries). Digital lookup only available in HexCrawl mode |
+| Standard Brimstone D66 chart data | HexCrawl D36 charts are complete (36 entries each); standard Brimstone D66 charts have no data (old stubs removed). Digital lookup only available in HexCrawl mode |
 | Corruption overflow auto-prompt in UI | Sanitizer adds placeholder mutation but no in-session alert fires at the moment of overflow |
 
 #### Medium (important but not every round)

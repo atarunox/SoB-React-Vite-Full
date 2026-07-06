@@ -1,2 +1,0 @@
-# Adventures
-Placeholder town data.

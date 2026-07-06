@@ -1,1 +1,0 @@
-export const injuryChart = [{"id": 1, "name": "Head Trauma", "effect": "Lose 1 max Sanity permanently."}, {"id": 2, "name": "Crushed Leg", "effect": "-1 Move permanently."}];
