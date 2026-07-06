@@ -1,5 +1,6 @@
 // src/utils/locationHandlers/smugglersDenHandler.js
 import { loadTownState, saveTownState, patchDayMods } from '../../utils/townState';
+import { applyCorruptionHits } from '../corruptionUtils';
 import { hasKeyword } from '../keywords';
 
 import { d6 as _d6, roll2d6 as d2d6 } from '../../utils/diceHelpers';
@@ -454,14 +455,9 @@ export async function apply(roll, ctx) {
     // Willpower saves for Corruption Hits from the robbery
     let unblockedCorruption = 0;
     if (corruptionHits > 0) {
-      const h = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
-      const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
-      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-      const saveRolls = await ctx.roll?.(corruptionHits, 6, `Willpower ${wpTarget}+ saves vs ${corruptionHits} Corruption Hits`) || [];
-      const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-      const blocks = arr.filter(n => n >= wpTarget).length;
-      unblockedCorruption = Math.max(0, corruptionHits - blocks);
-      const wpLine = `Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblockedCorruption} corruption taken.`;
+      // Save-roll only (updateHero suppressed); corruption applied in Phase 3 alongside gold/Wanted
+      const { unblocked, logLine: wpLine } = await applyCorruptionHits({ ...ctx, updateHero: undefined }, id, corruptionHits);
+      unblockedCorruption = unblocked;
       log.push(wpLine);
       await showResult(ctx, 'ONE LAST JOB — Willpower Saves', [wpLine]);
     }

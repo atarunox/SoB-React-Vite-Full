@@ -1,6 +1,7 @@
 // src/utils/locationHandlers/mutantQuarterHandler.js
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { d6 as _d6, d3 as _d3 } from '../../utils/diceHelpers';
+import { applyCorruptionHits } from '../corruptionUtils';
 import { getEventDisplay } from '../locationEventText';
 
 // Use ctx.d6/ctx.d3 when available (respects manual roll mode); fallback to auto-roll
@@ -293,14 +294,7 @@ export async function apply(roll, ctx) {
 
       if (showRoll >= 3) {
         // Willpower save for 1 Corruption Hit
-        const hRef = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
-        const wpStr = String(hRef?.willpower ?? hRef?.stats?.Willpower ?? '5+');
-        const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-        const saveRolls = await ctx.roll?.(1, 6, `Willpower ${wpTarget}+ save vs 1 Corruption Hit`) || [];
-        const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-        const wpBlocked = wpArr.filter(n => n >= wpTarget).length;
-        const unblockedCorruption = Math.max(0, 1 - wpBlocked);
-        const wpLine = `Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${wpBlocked ? 'blocked!' : '1 corruption taken.'}`;
+        const { unblocked: unblockedCorruption, logLine: wpLine } = await applyCorruptionHits(ctx, id, 1);
         log.push(wpLine);
 
         ctx.updateHero?.(id, (h) => {
@@ -310,7 +304,6 @@ export async function apply(roll, ctx) {
           return {
             ...h,
             currentGrit: nextGrit,
-            currentCorruption: (h.currentCorruption ?? h.corruption ?? 0) + unblockedCorruption,
           };
         });
         const outcome = `The show is wild! Recover 1 Grit and take 1 Corruption Hit${unblockedCorruption === 0 ? ' (blocked by Willpower)' : ''}.`;

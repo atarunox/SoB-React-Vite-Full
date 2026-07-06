@@ -1,5 +1,6 @@
 // src/utils/locationHandlers/smugglersDenServices.js
 import { loadTownState, saveTownState } from '../../utils/townState';
+import { applyCorruptionHits } from '../corruptionUtils';
 import gearCards from '../../data/items/gearCards.js';
 import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts.js';
 import { addKeyword, hasKeyword } from '../keywords';
@@ -536,18 +537,17 @@ export async function performRustleCattle({ hero, posseApi, ui }) {
   if (!id) return { log: ['No active hero.'] };
 
   // Take 1 Corruption Hit (with Willpower save)
-  const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
-  const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-  const saveRolls = (await ui?.roll?.(1, 6, `Willpower ${wpTarget}+ save vs 1 Corruption Hit`)) || rollND(1, 6);
-  const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-  const blocked = wpArr.filter(n => n >= wpTarget).length;
-  const unblocked = Math.max(0, 1 - blocked);
-  log.push(`Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${blocked ? 'blocked!' : `${unblocked} corruption taken.`}`);
+  const { unblocked, logLine } = await applyCorruptionHits(
+    {
+      roll: async (n, s, label) => (await ui?.roll?.(n, s, label)) || rollND(n, s),
+      updateHero: (hid, fn) => posseApi.updateHero(hid, fn),
+    },
+    id,
+    1,
+    { hero },
+  );
+  log.push(logLine);
   if (unblocked > 0) {
-    posseApi.updateHero(id, (prev) => ({
-      ...prev,
-      currentCorruption: num(prev?.currentCorruption ?? prev?.corruption, 0) + unblocked,
-    }));
     log.push('Took <b>1 Corruption Hit</b>.');
   }
 

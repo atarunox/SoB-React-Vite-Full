@@ -1,6 +1,7 @@
 // src/utils/locationHandlers/saloonServices.js
 import gearCards from '../../data/items/gearCards.js';
 import { d6, d3 } from '../../utils/diceHelpers';
+import { applyCorruptionHits } from '../corruptionUtils';
 import { loadTownState } from '../townState.js';
 import { calculateCurrentStats } from '../calculateStats';
 
@@ -206,12 +207,15 @@ export async function performSaloonService(serviceId, _params = {}, ctx = {}) {
     case 'saloon_troupe_pickpocket': {
       // Take D3 Corruption Hits first (cost of attempting) — with Willpower saves
       const corruptionHits = d3();
-      const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
-      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-      const wpRolls = await rollND(ui, corruptionHits, 6, `Willpower ${wpTarget}+ saves vs ${corruptionHits} Corruption Hits`);
-      const wpBlocked = wpRolls.filter(r => r >= wpTarget).length;
-      const unblockedCorruption = Math.max(0, corruptionHits - wpBlocked);
-      log.push(`Pickpocket: ${corruptionHits} Corruption Hit(s) (D3). Willpower [${wpRolls.join(', ')}] vs ${wpTarget}+ — ${wpBlocked} blocked, ${unblockedCorruption} taken.`);
+      // Save-roll only (no updateHero in ctx shim); corruption applied below via pushUpdate
+      const { unblocked: unblockedCorruption, logLine } = await applyCorruptionHits(
+        { roll: (n, s, label) => rollND(ui, n, s, label) },
+        hid,
+        corruptionHits,
+        { hero },
+      );
+      log.push(`Pickpocket: ${corruptionHits} Corruption Hit(s) (D3).`);
+      log.push(logLine);
       if (unblockedCorruption > 0) {
         const curCorruption = Number(hero.currentCorruption ?? hero.corruption ?? 0);
         pushUpdate({ currentCorruption: curCorruption + unblockedCorruption });

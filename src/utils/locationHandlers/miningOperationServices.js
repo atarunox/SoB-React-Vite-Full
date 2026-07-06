@@ -2,6 +2,7 @@
 // Work Down in the Tunnels — you may do 1 of the following per Location Visit.
 
 import { d6, d3 } from '../../utils/diceHelpers';
+import { applyCorruptionHits } from '../corruptionUtils';
 import { loadTownState, saveTownState } from '../townState.js';
 import { drawWorldCardAndArtifact } from './worldCardDraw.js';
 
@@ -70,13 +71,15 @@ export async function performMiningOperationService(serviceId, _params = {}, ctx
 
       // Take D3 Corruption Hits — Willpower save per Hit
       const corruptRoll = await roll1d3(ui, 'Work the Refinery — D3 Corruption Hits');
-      const wpStr = String(hero?.willpower ?? hero?.stats?.Willpower ?? '5+');
-      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-      const saveRolls = await rollND(ui, corruptRoll, 6, `Willpower ${wpTarget}+ saves vs ${corruptRoll} Corruption Hits`);
-      const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-      const blocked2 = arr.filter((n) => n >= wpTarget).length;
-      const unblocked = Math.max(0, corruptRoll - blocked2);
-      log.push(`Rolled D3 → ${corruptRoll} Corruption Hit${corruptRoll !== 1 ? 's' : ''}. Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocked2} blocked.`);
+      // Save-roll only (no updateHero in ctx shim); corruption applied below via pushUpdate
+      const { unblocked, logLine } = await applyCorruptionHits(
+        { roll: (n, s, label) => rollND(ui, n, s, label) },
+        hid,
+        corruptRoll,
+        { hero },
+      );
+      log.push(`Rolled D3 → ${corruptRoll} Corruption Hit${corruptRoll !== 1 ? 's' : ''}.`);
+      log.push(logLine);
       if (unblocked > 0) {
         const curCorruption = Number(hero.currentCorruption ?? hero.corruption ?? 0);
         pushUpdate({ currentCorruption: curCorruption + unblocked });

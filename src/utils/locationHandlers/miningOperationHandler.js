@@ -1,6 +1,7 @@
 // src/utils/locationHandlers/miningOperationHandler.js
 
 import { d6 as _d6, d3 as _d3 } from '../../utils/diceHelpers';
+import { applyCorruptionHits } from '../corruptionUtils';
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { drawWorldCardAndArtifact, drawArtifactFromWorld, offerArtifactForSale } from './worldCardDraw.js';
 import { gearCards } from '../../data/items/gearCards.js';
@@ -211,21 +212,8 @@ export async function apply(roll, ctx) {
     const heroIds = ctx.getHeroesAtShop?.(shopId) || [id];
     for (const hid of heroIds) {
       const h = (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? null;
-      const heroName = h?.name || 'Hero';
-      // Willpower save per Corruption Hit (corruption is not specified to ignore Willpower)
-      const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
-      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-      const saveRolls = await ctx.roll?.(corruptionRoll, 6, `${heroName} — Willpower ${wpTarget}+ saves vs ${corruptionRoll} Corruption Hits`) || [];
-      const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-      const blocks = arr.filter(n => n >= wpTarget).length;
-      const unblocked = Math.max(0, corruptionRoll - blocks);
-      log.push(`${heroName}: Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblocked} corruption taken.`);
-      if (unblocked > 0) {
-        ctx.updateHero?.(hid, (hh) => ({
-          ...hh,
-          currentCorruption: (hh.currentCorruption ?? hh.corruption ?? 0) + unblocked,
-        }));
-      }
+      const { logLine } = await applyCorruptionHits(ctx, hid, corruptionRoll, { hero: h, heroName: h?.name || 'Hero' });
+      log.push(logLine);
     }
 
     // Block Work the Mines today

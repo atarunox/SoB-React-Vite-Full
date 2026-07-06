@@ -70,17 +70,20 @@ ctx.updateHero(id, h => ({ ...h, corruptionHits: X }));  // ← dropped
 
 ### Willpower Save Pattern for Corruption Hits
 
-Reference: `miningOperationHandler.js:215-228`. Every Corruption Hit source **must** allow Willpower saves unless card text says "ignoring Willpower":
+Every Corruption Hit source **must** allow Willpower saves unless card text says "ignoring Willpower". Do NOT hand-roll the save block — use the shared utility `src/utils/corruptionUtils.js`:
 
 ```js
-const h = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
-const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
-const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-const saveRolls = await ctx.roll?.(hitCount, 6, `Willpower ${wpTarget}+ saves`) || [];
-const blocks = (Array.isArray(saveRolls) ? saveRolls : [saveRolls]).filter(n => n >= wpTarget).length;
-const unblocked = Math.max(0, hitCount - blocks);
-if (unblocked > 0) ctx.updateHero?.(id, hh => ({ ...hh, currentCorruption: (hh.currentCorruption ?? 0) + unblocked }));
+import { applyCorruptionHits } from '../corruptionUtils'; // from locationHandlers/
+
+const { unblocked, logLine } = await applyCorruptionHits(ctx, heroId, hitCount, {
+  hero,                    // optional — looked up via ctx.getHeroById/getHero if omitted
+  heroName: hero?.name,    // optional log prefix
+  // ignoreWillpower: true // when card text says "ignoring Willpower"
+});
+log.push(logLine);
 ```
+
+It parses the Willpower target ("5+" formats), rolls saves via `ctx.roll`, and writes unblocked hits to the canonical `currentCorruption` via `ctx.updateHero`. If your site must apply corruption itself (deferred/combined writes — e.g. docsOfficeHandler's Plague Tent overflow→Mutation), pass `{ ...ctx, updateHero: undefined }` so the utility only rolls the saves. Also exports `parseThreshold(value, fallback)` and `getWillpowerTarget(hero)`.
 
 ### Stat Calculation Pipeline
 

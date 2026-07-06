@@ -7,6 +7,7 @@ import { appendTemporary } from '../mergeConditions';
 import { normalizeConditionsObject } from '../mergeConditions';
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { d6 as _d6, d3 as _d3 } from '../../utils/diceHelpers';
+import { applyCorruptionHits } from '../corruptionUtils';
 import { getEventDisplay } from '../locationEventText';
 
 // Use ctx.d6/ctx.d3 when available (respects manual roll mode); fallback to auto-roll
@@ -96,14 +97,8 @@ export async function apply(roll, ctx) {
       log.push(corruptionLine);
 
       // Willpower saves per Corruption Hit
-      const hRef = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
-      const wpStr = String(hRef?.willpower ?? hRef?.stats?.Willpower ?? '5+');
-      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-      const saveRolls = await ctx.roll?.(corruptionRoll, 6, `Willpower ${wpTarget}+ saves vs ${corruptionRoll} Corruption Hits`) || [];
-      const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-      const wpBlocks = wpArr.filter(n => n >= wpTarget).length;
-      const unblockedCorruption = Math.max(0, corruptionRoll - wpBlocks);
-      const wpLine = `Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${wpBlocks} blocked, ${unblockedCorruption} corruption taken.`;
+      // Save-roll only (updateHero suppressed); corruption applied below with overflow→Mutation handling
+      const { unblocked: unblockedCorruption, logLine: wpLine } = await applyCorruptionHits({ ...ctx, updateHero: undefined }, id, corruptionRoll);
       log.push(wpLine);
 
       if (unblockedCorruption > 0) {
@@ -263,14 +258,10 @@ export async function apply(roll, ctx) {
     let unblockedCorruption = ones;
     let wpLine = '';
     if (ones > 0) {
-      const hRef = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
-      const wpStr = String(hRef?.willpower ?? hRef?.stats?.Willpower ?? '5+');
-      const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-      const saveRolls = await ctx.roll?.(ones, 6, `Willpower ${wpTarget}+ saves vs ${ones} Corruption Hits`) || [];
-      const wpArr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-      const wpBlocks = wpArr.filter(n => n >= wpTarget).length;
-      unblockedCorruption = Math.max(0, ones - wpBlocks);
-      wpLine = `Willpower [${wpArr.join(', ')}] vs ${wpTarget}+ — ${wpBlocks} blocked, ${unblockedCorruption} corruption taken.`;
+      // Save-roll only (updateHero suppressed); corruption applied below in the combined conditions update
+      const res = await applyCorruptionHits({ ...ctx, updateHero: undefined }, id, ones);
+      unblockedCorruption = res.unblocked;
+      wpLine = res.logLine;
       log.push(wpLine);
     }
 

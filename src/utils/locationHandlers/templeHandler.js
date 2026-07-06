@@ -2,6 +2,7 @@
 
 import { loadTownState, saveTownState } from '../../utils/townState';
 import { d6 as _d6, d3 as _d3 } from '../../utils/diceHelpers';
+import { applyCorruptionHits } from '../corruptionUtils';
 import { templeIdols } from '../../data/townLocations/BlastedWastesTown/Temple/templeIdols.js';
 
 const ctxD6 = async (ctx, label) =>
@@ -154,20 +155,8 @@ async function applyIdolEvent4(idolRoll, ctx, id, log) {
         const corruptionHits = 3;
         for (const hid of allHeroes) {
           const h = (ctx.getHeroById ?? ctx.getHero)?.(hid) ?? null;
-          const heroName = h?.name || 'Hero';
-          const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
-          const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-          const saveRolls = await ctx.roll?.(corruptionHits, 6, `${heroName} — Willpower ${wpTarget}+ saves vs ${corruptionHits} Corruption Hits`) || [];
-          const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-          const blocks = arr.filter(n => n >= wpTarget).length;
-          const unblocked = Math.max(0, corruptionHits - blocks);
-          log.push(`${heroName}: Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblocked} corruption taken.`);
-          if (unblocked > 0) {
-            ctx.updateHero?.(hid, (hh) => ({
-              ...hh,
-              currentCorruption: (hh.currentCorruption ?? hh.corruption ?? 0) + unblocked,
-            }));
-          }
+          const { logLine } = await applyCorruptionHits(ctx, hid, corruptionHits, { hero: h, heroName: h?.name || 'Hero' });
+          log.push(logLine);
         }
         const outcome = `${rollLine}\nTotal is 13 or higher — the countdown sequence triggers! This is the last day in Town for all Heroes. Every Hero takes 3 Corruption Hits from the ensuing fallout.`;
         log.push(outcome);
@@ -254,21 +243,8 @@ async function applyIdolEvent4(idolRoll, ctx, id, log) {
         log.push(corruptLine);
 
         // Willpower saves per Corruption Hit
-        const h = (ctx.getHeroById ?? ctx.getHero)?.(id) ?? null;
-        const wpStr = String(h?.willpower ?? h?.stats?.Willpower ?? '5+');
-        const wpTarget = Number(String(wpStr).match(/\d+/)?.[0]) || 5;
-        const saveRolls = await ctx.roll?.(corruptRoll, 6, `Willpower ${wpTarget}+ saves vs ${corruptRoll} Corruption Hits`) || [];
-        const arr = Array.isArray(saveRolls) ? saveRolls : [saveRolls];
-        const blocks = arr.filter(n => n >= wpTarget).length;
-        const unblocked = Math.max(0, corruptRoll - blocks);
-        const wpLine = `Willpower [${arr.join(', ')}] vs ${wpTarget}+ — ${blocks} blocked, ${unblocked} corruption taken.`;
+        const { unblocked, logLine: wpLine } = await applyCorruptionHits(ctx, id, corruptRoll);
         log.push(wpLine);
-        if (unblocked > 0) {
-          ctx.updateHero?.(id, (hh) => ({
-            ...hh,
-            currentCorruption: (hh.currentCorruption ?? hh.corruption ?? 0) + unblocked,
-          }));
-        }
 
         const outcome = `The followers catch you tampering and burn you on the core! Take ${corruptRoll} Corruption Hits (${unblocked} after Willpower saves). The Temple is Destroyed anyway.`;
         log.push(outcome);
