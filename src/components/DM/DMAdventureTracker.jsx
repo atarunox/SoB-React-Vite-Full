@@ -4,6 +4,7 @@ import { usePosse } from '../../context/PosseContext';
 import { useCombatState } from '../../hooks/useCombatState';
 import { getHBtDThreshold } from '../../data/depthEvents/depthEventLookup';
 import { useHexCrawlSettings } from '../../hooks/useHexCrawlSettings';
+import { getConditionRules } from '../../utils/conditionRules';
 
 function getLanternInfo(hero) {
   if (!hero?.gear) return null;
@@ -714,7 +715,9 @@ function RestPanel({ posse = [], updateHero }) {
   const recoverGrit = (hero) => {
     const id = hero.id || hero.localId;
     if (!id) return;
-    const cap = Number(hero.Grit ?? hero.maxGrit ?? 2);
+    let cap = Number(hero.Grit ?? hero.maxGrit ?? 2);
+    const condCap = getConditionRules(hero).gritCap;
+    if (condCap != null) cap = Math.min(cap, condCap);
     updateHero(id, h => ({
       ...h,
       currentGrit: Math.min(cap, (Number(h.currentGrit ?? 0)) + 1),
@@ -740,7 +743,9 @@ function RestPanel({ posse = [], updateHero }) {
           </p>
           {posse.map(h => {
             const id = h.id || h.localId;
-            const cap = Number(h.Grit ?? h.maxGrit ?? 2);
+            let cap = Number(h.Grit ?? h.maxGrit ?? 2);
+            const condCap = getConditionRules(h).gritCap;
+            if (condCap != null) cap = Math.min(cap, condCap);
             const grit = Number(h.currentGrit ?? 0);
             return (
               <div key={id} className="flex items-center justify-between gap-2 bg-white/70 rounded px-2 py-1">

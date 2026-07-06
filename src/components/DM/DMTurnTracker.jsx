@@ -180,6 +180,14 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
   const [reverseInitiative, setReverseInitiative] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [activationLog, setActivationLog] = useState(null);
+  // Session combat history — activationLog batches persist here after the turn advances
+  const [combatLog, setCombatLog] = useState([]);
+  const [showCombatLog, setShowCombatLog] = useState(false);
+  useEffect(() => {
+    if (Array.isArray(activationLog) && activationLog.length > 0) {
+      setCombatLog(prev => [...prev.slice(-14), activationLog]);
+    }
+  }, [activationLog]);
   const [activatedThisRound, setActivatedThisRound] = useState(new Set());
   // Enemy attack flow: { profile } once an attack type is chosen, awaiting target pick
   const [pendingEnemyAttack, setPendingEnemyAttack] = useState(null);
@@ -687,6 +695,39 @@ export default function DMTurnTracker({ posse = [], combatGroups = [], updateHer
               <span className="font-semibold">[{r.cardName}]</span> {r.text}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Combat history — survives turn changes */}
+      {combatLog.length > 0 && (
+        <div className="border border-gray-300 rounded-lg bg-gray-50 p-2">
+          <button
+            className="w-full flex items-center justify-between text-xs font-bold text-gray-600 uppercase"
+            onClick={() => setShowCombatLog(v => !v)}
+          >
+            <span>📜 Combat Log ({combatLog.length})</span>
+            <span className="flex items-center gap-2">
+              {showCombatLog && (
+                <span
+                  role="button"
+                  className="text-red-500 normal-case font-normal hover:underline"
+                  onClick={(e) => { e.stopPropagation(); setCombatLog([]); }}
+                >
+                  clear
+                </span>
+              )}
+              <span className="text-gray-400">{showCombatLog ? '▲' : '▼'}</span>
+            </span>
+          </button>
+          {showCombatLog && (
+            <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+              {[...combatLog].reverse().map((batch, i) => (
+                <div key={combatLog.length - i} className="text-[11px] bg-white/80 rounded p-1.5 border border-gray-200">
+                  {batch.map((line, j) => <p key={j}>{line}</p>)}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

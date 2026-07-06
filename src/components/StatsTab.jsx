@@ -6,6 +6,7 @@ import { usePosse } from '../context/PosseContext';
 import { useUIScale } from '../context/UIScaleContext';
 import { calculateCurrentStats } from '../utils/calculateStats';
 import { canLevelUp, getNextLevelXP } from '../utils/levelingUtils';
+import { getConditionRules } from '../utils/conditionRules';
 import LevelUpModal from './LevelUpModal';
 
 /* ------------------------------- helpers -------------------------------- */
@@ -891,7 +892,8 @@ export default function StatsTab({
     );
   const curSanity = toNum(activeHero.currentSanity ?? 0, 0);
 
-  const maxGrit =
+  const condRules = getConditionRules(activeHero);
+  const maxGritRaw =
     toNum(
       getProp(mergedStats, 'Grit') ??
         activeHero.maxGrit ??
@@ -899,6 +901,8 @@ export default function StatsTab({
         0,
       0
     );
+  // Conditions can cap Max Grit (e.g. "may only keep 1 Grit" injuries)
+  const maxGrit = condRules.gritCap != null ? Math.min(maxGritRaw, condRules.gritCap) : maxGritRaw;
   const curGrit = toNum(
     getProp(mergedStats, 'CurrentGrit') ??
       activeHero.currentGrit ??
