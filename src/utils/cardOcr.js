@@ -222,6 +222,9 @@ Extract ALL visible text and return a JSON object with these fields (omit fields
 - weight: numeric weight shown after "Wt" (integer)
 - hands: how many hands the item requires (1, 2, or 3) — look for hand icons or "Two Handed" / "2 Hands" text
 - upgradeSlots: number of upgrade slots shown (integer)
+- slot: for gear/items, the equip slot if identifiable — one of "Main Hand", "Off Hand", "Head", "Torso", "Coat", "Gloves", "Hands", "Pants", "Feet", "Shoulders", "Face", "Light Source". Infer from the card's keywords (e.g. Hat→Head, Boots→Feet, Gun/Weapon→Main Hand, Clothing type shown on card). Omit if unclear.
+- darkStone: true if the card shows a Dark Stone icon or "Dark Stone" in its keywords/effects (corruption-risk item)
+- effects: array of strings — each distinct rules effect as its own entry (use this INSTEAD of the single "effect" field when the card has multiple separate effects)
 - remainsInPlay: true if the card says "Remains in Play"
 - test: skill test string if shown, e.g. "Cunning 5+"
 - promoId: promo identifier if shown, e.g. "Promo-110"

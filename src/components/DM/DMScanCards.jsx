@@ -655,12 +655,64 @@ function formatEnemyForExport(card) {
   };
 }
 
-function exportCards(deckType, cards) {
+const slugId = (name) =>
+  String(name || 'card').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+// Shape a scanned threat card like a threatCards.js entry.
+function formatThreatForExport(card) {
+  const countStr = card.perilCount ? '{P}' : (card.enemyCount || '');
+  const spawn = card.enemyGroup
+    ? `${countStr ? countStr + ' ' : ''}${card.enemyGroup}`.trim()
+    : (card.name || '');
+  return {
+    id: slugId(card.name),
+    name: card.name || spawn,
+    tier: card.tier || 'medium',
+    ...(card.world ? { world: card.world } : {}),
+    spawn,
+    ...(card.xp ? { xp: String(card.xp) } : {}),
+    ...(card.lootCount && Number(card.lootCount) !== 1 ? { lootCount: Number(card.lootCount) } : {}),
+    effects: card.effects || (card.effect ? [card.effect] : []),
+  };
+}
+
+// Shape a scanned gear/artifact card like a gearCards.js / artifact entry.
+function formatItemForExport(card) {
+  return {
+    id: slugId(card.name),
+    name: card.name || 'Unknown Item',
+    ...(card.slot ? { slot: card.slot } : {}),
+    effects: card.effects || (card.effect ? [card.effect] : []),
+    value: Number(card.value) || 0,
+    ...(card.hands >= 2 ? { twoHanded: true } : {}),
+    ...(card.darkStone ? { darkStone: true } : {}),
+    ...(card.upgradeSlots ? { upgradeSlots: Number(card.upgradeSlots) } : {}),
+    ...(card.weight ? { weight: Number(card.weight) } : {}),
+    ...(card.flavorText ? { flavorText: card.flavorText } : {}),
+  };
+}
+
+// Which data file each category's export is meant to merge into.
+const EXPORT_TARGETS = {
+  enemy: 'src/data/enemyCards/scannedEnemies.js',
+  enemyTrait: 'src/data/enemyCards/enemyTraitCards.js',
+  gear: 'src/data/items/gearCards.js (gearCards array)',
+  artifact: 'src/data/items/mineArtifacts.js or otherWorldArtifacts.js (by world)',
+  encounter: 'src/data/encounterCards.js (ENCOUNTER_CARDS)',
+  darkness: 'src/data/darknessCards.js (DARKNESS_CARDS)',
+  growingDread: 'src/data/growingDreadCards.js (GROWING_DREAD_CARDS)',
+  loot: 'src/data/lootDeck.js (lootCards)',
+  townTrait: 'src/components/DM/charts/townTraitsChart.js',
+  depthEvent: 'src/data/depthEvents/ (per-world chart file)',
+};
+
+function buildExportContent(deckType, cards) {
   const safeKey = deckType.replace(/[:/\\?*"|<>]/g, '-');
   const label = deckType.startsWith('threat:')
     ? `Threat Card (${deckType.replace('threat:', '').replace('otherworld-', 'OtherWorld ')})`
     : DECK_TYPES.find(d => d.id === deckType)?.label || deckType;
   const date = new Date().toISOString().slice(0, 10);
+  const isThreat = deckType === 'threat' || deckType.startsWith('threat:');
 
   let json, content;
   if (deckType === 'enemyTrait') {
@@ -672,18 +724,29 @@ function exportCards(deckType, cards) {
       grouped[enemy].push(rest);
     }
     json = JSON.stringify(grouped, null, 2);
-    content = `// Scanned enemy trait cards — ${date}\n// Merge into src/data/enemyCards/enemyTraitCards.js\nexport const ENEMY_TRAIT_CARDS = ${json};\nexport default ENEMY_TRAIT_CARDS;\n`;
+    content = `// Scanned enemy trait cards — ${date}\n// Merge into ${EXPORT_TARGETS.enemyTrait}\nexport const ENEMY_TRAIT_CARDS = ${json};\nexport default ENEMY_TRAIT_CARDS;\n`;
   } else {
-    const exportData = deckType === 'enemy' ? cards.map(formatEnemyForExport) : cards;
+    let exportData;
+    if (deckType === 'enemy') exportData = cards.map(formatEnemyForExport);
+    else if (isThreat) exportData = cards.map(formatThreatForExport);
+    else if (deckType === 'gear' || deckType === 'artifact' || deckType === 'loot') exportData = cards.map(formatItemForExport);
+    else exportData = cards;
     json = JSON.stringify(exportData, null, 2);
-    content = `// Scanned cards — ${label} — ${date}\n// Paste / merge into the appropriate data file\nexport default ${json};\n`;
+    const target = isThreat
+      ? 'src/data/cards/threatCards.js (THREAT_CARDS_STANDARD or _OTHERWORLD by world)'
+      : EXPORT_TARGETS[deckType] || 'the appropriate data file';
+    content = `// Scanned cards — ${label} — ${date}\n// Entries are pre-shaped for: ${target}\n// Duplicate names within this batch or vs the app deck still need a manual check.\nexport default ${json};\n`;
   }
+  return { content, filename: `scanned_${safeKey}_${date}.js` };
+}
 
+function exportCards(deckType, cards) {
+  const { content, filename } = buildExportContent(deckType, cards);
   const blob = new Blob([content], { type: 'text/javascript' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `scanned_${safeKey}_${date}.js`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1137,6 +1200,19 @@ export default function DMScanCards({ addGroup, combatGroups }) {
   const handleExport = useCallback(() => {
     if (!currentPending.length) { alert('No cards to export yet.'); return; }
     exportCards(pendingKey, currentPending);
+  }, [pendingKey, currentPending]);
+
+  const [copiedExport, setCopiedExport] = useState(false);
+  const handleCopyExport = useCallback(async () => {
+    if (!currentPending.length) { alert('No cards to copy yet.'); return; }
+    const { content } = buildExportContent(pendingKey, currentPending);
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedExport(true);
+      setTimeout(() => setCopiedExport(false), 2000);
+    } catch {
+      alert('Clipboard unavailable — use Export JSON instead.');
+    }
   }, [pendingKey, currentPending]);
 
   const handleClearAll = useCallback(() => {
@@ -1697,6 +1773,9 @@ export default function DMScanCards({ addGroup, combatGroups }) {
             <div className="flex gap-2">
               <button className="btn btn-sm btn-accent" onClick={handleExport}>
                 ⬇ Export JSON
+              </button>
+              <button className="btn btn-sm btn-outline" onClick={handleCopyExport}>
+                {copiedExport ? '✓ Copied' : '📋 Copy'}
               </button>
               <button className="btn btn-sm btn-ghost text-red-600" onClick={handleClearAll}>
                 Clear All
