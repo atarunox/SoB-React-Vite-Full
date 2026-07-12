@@ -99,6 +99,46 @@ export async function terminateOcrWorker() {
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// Haiku 4.5 resizes images beyond 1568px on the long edge server-side and
+// bills for the resized dimensions — so downscaling client-side to that cap
+// loses zero fidelity while cutting upload size ~10× (phone photos are ~12MP).
+const MAX_VISION_EDGE = 1568;
+
+/**
+ * Downscale + JPEG-compress an image for the vision API.
+ * Returns { base64, mediaType }. Falls back to the raw file if canvas fails
+ * (e.g. unsupported format) — the API will resize server-side in that case.
+ */
+function prepareImageForVision(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    const fallback = async () => {
+      URL.revokeObjectURL(url);
+      resolve({ base64: await fileToBase64(file), mediaType: getMediaType(file) });
+    };
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const scale = Math.min(1, MAX_VISION_EDGE / Math.max(w, h));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' });
+      } catch {
+        fallback();
+      }
+    };
+    img.onerror = fallback;
+    img.src = url;
+  });
+}
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -195,8 +235,7 @@ Rules:
 }
 
 async function callClaude(file, prompt, apiKey, maxTokens = 2048) {
-  const base64 = await fileToBase64(file);
-  const mediaType = getMediaType(file);
+  const { base64, mediaType } = await prepareImageForVision(file);
   const cleanKey = apiKey.replace(/[^\x20-\x7E]/g, '').trim();
 
   const body = JSON.stringify({

@@ -1303,7 +1303,8 @@ export default function DMScanCards({ addGroup, combatGroups }) {
           <div className="font-semibold text-sm">Claude Vision API (optional)</div>
           <p className="text-xs text-gray-600">
             Claude Vision is dramatically more accurate than Tesseract on dark, stylised cards.
-            ~$0.001 per scan using Haiku.{' '}
+            Roughly half a cent per card using Haiku — cheaper still with multi-card photos
+            (one image, one prompt, several cards).{' '}
             <a
               href="https://console.anthropic.com/"
               target="_blank"
