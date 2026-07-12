@@ -350,7 +350,7 @@ The **Options** top-level tab now contains seven sub-tabs (state persisted as `d
 - **Missions** — browse missions grouped by pack; select/clear active mission (persisted in `sob:active_mission`)
 - **Deck Explorer** — browse all card decks (see below)
 - **Item Generator** — moved from former top-level tab
-- **Scan Cards** — moved from former top-level tab
+- **Scan Cards** — camera/photo card scanner (Claude Vision via user API key, Tesseract fallback). 15 categories incl. Enemy Sheets, Threat Cards, Missions, Personal Items, World Cards. Images auto-downscaled to 1568px before upload. Exports are pre-shaped for the target data file (threatCards.js/gearCards.js/missions/ schemas), with an 'in deck' duplicate badge vs existing app data and a clipboard-copy button. See `DMScanCards.jsx` + `utils/cardOcr.js`
 - **Big Score** — "The Next Big Score" mission modifier (Promo 1122–1135); requires Outlaw or Performer hero
 - **Warrants** — Warrants mission modifier (Promo 975–992); requires Law hero; draw a Warrant card before the adventure
 - **Nightmares** — Ruinous Nightmares modifier; choose Nightmare Level 1/2/3; draw N cards per Fight; +20 XP or $200 per card per Hero

@@ -154,6 +154,26 @@ function getMediaType(file) {
 }
 
 function buildPrompt(deckType, extra = {}) {
+  if (extra.isMission) {
+    return `You are extracting data from a Shadows of Brimstone MISSION photo (a mission card, or a mission page from an adventure book).
+
+Extract ALL visible text and return a JSON object with these fields (omit fields not present):
+- name: the mission title
+- pack: the expansion/pack name if shown (e.g. "Hell Mouth Terrain Pack", "Enemy Swarm Pack 3")
+- missionNumber: the mission number if shown (integer)
+- description: the flavor/intro text that sets the scene (narrative, usually italic or at the top)
+- setup: setup instructions (starting tile, special tokens/tiles to place, deck preparation)
+- heroScaling: array of { "heroes": "2–3", "text": "..." } rows if the mission scales by hero count
+- specialRules: array of { "name": "Rule Name", "text": "full rule text" } for each named special rule
+- objectives: array of strings — each objective/win condition as its own entry
+- reward: the victory reward text
+- failure: the failure/consequence text
+
+Rules:
+- Keep rule and objective text COMPLETE and verbatim — do not summarize
+- Correct obvious OCR-style spelling errors using Shadows of Brimstone context
+- Return ONLY a valid JSON object, no markdown fences, no explanation`;
+  }
   if (extra.isThreat) {
     const worldLine = extra.world ? `\nOtherWorld context: ${extra.world}` : '';
     return `You are extracting data from a Shadows of Brimstone THREAT CARD photo.

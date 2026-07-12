@@ -1,6 +1,46 @@
 // src/components/DM/DMScanCards.jsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { runOcr, scanWithClaudeVision, scanMultiCardImage } from '../../utils/cardOcr';
+import { THREAT_CARDS } from '../../data/cards/threatCards';
+import { gearCards } from '../../data/items/gearCards';
+import { mineArtifacts } from '../../data/items/mineArtifacts';
+import { otherWorldArtifacts } from '../../data/items/otherWorldArtifacts';
+import { DARKNESS_CARDS } from '../../data/darknessCards';
+import { GROWING_DREAD_CARDS } from '../../data/growingDreadCards';
+import { ENCOUNTER_CARDS } from '../../data/encounterCards';
+import { lootCards } from '../../data/lootDeck';
+import { WORLD_CARDS } from '../../data/worldCards';
+import { PERSONAL_ITEM_CARDS } from '../../data/cards/personalItems';
+import { ALL_MISSIONS } from '../../data/missions';
+import { ENEMY_CARDS } from '../../data/enemyCards';
+
+// ── Duplicate detection vs decks already in the app ─────────────────────────
+// Name sets are built lazily once per category (the decks are static data).
+const existingNameCache = {};
+function getExistingNames(deckType) {
+  const cat = deckType.startsWith('threat') ? 'threat' : deckType.split(':')[0];
+  if (existingNameCache[cat]) return existingNameCache[cat];
+  let cards = [];
+  switch (cat) {
+    case 'threat':       cards = THREAT_CARDS; break;
+    case 'gear':         cards = gearCards; break;
+    case 'artifact':     cards = [...mineArtifacts, ...(Array.isArray(otherWorldArtifacts) ? otherWorldArtifacts : Object.values(otherWorldArtifacts).flat())]; break;
+    case 'darkness':     cards = DARKNESS_CARDS; break;
+    case 'growingDread': cards = GROWING_DREAD_CARDS; break;
+    case 'encounter':    cards = ENCOUNTER_CARDS; break;
+    case 'loot':         cards = lootCards; break;
+    case 'worldCard':    cards = WORLD_CARDS; break;
+    case 'personalItem': cards = PERSONAL_ITEM_CARDS; break;
+    case 'mission':      cards = ALL_MISSIONS; break;
+    case 'enemy':        cards = Object.values(ENEMY_CARDS || {}).flat(); break;
+    default:             cards = [];
+  }
+  const set = new Set(cards.map(c => String(c?.name || '').trim().toLowerCase()).filter(Boolean));
+  existingNameCache[cat] = set;
+  return set;
+}
+const isAlreadyInDeck = (deckType, name) =>
+  !!name && getExistingNames(deckType).has(String(name).trim().toLowerCase());
 
 // ── Deck type definitions ────────────────────────────────────────────────────
 
@@ -17,6 +57,9 @@ const DECK_TYPES = [
   { id: 'enemy',        label: 'Enemy Sheet' },
   { id: 'enemyTrait',   label: 'Enemy Trait Card' },
   { id: 'threat',       label: 'Threat Card' },
+  { id: 'personalItem', label: 'Personal Item' },
+  { id: 'worldCard',    label: 'World Card' },
+  { id: 'mission',      label: 'Mission' },
 ];
 
 const WORLDS = [
@@ -212,6 +255,18 @@ function applyToSchema(raw, deckType, enemySide = 'normal') {
       base[`${prefix}Xp`] = xp;
       return base;
     }
+    case 'mission':
+      // Keep every extracted mission field (setup, heroScaling, specialRules, …)
+      return { ...raw, name };
+    case 'personalItem':
+      return {
+        name,
+        flavorText: raw.flavorText || '',
+        effects: Array.isArray(raw.effects) && raw.effects.length ? raw.effects : (effect ? [effect] : []),
+        tags: tags.length ? tags : ['Personal'],
+      };
+    case 'worldCard':
+      return { name, flavorText: raw.flavorText || '', effect, tags };
     default:
       return { name, effect };
   }
@@ -613,6 +668,52 @@ function FormFields({ deckType, data, onChange }) {
         </div>
       );
 
+    case 'mission':
+      return (
+        <div className="space-y-3">
+          {field('Mission Name', 'name', 'text', 'e.g. Through the Mouth of Madness')}
+          {field('Pack', 'pack', 'text', 'e.g. Hell Mouth Terrain Pack')}
+          {field('Mission #', 'missionNumber', 'number')}
+          {textarea('Description (flavor/intro)', 'description')}
+          {textarea('Setup', 'setup')}
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Objectives</label>
+            <EffectsEditor value={data.objectives} onChange={v => set('objectives', v)} />
+          </div>
+          {textarea('Reward', 'reward')}
+          {textarea('Failure', 'failure')}
+          {(data.specialRules?.length || data.heroScaling?.length) ? (
+            <p className="text-[11px] text-gray-500">
+              {data.specialRules?.length ? `${data.specialRules.length} special rule(s)` : ''}
+              {data.specialRules?.length && data.heroScaling?.length ? ' · ' : ''}
+              {data.heroScaling?.length ? `${data.heroScaling.length} hero-scaling row(s)` : ''}
+              {' '}captured — review in the export.
+            </p>
+          ) : null}
+        </div>
+      );
+
+    case 'personalItem':
+      return (
+        <div className="space-y-3">
+          {field('Item Name', 'name', 'text', 'e.g. Personal Journal')}
+          {textarea('Flavor Text (optional)', 'flavorText')}
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Effects</label>
+            <EffectsEditor value={data.effects} onChange={v => set('effects', v)} />
+          </div>
+        </div>
+      );
+
+    case 'worldCard':
+      return (
+        <div className="space-y-3">
+          {field('Card Name', 'name', 'text')}
+          {textarea('Flavor Text (optional)', 'flavorText')}
+          {textarea('Effect', 'effect')}
+        </div>
+      );
+
     default:
       return null;
   }
@@ -692,6 +793,24 @@ function formatItemForExport(card) {
   };
 }
 
+// Shape a scanned mission like a src/data/missions/ entry.
+function formatMissionForExport(card) {
+  return {
+    id: slugId(`${card.pack || ''}_${card.name}`),
+    name: card.name || 'Unknown Mission',
+    pack: card.pack || 'Unknown Pack',
+    packId: slugId(card.pack || 'unknown'),
+    ...(card.missionNumber ? { missionNumber: Number(card.missionNumber) } : {}),
+    ...(card.description ? { description: card.description } : {}),
+    ...(card.setup ? { setup: card.setup } : {}),
+    ...(Array.isArray(card.heroScaling) && card.heroScaling.length ? { heroScaling: card.heroScaling } : {}),
+    ...(Array.isArray(card.specialRules) && card.specialRules.length ? { specialRules: card.specialRules } : {}),
+    objectives: card.objectives || [],
+    ...(card.reward ? { reward: card.reward } : {}),
+    ...(card.failure ? { failure: card.failure } : {}),
+  };
+}
+
 // Which data file each category's export is meant to merge into.
 const EXPORT_TARGETS = {
   enemy: 'src/data/enemyCards/scannedEnemies.js',
@@ -704,6 +823,9 @@ const EXPORT_TARGETS = {
   loot: 'src/data/lootDeck.js (lootCards)',
   townTrait: 'src/components/DM/charts/townTraitsChart.js',
   depthEvent: 'src/data/depthEvents/ (per-world chart file)',
+  personalItem: 'src/data/cards/personalItems.js (PERSONAL_ITEM_CARDS)',
+  worldCard: 'src/data/worldCards.js (WORLD_CARDS)',
+  mission: 'src/data/missions/ (new pack file, spread into index.js ALL_MISSIONS)',
 };
 
 function buildExportContent(deckType, cards) {
@@ -730,12 +852,17 @@ function buildExportContent(deckType, cards) {
     if (deckType === 'enemy') exportData = cards.map(formatEnemyForExport);
     else if (isThreat) exportData = cards.map(formatThreatForExport);
     else if (deckType === 'gear' || deckType === 'artifact' || deckType === 'loot') exportData = cards.map(formatItemForExport);
+    else if (deckType === 'mission') exportData = cards.map(formatMissionForExport);
     else exportData = cards;
     json = JSON.stringify(exportData, null, 2);
     const target = isThreat
       ? 'src/data/cards/threatCards.js (THREAT_CARDS_STANDARD or _OTHERWORLD by world)'
-      : EXPORT_TARGETS[deckType] || 'the appropriate data file';
-    content = `// Scanned cards — ${label} — ${date}\n// Entries are pre-shaped for: ${target}\n// Duplicate names within this batch or vs the app deck still need a manual check.\nexport default ${json};\n`;
+      : EXPORT_TARGETS[deckType.split(':')[0]] || 'the appropriate data file';
+    const dupes = cards.map(c => c.name).filter(n => isAlreadyInDeck(deckType, n));
+    const dupeNote = dupes.length
+      ? `// ⚠ Already in the app's deck (physical duplicates are OK, otherwise skip): ${[...new Set(dupes)].join(', ')}\n`
+      : '';
+    content = `// Scanned cards — ${label} — ${date}\n// Entries are pre-shaped for: ${target}\n${dupeNote}export default ${json};\n`;
   }
   return { content, filename: `scanned_${safeKey}_${date}.js` };
 }
@@ -908,6 +1035,7 @@ export default function DMScanCards({ addGroup, combatGroups }) {
             world: threatTier === 'otherworld' ? world : undefined,
             isThreat: true,
           }
+        : deckType === 'mission' ? { isMission: true }
         : {};
       const result = await scanWithClaudeVision(file, label, apiKey, extra);
       const cardData = applyToSchema(result, deckType, enemySide);
@@ -1037,6 +1165,7 @@ export default function DMScanCards({ addGroup, combatGroups }) {
               isThreat: true,
               hint: 'If the card shows a yellow cube/die with the letter P (the Peril Die icon), set perilCount:true and leave enemyCount blank. The Peril Die is rolled to determine how many enemies spawn.',
             }
+          : deckType === 'mission' ? { isMission: true }
           : {};
         const result = await scanWithClaudeVision(imageFile, label, apiKey, extra);
         setProgress(100);
@@ -1066,7 +1195,9 @@ export default function DMScanCards({ addGroup, combatGroups }) {
     setProgress(20);
     try {
       const label = NEEDS_WORLD.has(deckType) ? `${world} ${deckType}` : deckType;
-      const extra = deckType === 'enemy' ? { isEnemy: true, enemySide } : {};
+      const extra = deckType === 'enemy' ? { isEnemy: true, enemySide }
+        : deckType === 'mission' ? { isMission: true }
+        : {};
       setProgress(40);
       const cards = await scanMultiCardImage(imageFile, label, apiKey, extra);
       setProgress(100);
@@ -1286,6 +1417,7 @@ export default function DMScanCards({ addGroup, combatGroups }) {
                 isThreat: true,
                 hint: 'If the card shows a yellow cube/die with the letter P (the Peril Die icon), set perilCount:true and leave enemyCount blank. The Peril Die is rolled to determine how many enemies spawn.',
               }
+            : deckType === 'mission' ? { isMission: true }
             : {};
           const result = await scanWithClaudeVision(file, label, apiKey, extra);
           cardData = applyToSchema(result, deckType, enemySide);
@@ -1787,7 +1919,14 @@ export default function DMScanCards({ addGroup, combatGroups }) {
             {currentPending.map((card, idx) => (
               <div key={idx} className="rounded-lg border border-gray-200 bg-white p-3 flex justify-between gap-2">
                 <div className="text-sm min-w-0 flex-1">
-                  <div className="font-semibold truncate">{card.name || card.id || '(unnamed)'}</div>
+                  <div className="font-semibold truncate">
+                    {card.name || card.id || '(unnamed)'}
+                    {isAlreadyInDeck(pendingKey, card.name) && (
+                      <span className="ml-2 text-[10px] font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300 rounded px-1.5 py-0.5 align-middle">
+                        in deck
+                      </span>
+                    )}
+                  </div>
                   {deckType === 'enemy' ? (
                     <div className="flex gap-1 mt-0.5">
                       <span className={`text-xs px-1.5 py-0.5 rounded ${card.normalHealth ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
